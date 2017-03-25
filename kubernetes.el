@@ -103,6 +103,11 @@ The function must take a single argument, which is the buffer to display."
   "Face for things that shouldn't stand out."
   :group 'kubernetes)
 
+(defface kubernetes-delete-mark
+  '((t :inherit error))
+  "Face for deletion mark indicators."
+  :group 'kubernetes)
+
 (defconst kubernetes-display-pods-buffer-name "*kubernetes pods*")
 
 (defconst kubernetes-display-context-buffer-name "*kubernetes context*")
@@ -164,17 +169,6 @@ to a function of the type:
 
 
 ;; View management
-
-(defun kubernetes-make-set-heading-cb (marker &optional update-line-fn)
-  (unless update-line-fn
-    (setq update-line-fn #'insert))
-  (lambda (response)
-    (with-current-buffer (marker-buffer marker)
-      (save-excursion
-        (goto-char (marker-position marker))
-        (let ((inhibit-read-only t))
-          (delete-region (point) (line-end-position))
-          (funcall update-line-fn response))))))
 
 (defun kubernetes-display-buffer-fullframe (buffer)
   (let ((display-fn
@@ -294,23 +288,61 @@ taken."
 
 ;;; Displaying all pods
 
-(defun kubernetes--insert-context-section ()
-  (insert (format "%-12s" "Context: "))
-  (let ((marker (make-marker))
-        (update-line (lambda (config)
-                       (-let [(&alist 'current-context current 'contexts contexts) config]
-                         (insert (propertize (concat (or current "<none>") "\n") 'face 'kubernetes-context-name))
-                         (-when-let* ((ctx (--find (equal current (alist-get 'name it)) (append contexts nil)))
-                                      ((&alist 'name n 'context (&alist 'cluster c 'namespace ns)) ctx))
-                           (unless (string-empty-p c)
-                             (insert (format "%-12s%s\n" "Cluster: " c)))
-                           (unless (string-empty-p ns)
-                             (insert (format "%-12s%s" "Namespace: " ns))))))))
-    (set-marker marker (point))
-    (kubernetes-config-view
-     (kubernetes-make-set-heading-cb marker update-line)))
+;; Marker variables used track buffer locations to update.
+(defvar-local kubernetes--config-start-marker nil)
+(defvar-local kubernetes--config-end-marker nil)
+(defvar-local kubernetes--pod-count-marker nil)
+(defvar-local kubernetes--pods-start-marker nil)
+(defvar-local kubernetes--pods-end-marker nil)
 
+;; Context section rendering.
+
+(defvar kubernetes--awaiting-config-section nil
+  "Used as a lock to prevent concurrent config queries.")
+
+(defun kubernetes--redraw-context-section (start-marker end-marker config)
+  (when (and (buffer-live-p (marker-buffer start-marker))
+             (buffer-live-p (marker-buffer end-marker)))
+    (with-current-buffer (marker-buffer start-marker)
+      (save-excursion
+        (goto-char (marker-position start-marker))
+        (let ((inhibit-read-only t))
+          (delete-region (point) (1- (marker-position end-marker)))
+          (-let [(&alist 'current-context current 'contexts contexts) config]
+            (insert (propertize (concat (or current "<none>") "\n") 'face 'kubernetes-context-name))
+            (-when-let* ((ctx (--find (equal current (alist-get 'name it)) (append contexts nil)))
+                         ((&alist 'name n 'context (&alist 'cluster c 'namespace ns)) ctx))
+              (unless (string-empty-p c)
+                (insert (format "%-12s%s\n" "Cluster: " c)))
+              (unless (string-empty-p ns)
+                (insert (format "%-12s%s" "Namespace: " ns))))))))))
+
+(defun kubernetes--initialize-context-section ()
+  (setq kubernetes--awaiting-config-section t)
+  (insert (format "%-12s" "Context: "))
+  (set-marker kubernetes--config-start-marker (point))
+  (kubernetes-config-view (lambda (config)
+                  (kubernetes--redraw-context-section kubernetes--config-start-marker kubernetes--config-end-marker config)
+                  (setq kubernetes--awaiting-config-section nil)))
+  (insert " ")
+  (set-marker kubernetes--config-end-marker (point))
   (newline))
+
+(defun kubernetes--refresh-context-section ()
+  (unless kubernetes--awaiting-config-section
+    (setq kubernetes--awaiting-config-section t)
+    (kubernetes-config-view (lambda (config)
+                    (kubernetes--redraw-context-section kubernetes--config-start-marker kubernetes--config-end-marker config)
+                    (setq kubernetes--awaiting-config-section nil)))))
+
+;; Pod section rendering.
+
+(defvar-local kubernetes--marked-pod-names nil)
+
+(defvar kubernetes--awaiting-pods-section nil
+  "Used as a lock to prevent concurrent pods listing queries.")
+
+(defvar kubernetes--pods-response nil)
 
 (defun kubernetes--ellispsize (s threshold)
   (if (> (length s) threshold)
@@ -341,55 +373,91 @@ taken."
                  (propertize str 'face 'error))
                 (t
                  (propertize str 'face 'warning))))
-          (str (concat "  " str)))
-    (propertize str 'kubernetes-nav (list :pod pod))))
+          (with-marks
+           (if (member name kubernetes--marked-pod-names)
+               (concat (propertize "D" 'face 'kubernetes-delete-mark) " " str)
+             (concat "  " str))))
+    (propertize with-marks 'kubernetes-nav (list :pod pod))))
 
-(defun kubernetes--insert-pods-section ()
+(defun kubernetes--redraw-pods-section (count-marker pods-start-marker pods-end-marker pods)
+  (when (and (buffer-live-p (marker-buffer count-marker))
+             (buffer-live-p (marker-buffer pods-start-marker))
+             (buffer-live-p (marker-buffer pods-end-marker)))
+    (-let [(&alist 'items pods) pods]
+      (with-current-buffer (marker-buffer count-marker)
+        (save-excursion
+          (goto-char (marker-position count-marker))
+          (let ((inhibit-read-only t))
+            (delete-region (point) (line-end-position))
+            (insert (format "(%s)" (length pods)))))
+        (save-excursion
+          (goto-char (marker-position pods-start-marker))
+          (let ((inhibit-read-only t))
+            (delete-region (point) (1- (marker-position pods-end-marker)))
+            (--each (append pods nil)
+              (insert (kubernetes--format-pod-line it))
+              (newline))))))))
+
+(defun kubernetes--initialize-pods-section ()
+  (setq kubernetes--awaiting-pods-section t)
   (insert (propertize "Pods " 'face 'kubernetes-section-heading))
-  (let ((count-marker (make-marker))
-        (pods-marker (make-marker)))
-    (set-marker count-marker (point))
-    (newline)
-    (insert (propertize (format "  %-40s %-17s %s\n" "Name" "Status" "Restarts")
-                        'face 'kubernetes-column-heading))
-    (set-marker pods-marker (point))
-    (insert (propertize "  Fetching..." 'face 'kubernetes-progress-indicator))
+  (set-marker kubernetes--pod-count-marker (point))
+  (newline)
+  (insert (propertize (format "  %-40s %-17s %s\n" "Name" "Status" "Restarts")
+                      'face 'kubernetes-column-heading))
+  (set-marker kubernetes--pods-start-marker (point))
+  (insert (propertize "  Fetching... " 'face 'kubernetes-progress-indicator))
+  (set-marker kubernetes--pods-end-marker (point))
+  (kubernetes-get-pods
+   (lambda (response)
+     (setq kubernetes--pods-response response)
+     (kubernetes--redraw-pods-section kubernetes--pod-count-marker kubernetes--pods-start-marker kubernetes--pods-end-marker response)
+     (setq kubernetes--awaiting-pods-section nil)))
+
+  (newline))
+
+(defun kubernetes--refresh-pods-section ()
+  (unless kubernetes--awaiting-pods-section
+    (setq kubernetes--awaiting-pods-section t)
     (kubernetes-get-pods
      (lambda (response)
-       (-let [(&alist 'items pods) response]
-         (with-current-buffer (marker-buffer count-marker)
-           (save-excursion
-             (goto-char (marker-position count-marker))
-             (let ((inhibit-read-only t))
-               (delete-region (point) (line-end-position))
-               (insert (format "(%s)" (length pods)))))
-           (save-excursion
-             (goto-char (marker-position pods-marker))
-             (let ((inhibit-read-only t))
-               (delete-region (point) (line-end-position))
-               (--each (append pods nil)
-                 (insert (kubernetes--format-pod-line it))
-                 (newline))))))))))
+       (setq kubernetes--pods-response response)
+       (kubernetes--redraw-pods-section kubernetes--pod-count-marker kubernetes--pods-start-marker kubernetes--pods-end-marker response)
+       (message "Pods updated.")
+       (setq kubernetes--awaiting-pods-section nil)))))
 
-;;;###autoload
-(defun kubernetes-display-pods-refresh ()
-  "Create or refresh the Kubernetes pods buffer."
-  (interactive)
+;; Root rendering routines.
+
+(defun kubernetes-display-pods-initialize-buffer ()
   (let ((buf (get-buffer-create kubernetes-display-pods-buffer-name)))
     (with-current-buffer buf
       (kubernetes-display-pods-mode)
       (let ((inhibit-read-only t))
         (erase-buffer)
-        (kubernetes--insert-context-section)
+        (kubernetes--initialize-context-section)
         (newline)
-        (kubernetes--insert-pods-section)))
+        (kubernetes--initialize-pods-section)))
     buf))
+
+;;;###autoload
+(defun kubernetes-display-pods-refresh ()
+  "Create or refresh the Kubernetes pods buffer."
+  (interactive)
+  (unless (get-buffer kubernetes-display-pods-buffer-name)
+    (error "Attempted to refresh kubernetes pods buffer, but it does not exist"))
+  (message "Refreshing pods buffer...")
+  (kubernetes--refresh-context-section)
+  (kubernetes--refresh-pods-section))
 
 (defvar kubernetes-display-pods-mode-map
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "g") #'kubernetes-display-pods-refresh)
     (define-key keymap (kbd "q") #'quit-window)
     (define-key keymap (kbd "RET") #'kubernetes-navigate)
+    (define-key keymap (kbd "d") #'kubernetes-mark-for-delete)
+    (define-key keymap (kbd "u") #'kubernetes-unmark)
+    (define-key keymap (kbd "U") #'kubernetes-unmark-all)
+    (define-key keymap (kbd "x") #'kubernetes-execute-marks)
     keymap)
   "Keymap for `kubernetes-display-pods-mode'.")
 
@@ -401,15 +469,73 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
 
 \\{kubernetes-display-pods-mode-map}"
   :group 'kubernetes
-  (read-only-mode +1))
+  (read-only-mode +1)
+  (setq-local kubernetes--config-start-marker (make-marker))
+  (setq-local kubernetes--config-end-marker (make-marker))
+  (setq-local kubernetes--pod-count-marker (make-marker))
+  (setq-local kubernetes--pods-start-marker (make-marker))
+  (setq-local kubernetes--pods-end-marker (make-marker)))
 
 ;;;###autoload
 (defun kubernetes-display-pods ()
   "Display a list of pods in the current Kubernetes context."
   (interactive)
-  (with-current-buffer (kubernetes-display-pods-refresh)
+  (with-current-buffer (kubernetes-display-pods-initialize-buffer)
     (goto-char (point-min))
     (kubernetes-display-buffer (current-buffer))))
+
+;; Marked pod state management.
+
+(defun kubernetes-mark-for-delete (point)
+  "Mark the thing at POINT for deletion, then advance to the next line."
+  (interactive "d")
+  (pcase (get-text-property point 'kubernetes-nav)
+    (`(:pod ,pod)
+     (-let [(&alist 'metadata (&alist 'name name)) pod]
+       (add-to-list 'kubernetes--marked-pod-names name)
+       (kubernetes--redraw-pods-section kubernetes--pod-count-marker
+                              kubernetes--pods-start-marker
+                              kubernetes--pods-end-marker
+                              kubernetes--pods-response)))
+    (_
+     (user-error "Nothing here can be marked")))
+  (goto-char point)
+  (forward-line 1))
+
+(defun kubernetes-unmark (point)
+  "Unmark the thing at POINT, then advance to the next line."
+  (interactive "d")
+  (pcase (get-text-property point 'kubernetes-nav)
+    (`(:pod ,pod)
+     (-let [(&alist 'metadata (&alist 'name name)) pod]
+       (setq kubernetes--marked-pod-names (delete name kubernetes--marked-pod-names)))))
+  (goto-char point)
+  (forward-line 1))
+
+(defun kubernetes-unmark-all ()
+  "Unmark everything in the buffer."
+  (interactive)
+  (setq kubernetes--marked-pod-names nil)
+  (let ((pt (point)))
+    (kubernetes--redraw-pods-section kubernetes--pod-count-marker
+                           kubernetes--pods-start-marker
+                           kubernetes--pods-end-marker
+                           kubernetes--pods-response)
+    (goto-char pt)))
+
+(defun kubernetes-execute-marks ()
+  "Action all marked items in the buffer."
+  (interactive)
+  (unless kubernetes--marked-pod-names
+    (user-error "Nothing is marked"))
+
+  (let ((n (length kubernetes--marked-pod-names)))
+    (if (y-or-n-p (format "Execute %s mark%s? " n (if (equal 1 n) "" "s")))
+        (progn
+          (kubernetes-unmark-all)
+          (kubernetes-display-pods-refresh))
+      (message "Cancelled."))))
+
 
 (provide 'kubernetes)
 

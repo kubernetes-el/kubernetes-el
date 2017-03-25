@@ -16,7 +16,11 @@
 (evil-define-key 'normal kubernetes-display-pods-mode-map
   (kbd "RET") #'kubernetes-navigate
   (kbd "g") #'kubernetes-display-pods-refresh
-  (kbd "q") #'quit-window)
+  (kbd "q") #'quit-window
+  (kbd "d") #'kubernetes-mark-for-delete
+  (kbd "u") #'kubernetes-unmark
+  (kbd "U") #'kubernetes-unmark-all
+  (kbd "x") #'kubernetes-execute-marks)
 
 (evil-define-key 'normal kubernetes-display-pod-mode-map
   (kbd "RET") #'kubernetes-navigate
