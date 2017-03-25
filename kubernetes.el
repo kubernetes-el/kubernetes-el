@@ -1,4 +1,4 @@
-;;; kubernetes.el --- Elisp porcelain for Kubernetes.  -*- lexical-binding: t; -*-
+;;; kubernetes.el --- Emacs porcelain for Kubernetes.  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2017  Chris Barrett
 
@@ -23,7 +23,40 @@
 
 ;;; Code:
 
+(autoload 'json-read-from-string "json")
 
+(defgroup kubernetes nil
+  "Emacs porcelain for Kubernetes."
+  :group 'tools
+  :prefix "kubernetes-")
+
+(defcustom kubernetes-kubectl-executable "kubectl"
+  "The kubectl command used for Kubernetes commands."
+  :group 'kubernetes
+  :type 'string)
+
+(defun kubernetes--kubectl (args on-success)
+  "Run kubectl with ARGS.
+
+ON-SUCCESS is a function of one argument, called with the process' buffer.
+
+Returns the process object for this execution of kubectl."
+  (let ((buf  (generate-new-buffer " kubectl")))
+    (let ((process (apply #'start-process "kubectl" buf kubernetes-kubectl-executable args))
+          (sentinel
+           (lambda (_proc _status)
+             (funcall on-success buf))))
+      (set-process-sentinel process sentinel)
+      process)))
+
+;;;###autoload
+(defun kubernetes-get-pods (cb)
+  "Get all pods and execute callback CB with the parsed JSON."
+  (kubernetes--kubectl '("get" "pods" "-o" "json")
+             (lambda (buf)
+               (let ((json (with-current-buffer buf
+                             (json-read-from-string (buffer-string)))))
+                 (funcall cb json)))))
 
 (provide 'kubernetes)
 

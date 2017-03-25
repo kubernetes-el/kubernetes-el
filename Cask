@@ -1,5 +1,7 @@
-(source melpa-stable)
+(source melpa)
 (package-file "kubernetes.el")
 
 (development
- (depends-on "ert-runner"))
+ (depends-on "noflet")
+ (depends-on "ert-runner")
+ (depends-on "f"))
