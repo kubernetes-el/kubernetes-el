@@ -153,6 +153,24 @@ to a function of the type:
 
 ;;; Displaying pods
 
+(defun kubernetes-insert-context-section ()
+  (insert (format "%-12s" "Context: "))
+  (let ((marker (make-marker))
+        (update-line (lambda (config)
+                       (-let [(&alist 'current-context current 'contexts contexts) config]
+                         (insert (propertize (concat (or current "<none>") "\n") 'face 'kubernetes-context-name))
+                         (-when-let* ((ctx (--find (equal current (alist-get 'name it)) (append contexts nil)))
+                                      ((&alist 'name n 'context (&alist 'cluster c 'namespace ns)) ctx))
+                           (unless (string-empty-p c)
+                             (insert (format "%-12s%s\n" "Cluster: " c)))
+                           (unless (string-empty-p ns)
+                             (insert (format "%-12s%s" "Namespace: " ns))))))))
+    (set-marker marker (point))
+    (kubernetes-config-view
+     (kubernetes-make-set-heading-cb marker update-line)))
+
+  (newline))
+
 ;;;###autoload
 (defun kubernetes-display-pods-refresh ()
   "Create or refresh the Kubernetes pods buffer."
@@ -162,20 +180,7 @@ to a function of the type:
       (kubernetes-display-pods-mode)
       (let ((inhibit-read-only t))
         (erase-buffer)
-        (insert (format "%-12s" "Context: "))
-        (let ((marker (make-marker))
-              (update-line (lambda (config)
-                             (-let [(&alist 'current-context current 'contexts contexts) config]
-                               (insert (propertize (concat (or current "<none>") "\n") 'face 'kubernetes-context-name))
-                               (-when-let* ((ctx (--find (equal current (alist-get 'name it)) (append contexts nil)))
-                                            ((&alist 'name n 'context (&alist 'cluster c 'namespace ns)) ctx))
-                                 (unless (string-empty-p c)
-                                   (insert (format "%-12s%s\n" "Cluster: " c)))
-                                 (unless (string-empty-p ns)
-                                   (insert (format "%-12s%s\n" "Namespace: " ns))))))))
-          (set-marker marker (point))
-          (kubernetes-config-view
-           (kubernetes-make-set-heading-cb marker update-line)))))
+        (kubernetes-insert-context-section)))
     buf))
 
 (defvar kubernetes-display-pods-mode-map

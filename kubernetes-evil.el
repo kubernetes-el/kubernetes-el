@@ -11,14 +11,10 @@
 (require 'evil)
 
 (autoload 'kubernetes-display-pods-mode-map "kubernetes")
-(autoload 'kubernetes-display-context-mode-map "kubernetes")
 
 (evil-define-key 'normal kubernetes-display-pods-mode-map
+  (kbd "TAB") #'magit-section-toggle
   (kbd "g") #'kubernetes-display-pods-refresh
-  (kbd "q") #'quit-window)
-
-(evil-define-key 'normal kubernetes-display-context-mode-map
-  (kbd "g") #'kubernetes-display-context-refresh
   (kbd "q") #'quit-window)
 
 (provide 'kubernetes-evil)
