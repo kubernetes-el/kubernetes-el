@@ -93,6 +93,25 @@ Returns the process object for this execution of kubectl."
                              (json-read-from-string (buffer-string)))))
                  (funcall cb json)))))
 
+(defun kubernetes--await-on-async (fn)
+  "Turn an async function requiring a callback into a synchronous one.
+
+Transforms a function of type:
+
+  FN : (a -> b) -> process
+
+to a function of the type:
+
+  FN' : () -> a"
+  (let* (complete result)
+    (funcall fn (lambda (response)
+                  (setq complete t)
+                  (setq result response)))
+
+    (while (not complete)
+      (sleep-for 0.001))
+
+    result))
 
 ;; View management
 
@@ -124,6 +143,16 @@ Returns the process object for this execution of kubectl."
       (select-frame-set-input-focus
        (window-frame (select-window window))))))
 
+(defun kubernetes-visit-thing (pos)
+  "Visit the thing at POS.
+
+Inspects the text properties of the object at point to determine
+how to transition to the next view."
+  (interactive "d")
+  (pcase (get-text-property pos 'kubernetes-nav)
+    (`(:context ,ctx)
+     (kubernetes-display-context ctx))))
+
 
 ;;; Displaying pods
 
@@ -138,12 +167,12 @@ Returns the process object for this execution of kubectl."
         (erase-buffer)
         (insert (format "%-10s" "Context: "))
         (let ((marker (make-marker))
-              (context-formatter (lambda (config)
-                                   (let ((ctx (alist-get 'current-context config "<none>")))
-                                     (propertize ctx 'face 'kubernetes-context-name)))))
+              (format-context (lambda (config)
+                                (let ((ctx (alist-get 'current-context config "<none>")))
+                                  (propertize ctx 'face 'kubernetes-context-name)))))
           (set-marker marker (point))
           (kubernetes-config-view
-           (kubernetes-make-set-heading-cb marker context-formatter)))))
+           (kubernetes-make-set-heading-cb marker format-context apply-nav-property)))))
     buf))
 
 (defvar kubernetes-display-pods-mode-map
@@ -170,6 +199,7 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
   (with-current-buffer (kubernetes-display-pods-refresh)
     (goto-char (point-min))
     (kubernetes-display-buffer (current-buffer))))
+
 
 (provide 'kubernetes)
 

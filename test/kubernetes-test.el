@@ -43,17 +43,13 @@ will be mocked."
 
 (ert-deftest running-kubectl-works ()
   (if (executable-find kubernetes-kubectl-executable)
-      (let* ((callback (lambda (buf)
-                         (with-current-buffer buf
-                           (should (string-prefix-p "Client Version:" (buffer-string))))))
-
-             (process (kubernetes--kubectl '("version" "--client") callback)))
-
-        (while (equal 'run (process-status process))
-          (sleep-for 0.001)))
+      (let ((result-buffer (kubernetes--await-on-async
+                            (lambda (cb)
+                              (kubernetes--kubectl '("version" "--client") cb)))))
+        (with-current-buffer result-buffer
+          (should (string-prefix-p "Client Version:" (buffer-string)))))
 
     (warn "kubectl is not installed. Skipping test.")))
-
 
 (ert-deftest listing-pods-returns-parsed-json ()
   (let* ((sample-response (f-read-text (f-join this-directory "get-pods-output.json")))
