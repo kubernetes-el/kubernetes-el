@@ -64,12 +64,13 @@ will be mocked."
        (lambda (response)
          (should (equal parsed-response response)))))))
 
-(ert-deftest listing-current-contexts ()
-  (let ((sample-response "example-context\n"))
-    (with-successful-response-at '("config" "current-context") sample-response
-      (kubernetes-config-current-context
+(ert-deftest viewing-config-returns-parsed-json ()
+  (let* ((sample-response (f-read-text (f-join this-directory "config-view-output.json")))
+         (parsed-response (json-read-from-string sample-response)))
+    (with-successful-response-at '("config" "view" "-o" "json") sample-response
+      (kubernetes-config-view
        (lambda (response)
-         (should (equal "example-context" response)))))))
+         (should (equal parsed-response response)))))))
 
 (provide 'kubernetes-test)
 

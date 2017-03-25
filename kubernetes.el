@@ -85,13 +85,13 @@ Returns the process object for this execution of kubectl."
                  (funcall cb json)))))
 
 ;;;###autoload
-(defun kubernetes-config-current-context (cb)
-  "Get the name of the current context and pass it to callback CB."
-  (kubernetes--kubectl '("config" "current-context")
+(defun kubernetes-config-view (cb)
+  "Get the current configuration and pass it to CB."
+  (kubernetes--kubectl '("config" "view" "-o" "json")
              (lambda (buf)
-               (let ((result (with-current-buffer buf
-                               (string-trim-right (buffer-string)))))
-                 (funcall cb result)))))
+               (let ((json (with-current-buffer buf
+                             (json-read-from-string (buffer-string)))))
+                 (funcall cb json)))))
 
 
 ;; View management
@@ -138,12 +138,11 @@ Returns the process object for this execution of kubectl."
         (erase-buffer)
         (insert (format "%-10s" "Context: "))
         (let ((marker (make-marker))
-              (context-formatter (lambda (ctx)
-                                   (if (string-empty-p ctx)
-                                       "<none>"
+              (context-formatter (lambda (config)
+                                   (let ((ctx (alist-get 'current-context config "<none>")))
                                      (propertize ctx 'face 'kubernetes-context-name)))))
           (set-marker marker (point))
-          (kubernetes-config-current-context
+          (kubernetes-config-view
            (kubernetes-make-set-heading-cb marker context-formatter)))))
     buf))
 

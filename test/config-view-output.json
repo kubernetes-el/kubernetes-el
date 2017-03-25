@@ -1,0 +1,56 @@
+{
+  "kind": "Config",
+  "apiVersion": "v1",
+  "preferences": {},
+  "clusters": [
+    {
+      "name": "example-dev",
+      "cluster": {
+        "server": "https://example.com:8443",
+        "certificate-authority": "/Users/johndoe/.keys/dev-ca.pem"
+      }
+    },
+    {
+      "name": "example-prod",
+      "cluster": {
+        "server": "https://example.com:8443",
+        "certificate-authority": "/Users/johndoe/.keys/prod-ca.pem"
+      }
+    }
+  ],
+  "users": [
+    {
+      "name": "example-dev-admin",
+      "user": {
+        "client-certificate": "/Users/johndoe/.keys/johndoe@example.com.pem",
+        "client-key": "/Users/johndoe/.keys/chris-kube.pem"
+      }
+    },
+    {
+      "name": "example-prod-admin",
+      "user": {
+        "client-certificate": "/Users/johndoe/.keys/johndoe@example.com.pem",
+        "client-key": "/Users/johndoe/.keys/chris-kube.pem"
+      }
+    }
+  ],
+  "contexts": [
+    {
+      "name": "example-dev",
+      "context": {
+        "cluster": "example-dev",
+        "user": "example-dev-admin",
+        "namespace": "example.com"
+      }
+    },
+    {
+      "name": "example-prod",
+      "context": {
+        "cluster": "",
+        "user": "",
+        "namespace": "example.com"
+      }
+    }
+  ],
+  "current-context": "example-prod"
+}
