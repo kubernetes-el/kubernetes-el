@@ -54,15 +54,42 @@ The function must take a single argument, which is the buffer to display."
                 (function-item display-buffer)
                 (function :tag "Function")))
 
-(defconst kubernetes-display-pods-buffer-name "*kubernetes pods*")
-
-(defconst kubernetes-display-context-buffer-name "*kubernetes context*")
+(defcustom kubernetes-pod-restart-warning-threshold 5
+  "The threshold for pod restarts above which a pod is highlighted."
+  :group 'kubernetes
+  :type 'number)
 
 (defface kubernetes-context-name
   '((((class color) (background light)) :foreground "SkyBlue4")
     (((class color) (background  dark)) :foreground "LightSkyBlue1"))
   "Face for context names in report buffers."
   :group 'kubernetes)
+
+(defface kubernetes-section-heading
+  '((((class color) (background light)) :foreground "DarkGoldenrod4" :weight bold)
+    (((class color) (background  dark)) :foreground "LightGoldenrod2" :weight bold))
+  "Face for section headings."
+  :group 'kubernetes)
+
+(defface kubernetes-column-heading
+  '((((class color) (background light)) :foreground "grey30" :weight bold)
+    (((class color) (background  dark)) :foreground "grey80" :weight bold))
+  "Face for section headings."
+  :group 'kubernetes)
+
+(defface kubernetes-progress-indicator
+  '((t :inherit shadow))
+  "Face for progress indicators."
+  :group 'kubernetes)
+
+(defface kubernetes-dimmed
+  '((t :inherit shadow))
+  "Face for things that shouldn't stand out."
+  :group 'kubernetes)
+
+(defconst kubernetes-display-pods-buffer-name "*kubernetes pods*")
+
+(defconst kubernetes-display-context-buffer-name "*kubernetes context*")
 
 
 ;; Main Kubernetes query routines
@@ -151,9 +178,10 @@ to a function of the type:
        (window-frame (select-window window))))))
 
 
-;;; Displaying pods
 
-(defun kubernetes-insert-context-section ()
+;;; Displaying all pods
+
+(defun kubernetes--insert-context-section ()
   (insert (format "%-12s" "Context: "))
   (let ((marker (make-marker))
         (update-line (lambda (config)
@@ -171,6 +199,65 @@ to a function of the type:
 
   (newline))
 
+(defun kubernetes--ellispsize (s threshold)
+  (if (> (length s) threshold)
+      (concat (substring s 0 (1- threshold)) "…")
+    s))
+
+(defun kubernetes--format-pod-line (pod)
+  (-let* (((&alist 'metadata (&alist 'name name)
+                   'status (&alist 'containerStatuses [(&alist 'restartCount restarts)]
+                                   'phase phase))
+           pod)
+          (str
+           (concat (format "%-40s " (kubernetes--ellispsize name 40))
+                   (let ((s (format "%-17s " phase)))
+                     (if (equal phase "Running") (propertize s 'face 'kubernetes-dimmed) s))
+                   (let ((s (format "%s" restarts)))
+                     (cond
+                      ((equal 0 restarts)
+                       (propertize s 'face 'kubernetes-dimmed))
+                      ((<= kubernetes-pod-restart-warning-threshold restarts)
+                       (propertize s 'face 'warning))
+                      (t
+                       s)))))
+          (str (cond
+                ((member (downcase phase) '("running" "containercreating" "terminated"))
+                 str)
+                ((member (downcase phase) '("runcontainererror" "crashloopbackoff"))
+                 (propertize str 'face 'error))
+                (t
+                 (propertize str 'face 'warning))))
+          (str (concat "  " str)))
+    (propertize str 'kubernetes-nav (list :pod pod))))
+
+(defun kubernetes--insert-pods-section ()
+  (insert (propertize "Pods " 'face 'kubernetes-section-heading))
+  (let ((count-marker (make-marker))
+        (pods-marker (make-marker)))
+    (set-marker count-marker (point))
+    (newline)
+    (insert (propertize (format "  %-40s %-17s %s\n" "Name" "Status" "Restarts")
+                        'face 'kubernetes-column-heading))
+    (set-marker pods-marker (point))
+    (insert (propertize "  Fetching..." 'face 'kubernetes-progress-indicator))
+    (kubernetes-get-pods
+     (lambda (response)
+       (-let [(&alist 'items pods) response]
+         (with-current-buffer (marker-buffer count-marker)
+           (save-excursion
+             (goto-char (marker-position count-marker))
+             (let ((inhibit-read-only t))
+               (delete-region (point) (line-end-position))
+               (insert (format "(%s)" (length pods)))))
+           (save-excursion
+             (goto-char (marker-position pods-marker))
+             (let ((inhibit-read-only t))
+               (delete-region (point) (line-end-position))
+               (--each (append pods nil)
+                 (insert (kubernetes--format-pod-line it))
+                 (newline))))))))))
+
 ;;;###autoload
 (defun kubernetes-display-pods-refresh ()
   "Create or refresh the Kubernetes pods buffer."
@@ -180,7 +267,9 @@ to a function of the type:
       (kubernetes-display-pods-mode)
       (let ((inhibit-read-only t))
         (erase-buffer)
-        (kubernetes-insert-context-section)))
+        (kubernetes--insert-context-section)
+        (newline)
+        (kubernetes--insert-pods-section)))
     buf))
 
 (defvar kubernetes-display-pods-mode-map
