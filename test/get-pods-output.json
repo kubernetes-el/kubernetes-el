@@ -1,0 +1,409 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "annotations": {
+          "kubernetes.io/created-by": "{\"kind\":\"SerializedReference\",\"apiVersion\":\"v1\",\"reference\":{\"kind\":\"ReplicaSet\",\"namespace\":\"ns.example\",\"name\":\"example-svc-v3-1603416598\",\"uid\":\"1d81f2b3-fb32-11e6-98d0-eae012fc8e71\",\"apiVersion\":\"extensions\",\"resourceVersion\":\"62687065\"}}\n"
+        },
+        "creationTimestamp": "2017-02-25T08:12:14Z",
+        "generateName": "example-svc-v3-1603416598-",
+        "labels": {
+          "name": "example-pod-v3",
+          "pod-template-hash": "1603416598"
+        },
+        "name": "example-svc-v3-1603416598-2f9lb",
+        "namespace": "ns.example",
+        "ownerReferences": [
+          {
+            "apiVersion": "extensions/v1beta1",
+            "controller": true,
+            "kind": "ReplicaSet",
+            "name": "example-svc-v3-1603416598",
+            "uid": "1d81f2b3-fb32-11e6-98d0-eae012fc8e71"
+          }
+        ],
+        "resourceVersion": "62687662",
+        "selfLink": "/api/v1/namespaces/ns.example/pods/example-svc-v3-1603416598-2f9lb",
+        "uid": "1d85a702-fb32-11e6-8378-0e9fa26c327b"
+      },
+      "spec": {
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "EXAMPLE_VAR_1",
+                "value": "value1"
+              },
+              {
+                "name": "ES_EXAMPLE_VAR_2",
+                "valueFrom": {
+                  "configMapKeyRef": {
+                    "key": "var2",
+                    "name": "app-config"
+                  }
+                }
+              },
+              {
+                "name": "EXAMPLE_SECRET_1",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "secret1",
+                    "name": "app-secret"
+                  }
+                }
+              },
+              {
+                "name": "EXAMPLE_SECRET_2",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "secret2",
+                    "name": "app-secret"
+                  }
+                }
+              }
+            ],
+            "image": "example.com/example-service:3.0.0",
+            "imagePullPolicy": "IfNotPresent",
+            "livenessProbe": {
+              "failureThreshold": 3,
+              "httpGet": {
+                "path": "/liveness",
+                "port": 9000,
+                "scheme": "HTTP"
+              },
+              "initialDelaySeconds": 90,
+              "periodSeconds": 10,
+              "successThreshold": 1,
+              "timeoutSeconds": 3
+            },
+            "name": "example-service",
+            "ports": [
+              {
+                "containerPort": 9000,
+                "name": "http",
+                "protocol": "TCP"
+              }
+            ],
+            "resources": {
+              "limits": {
+                "cpu": "400m",
+                "memory": "400Mi"
+              },
+              "requests": {
+                "cpu": "50m",
+                "memory": "400Mi"
+              }
+            },
+            "terminationMessagePath": "/dev/termination-log",
+            "volumeMounts": [
+              {
+                "mountPath": "/app/mnt",
+                "name": "app-config"
+              },
+              {
+                "mountPath": "/app/mnt2",
+                "name": "auth-config"
+              },
+              {
+                "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                "name": "default-token-vnequ",
+                "readOnly": true
+              }
+            ]
+          }
+        ],
+        "dnsPolicy": "ClusterFirst",
+        "nodeName": "ip-10-0-0-0.ec2.internal",
+        "restartPolicy": "Always",
+        "securityContext": {},
+        "serviceAccount": "default",
+        "serviceAccountName": "default",
+        "terminationGracePeriodSeconds": 30,
+        "volumes": [
+          {
+            "configMap": {
+              "defaultMode": 420,
+              "items": [
+                {
+                  "key": "application.conf",
+                  "path": "application.conf"
+                }
+              ],
+              "name": "app-config"
+            },
+            "name": "app-config"
+          },
+          {
+            "configMap": {
+              "defaultMode": 420,
+              "items": [
+                {
+                  "key": "auth.conf",
+                  "path": "auth.conf"
+                }
+              ],
+              "name": "auth-config"
+            },
+            "name": "auth-config"
+          },
+          {
+            "name": "default-token-vnequ",
+            "secret": {
+              "defaultMode": 420,
+              "secretName": "default-token-vnequ"
+            }
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2017-02-25T08:12:14Z",
+            "status": "True",
+            "type": "Initialized"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2017-02-25T08:13:39Z",
+            "status": "True",
+            "type": "Ready"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2017-02-25T08:12:14Z",
+            "status": "True",
+            "type": "PodScheduled"
+          }
+        ],
+        "containerStatuses": [
+          {
+            "containerID": "docker://4a59bb8191c4e04c0f797e67862e283f84fb14ffff90a20e426185db840ecf7b",
+            "image": "example.com/example-service:3.0.0",
+            "imageID": "docker-pullable://example.com/example-service@sha256:2406309063027f398037b69c3cfcb2e108213f45c47998d26eedaf16d8253871",
+            "lastState": {},
+            "name": "example-service",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "running": {
+                "startedAt": "2017-02-25T08:13:39Z"
+              }
+            }
+          }
+        ],
+        "hostIP": "10.0.0.0",
+        "phase": "Running",
+        "podIP": "172.0.0.1",
+        "startTime": "2017-02-25T08:12:14Z"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "annotations": {
+          "kubernetes.io/created-by": "{\"kind\":\"SerializedReference\",\"apiVersion\":\"v1\",\"reference\":{\"kind\":\"ReplicaSet\",\"namespace\":\"ns.example\",\"name\":\"example-svc-v4-1603416598\",\"uid\":\"1d81f2b3-fb32-11e6-98d0-eae012fc8e71\",\"apiVersion\":\"extensions\",\"resourceVersion\":\"62687065\"}}\n"
+        },
+        "creationTimestamp": "2017-02-25T08:12:14Z",
+        "generateName": "example-svc-v4-1603416598-",
+        "labels": {
+          "name": "example-pod-v4",
+          "pod-template-hash": "1603416598"
+        },
+        "name": "example-svc-v4-1603416598-2f9lb",
+        "namespace": "ns.example",
+        "ownerReferences": [
+          {
+            "apiVersion": "extensions/v1beta1",
+            "controller": true,
+            "kind": "ReplicaSet",
+            "name": "example-svc-v4-1603416598",
+            "uid": "1d81f2b3-fb32-11e6-98d0-eae012fc8e71"
+          }
+        ],
+        "resourceVersion": "62687662",
+        "selfLink": "/api/v1/namespaces/ns.example/pods/example-svc-v4-1603416598-2f9lb",
+        "uid": "1d85a702-fb32-11e6-8378-0e9fa26c327b"
+      },
+      "spec": {
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "EXAMPLE_VAR_1",
+                "value": "value1"
+              },
+              {
+                "name": "ES_EXAMPLE_VAR_2",
+                "valueFrom": {
+                  "configMapKeyRef": {
+                    "key": "var2",
+                    "name": "app-config"
+                  }
+                }
+              },
+              {
+                "name": "EXAMPLE_SECRET_1",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "secret1",
+                    "name": "app-secret"
+                  }
+                }
+              },
+              {
+                "name": "EXAMPLE_SECRET_2",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "key": "secret2",
+                    "name": "app-secret"
+                  }
+                }
+              }
+            ],
+            "image": "example.com/example-service:4.8.0",
+            "imagePullPolicy": "IfNotPresent",
+            "livenessProbe": {
+              "failureThreshold": 3,
+              "httpGet": {
+                "path": "/liveness",
+                "port": 9000,
+                "scheme": "HTTP"
+              },
+              "initialDelaySeconds": 90,
+              "periodSeconds": 10,
+              "successThreshold": 1,
+              "timeoutSeconds": 3
+            },
+            "name": "example-service",
+            "ports": [
+              {
+                "containerPort": 9000,
+                "name": "http",
+                "protocol": "TCP"
+              }
+            ],
+            "resources": {
+              "limits": {
+                "cpu": "400m",
+                "memory": "400Mi"
+              },
+              "requests": {
+                "cpu": "50m",
+                "memory": "400Mi"
+              }
+            },
+            "terminationMessagePath": "/dev/termination-log",
+            "volumeMounts": [
+              {
+                "mountPath": "/app/mnt",
+                "name": "app-config"
+              },
+              {
+                "mountPath": "/app/mnt2",
+                "name": "auth-config"
+              },
+              {
+                "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                "name": "default-token-vnequ",
+                "readOnly": true
+              }
+            ]
+          }
+        ],
+        "dnsPolicy": "ClusterFirst",
+        "nodeName": "ip-10-0-0-0.ec2.internal",
+        "restartPolicy": "Always",
+        "securityContext": {},
+        "serviceAccount": "default",
+        "serviceAccountName": "default",
+        "terminationGracePeriodSeconds": 30,
+        "volumes": [
+          {
+            "configMap": {
+              "defaultMode": 420,
+              "items": [
+                {
+                  "key": "application.conf",
+                  "path": "application.conf"
+                }
+              ],
+              "name": "app-config"
+            },
+            "name": "app-config"
+          },
+          {
+            "configMap": {
+              "defaultMode": 420,
+              "items": [
+                {
+                  "key": "auth.conf",
+                  "path": "auth.conf"
+                }
+              ],
+              "name": "auth-config"
+            },
+            "name": "auth-config"
+          },
+          {
+            "name": "default-token-vnequ",
+            "secret": {
+              "defaultMode": 420,
+              "secretName": "default-token-vnequ"
+            }
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2017-02-25T08:12:14Z",
+            "status": "True",
+            "type": "Initialized"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2017-02-25T08:13:39Z",
+            "status": "True",
+            "type": "Ready"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2017-02-25T08:12:14Z",
+            "status": "True",
+            "type": "PodScheduled"
+          }
+        ],
+        "containerStatuses": [
+          {
+            "containerID": "docker://4a59bb8191c4e04c0f797e67862e283f84fb14ffff90a20e426185db840ecf7b",
+            "image": "example.com/example-service:4.8.0",
+            "imageID": "docker-pullable://example.com/example-service@sha256:2406309063027f398037b69c3cfcb2e108213f45c47998d26eedaf16d8253871",
+            "lastState": {},
+            "name": "example-service",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "running": {
+                "startedAt": "2017-02-25T08:13:39Z"
+              }
+            }
+          }
+        ],
+        "hostIP": "10.0.0.0",
+        "phase": "Running",
+        "podIP": "172.0.0.1",
+        "startTime": "2017-02-25T08:12:14Z"
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {},
+  "resourceVersion": "",
+  "selfLink": ""
+}
