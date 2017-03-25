@@ -59,6 +59,16 @@ The function must take a single argument, which is the buffer to display."
   :group 'kubernetes
   :type 'number)
 
+(defcustom kubernetes-yaml-indentation-width 2
+  "The size of each indentation step in YAML.  Used by the YAML formatter."
+  :group 'kubernetes
+  :type 'integer)
+
+(defcustom kubernetes-yaml-string-drop-threshold 60
+  "The threshold above which a string value will be dropped to the next line."
+  :group 'kubernetes
+  :type 'integer)
+
 (defface kubernetes-context-name
   '((((class color) (background light)) :foreground "SkyBlue4")
     (((class color) (background  dark)) :foreground "LightSkyBlue1"))
@@ -75,6 +85,12 @@ The function must take a single argument, which is the buffer to display."
   '((((class color) (background light)) :foreground "grey30" :weight bold)
     (((class color) (background  dark)) :foreground "grey80" :weight bold))
   "Face for section headings."
+  :group 'kubernetes)
+
+(defface kubernetes-json-key
+  '((((class color) (background light)) :foreground "grey30" :weight bold)
+    (((class color) (background  dark)) :foreground "grey80" :weight bold))
+  "Face for keys in pretty-printed parsed JSON."
   :group 'kubernetes)
 
 (defface kubernetes-progress-indicator
@@ -177,6 +193,103 @@ to a function of the type:
       (select-frame-set-input-focus
        (window-frame (select-window window))))))
 
+(defun kubernetes-navigate (point)
+  "Perform a context-sensitive navigation action.
+
+Inspecs the `kubernetes-nav' text property at POINT to determine
+how to navigate.  If that property is not found, no action is
+taken."
+  (interactive "d")
+  (pcase (get-text-property point 'kubernetes-nav)
+    (`(:pod ,pod)
+     (kubernetes-display-pod pod))))
+
+
+;;; Displaying a specific pod
+
+(defun kubernetes--read-pod ()
+  (message "Getting pods...")
+  (-let* (((&alist 'items pods) (kubernetes--await-on-async #'kubernetes-get-pods))
+          (pods (append pods nil))
+          (podname (-lambda ((&alist 'metadata (&alist 'name name)))
+                     name))
+          (names (-map podname pods))
+          (choice (completing-read "Pod: " names nil t)))
+    (--find (equal choice (funcall podname it)) pods)))
+
+(defun kubernetes-display-pod-buffer-name (pod)
+  (-let [(&alist 'metadata (&alist 'name name)) pod]
+    (format "*kubernetes pod: %s*" name)))
+
+(defun kubernetes--json-to-yaml (json &optional level)
+  (let* ((level (or level 0))
+         (space (string-to-char " "))
+         (indentation (make-string (* level kubernetes-yaml-indentation-width) space))
+         (body
+          (cond
+           ((vectorp json)
+            (let* ((list-items (--map (string-trim-left (kubernetes--json-to-yaml it (1+ level)))
+                                      (append json nil)))
+                   (separator (concat "\n"
+                                      indentation "-" "\n"
+                                      indentation "  "))
+                   (joined (string-join list-items separator)))
+              ;; If this is an empty or singleton list, do not drop.
+              (if (<= (length list-items) 1)
+                  (concat indentation "- " (string-trim-right joined))
+                (concat indentation "- \n"
+                        indentation "  " (string-trim-right joined)))))
+           ((listp json)
+            (let ((entries (--map
+                            (-let [(k . v) it]
+                              (concat indentation
+                                      (propertize (format "%s: " (symbol-name k)) 'face 'kubernetes-json-key)
+                                      (cond
+                                       ((equal t v) "true")
+                                       ((equal nil v) "false")
+                                       ((numberp v) (number-to-string v))
+                                       ((and (stringp v) (< (length v) kubernetes-yaml-string-drop-threshold)) v)
+                                       (t
+                                        (concat "\n" (kubernetes--json-to-yaml v (1+ level)))))))
+                            json)))
+              (string-join entries "\n")))
+           (t
+            (format "%s%s" indentation json)))))
+    (if (= 0 level)
+        (concat (propertize "---\n" 'face 'kubernetes-dimmed) body)
+      body)))
+
+(defun kubernetes-display-pod-refresh (pod)
+  (let ((buf (get-buffer-create (kubernetes-display-pod-buffer-name pod))))
+    (with-current-buffer buf
+      (kubernetes-display-pod-mode)
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert (kubernetes--json-to-yaml pod))))
+    buf))
+
+(defvar kubernetes-display-pod-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "q") #'quit-window)
+    (define-key keymap (kbd "RET") #'kubernetes-navigate)
+    keymap)
+  "Keymap for `kubernetes-display-pod-mode'.")
+
+(define-derived-mode kubernetes-display-pod-mode special-mode "Kubernetes Pod"
+  "Mode for inspecting a Kubernetes pod.
+
+\\{kubernetes-display-pod-mode-map}"
+  :group 'kubernetes
+  (read-only-mode +1))
+
+
+;;;###autoload
+(defun kubernetes-display-pod (pod)
+  "Display information for POD in a new window."
+  (interactive (list (kubernetes--read-pod)))
+  (with-current-buffer (kubernetes-display-pod-refresh pod)
+    (goto-char (point-min))
+    (kubernetes-display-buffer (current-buffer))))
 
 
 ;;; Displaying all pods
@@ -276,6 +389,7 @@ to a function of the type:
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "g") #'kubernetes-display-pods-refresh)
     (define-key keymap (kbd "q") #'quit-window)
+    (define-key keymap (kbd "RET") #'kubernetes-navigate)
     keymap)
   "Keymap for `kubernetes-display-pods-mode'.")
 
