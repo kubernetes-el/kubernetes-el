@@ -64,6 +64,13 @@ will be mocked."
        (lambda (response)
          (should (equal parsed-response response)))))))
 
+(ert-deftest listing-current-contexts ()
+  (let ((sample-response "example-context\n"))
+    (with-successful-response-at '("config" "current-context") sample-response
+      (kubernetes-config-current-context
+       (lambda (response)
+         (should (equal "example-context" response)))))))
+
 (provide 'kubernetes-test)
 
 ;;; kubernetes-test.el ends here

@@ -58,6 +58,14 @@ Returns the process object for this execution of kubectl."
                              (json-read-from-string (buffer-string)))))
                  (funcall cb json)))))
 
+;;;###autoload
+(defun kubernetes-config-current-context (cb)
+  "Get the name of the current context and pass it to callback CB."
+  (kubernetes--kubectl '("config" "current-context")
+             (lambda (buf)
+               (let ((result (with-current-buffer buf
+                               (string-trim-right (buffer-string)))))
+                 (funcall cb result)))))
 (provide 'kubernetes)
 
 ;;; kubernetes.el ends here
