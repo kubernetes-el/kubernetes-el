@@ -6,6 +6,8 @@
 
 ;; Version: 0.0.1
 
+;; Package-Requires: ((dash "2.12.1"))
+
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
@@ -23,7 +25,9 @@
 
 ;;; Code:
 
+(require 'dash)
 (require 'subr-x)
+
 (autoload 'json-read-from-string "json")
 
 (defgroup kubernetes nil
@@ -57,6 +61,8 @@ The function must take a single argument, which is the buffer to display."
                 (function :tag "Function")))
 
 (defconst kubernetes-display-pods-buffer-name "*kubernetes pods*")
+
+(defconst kubernetes-display-context-buffer-name "*kubernetes context*")
 
 
 ;; Main Kubernetes query routines
@@ -113,18 +119,19 @@ to a function of the type:
 
     result))
 
+
 ;; View management
 
-(defun kubernetes-make-set-heading-cb (marker &optional value-format-fn)
-  (unless value-format-fn
-    (setq value-format-fn #'identity))
+(defun kubernetes-make-set-heading-cb (marker &optional update-line-fn)
+  (unless update-line-fn
+    (setq update-line-fn #'insert))
   (lambda (response)
     (with-current-buffer (marker-buffer marker)
       (save-excursion
         (goto-char (marker-position marker))
         (let ((inhibit-read-only t))
           (delete-region (point) (line-end-position))
-          (insert (funcall value-format-fn response)))))))
+          (funcall update-line-fn response))))))
 
 (defun kubernetes-display-buffer-fullframe (buffer)
   (let ((display-fn
@@ -143,16 +150,6 @@ to a function of the type:
       (select-frame-set-input-focus
        (window-frame (select-window window))))))
 
-(defun kubernetes-visit-thing (pos)
-  "Visit the thing at POS.
-
-Inspects the text properties of the object at point to determine
-how to transition to the next view."
-  (interactive "d")
-  (pcase (get-text-property pos 'kubernetes-nav)
-    (`(:context ,ctx)
-     (kubernetes-display-context ctx))))
-
 
 ;;; Displaying pods
 
@@ -165,14 +162,20 @@ how to transition to the next view."
       (kubernetes-display-pods-mode)
       (let ((inhibit-read-only t))
         (erase-buffer)
-        (insert (format "%-10s" "Context: "))
+        (insert (format "%-12s" "Context: "))
         (let ((marker (make-marker))
-              (format-context (lambda (config)
-                                (let ((ctx (alist-get 'current-context config "<none>")))
-                                  (propertize ctx 'face 'kubernetes-context-name)))))
+              (update-line (lambda (config)
+                             (-let [(&alist 'current-context current 'contexts contexts) config]
+                               (insert (propertize (concat (or current "<none>") "\n") 'face 'kubernetes-context-name))
+                               (-when-let* ((ctx (--find (equal current (alist-get 'name it)) (append contexts nil)))
+                                            ((&alist 'name n 'context (&alist 'cluster c 'namespace ns)) ctx))
+                                 (unless (string-empty-p c)
+                                   (insert (format "%-12s%s\n" "Cluster: " c)))
+                                 (unless (string-empty-p ns)
+                                   (insert (format "%-12s%s\n" "Namespace: " ns))))))))
           (set-marker marker (point))
           (kubernetes-config-view
-           (kubernetes-make-set-heading-cb marker format-context apply-nav-property)))))
+           (kubernetes-make-set-heading-cb marker update-line)))))
     buf))
 
 (defvar kubernetes-display-pods-mode-map
@@ -199,7 +202,6 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
   (with-current-buffer (kubernetes-display-pods-refresh)
     (goto-char (point-min))
     (kubernetes-display-buffer (current-buffer))))
-
 
 (provide 'kubernetes)
 
