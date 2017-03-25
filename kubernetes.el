@@ -40,12 +40,6 @@
   :group 'kubernetes
   :type 'string)
 
-(defface kubernetes-context-name
-  '((((class color) (background light)) :foreground "SkyBlue4")
-    (((class color) (background  dark)) :foreground "LightSkyBlue1"))
-  "Face for context names in report buffers."
-  :group 'kubernetes)
-
 (defcustom kubernetes-display-buffer-select t
   "Whether to select Kubernetes buffers automatically."
   :group 'kubernetes
@@ -63,6 +57,12 @@ The function must take a single argument, which is the buffer to display."
 (defconst kubernetes-display-pods-buffer-name "*kubernetes pods*")
 
 (defconst kubernetes-display-context-buffer-name "*kubernetes context*")
+
+(defface kubernetes-context-name
+  '((((class color) (background light)) :foreground "SkyBlue4")
+    (((class color) (background  dark)) :foreground "LightSkyBlue1"))
+  "Face for context names in report buffers."
+  :group 'kubernetes)
 
 
 ;; Main Kubernetes query routines
