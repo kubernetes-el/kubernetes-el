@@ -6,7 +6,7 @@
 
 ;; Version: 0.0.1
 
-;; Package-Requires: ((emacs "25.1") (dash "2.13.0"))
+;; Package-Requires: ((emacs "25.1") (dash "2.13.0") (magit-popup "2.8.0"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -28,9 +28,11 @@
 (require 'compile)
 (require 'dash)
 (require 'subr-x)
+(require 'magit-popup)
 
 (autoload 'json-pretty-print-buffer "json")
 (autoload 'json-read-from-string "json")
+(autoload 'org-read-date "org")
 
 (defgroup kubernetes nil
   "Emacs porcelain for Kubernetes."
@@ -319,7 +321,7 @@ what to copy."
   (interactive (list (kubernetes--await-on-async #'kubernetes-config-view)))
   (with-current-buffer (kubernetes-display-config-refresh config)
     (goto-char (point-min))
-    (kubernetes-display-buffer (current-buffer))))
+    (select-window (display-buffer (current-buffer)))))
 
 (defvar kubernetes-display-config-mode-map
   (let ((keymap (make-sparse-keymap)))
@@ -391,7 +393,7 @@ what to copy."
   (interactive (list (kubernetes--read-pod)))
   (with-current-buffer (kubernetes-display-pod-refresh pod)
     (goto-char (point-min))
-    (kubernetes-display-buffer (current-buffer))))
+    (select-window (display-buffer (current-buffer)))))
 
 
 ;;; Displaying all pods
@@ -798,28 +800,83 @@ Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
     (when (get-buffer kubernetes-log-line-buffer-name)
       (kubernetes-logs-inspect-line (point)))))
 
+
+;; Logs popup
+
+(defvar kubernetes--pod-to-log nil
+  "Identifies the pod to log after querying the user for flags.
+
+Assigned before opening the logging popup, when the target pod is
+likely to be at point. After choosing flags, this is the pod that
+will be logged.
+
+This variable is reset after use by the logging functions.")
+
+;;;###autoload
+(defun kubernetes-logs (pod)
+  "Popup console for logging commands for POD."
+  (interactive (list (or (kubernetes--maybe-pod-at-point) (kubernetes--read-pod))))
+  (setq kubernetes--pod-to-log pod)
+  (call-interactively #'kubernetes-logs-popup))
+
+(magit-define-popup kubernetes-logs-popup
+  "Popup console for logging commands for POD."
+  :variable 'kubernetes-logs-arguments
+  :group 'kubernetes
+
+  :options
+  '("Options for customizing logging behaviour"
+    (?t "Number of lines to display" "--tail=" read-number "-1")
+    (?s "Since relative time" "--since=" kubernetes--read-time-value)
+    (?d "Since absolute datetime" "--since-time=" kubernetes--read-iso-datetime))
+
+  :actions
+  '((?l "Logs" kubernetes-logs-fetch-all)
+    (?f "Logs (stream and follow)" kubernetes-logs-follow))
+
+  :default-action 'kubernetes-logs)
+
+(defun kubernetes--read-iso-datetime (&rest _)
+  (format-time-string "%Y-%m-%dT%H:%M:%S:%z" (org-read-date nil t)))
+
+(defun kubernetes--read-time-value (&rest _)
+  (let (result)
+    (while (null result)
+      (let ((input (read-string "Time value (e.g. 20s): ")))
+        (if (string-match-p (rx bol (* space) (+ digit) (* space) (any "smhdy") (* space) eol)
+                            input)
+            (setq result input)
+          (message "Invalid time value")
+          (sit-for 1))))
+    result))
+
 (defun kubernetes--maybe-pod-at-point ()
   (pcase (get-text-property (point) 'kubernetes-nav)
     (`(:pod ,pod)
      pod)))
 
 ;;;###autoload
-(defun kubernetes-logs (pod &optional tail)
-  "Open a logs buffer for POD.
+(defun kubernetes-logs-follow ()
+  "Open a streaming logs buffer for a pod.
 
-If TAIL is set, continue listening for logs."
-  (interactive (list (or (kubernetes--maybe-pod-at-point) (kubernetes--read-pod))
-                     (y-or-n-p "Tail logs? ")))
-  (-let* (((&alist 'metadata (&alist 'name pod-name)) pod)
+Should be invoked via `kubernetes-logs-popup'."
+  (interactive)
+  (kubernetes-logs-fetch-all (cons "-f" (kubernetes-logs-arguments))))
+
+;;;###autoload
+(defun kubernetes-logs-fetch-all (args)
+  "Open a streaming logs buffer for a pod.
+
+ARGS are additional args to pass to kubectl.
+
+Should be invoked via `kubernetes-logs-popup'."
+  (interactive (list (kubernetes-logs-arguments)))
+  (-let* (((&alist 'metadata (&alist 'name pod-name)) kubernetes--pod-to-log)
           (compilation-buffer-name-function (lambda (_) kubernetes-logs-buffer-name))
-          (command (string-join (list kubernetes-kubectl-executable
-                                      "logs"
-                                      (when tail "-f")
-                                      pod-name)
-                                " ")))
-    (compile command)
-    (with-current-buffer kubernetes-logs-buffer-name
-      (kubernetes-logs-mode)
+          (command (-flatten (list kubernetes-kubectl-executable "logs" args pod-name))))
+    (setq kubernetes--pod-to-log nil)
+    (with-current-buffer (compilation-start (string-join command " ") 'kubernetes-logs-mode)
+      (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
       (display-buffer (current-buffer)))))
 
 (provide 'kubernetes)
