@@ -622,7 +622,11 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
   (pcase (get-text-property point 'kubernetes-nav)
     (`(:pod ,pod)
      (-let [(&alist 'metadata (&alist 'name name)) pod]
-       (setq kubernetes--marked-pod-names (delete name kubernetes--marked-pod-names)))))
+       (setq kubernetes--marked-pod-names (delete name kubernetes--marked-pod-names))
+       (kubernetes--redraw-pods-section kubernetes--pod-count-marker
+                              kubernetes--pods-start-marker
+                              kubernetes--pods-end-marker
+                              kubernetes--pods-response))))
   (goto-char point)
   (forward-line 1))
 
