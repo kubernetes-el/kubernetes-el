@@ -68,6 +68,17 @@ will be mocked."
        (lambda (response)
          (should (equal parsed-response response)))))))
 
+(ert-deftest deleting-pods-succeeds ()
+  (let* ((pod-name "example-v3-4120544588-55kmw")
+         (response (concat "pod/" pod-name))
+         (parsed-response `((name . ,pod-name)))
+         response-buffer)
+    (with-successful-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
+      (kubernetes-delete-pods '("example-pod")
+                    (lambda (buf)
+                      (setq response-buffer buf))))
+    (should (buffer-live-p response-buffer))))
+
 (provide 'kubernetes-test)
 
 ;;; kubernetes-test.el ends here

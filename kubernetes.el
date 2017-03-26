@@ -147,6 +147,12 @@ Returns the process object for this execution of kubectl."
                              (json-read-from-string (buffer-string)))))
                  (funcall cb json)))))
 
+;;;###autoload
+(defun kubernetes-delete-pods (pod-names cb)
+  "Delete pods with POD-NAMES, then execute CB with the response buffer."
+  (kubernetes--kubectl (list "delete" "pod" (string-trim-right (string-join pod-names " ")) "-o" "name")
+             cb))
+
 (defun kubernetes--await-on-async (fn)
   "Turn an async function requiring a callback into a synchronous one.
 
@@ -598,8 +604,11 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
   (let ((n (length kubernetes--marked-pod-names)))
     (if (y-or-n-p (format "Execute %s mark%s? " n (if (equal 1 n) "" "s")))
         (progn
-          (kubernetes-unmark-all)
-          (kubernetes-display-pods-refresh))
+          (message "Deleting %s pod%s..." n (if (equal 1 n) "" "s"))
+          (kubernetes-delete-pods kubernetes--marked-pod-names
+                        (lambda (_)
+                          (kubernetes-display-pods-refresh)))
+          (kubernetes-unmark-all))
       (message "Cancelled."))))
 
 
