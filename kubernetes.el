@@ -337,11 +337,11 @@ what to copy."
 ;;; Displaying all pods
 
 ;; Marker variables used track buffer locations to update.
-(defvar-local kubernetes--config-start-marker nil)
-(defvar-local kubernetes--config-end-marker nil)
-(defvar-local kubernetes--pod-count-marker nil)
-(defvar-local kubernetes--pods-start-marker nil)
-(defvar-local kubernetes--pods-end-marker nil)
+(defvar kubernetes--config-start-marker nil)
+(defvar kubernetes--config-end-marker nil)
+(defvar kubernetes--pod-count-marker nil)
+(defvar kubernetes--pods-start-marker nil)
+(defvar kubernetes--pods-end-marker nil)
 
 ;; Context section rendering.
 
@@ -536,11 +536,11 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
 \\{kubernetes-display-pods-mode-map}"
   :group 'kubernetes
   (read-only-mode +1)
-  (setq-local kubernetes--config-start-marker (make-marker))
-  (setq-local kubernetes--config-end-marker (make-marker))
-  (setq-local kubernetes--pod-count-marker (make-marker))
-  (setq-local kubernetes--pods-start-marker (make-marker))
-  (setq-local kubernetes--pods-end-marker (make-marker)))
+  (setq kubernetes--config-start-marker (make-marker))
+  (setq kubernetes--config-end-marker (make-marker))
+  (setq kubernetes--pod-count-marker (make-marker))
+  (setq kubernetes--pods-start-marker (make-marker))
+  (setq kubernetes--pods-end-marker (make-marker)))
 
 ;;;###autoload
 (defun kubernetes-display-pods ()
