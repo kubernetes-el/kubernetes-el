@@ -21,6 +21,7 @@
   (kbd "g") #'kubernetes-display-pods-refresh
   (kbd "q") #'quit-window
   (kbd "M-w") #'kubernetes-copy-thing-at-point
+  (kbd "h") #'describe-mode
   (kbd "d") #'kubernetes-mark-for-delete
   (kbd "u") #'kubernetes-unmark
   (kbd "U") #'kubernetes-unmark-all

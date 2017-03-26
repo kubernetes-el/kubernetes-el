@@ -135,6 +135,7 @@ The function must take a single argument, which is the buffer to display."
 
 (defconst kubernetes-logs-buffer-name "*kubernetes logs*")
 
+(defconst kubernetes-pod-buffer-name "*kubernetes pod*")
 
 ;; Main Kubernetes query routines
 
@@ -358,12 +359,8 @@ what to copy."
           (choice (completing-read "Pod: " names nil t)))
     (--find (equal choice (funcall podname it)) pods)))
 
-(defun kubernetes-display-pod-buffer-name (pod)
-  (-let [(&alist 'metadata (&alist 'name name)) pod]
-    (format "*kubernetes pod: %s*" name)))
-
 (defun kubernetes-display-pod-refresh (pod)
-  (let ((buf (get-buffer-create (kubernetes-display-pod-buffer-name pod))))
+  (let ((buf (get-buffer-create kubernetes-pod-buffer-name)))
     (with-current-buffer buf
       (kubernetes-display-pod-mode)
       (let ((inhibit-read-only t))
@@ -630,6 +627,7 @@ what to copy."
     (define-key keymap (kbd "U") #'kubernetes-unmark-all)
     (define-key keymap (kbd "x") #'kubernetes-execute-marks)
     (define-key keymap (kbd "l") #'kubernetes-logs)
+    (define-key keymap (kbd "h") #'describe-mode)
     keymap)
   "Keymap for `kubernetes-display-pods-mode'.")
 
@@ -637,6 +635,15 @@ what to copy."
   "Mode for working with Kubernetes pods.
 
 \\<kubernetes-display-pods-mode-map>\
+Type \\[kubernetes-mark-for-delete] to mark a pod for deletion, and \\[kubernetes-execute-marks] to execute.
+Type \\[kubernetes-unmark] to unmark the pod at point, or \\[kubernetes-unmark-all] to unmark all pods.
+
+Type \\[kubernetes-navigate] to inspect the object on the current line.
+
+Type \\[kubernetes-logs] when point is on a pod to view its logs.
+
+Type \\[kubernetes-copy-thing-at-point] to copy the pod name at point.
+
 Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
 
 \\{kubernetes-display-pods-mode-map}"
@@ -655,7 +662,9 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
   (let ((buf (if (get-buffer kubernetes-display-pods-buffer-name)
                  (kubernetes-display-pods-refresh)
                (kubernetes-display-pods-initialize-buffer))))
-    (kubernetes-display-buffer buf)))
+    (kubernetes-display-buffer buf)
+    (message (substitute-command-keys
+              "\\<kubernetes-display-pods-mode-map>Type \\[describe-mode] for usage."))))
 
 ;; Marked pod state management.
 
