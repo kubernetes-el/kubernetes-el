@@ -110,7 +110,7 @@ The function must take a single argument, which is the buffer to display."
 
 (defconst kubernetes-display-pods-buffer-name "*kubernetes pods*")
 
-(defconst kubernetes-display-context-buffer-name "*kubernetes context*")
+(defconst kubernetes-display-config-buffer-name "*kubernetes config*")
 
 
 ;; Main Kubernetes query routines
@@ -195,25 +195,10 @@ how to navigate.  If that property is not found, no action is
 taken."
   (interactive "d")
   (pcase (get-text-property point 'kubernetes-nav)
+    (`(:config ,config)
+     (kubernetes-display-config config))
     (`(:pod ,pod)
      (kubernetes-display-pod pod))))
-
-
-;;; Displaying a specific pod
-
-(defun kubernetes--read-pod ()
-  (message "Getting pods...")
-  (-let* (((&alist 'items pods) (kubernetes--await-on-async #'kubernetes-get-pods))
-          (pods (append pods nil))
-          (podname (-lambda ((&alist 'metadata (&alist 'name name)))
-                     name))
-          (names (-map podname pods))
-          (choice (completing-read "Pod: " names nil t)))
-    (--find (equal choice (funcall podname it)) pods)))
-
-(defun kubernetes-display-pod-buffer-name (pod)
-  (-let [(&alist 'metadata (&alist 'name name)) pod]
-    (format "*kubernetes pod: %s*" name)))
 
 (defun kubernetes--json-to-yaml (json &optional level)
   (let* ((level (or level 0))
@@ -252,6 +237,57 @@ taken."
     (if (= 0 level)
         (concat (propertize "---\n" 'face 'kubernetes-dimmed) body)
       body)))
+
+
+;;; Displaying config
+
+(defun kubernetes-display-config-refresh (config)
+  (let ((buf (get-buffer-create kubernetes-display-config-buffer-name)))
+    (with-current-buffer buf
+      (kubernetes-display-config-mode)
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert (kubernetes--json-to-yaml config))))
+    buf))
+
+;;;###autoload
+(defun kubernetes-display-config (config)
+  "Display information for CONFIG in a new window."
+  (interactive (list (kubernetes--await-on-async #'kubernetes-config-view)))
+  (with-current-buffer (kubernetes-display-config-refresh config)
+    (goto-char (point-min))
+    (kubernetes-display-buffer (current-buffer))))
+
+(defvar kubernetes-display-config-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "q") #'quit-window)
+    (define-key keymap (kbd "RET") #'kubernetes-navigate)
+    keymap)
+  "Keymap for `kubernetes-display-config-mode'.")
+
+(define-derived-mode kubernetes-display-config-mode special-mode "Kubernetes Config"
+  "Mode for inspecting a Kubernetes config.
+
+\\{kubernetes-display-config-mode-map}"
+  :group 'kubernetes
+  (read-only-mode +1))
+
+
+;;; Displaying a specific pod
+
+(defun kubernetes--read-pod ()
+  (message "Getting pods...")
+  (-let* (((&alist 'items pods) (kubernetes--await-on-async #'kubernetes-get-pods))
+          (pods (append pods nil))
+          (podname (-lambda ((&alist 'metadata (&alist 'name name)))
+                     name))
+          (names (-map podname pods))
+          (choice (completing-read "Pod: " names nil t)))
+    (--find (equal choice (funcall podname it)) pods)))
+
+(defun kubernetes-display-pod-buffer-name (pod)
+  (-let [(&alist 'metadata (&alist 'name name)) pod]
+    (format "*kubernetes pod: %s*" name)))
 
 (defun kubernetes-display-pod-refresh (pod)
   (let ((buf (get-buffer-create (kubernetes-display-pod-buffer-name pod))))
@@ -300,6 +336,22 @@ taken."
 (defvar kubernetes--awaiting-config-section nil
   "Used as a lock to prevent concurrent config queries.")
 
+(defun kubernetes--format-context-section (config)
+  (with-temp-buffer
+    (-let [(&alist 'current-context current 'contexts contexts) config]
+      (insert (format "%-12s" "Context: "))
+      (insert (propertize (or current "<none>") 'face 'kubernetes-context-name))
+      (newline)
+
+      (-when-let* ((ctx (--find (equal current (alist-get 'name it)) (append contexts nil)))
+                   ((&alist 'name n 'context (&alist 'cluster c 'namespace ns)) ctx))
+        (unless (string-empty-p c)
+          (insert (format "%-12s%s\n" "Cluster: " c)))
+        (unless (string-empty-p ns)
+          (insert (format "%-12s%s" "Namespace: " ns)))))
+
+    (propertize (buffer-string) 'kubernetes-nav (list :config config))))
+
 (defun kubernetes--redraw-context-section (start-marker end-marker config)
   (when (and (buffer-live-p (marker-buffer start-marker))
              (buffer-live-p (marker-buffer end-marker)))
@@ -308,18 +360,10 @@ taken."
         (goto-char (marker-position start-marker))
         (let ((inhibit-read-only t))
           (delete-region (point) (1- (marker-position end-marker)))
-          (-let [(&alist 'current-context current 'contexts contexts) config]
-            (insert (propertize (concat (or current "<none>") "\n") 'face 'kubernetes-context-name))
-            (-when-let* ((ctx (--find (equal current (alist-get 'name it)) (append contexts nil)))
-                         ((&alist 'name n 'context (&alist 'cluster c 'namespace ns)) ctx))
-              (unless (string-empty-p c)
-                (insert (format "%-12s%s\n" "Cluster: " c)))
-              (unless (string-empty-p ns)
-                (insert (format "%-12s%s" "Namespace: " ns))))))))))
+          (insert (kubernetes--format-context-section config)))))))
 
 (defun kubernetes--initialize-context-section ()
   (setq kubernetes--awaiting-config-section t)
-  (insert (format "%-12s" "Context: "))
   (set-marker kubernetes--config-start-marker (point))
   (kubernetes-config-view (lambda (config)
                   (kubernetes--redraw-context-section kubernetes--config-start-marker kubernetes--config-end-marker config)

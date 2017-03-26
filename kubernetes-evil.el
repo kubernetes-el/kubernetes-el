@@ -12,6 +12,7 @@
 
 (autoload 'kubernetes-display-pods-mode-map "kubernetes")
 (autoload 'kubernetes-display-pod-mode-map "kubernetes")
+(autoload 'kubernetes-display-config-mode-map "kubernetes")
 
 (evil-define-key 'normal kubernetes-display-pods-mode-map
   (kbd "RET") #'kubernetes-navigate
@@ -23,6 +24,10 @@
   (kbd "x") #'kubernetes-execute-marks)
 
 (evil-define-key 'normal kubernetes-display-pod-mode-map
+  (kbd "RET") #'kubernetes-navigate
+  (kbd "q") #'quit-window)
+
+(evil-define-key 'normal kubernetes-display-config-mode-map
   (kbd "RET") #'kubernetes-navigate
   (kbd "q") #'quit-window)
 
