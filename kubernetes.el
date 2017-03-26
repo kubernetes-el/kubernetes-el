@@ -103,6 +103,11 @@ The function must take a single argument, which is the buffer to display."
   "Face for things that shouldn't stand out."
   :group 'kubernetes)
 
+(defface kubernetes-pending-deletion
+  '((t :inherit shadow :strike-through t))
+  "Face for pods awaiting deletion."
+  :group 'kubernetes)
+
 (defface kubernetes-delete-mark
   '((t :inherit error))
   "Face for deletion mark indicators."
@@ -409,6 +414,7 @@ what to copy."
   "Background timer used to poll for updates.")
 
 (defvar-local kubernetes--marked-pod-names nil)
+(defvar-local kubernetes--pods-pending-deletion nil)
 
 (defvar kubernetes--awaiting-pods-section nil
   "Used as a lock to prevent concurrent pods listing queries.")
@@ -444,13 +450,28 @@ what to copy."
                  (propertize str 'face 'error))
                 (t
                  (propertize str 'face 'warning))))
-          (with-marks
+          (str
+           (if (member name kubernetes--pods-pending-deletion)
+               (concat (propertize str 'face 'kubernetes-pending-deletion))
+             str))
+          (str
            (if (member name kubernetes--marked-pod-names)
                (concat (propertize "D" 'face 'kubernetes-delete-mark) " " str)
              (concat "  " str))))
-    (propertize with-marks
+    (propertize str
                 'kubernetes-nav (list :pod pod)
                 'kubernetes-copy name)))
+
+(defun kubernetes--clean-pod-state-vars (pods)
+  (let ((pod-names
+         (-map (-lambda ((&alist 'metadata (&alist 'name name)))
+                 name)
+               pods)))
+    (setq kubernetes--pods-pending-deletion
+          (-intersection kubernetes--pods-pending-deletion pod-names))
+    (setq kubernetes--marked-pod-names
+          (-intersection kubernetes--marked-pod-names pod-names))))
+
 
 (defun kubernetes--redraw-pods-section (count-marker pods-start-marker pods-end-marker pods)
   (when (and (buffer-live-p (marker-buffer count-marker))
@@ -471,6 +492,7 @@ what to copy."
               (--each (append pods nil)
                 (insert (kubernetes--format-pod-line it))
                 (newline))))
+          (kubernetes--clean-pod-state-vars pods)
           (goto-char pos))))))
 
 (defun kubernetes--initialize-pods-section ()
@@ -583,11 +605,12 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
   (pcase (get-text-property point 'kubernetes-nav)
     (`(:pod ,pod)
      (-let [(&alist 'metadata (&alist 'name name)) pod]
-       (add-to-list 'kubernetes--marked-pod-names name)
-       (kubernetes--redraw-pods-section kubernetes--pod-count-marker
-                              kubernetes--pods-start-marker
-                              kubernetes--pods-end-marker
-                              kubernetes--pods-response)))
+       (unless (member name kubernetes--pods-pending-deletion)
+         (add-to-list 'kubernetes--marked-pod-names name)
+         (kubernetes--redraw-pods-section kubernetes--pod-count-marker
+                                kubernetes--pods-start-marker
+                                kubernetes--pods-end-marker
+                                kubernetes--pods-response))))
     (_
      (user-error "Nothing here can be marked")))
   (goto-char point)
@@ -624,6 +647,8 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
     (if (y-or-n-p (format "Execute %s mark%s? " n (if (equal 1 n) "" "s")))
         (progn
           (message "Deleting %s pod%s..." n (if (equal 1 n) "" "s"))
+          (dolist (pod kubernetes--marked-pod-names)
+            (add-to-list 'kubernetes--pods-pending-deletion pod))
           (kubernetes-delete-pods kubernetes--marked-pod-names
                         (lambda (_)
                           (kubernetes-display-pods-refresh)))
