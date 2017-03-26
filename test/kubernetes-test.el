@@ -30,7 +30,7 @@ Executes the on-success callback with a buffer containing RESPONSE-STRING.
 FORM is the Elisp form to be evaluated, in which `kubernetes--kubectl'
 will be mocked."
   (declare (indent 2))
-  `(noflet ((kubernetes--kubectl (args on-success)
+  `(noflet ((kubernetes--kubectl (args on-success &optional on-error)
                        (let ((buf (generate-new-buffer " test")))
                          (with-current-buffer buf
                            (insert ,response-string)
@@ -68,16 +68,14 @@ will be mocked."
        (lambda (response)
          (should (equal parsed-response response)))))))
 
-(ert-deftest deleting-pods-succeeds ()
+(ert-deftest deleting-pod-succeeds ()
   (let* ((pod-name "example-v3-4120544588-55kmw")
          (response (concat "pod/" pod-name))
-         (parsed-response `((name . ,pod-name)))
          response-buffer)
     (with-successful-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
-      (kubernetes-delete-pods '("example-pod")
-                    (lambda (buf)
-                      (setq response-buffer buf))))
-    (should (buffer-live-p response-buffer))))
+      (kubernetes-delete-pod "example-pod"
+                   (lambda (result)
+                     (should (equal pod-name result)))))))
 
 (provide 'kubernetes-test)
 

@@ -120,19 +120,39 @@ The function must take a single argument, which is the buffer to display."
 
 ;; Main Kubernetes query routines
 
-(defun kubernetes--kubectl (args on-success)
+(defun kubernetes--kubectl-default-error-handler (buf)
+  (with-current-buffer buf
+    (error "Kubectl failed.  Reason: %s" (buffer-string))))
+
+(defun kubernetes--kubectl (args on-success &optional on-error)
   "Run kubectl with ARGS.
 
 ON-SUCCESS is a function of one argument, called with the process' buffer.
 
+ON-ERROR is a function of one argument, called with the process'
+buffer.  If omitted, it defaults to
+`kubernetes--kubectl-default-error-handler', which raises an
+error.
+
 Returns the process object for this execution of kubectl."
-  (let ((buf  (generate-new-buffer " kubectl")))
-    (let ((process (apply #'start-process "kubectl" buf kubernetes-kubectl-executable args))
-          (sentinel
-           (lambda (_proc _status)
-             (funcall on-success buf))))
-      (set-process-sentinel process sentinel)
-      process)))
+  (let* ((buf (generate-new-buffer " kubectl"))
+         (process (apply #'start-process "kubectl" buf kubernetes-kubectl-executable args))
+         (sentinel
+          (lambda (proc _status)
+            (cond
+             ((zerop (process-exit-status proc))
+              (funcall on-success buf))
+             (t
+              (cond (on-error
+                     (message "Kubectl failed.  Reason: %s"
+                              (with-current-buffer buf
+                                (buffer-string)))
+                     (funcall on-error buf))
+
+                    (t
+                     (kubernetes--kubectl-default-error-handler proc))))))))
+    (set-process-sentinel process sentinel)
+    process))
 
 ;;;###autoload
 (defun kubernetes-get-pods (cb)
@@ -153,10 +173,16 @@ Returns the process object for this execution of kubectl."
                  (funcall cb json)))))
 
 ;;;###autoload
-(defun kubernetes-delete-pods (pod-names cb)
-  "Delete pods with POD-NAMES, then execute CB with the response buffer."
-  (kubernetes--kubectl (list "delete" "pod" (string-trim-right (string-join pod-names " ")) "-o" "name")
-             cb))
+(defun kubernetes-delete-pod (pod-name cb &optional error-cb)
+  "Delete pod with POD-NAME, then execute CB with the response buffer.
+
+ERROR-CB is called if an error occurred."
+  (kubernetes--kubectl (list "delete" "pod" pod-name "-o" "name")
+             (lambda (buf)
+               (with-current-buffer buf
+                 (string-match (rx bol "pod/" (group (+ nonl))) (buffer-string))
+                 (funcall cb (match-string 1 (buffer-string)))))
+             error-cb))
 
 (defun kubernetes--await-on-async (fn)
   "Turn an async function requiring a callback into a synchronous one.
@@ -513,15 +539,13 @@ what to copy."
 
   (newline))
 
-(defun kubernetes--refresh-pods-section (&optional quiet)
+(defun kubernetes--refresh-pods-section ()
   (unless kubernetes--awaiting-pods-section
     (setq kubernetes--awaiting-pods-section t)
     (kubernetes-get-pods
      (lambda (response)
        (setq kubernetes--pods-response response)
        (kubernetes--redraw-pods-section kubernetes--pod-count-marker kubernetes--pods-start-marker kubernetes--pods-end-marker response)
-       (unless quiet
-         (message "Pods updated."))
        (setq kubernetes--awaiting-pods-section nil)))))
 
 ;; Root rendering routines.
@@ -549,14 +573,12 @@ what to copy."
 
 ;;;###autoload
 (defun kubernetes-display-pods-refresh ()
-  "Create or refresh the Kubernetes pods buffer."
+  "Refresh the Kubernetes pods buffer."
   (interactive)
   (if-let (buf (get-buffer kubernetes-display-pods-buffer-name))
       (progn
-        (when (called-interactively-p nil)
-          (message "Refreshing pods buffer..."))
         (kubernetes--refresh-context-section)
-        (kubernetes--refresh-pods-section t)
+        (kubernetes--refresh-pods-section)
         buf)
     (error "Attempted to refresh kubernetes pods buffer, but it does not exist")))
 
@@ -652,10 +674,16 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
         (progn
           (message "Deleting %s pod%s..." n (if (equal 1 n) "" "s"))
           (dolist (pod kubernetes--marked-pod-names)
-            (add-to-list 'kubernetes--pods-pending-deletion pod))
-          (kubernetes-delete-pods kubernetes--marked-pod-names
-                        (lambda (_)
-                          (kubernetes-display-pods-refresh)))
+            (add-to-list 'kubernetes--pods-pending-deletion pod)
+
+            (kubernetes-delete-pod pod
+                         (lambda (_)
+                           (message "Deleting pod %s succeeded." pod)
+                           (kubernetes-display-pods-refresh))
+                         (lambda (_)
+                           (message "Deleting pod %s failed" pod)
+                           (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))
+
           (kubernetes-unmark-all))
       (message "Cancelled."))))
 
