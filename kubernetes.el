@@ -69,6 +69,11 @@ The function must take a single argument, which is the buffer to display."
   :group 'kubernetes
   :type 'integer)
 
+(defcustom kubernetes-refresh-frequency 10
+  "The background refresh frequency in seconds."
+  :group 'kubernetes
+  :type 'integer)
+
 (defface kubernetes-context-name
   '((((class color) (background light)) :foreground "SkyBlue4")
     (((class color) (background  dark)) :foreground "LightSkyBlue1"))
@@ -576,7 +581,7 @@ what to copy."
       (goto-char (point-min))
 
       ;; Initialize refresh timer.
-      (setq kubernetes--refresh-timer (run-with-timer 3 3 #'kubernetes-display-pods-refresh))
+      (setq kubernetes--refresh-timer (run-with-timer kubernetes-refresh-frequency kubernetes-refresh-frequency #'kubernetes-display-pods-refresh))
       (add-hook 'kill-buffer-hook
                 (lambda ()
                   (when-let (timer kubernetes--refresh-timer)
