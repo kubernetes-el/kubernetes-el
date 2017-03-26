@@ -507,18 +507,21 @@ what to copy."
         (erase-buffer)
         (kubernetes--initialize-context-section)
         (newline)
-        (kubernetes--initialize-pods-section)))
+        (kubernetes--initialize-pods-section))
+      (goto-char (point-min)))
     buf))
 
 ;;;###autoload
 (defun kubernetes-display-pods-refresh ()
   "Create or refresh the Kubernetes pods buffer."
   (interactive)
-  (unless (get-buffer kubernetes-display-pods-buffer-name)
-    (error "Attempted to refresh kubernetes pods buffer, but it does not exist"))
-  (message "Refreshing pods buffer...")
-  (kubernetes--refresh-context-section)
-  (kubernetes--refresh-pods-section))
+  (if-let (buf (get-buffer kubernetes-display-pods-buffer-name))
+      (progn
+        (message "Refreshing pods buffer...")
+        (kubernetes--refresh-context-section)
+        (kubernetes--refresh-pods-section)
+        buf)
+    (error "Attempted to refresh kubernetes pods buffer, but it does not exist")))
 
 (defvar kubernetes-display-pods-mode-map
   (let ((keymap (make-sparse-keymap)))
@@ -552,9 +555,10 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
 (defun kubernetes-display-pods ()
   "Display a list of pods in the current Kubernetes context."
   (interactive)
-  (with-current-buffer (kubernetes-display-pods-initialize-buffer)
-    (goto-char (point-min))
-    (kubernetes-display-buffer (current-buffer))))
+  (let ((buf (if (get-buffer kubernetes-display-pods-buffer-name)
+                 (kubernetes-display-pods-refresh)
+               (kubernetes-display-pods-initialize-buffer))))
+    (kubernetes-display-buffer buf)))
 
 ;; Marked pod state management.
 
