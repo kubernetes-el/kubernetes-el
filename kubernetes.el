@@ -394,8 +394,7 @@ what to copy."
                   (kubernetes--redraw-context-section kubernetes--config-start-marker kubernetes--config-end-marker config)
                   (setq kubernetes--awaiting-config-section nil)))
   (insert " ")
-  (set-marker kubernetes--config-end-marker (point))
-  (newline))
+  (set-marker kubernetes--config-end-marker (point)))
 
 (defun kubernetes--refresh-context-section ()
   (unless kubernetes--awaiting-config-section
@@ -405,6 +404,9 @@ what to copy."
                     (setq kubernetes--awaiting-config-section nil)))))
 
 ;; Pod section rendering.
+
+(defvar kubernetes--refresh-timer nil
+  "Background timer used to poll for updates.")
 
 (defvar-local kubernetes--marked-pod-names nil)
 
@@ -456,18 +458,20 @@ what to copy."
              (buffer-live-p (marker-buffer pods-end-marker)))
     (-let [(&alist 'items pods) pods]
       (with-current-buffer (marker-buffer count-marker)
-        (save-excursion
-          (goto-char (marker-position count-marker))
-          (let ((inhibit-read-only t))
-            (delete-region (point) (line-end-position))
-            (insert (format "(%s)" (length pods)))))
-        (save-excursion
-          (goto-char (marker-position pods-start-marker))
-          (let ((inhibit-read-only t))
-            (delete-region (point) (1- (marker-position pods-end-marker)))
-            (--each (append pods nil)
-              (insert (kubernetes--format-pod-line it))
-              (newline))))))))
+        (let ((pos (point)))
+          (save-excursion
+            (goto-char (marker-position count-marker))
+            (let ((inhibit-read-only t))
+              (delete-region (point) (line-end-position))
+              (insert (format "(%s)" (length pods)))))
+          (save-excursion
+            (goto-char (marker-position pods-start-marker))
+            (let ((inhibit-read-only t))
+              (delete-region (point) (1- (marker-position pods-end-marker)))
+              (--each (append pods nil)
+                (insert (kubernetes--format-pod-line it))
+                (newline))))
+          (goto-char pos))))))
 
 (defun kubernetes--initialize-pods-section ()
   (setq kubernetes--awaiting-pods-section t)
@@ -487,14 +491,15 @@ what to copy."
 
   (newline))
 
-(defun kubernetes--refresh-pods-section ()
+(defun kubernetes--refresh-pods-section (&optional quiet)
   (unless kubernetes--awaiting-pods-section
     (setq kubernetes--awaiting-pods-section t)
     (kubernetes-get-pods
      (lambda (response)
        (setq kubernetes--pods-response response)
        (kubernetes--redraw-pods-section kubernetes--pod-count-marker kubernetes--pods-start-marker kubernetes--pods-end-marker response)
-       (message "Pods updated.")
+       (unless quiet
+         (message "Pods updated."))
        (setq kubernetes--awaiting-pods-section nil)))))
 
 ;; Root rendering routines.
@@ -508,7 +513,16 @@ what to copy."
         (kubernetes--initialize-context-section)
         (newline)
         (kubernetes--initialize-pods-section))
-      (goto-char (point-min)))
+      (goto-char (point-min))
+
+      ;; Initialize refresh timer.
+      (setq kubernetes--refresh-timer (run-with-timer 3 3 #'kubernetes-display-pods-refresh))
+      (add-hook 'kill-buffer-hook
+                (lambda ()
+                  (when-let (timer kubernetes--refresh-timer)
+                    (setq kubernetes--refresh-timer nil)
+                    (cancel-timer timer)))
+                nil t))
     buf))
 
 ;;;###autoload
@@ -517,9 +531,10 @@ what to copy."
   (interactive)
   (if-let (buf (get-buffer kubernetes-display-pods-buffer-name))
       (progn
-        (message "Refreshing pods buffer...")
+        (when (called-interactively-p nil)
+          (message "Refreshing pods buffer..."))
         (kubernetes--refresh-context-section)
-        (kubernetes--refresh-pods-section)
+        (kubernetes--refresh-pods-section t)
         buf)
     (error "Attempted to refresh kubernetes pods buffer, but it does not exist")))
 
