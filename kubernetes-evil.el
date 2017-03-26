@@ -22,7 +22,8 @@
   (kbd "d") #'kubernetes-mark-for-delete
   (kbd "u") #'kubernetes-unmark
   (kbd "U") #'kubernetes-unmark-all
-  (kbd "x") #'kubernetes-execute-marks)
+  (kbd "x") #'kubernetes-execute-marks
+  (kbd "l") #'kubernetes-logs)
 
 (evil-define-key 'normal kubernetes-display-pod-mode-map
   (kbd "RET") #'kubernetes-navigate

@@ -328,9 +328,16 @@ what to copy."
 
 ;;; Displaying a specific pod
 
+(defvar kubernetes--pods-response nil
+  "Cache of last pods response received over the API.")
+
 (defun kubernetes--read-pod ()
-  (message "Getting pods...")
-  (-let* (((&alist 'items pods) (kubernetes--await-on-async #'kubernetes-get-pods))
+
+  (-let* (((&alist 'items pods)
+           (or kubernetes--pods-response
+               (progn
+                 (message "Getting pods...")
+                 (kubernetes--await-on-async #'kubernetes-get-pods))))
           (pods (append pods nil))
           (podname (-lambda ((&alist 'metadata (&alist 'name name)))
                      name))
@@ -449,8 +456,6 @@ what to copy."
 
 (defvar kubernetes--awaiting-pods-section nil
   "Used as a lock to prevent concurrent pods listing queries.")
-
-(defvar kubernetes--pods-response nil)
 
 (defun kubernetes--ellispsize (s threshold)
   (if (> (length s) threshold)
@@ -611,6 +616,7 @@ what to copy."
     (define-key keymap (kbd "u") #'kubernetes-unmark)
     (define-key keymap (kbd "U") #'kubernetes-unmark-all)
     (define-key keymap (kbd "x") #'kubernetes-execute-marks)
+    (define-key keymap (kbd "l") #'kubernetes-logs)
     keymap)
   "Keymap for `kubernetes-display-pods-mode'.")
 
@@ -706,6 +712,31 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
           (kubernetes-unmark-all))
       (message "Cancelled."))))
 
+;; Logs
+
+(defun kubernetes--maybe-pod-at-point ()
+  (pcase (get-text-property (point) 'kubernetes-nav)
+    (`(:pod ,pod)
+     pod)))
+
+;;;###autoload
+(defun kubernetes-logs (pod &optional tail)
+  "Open a logs buffer for POD.
+
+If TAIL is set, continue listening for logs."
+  (interactive (list (or (kubernetes--maybe-pod-at-point) (kubernetes--read-pod))
+                     (y-or-n-p "Tail logs? ")))
+  (-let* (((&alist 'metadata (&alist 'name pod-name)) pod)
+          (bufname (format "*kubernetes logs:%s*" pod-name))
+          (compilation-buffer-name-function (lambda (_) bufname))
+          (command (string-join (list kubernetes-kubectl-executable
+                                      "logs"
+                                      (when tail "-f")
+                                      pod-name)
+                                " ")))
+    (compile command)
+    (with-current-buffer bufname
+      (display-buffer (current-buffer)))))
 
 (provide 'kubernetes)
 
