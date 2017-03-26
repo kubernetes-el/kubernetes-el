@@ -452,23 +452,37 @@ what to copy."
       (concat (substring s 0 (1- threshold)) "…")
     s))
 
+(defun kubernetes--parse-utc-timestamp (s)
+  (let ((parsed (parse-time-string (replace-regexp-in-string "Z" "" (replace-regexp-in-string "T" " " s)))))
+    (setf (nth 8 parsed) 0)
+    parsed))
+
+(defun kubernetes--time-diff-string (start now)
+  (let ((diff (time-to-seconds (time-subtract now start))))
+    (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff) ","))))
+
 (defun kubernetes--format-pod-line (pod)
   (-let* (((&alist 'metadata (&alist 'name name)
                    'status (&alist 'containerStatuses [(&alist 'restartCount restarts)]
+                                   'startTime start-time
                                    'phase phase))
            pod)
           (str
-           (concat (format "%-40s " (kubernetes--ellispsize name 40))
-                   (let ((s (format "%-17s " phase)))
+           (concat (format "%-45s " (kubernetes--ellispsize name 45))
+                   (let ((s (format "%-10s " phase)))
                      (if (equal phase "Running") (propertize s 'face 'kubernetes-dimmed) s))
-                   (let ((s (format "%s" restarts)))
+                   (let ((s (format "%8s " restarts)))
                      (cond
                       ((equal 0 restarts)
                        (propertize s 'face 'kubernetes-dimmed))
                       ((<= kubernetes-pod-restart-warning-threshold restarts)
                        (propertize s 'face 'warning))
                       (t
-                       s)))))
+                       s)))
+                   (let* ((start (apply #'encode-time (kubernetes--parse-utc-timestamp start-time)))
+                          (now (current-time)))
+                     (propertize (format "%8s" (kubernetes--time-diff-string start now))
+                                 'face 'kubernetes-dimmed))))
           (str (cond
                 ((member (downcase phase) '("running" "containercreating" "terminated"))
                  str)
@@ -526,7 +540,7 @@ what to copy."
   (insert (propertize "Pods " 'face 'kubernetes-section-heading))
   (set-marker kubernetes--pod-count-marker (point))
   (newline)
-  (insert (propertize (format "  %-40s %-17s %s\n" "Name" "Status" "Restarts")
+  (insert (propertize (format "  %-45s %-10s %8s %8s\n" "Name" "Status" "Restarts" "Age")
                       'face 'kubernetes-column-heading))
   (set-marker kubernetes--pods-start-marker (point))
   (insert (propertize "  Fetching... " 'face 'kubernetes-progress-indicator))
