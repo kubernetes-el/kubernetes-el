@@ -18,6 +18,7 @@
   (kbd "RET") #'kubernetes-navigate
   (kbd "g") #'kubernetes-display-pods-refresh
   (kbd "q") #'quit-window
+  (kbd "M-w") #'kubernetes-copy-thing-at-point
   (kbd "d") #'kubernetes-mark-for-delete
   (kbd "u") #'kubernetes-unmark
   (kbd "U") #'kubernetes-unmark-all
@@ -25,10 +26,12 @@
 
 (evil-define-key 'normal kubernetes-display-pod-mode-map
   (kbd "RET") #'kubernetes-navigate
+  (kbd "M-w") #'kubernetes-copy-thing-at-point
   (kbd "q") #'quit-window)
 
 (evil-define-key 'normal kubernetes-display-config-mode-map
   (kbd "RET") #'kubernetes-navigate
+  (kbd "M-w") #'kubernetes-copy-thing-at-point
   (kbd "q") #'quit-window)
 
 (provide 'kubernetes-evil)

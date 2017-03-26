@@ -200,6 +200,16 @@ taken."
     (`(:pod ,pod)
      (kubernetes-display-pod pod))))
 
+(defun kubernetes-copy-thing-at-point (point)
+  "Perform a context-sensitive copy action.
+
+Inspecs the `kubernetes-copy' text property at POINT to determine
+what to copy."
+  (interactive "d")
+  (when-let (s (get-text-property point 'kubernetes-copy))
+    (kill-new s)
+    (message "Copied: %s" s)))
+
 (defun kubernetes--json-to-yaml (json &optional level)
   (let* ((level (or level 0))
          (space (string-to-char " "))
@@ -262,6 +272,7 @@ taken."
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "q") #'quit-window)
     (define-key keymap (kbd "RET") #'kubernetes-navigate)
+    (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
     keymap)
   "Keymap for `kubernetes-display-config-mode'.")
 
@@ -302,6 +313,7 @@ taken."
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "q") #'quit-window)
     (define-key keymap (kbd "RET") #'kubernetes-navigate)
+    (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
     keymap)
   "Keymap for `kubernetes-display-pod-mode'.")
 
@@ -339,16 +351,23 @@ taken."
 (defun kubernetes--format-context-section (config)
   (with-temp-buffer
     (-let [(&alist 'current-context current 'contexts contexts) config]
-      (insert (format "%-12s" "Context: "))
-      (insert (propertize (or current "<none>") 'face 'kubernetes-context-name))
+      (insert (propertize (concat
+                           (format "%-12s" "Context: ")
+                           (propertize (or current "<none>") 'face 'kubernetes-context-name))
+                          'kubernetes-copy current))
       (newline)
 
       (-when-let* ((ctx (--find (equal current (alist-get 'name it)) (append contexts nil)))
                    ((&alist 'name n 'context (&alist 'cluster c 'namespace ns)) ctx))
         (unless (string-empty-p c)
-          (insert (format "%-12s%s\n" "Cluster: " c)))
+          (insert (propertize (format "%-12s%s" "Cluster: " c)
+                              'kubernetes-copy c))
+          (newline))
+
         (unless (string-empty-p ns)
-          (insert (format "%-12s%s" "Namespace: " ns)))))
+          (insert (propertize (format "%-12s%s" "Namespace: " ns)
+                              'kubernetes-copy ns))
+          (newline))))
 
     (propertize (buffer-string) 'kubernetes-nav (list :config config))))
 
@@ -421,7 +440,9 @@ taken."
            (if (member name kubernetes--marked-pod-names)
                (concat (propertize "D" 'face 'kubernetes-delete-mark) " " str)
              (concat "  " str))))
-    (propertize with-marks 'kubernetes-nav (list :pod pod))))
+    (propertize with-marks
+                'kubernetes-nav (list :pod pod)
+                'kubernetes-copy name)))
 
 (defun kubernetes--redraw-pods-section (count-marker pods-start-marker pods-end-marker pods)
   (when (and (buffer-live-p (marker-buffer count-marker))
@@ -498,6 +519,7 @@ taken."
     (define-key keymap (kbd "g") #'kubernetes-display-pods-refresh)
     (define-key keymap (kbd "q") #'quit-window)
     (define-key keymap (kbd "RET") #'kubernetes-navigate)
+    (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
     (define-key keymap (kbd "d") #'kubernetes-mark-for-delete)
     (define-key keymap (kbd "u") #'kubernetes-unmark)
     (define-key keymap (kbd "U") #'kubernetes-unmark-all)
