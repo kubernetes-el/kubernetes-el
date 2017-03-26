@@ -169,7 +169,7 @@ Returns the process object for this execution of kubectl."
                      (funcall on-error buf))
 
                     (t
-                     (kubernetes--kubectl-default-error-handler proc))))))))
+                     (kubernetes--kubectl-default-error-handler (process-buffer proc)))))))))
     (set-process-sentinel process sentinel)
     process))
 
@@ -202,6 +202,15 @@ ERROR-CB is called if an error occurred."
                  (string-match (rx bol "pod/" (group (+ nonl))) (buffer-string))
                  (funcall cb (match-string 1 (buffer-string)))))
              error-cb))
+
+;;;###autoload
+(defun kubernetes-kubectl-describe-pod (pod-name cb)
+  "Describe pod with POD-NAME, then execute CB with the string response."
+  (kubernetes--kubectl (list "describe" "pod" pod-name)
+             (lambda (buf)
+               (let ((s (with-current-buffer buf (buffer-string))))
+                 (funcall cb s)))))
+
 
 (defun kubernetes--await-on-async (fn)
   "Turn an async function requiring a callback into a synchronous one.
@@ -621,8 +630,9 @@ what to copy."
     (define-key keymap (kbd "g") #'kubernetes-display-pods-refresh)
     (define-key keymap (kbd "q") #'quit-window)
     (define-key keymap (kbd "RET") #'kubernetes-navigate)
+    (define-key keymap (kbd "d") #'kubernetes-describe-pod)
     (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
-    (define-key keymap (kbd "d") #'kubernetes-mark-for-delete)
+    (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
     (define-key keymap (kbd "u") #'kubernetes-unmark)
     (define-key keymap (kbd "U") #'kubernetes-unmark-all)
     (define-key keymap (kbd "x") #'kubernetes-execute-marks)
@@ -638,7 +648,8 @@ what to copy."
 Type \\[kubernetes-mark-for-delete] to mark a pod for deletion, and \\[kubernetes-execute-marks] to execute.
 Type \\[kubernetes-unmark] to unmark the pod at point, or \\[kubernetes-unmark-all] to unmark all pods.
 
-Type \\[kubernetes-navigate] to inspect the object on the current line.
+Type \\[kubernetes-navigate] to inspect the object on the current line, and \\[kubernetes-describe-pod] to
+specifically describe a pod.
 
 Type \\[kubernetes-logs] when point is on a pod to view its logs.
 
@@ -887,6 +898,39 @@ Should be invoked via `kubernetes-logs-popup'."
     (with-current-buffer (compilation-start (string-join command " ") 'kubernetes-logs-mode)
       (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
       (display-buffer (current-buffer)))))
+
+
+;; Describing pods
+
+;;;###autoload
+(defun kubernetes-describe-pod (pod)
+  "Popup buffer for describing POD."
+  (interactive (list (or (kubernetes--maybe-pod-at-point) (kubernetes--read-pod))))
+  (kubernetes-display-buffer (kubernetes--initialize-describe-pod-buffer pod)))
+
+(defun kubernetes--initialize-describe-pod-buffer (pod)
+  (-let ((buf (get-buffer-create kubernetes-pod-buffer-name))
+         ((&alist 'metadata (&alist 'name pod-name)) pod)
+         (marker (make-marker)))
+    (with-current-buffer buf
+      (kubernetes-display-pod-mode)
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (set-marker marker (point))
+        (insert (propertize "Loading..." 'face 'kubernetes-dimmed))))
+    (kubernetes-kubectl-describe-pod pod-name
+                           (lambda (s)
+                             (with-current-buffer (marker-buffer marker)
+                               (setq-local tab-width 8)
+                               (let ((inhibit-read-only t)
+                                     (inhibit-redisplay t))
+                                 (erase-buffer)
+                                 (insert "---\n")
+                                 (insert s)
+                                 (untabify (point-min) (point-max))
+                                 (goto-char (point-min))))))
+    buf))
+
 
 (provide 'kubernetes)
 
