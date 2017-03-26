@@ -25,9 +25,11 @@
 
 ;;; Code:
 
+(require 'compile)
 (require 'dash)
 (require 'subr-x)
 
+(autoload 'json-pretty-print-buffer "json")
 (autoload 'json-read-from-string "json")
 
 (defgroup kubernetes nil
@@ -73,6 +75,11 @@ The function must take a single argument, which is the buffer to display."
   "The background refresh frequency in seconds."
   :group 'kubernetes
   :type 'integer)
+
+(defcustom kubernetes-json-mode 'javascript-mode
+  "The mode to use when rendering pretty-printed JSON."
+  :group 'kubernetes
+  :type 'function)
 
 (defface kubernetes-context-name
   '((((class color) (background light)) :foreground "SkyBlue4")
@@ -121,6 +128,10 @@ The function must take a single argument, which is the buffer to display."
 (defconst kubernetes-display-pods-buffer-name "*kubernetes pods*")
 
 (defconst kubernetes-display-config-buffer-name "*kubernetes config*")
+
+(defconst kubernetes-log-line-buffer-name "*log line*")
+
+(defconst kubernetes-logs-buffer-name "*kubernetes logs*")
 
 
 ;; Main Kubernetes query routines
@@ -712,7 +723,80 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
           (kubernetes-unmark-all))
       (message "Cancelled."))))
 
+
 ;; Logs
+
+(defvar kubernetes-logs-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "n") #'kubernetes-logs-forward-line)
+    (define-key keymap (kbd "p") #'kubernetes-logs-previous-line)
+    (define-key keymap (kbd "RET") #'kubernetes-logs-inspect-line)
+    keymap)
+  "Keymap for `kubernetes-logs-mode'.")
+
+(define-compilation-mode kubernetes-logs-mode "Kubernetes Logs"
+  "Mode for displaying and inspecting Kubernetes logs.
+
+\\<kubernetes-logs-mode-map>\
+Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
+
+\\{kubernetes-logs-mode-map}")
+
+(defvar kubernetes-log-line-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "n") #'kubernetes-logs-forward-line)
+    (define-key keymap (kbd "p") #'kubernetes-logs-previous-line)
+    (define-key keymap (kbd "q") #'quit-window)
+    keymap)
+  "Keymap for `kubernetes-log-line-mode'.")
+
+(define-compilation-mode kubernetes-log-line-mode "Log Line"
+  "Mode for inspecting Kubernetes log lines.
+
+\\{kubernetes-log-line-mode-map}"
+  (read-only-mode))
+
+(defun kubernetes--log-line-buffer-for-string (s)
+  (let ((propertized (with-temp-buffer
+                       (insert s)
+                       (goto-char (point-min))
+                       (when (equal (char-after) ?\{)
+                         (json-pretty-print-buffer)
+                         (funcall kubernetes-json-mode)
+                         (font-lock-ensure))
+                       (buffer-string))))
+
+    (with-current-buffer (get-buffer-create kubernetes-log-line-buffer-name)
+      (kubernetes-log-line-mode)
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert propertized)
+        (goto-char (point-min)))
+      (current-buffer))))
+
+(defun kubernetes-logs-inspect-line (pos)
+  "Show detail for the log line at POS."
+  (interactive "d")
+  (display-buffer (kubernetes--log-line-buffer-for-string
+                   (save-excursion
+                     (goto-char pos)
+                     (buffer-substring (line-beginning-position) (line-end-position))))))
+
+(defun kubernetes-logs-previous-line ()
+  "Move backward and inspect the line at point."
+  (interactive)
+  (with-current-buffer kubernetes-logs-buffer-name
+    (forward-line -1)
+    (when (get-buffer kubernetes-log-line-buffer-name)
+      (kubernetes-logs-inspect-line (point)))))
+
+(defun kubernetes-logs-forward-line ()
+  "Move forward and inspect the line at point."
+  (interactive)
+  (with-current-buffer kubernetes-logs-buffer-name
+    (forward-line 1)
+    (when (get-buffer kubernetes-log-line-buffer-name)
+      (kubernetes-logs-inspect-line (point)))))
 
 (defun kubernetes--maybe-pod-at-point ()
   (pcase (get-text-property (point) 'kubernetes-nav)
@@ -727,15 +811,15 @@ If TAIL is set, continue listening for logs."
   (interactive (list (or (kubernetes--maybe-pod-at-point) (kubernetes--read-pod))
                      (y-or-n-p "Tail logs? ")))
   (-let* (((&alist 'metadata (&alist 'name pod-name)) pod)
-          (bufname (format "*kubernetes logs:%s*" pod-name))
-          (compilation-buffer-name-function (lambda (_) bufname))
+          (compilation-buffer-name-function (lambda (_) kubernetes-logs-buffer-name))
           (command (string-join (list kubernetes-kubectl-executable
                                       "logs"
                                       (when tail "-f")
                                       pod-name)
                                 " ")))
     (compile command)
-    (with-current-buffer bufname
+    (with-current-buffer kubernetes-logs-buffer-name
+      (kubernetes-logs-mode)
       (display-buffer (current-buffer)))))
 
 (provide 'kubernetes)
