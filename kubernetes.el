@@ -827,7 +827,7 @@ Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
   "Identifies the pod to log after querying the user for flags.
 
 Assigned before opening the logging popup, when the target pod is
-likely to be at point. After choosing flags, this is the pod that
+likely to be at point.  After choosing flags, this is the pod that
 will be logged.
 
 This variable is reset after use by the logging functions.")
