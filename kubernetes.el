@@ -942,6 +942,8 @@ Should be invoked via `kubernetes-logs-popup'."
           (command (-flatten (list kubernetes-kubectl-executable "logs" args pod-name))))
     (setq kubernetes--pod-to-log nil)
     (with-current-buffer (compilation-start (string-join command " ") 'kubernetes-logs-mode)
+      (setq-local compilation-error-regexp-alist nil)
+      (setq-local compilation-error-regexp-alist-alist nil)
       (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
       (display-buffer (current-buffer)))))
 
