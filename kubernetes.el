@@ -137,6 +137,7 @@ The function must take a single argument, which is the buffer to display."
 
 (defconst kubernetes-pod-buffer-name "*kubernetes pod*")
 
+
 ;; Main Kubernetes query routines
 
 (defun kubernetes--kubectl-default-error-handler (buf)
@@ -174,22 +175,30 @@ Returns the process object for this execution of kubectl."
     process))
 
 ;;;###autoload
-(defun kubernetes-get-pods (cb)
-  "Get all pods and execute callback CB with the parsed JSON."
+(defun kubernetes-get-pods (cb &optional cleanup-cb)
+  "Get all pods and execute callback CB with the parsed JSON.
+
+CLEANUP-CB is a function taking no arguments used to release any resources."
   (kubernetes--kubectl '("get" "pods" "-o" "json")
              (lambda (buf)
-               (let ((json (with-current-buffer buf
-                             (json-read-from-string (buffer-string)))))
-                 (funcall cb json)))))
+               (unwind-protect
+                   (let ((json (with-current-buffer buf
+                                 (json-read-from-string (buffer-string)))))
+                     (funcall cb json))
+                 (funcall (or cleanup-cb #'ignore))))))
 
 ;;;###autoload
-(defun kubernetes-config-view (cb)
-  "Get the current configuration and pass it to CB."
+(defun kubernetes-config-view (cb &optional cleanup-cb)
+  "Get the current configuration and pass it to CB.
+
+CLEANUP-CB is a function taking no arguments used to release any resources."
   (kubernetes--kubectl '("config" "view" "-o" "json")
              (lambda (buf)
-               (let ((json (with-current-buffer buf
-                             (json-read-from-string (buffer-string)))))
-                 (funcall cb json)))))
+               (unwind-protect
+                   (let ((json (with-current-buffer buf
+                                 (json-read-from-string (buffer-string)))))
+                     (funcall cb json))
+                 (funcall (or cleanup-cb #'ignore))))))
 
 ;;;###autoload
 (defun kubernetes-delete-pod (pod-name cb &optional error-cb)
@@ -413,8 +422,19 @@ what to copy."
 
 ;; Context section rendering.
 
-(defvar kubernetes--awaiting-config-section nil
-  "Used as a lock to prevent concurrent config queries.")
+(defvar kubernetes--view-config-process nil
+  "Single process used to prevent concurrent config refreshes.")
+
+(defun kubernetes--set-view-config-process (proc)
+  (kubernetes--release-view-config-process)
+  (setq kubernetes--view-config-process proc))
+
+(defun kubernetes--release-view-config-process ()
+  (when-let (proc kubernetes--view-config-process)
+    (when (process-live-p proc)
+      (kill-process proc)))
+  (setq kubernetes--view-config-process nil))
+
 
 (defun kubernetes--format-context-section (config)
   (with-temp-buffer
@@ -450,31 +470,46 @@ what to copy."
           (insert (kubernetes--format-context-section config)))))))
 
 (defun kubernetes--initialize-context-section ()
-  (setq kubernetes--awaiting-config-section t)
   (set-marker kubernetes--config-start-marker (point))
-  (kubernetes-config-view (lambda (config)
-                  (kubernetes--redraw-context-section kubernetes--config-start-marker kubernetes--config-end-marker config)
-                  (setq kubernetes--awaiting-config-section nil)))
+
+  (kubernetes--set-view-config-process
+   (kubernetes-config-view (lambda (config)
+                   (kubernetes--redraw-context-section kubernetes--config-start-marker kubernetes--config-end-marker config))
+                 (lambda ()
+                   (kubernetes--release-view-config-process))))
   (insert " ")
   (set-marker kubernetes--config-end-marker (point)))
 
 (defun kubernetes--refresh-context-section ()
-  (unless kubernetes--awaiting-config-section
-    (setq kubernetes--awaiting-config-section t)
-    (kubernetes-config-view (lambda (config)
-                    (kubernetes--redraw-context-section kubernetes--config-start-marker kubernetes--config-end-marker config)
-                    (setq kubernetes--awaiting-config-section nil)))))
+  (unless kubernetes--view-config-process
+    (kubernetes--set-view-config-process
+     (kubernetes-config-view (lambda (config)
+                     (kubernetes--redraw-context-section kubernetes--config-start-marker kubernetes--config-end-marker config))
+                   (lambda ()
+                     (kubernetes--release-view-config-process))))))
+
 
 ;; Pod section rendering.
+
+(defvar kubernetes--get-pods-process nil
+  "Single process used to prevent concurrent get pods requests.")
+
+(defun kubernetes--set-get-pods-process (proc)
+  (kubernetes--release-get-pods-process)
+  (setq kubernetes--get-pods-process proc))
+
+(defun kubernetes--release-get-pods-process ()
+  (when-let (proc kubernetes--get-pods-process)
+    (when (process-live-p proc)
+      (kill-process proc)))
+  (setq kubernetes--get-pods-process nil))
+
 
 (defvar kubernetes--refresh-timer nil
   "Background timer used to poll for updates.")
 
 (defvar-local kubernetes--marked-pod-names nil)
 (defvar-local kubernetes--pods-pending-deletion nil)
-
-(defvar kubernetes--awaiting-pods-section nil
-  "Used as a lock to prevent concurrent pods listing queries.")
 
 (defun kubernetes--ellispsize (s threshold)
   (if (> (length s) threshold)
@@ -565,7 +600,6 @@ what to copy."
           (goto-char pos))))))
 
 (defun kubernetes--initialize-pods-section ()
-  (setq kubernetes--awaiting-pods-section t)
   (insert (propertize "Pods " 'face 'kubernetes-section-heading))
   (set-marker kubernetes--pod-count-marker (point))
   (newline)
@@ -574,22 +608,27 @@ what to copy."
   (set-marker kubernetes--pods-start-marker (point))
   (insert (propertize "  Fetching... " 'face 'kubernetes-progress-indicator))
   (set-marker kubernetes--pods-end-marker (point))
-  (kubernetes-get-pods
-   (lambda (response)
-     (setq kubernetes--pods-response response)
-     (kubernetes--redraw-pods-section kubernetes--pod-count-marker kubernetes--pods-start-marker kubernetes--pods-end-marker response)
-     (setq kubernetes--awaiting-pods-section nil)))
+
+  (kubernetes--set-get-pods-process
+   (kubernetes-get-pods
+    (lambda (response)
+      (setq kubernetes--pods-response response)
+      (kubernetes--redraw-pods-section kubernetes--pod-count-marker kubernetes--pods-start-marker kubernetes--pods-end-marker response))
+    (lambda ()
+      (kubernetes--release-get-pods-process))))
 
   (newline))
 
 (defun kubernetes--refresh-pods-section ()
-  (unless kubernetes--awaiting-pods-section
-    (setq kubernetes--awaiting-pods-section t)
-    (kubernetes-get-pods
-     (lambda (response)
-       (setq kubernetes--pods-response response)
-       (kubernetes--redraw-pods-section kubernetes--pod-count-marker kubernetes--pods-start-marker kubernetes--pods-end-marker response)
-       (setq kubernetes--awaiting-pods-section nil)))))
+  (unless kubernetes--get-pods-process
+    (kubernetes--set-get-pods-process
+     (kubernetes-get-pods
+      (lambda (response)
+        (setq kubernetes--pods-response response)
+        (kubernetes--redraw-pods-section kubernetes--pod-count-marker kubernetes--pods-start-marker kubernetes--pods-end-marker response))
+      (lambda ()
+        (kubernetes--release-get-pods-process))))))
+
 
 ;; Root rendering routines.
 
