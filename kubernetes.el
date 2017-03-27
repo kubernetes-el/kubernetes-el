@@ -364,7 +364,6 @@ what to copy."
   "Cache of last pods response received over the API.")
 
 (defun kubernetes--read-pod ()
-
   (-let* (((&alist 'items pods)
            (or kubernetes--pods-response
                (progn
@@ -818,7 +817,9 @@ Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
   "Mode for inspecting Kubernetes log lines.
 
 \\{kubernetes-log-line-mode-map}"
-  (read-only-mode))
+  (read-only-mode)
+  (setq-local compilation-error-regexp-alist nil)
+  (setq-local compilation-error-regexp-alist-alist nil))
 
 (defun kubernetes--log-line-buffer-for-string (s)
   (let ((propertized (with-temp-buffer
@@ -945,8 +946,6 @@ Should be invoked via `kubernetes-logs-popup'."
           (command (-flatten (list kubernetes-kubectl-executable "logs" args pod-name))))
     (setq kubernetes--pod-to-log nil)
     (with-current-buffer (compilation-start (string-join command " ") 'kubernetes-logs-mode)
-      (setq-local compilation-error-regexp-alist nil)
-      (setq-local compilation-error-regexp-alist-alist nil)
       (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
       (display-buffer (current-buffer)))))
 
