@@ -511,7 +511,7 @@ what to copy."
 (defvar-local kubernetes--marked-pod-names nil)
 (defvar-local kubernetes--pods-pending-deletion nil)
 
-(defun kubernetes--ellispsize (s threshold)
+(defun kubernetes--ellipsize (s threshold)
   (if (> (length s) threshold)
       (concat (substring s 0 (1- threshold)) "…")
     s))
@@ -527,14 +527,17 @@ what to copy."
 
 (defun kubernetes--format-pod-line (pod)
   (-let* (((&alist 'metadata (&alist 'name name)
-                   'status (&alist 'containerStatuses [(&alist 'restartCount restarts)]
+                   'status (&alist 'containerStatuses [(&alist 'restartCount restarts
+                                                               'state state)]
                                    'startTime start-time
                                    'phase phase))
            pod)
+          (state (or (alist-get 'reason (alist-get 'waiting state))
+                     phase))
           (str
-           (concat (format "%-45s " (kubernetes--ellispsize name 45))
-                   (let ((s (format "%-10s " phase)))
-                     (if (equal phase "Running") (propertize s 'face 'kubernetes-dimmed) s))
+           (concat (format "%-45s " (kubernetes--ellipsize name 45))
+                   (let ((s (format "%-10s " (kubernetes--ellipsize state 10))))
+                     (if (equal state "Running") (propertize s 'face 'kubernetes-dimmed) s))
                    (let ((s (format "%8s " restarts)))
                      (cond
                       ((equal 0 restarts)
@@ -548,9 +551,9 @@ what to copy."
                      (propertize (format "%8s" (kubernetes--time-diff-string start now))
                                  'face 'kubernetes-dimmed))))
           (str (cond
-                ((member (downcase phase) '("running" "containercreating" "terminated"))
+                ((member (downcase state) '("running" "containercreating" "terminated"))
                  str)
-                ((member (downcase phase) '("runcontainererror" "crashloopbackoff"))
+                ((member (downcase state) '("runcontainererror" "crashloopbackoff"))
                  (propertize str 'face 'error))
                 (t
                  (propertize str 'face 'warning))))
