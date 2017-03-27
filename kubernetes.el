@@ -896,7 +896,14 @@ This variable is reset after use by the logging functions.")
   :default-action 'kubernetes-logs)
 
 (defun kubernetes--read-iso-datetime (&rest _)
-  (format-time-string "%Y-%m-%dT%H:%M:%S:%z" (org-read-date nil t)))
+  (let* ((date (org-read-date nil t))
+         (tz (format-time-string "%z" date)))
+    (concat
+     (format-time-string "%Y-%m-%dT%H:%M:%S" date)
+     (replace-regexp-in-string (rx (group (? (any "+-")) digit digit)
+                                   (group digit digit))
+                               "\\1:\\2"
+                               tz))))
 
 (defun kubernetes--read-time-value (&rest _)
   (let (result)
