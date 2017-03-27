@@ -10,17 +10,18 @@
 
 (require 'evil)
 
+(autoload 'kubernetes-mode-map "kubernetes")
 (autoload 'kubernetes-display-pods-mode-map "kubernetes")
-(autoload 'kubernetes-display-pod-mode-map "kubernetes")
-(autoload 'kubernetes-display-config-mode-map "kubernetes")
 (autoload 'kubernetes-logs-mode-map "kubernetes")
 (autoload 'kubernetes-log-line-mode-map "kubernetes")
 
-(evil-define-key 'normal kubernetes-display-pods-mode-map
+(evil-define-key 'normal kubernetes-mode-map
   (kbd "RET") #'kubernetes-navigate
-  (kbd "g") #'kubernetes-display-pods-refresh
   (kbd "q") #'quit-window
-  (kbd "M-w") #'kubernetes-copy-thing-at-point
+  (kbd "M-w") #'kubernetes-copy-thing-at-point)
+
+(evil-define-key 'normal kubernetes-display-pods-mode-map
+  (kbd "g") #'kubernetes-display-pods-refresh
   (kbd "h") #'describe-mode
   (kbd "d") #'kubernetes-describe-pod
   (kbd "D") #'kubernetes-mark-for-delete
@@ -29,26 +30,14 @@
   (kbd "x") #'kubernetes-execute-marks
   (kbd "l") #'kubernetes-logs)
 
-(evil-define-key 'normal kubernetes-display-pod-mode-map
-  (kbd "RET") #'kubernetes-navigate
-  (kbd "M-w") #'kubernetes-copy-thing-at-point
-  (kbd "q") #'quit-window)
-
-(evil-define-key 'normal kubernetes-display-config-mode-map
-  (kbd "RET") #'kubernetes-navigate
-  (kbd "M-w") #'kubernetes-copy-thing-at-point
-  (kbd "q") #'quit-window)
-
 (evil-define-key 'normal kubernetes-logs-mode-map
   (kbd "n") #'kubernetes-logs-forward-line
   (kbd "p") #'kubernetes-logs-previous-line
-  (kbd "RET") #'kubernetes-logs-inspect-line
-  (kbd "q") #'quit-window)
+  (kbd "RET") #'kubernetes-logs-inspect-line)
 
 (evil-define-key 'normal kubernetes-log-line-mode-map
   (kbd "n") #'kubernetes-logs-forward-line
-  (kbd "p") #'kubernetes-logs-previous-line
-  (kbd "q") #'quit-window)
+  (kbd "p") #'kubernetes-logs-previous-line)
 
 (provide 'kubernetes-evil)
 

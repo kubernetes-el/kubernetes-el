@@ -322,6 +322,21 @@ what to copy."
         (concat (propertize "---\n" 'face 'kubernetes-dimmed) body)
       body)))
 
+(defvar kubernetes-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "q") #'quit-window)
+    (define-key keymap (kbd "RET") #'kubernetes-navigate)
+    (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
+    keymap)
+  "Keymap for `kubernetes-mode'.  This is the base keymap for all derived modes.")
+
+(define-derived-mode kubernetes-mode special-mode "Kubernetes"
+  "Base mode for Kubernetes modes.
+
+\\{kubernetes-mode-map}"
+  :group 'kubernetes
+  (read-only-mode +1))
+
 
 ;;; Displaying config
 
@@ -342,20 +357,11 @@ what to copy."
     (goto-char (point-min))
     (select-window (display-buffer (current-buffer)))))
 
-(defvar kubernetes-display-config-mode-map
-  (let ((keymap (make-sparse-keymap)))
-    (define-key keymap (kbd "q") #'quit-window)
-    (define-key keymap (kbd "RET") #'kubernetes-navigate)
-    (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
-    keymap)
-  "Keymap for `kubernetes-display-config-mode'.")
-
-(define-derived-mode kubernetes-display-config-mode special-mode "Kubernetes Config"
+(define-derived-mode kubernetes-display-config-mode kubernetes-mode "Kubernetes Config"
   "Mode for inspecting a Kubernetes config.
 
 \\{kubernetes-display-config-mode-map}"
-  :group 'kubernetes
-  (read-only-mode +1))
+  :group 'kubernetes)
 
 
 ;;; Displaying a specific pod
@@ -385,20 +391,11 @@ what to copy."
         (insert (kubernetes--json-to-yaml pod))))
     buf))
 
-(defvar kubernetes-display-pod-mode-map
-  (let ((keymap (make-sparse-keymap)))
-    (define-key keymap (kbd "q") #'quit-window)
-    (define-key keymap (kbd "RET") #'kubernetes-navigate)
-    (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
-    keymap)
-  "Keymap for `kubernetes-display-pod-mode'.")
-
-(define-derived-mode kubernetes-display-pod-mode special-mode "Kubernetes Pod"
+(define-derived-mode kubernetes-display-pod-mode kubernetes-mode "Kubernetes Pod"
   "Mode for inspecting a Kubernetes pod.
 
 \\{kubernetes-display-pod-mode-map}"
-  :group 'kubernetes
-  (read-only-mode +1))
+  :group 'kubernetes)
 
 
 ;;;###autoload
@@ -669,10 +666,7 @@ what to copy."
 (defvar kubernetes-display-pods-mode-map
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "g") #'kubernetes-display-pods-refresh)
-    (define-key keymap (kbd "q") #'quit-window)
-    (define-key keymap (kbd "RET") #'kubernetes-navigate)
     (define-key keymap (kbd "d") #'kubernetes-describe-pod)
-    (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
     (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
     (define-key keymap (kbd "u") #'kubernetes-unmark)
     (define-key keymap (kbd "U") #'kubernetes-unmark-all)
@@ -682,7 +676,7 @@ what to copy."
     keymap)
   "Keymap for `kubernetes-display-pods-mode'.")
 
-(define-derived-mode kubernetes-display-pods-mode special-mode "Kubernetes Pods"
+(define-derived-mode kubernetes-display-pods-mode kubernetes-mode "Kubernetes Pods"
   "Mode for working with Kubernetes pods.
 
 \\<kubernetes-display-pods-mode-map>\
@@ -809,7 +803,6 @@ Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "n") #'kubernetes-logs-forward-line)
     (define-key keymap (kbd "p") #'kubernetes-logs-previous-line)
-    (define-key keymap (kbd "q") #'quit-window)
     keymap)
   "Keymap for `kubernetes-log-line-mode'.")
 
