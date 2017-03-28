@@ -373,17 +373,18 @@ what to copy."
 (defun kubernetes-display-pod-refresh (pod)
   (let ((buf (get-buffer-create kubernetes-pod-buffer-name)))
     (with-current-buffer buf
-      (kubernetes-display-pod-mode)
+      (kubernetes-display-thing-mode)
       (let ((inhibit-read-only t))
         (erase-buffer)
         (insert (kubernetes--json-to-yaml pod))))
     buf))
 
-(define-derived-mode kubernetes-display-pod-mode kubernetes-mode "Kubernetes Pod"
-  "Mode for inspecting a Kubernetes pod.
+(define-derived-mode kubernetes-display-thing-mode kubernetes-mode "Kubernetes Object"
+  "Mode for inspecting a Kubernetes object.
 
-\\{kubernetes-display-pod-mode-map}"
-  :group 'kubernetes)
+\\{kubernetes-display-thing-mode-map}"
+  :group 'kubernetes
+  (read-only-mode))
 
 
 ;;;###autoload
@@ -684,7 +685,7 @@ what to copy."
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "TAB") #'magit-section-toggle)
     (define-key keymap (kbd "g") #'kubernetes-display-pods-refresh)
-    (define-key keymap (kbd "d") #'kubernetes-describe-pod)
+    (define-key keymap (kbd "d") #'kubernetes-describe)
     (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
     (define-key keymap (kbd "u") #'kubernetes-unmark)
     (define-key keymap (kbd "U") #'kubernetes-unmark-all)
@@ -886,7 +887,6 @@ This variable is reset after use by the logging functions.")
 
 (magit-define-popup kubernetes-logs-popup
   "Popup console for logging commands for POD."
-  :variable 'kubernetes-logs-arguments
   :group 'kubernetes
 
   :options
@@ -897,7 +897,12 @@ This variable is reset after use by the logging functions.")
 
   :actions
   '((?l "Logs" kubernetes-logs-fetch-all)
-    (?f "Logs (stream and follow)" kubernetes-logs-follow))
+    (?f "Logs (stream and follow)" kubernetes-logs-follow)
+
+    (?s "Set defaults"  magit-log-set-default-arguments) nil
+    (?w "Save defaults" magit-log-save-default-arguments))
+
+  :max-action-columns 2
 
   :default-action 'kubernetes-logs)
 
@@ -952,24 +957,71 @@ Should be invoked via `kubernetes-logs-popup'."
       (display-buffer (current-buffer)))))
 
 
-;; Describing pods
+;; Describing things
+
+(defvar kubernetes--thing-to-describe nil
+  "Identifies the thing to log for `kubernetes-describe-dwim'.
+
+When set, it is the value of the 'kubernetes-nav' property at point.
+
+Assigned before opening the describe popup, when the target is
+likely to be at point.  If `kubernetes-describe-dwim' is selected
+in the popup, this is the thing that will be inspected.
+
+This variable is reset after use by the logging functions.")
+
+(defun kubernetes--describable-thing-at-pt ()
+  (save-excursion
+    (back-to-indentation)
+    (get-text-property (point) 'kubernetes-nav)))
+
+;;;###autoload
+(defun kubernetes-describe (&optional thing)
+  "Popup console for describing things.
+
+THING is the thing to be used if the user selects
+`kubernetes-describe-dwim'"
+  (interactive (list (kubernetes--describable-thing-at-pt)))
+  (setq kubernetes--thing-to-describe thing)
+  (call-interactively #'kubernetes-describe-popup))
+
+(magit-define-popup kubernetes-describe-popup
+  "Popup console for describe commands."
+  :group 'kubernetes
+
+  :actions
+  '((?d "dwim" kubernetes-describe-dwim)
+    (?p "pod" kubernetes-describe-pod))
+
+  :default-action 'kubernetes-logs)
+
+;;;###autoload
+(defun kubernetes-describe-dwim (thing)
+  "Describe the thing at point.
+
+THING must be a valid target for `kubectl describe'."
+  (interactive (list (or kubernetes--thing-to-describe (kubernetes--describable-thing-at-pt))))
+  (pcase thing
+    (`(:pod ,pod)
+     (kubernetes-describe-pod pod))
+    (_
+     (user-error "Nothing at point to describe")))
+  (setq kubernetes--thing-to-describe nil))
 
 ;;;###autoload
 (defun kubernetes-describe-pod (pod)
-  "Popup buffer for describing POD."
+  "Display a buffer for describing POD."
   (interactive (list (or (kubernetes--maybe-pod-at-point) (kubernetes--read-pod))))
-  (kubernetes-display-buffer (kubernetes--initialize-describe-pod-buffer pod)))
-
-(defun kubernetes--initialize-describe-pod-buffer (pod)
   (-let ((buf (get-buffer-create kubernetes-pod-buffer-name))
          ((&alist 'metadata (&alist 'name pod-name)) pod)
          (marker (make-marker)))
     (with-current-buffer buf
-      (kubernetes-display-pod-mode)
+      (kubernetes-display-thing-mode)
       (let ((inhibit-read-only t))
         (erase-buffer)
         (set-marker marker (point))
         (insert (propertize "Loading..." 'face 'kubernetes-dimmed))))
+    (select-window (display-buffer buf))
     (kubernetes-kubectl-describe-pod pod-name
                            (lambda (s)
                              (with-current-buffer (marker-buffer marker)
@@ -982,7 +1034,6 @@ Should be invoked via `kubernetes-logs-popup'."
                                  (untabify (point-min) (point-max))
                                  (goto-char (point-min))))))
     buf))
-
 
 (provide 'kubernetes)
 

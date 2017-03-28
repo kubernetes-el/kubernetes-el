@@ -26,7 +26,7 @@
   (kbd "TAB") #'magit-section-toggle
   (kbd "g") #'kubernetes-display-pods-refresh
   (kbd "h") #'describe-mode
-  (kbd "d") #'kubernetes-describe-pod
+  (kbd "d") #'kubernetes-describe
   (kbd "D") #'kubernetes-mark-for-delete
   (kbd "u") #'kubernetes-unmark
   (kbd "U") #'kubernetes-unmark-all
