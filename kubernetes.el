@@ -649,11 +649,22 @@ what to copy."
       (setq kubernetes--refresh-timer (run-with-timer kubernetes-refresh-frequency kubernetes-refresh-frequency #'kubernetes-display-pods-refresh))
       (add-hook 'kill-buffer-hook
                 (lambda ()
+                  (kubernetes--kill-polling-processes)
                   (when-let (timer kubernetes--refresh-timer)
                     (setq kubernetes--refresh-timer nil)
                     (cancel-timer timer)))
                 nil t))
     buf))
+
+(defun kubernetes--kill-polling-processes ()
+  (dolist (proc (list kubernetes--get-pods-process
+                      kubernetes--view-config-process))
+    (when (and proc (process-live-p proc))
+      (set-process-sentinel proc nil)
+      (set-process-buffer proc nil)
+      (kill-process proc))
+    (setq kubernetes--get-pods-process nil)
+    (setq kubernetes--view-config-process nil)))
 
 ;;;###autoload
 (defun kubernetes-display-pods-refresh ()
