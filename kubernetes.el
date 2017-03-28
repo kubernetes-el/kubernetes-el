@@ -100,11 +100,6 @@ The function must take a single argument, which is the buffer to display."
   "Face for progress indicators."
   :group 'kubernetes)
 
-(defface kubernetes-dimmed
-  '((t :inherit shadow))
-  "Face for things that shouldn't stand out."
-  :group 'kubernetes)
-
 (defface kubernetes-pending-deletion
   '((t :inherit shadow :strike-through t))
   "Face for pods awaiting deletion."
@@ -307,7 +302,7 @@ what to copy."
            (t
             (format "%s%s" indentation json)))))
     (if (= 0 level)
-        (concat (propertize "---\n" 'face 'kubernetes-dimmed) body)
+        (concat (propertize "---\n" 'face 'magit-dimmed) body)
       body)))
 
 (defvar kubernetes-mode-map
@@ -529,11 +524,11 @@ what to copy."
           (str
            (concat (format "%-45s " (kubernetes--ellipsize name 45))
                    (let ((s (format "%-10s " (kubernetes--ellipsize state 10))))
-                     (if (equal state "Running") (propertize s 'face 'kubernetes-dimmed) s))
+                     (if (equal state "Running") (propertize s 'face 'magit-dimmed) s))
                    (let ((s (format "%8s " restarts)))
                      (cond
                       ((equal 0 restarts)
-                       (propertize s 'face 'kubernetes-dimmed))
+                       (propertize s 'face 'magit-dimmed))
                       ((<= kubernetes-pod-restart-warning-threshold restarts)
                        (propertize s 'face 'warning))
                       (t
@@ -541,7 +536,7 @@ what to copy."
                    (let* ((start (apply #'encode-time (kubernetes--parse-utc-timestamp start-time)))
                           (now (current-time)))
                      (propertize (format "%8s" (kubernetes--time-diff-string start now))
-                                 'face 'kubernetes-dimmed))))
+                                 'face 'magit-dimmed))))
           (str (cond
                 ((member (downcase state) '("running" "containercreating" "terminated"))
                  str)
@@ -1023,7 +1018,7 @@ THING must be a valid target for `kubectl describe'."
       (let ((inhibit-read-only t))
         (erase-buffer)
         (set-marker marker (point))
-        (insert (propertize "Loading..." 'face 'kubernetes-dimmed))))
+        (insert (propertize "Loading..." 'face 'magit-dimmed))))
     (let* ((populate-buffer (lambda (s)
                               (with-current-buffer (marker-buffer marker)
                                 (setq-local tab-width 8)
