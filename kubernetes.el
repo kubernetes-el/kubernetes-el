@@ -469,6 +469,22 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
 
 (defvar-local kubernetes--pods-pending-deletion nil)
 
+(defun kubernetes--format-pod-details (pod)
+  (with-temp-buffer
+    (-let [(&alist 'metadata (&alist 'namespace ns)
+                   'status (&alist 'containerStatuses [(&alist 'image image 'name name)]
+                                   'hostIP host-ip
+                                   'podIP pod-ip
+                                   'startTime start-time))
+           pod]
+      (insert (format "    %-12s%s\n" "Name:" name))
+      (insert (format "    %-12s%s\n" "Namespace:" ns))
+      (insert (format "    %-12s%s\n" "Image:" image))
+      (insert (format "    %-12s%s\n" "Host IP:" host-ip))
+      (insert (format "    %-12s%s\n" "Pod IP:" pod-ip))
+      (insert (format "    %-12s%s\n" "Start:" start-time))
+      (propertize (buffer-string) 'kubernetes-nav (list :pod pod) 'kubernetes-copy name))))
+
 (defun kubernetes--format-pod-line (pod)
   (-let* (((&alist 'metadata (&alist 'name name)
                    'status (&alist 'containerStatuses [(&alist 'restartCount restarts
@@ -529,19 +545,17 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
      (pods
       (magit-insert-section (pods-container)
         (magit-insert-heading (concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)\n" (length pods))))
-
-        (magit-insert-section (pods-list)
-          (insert column-heading)
-          (dolist (pod (append pods nil))
-            (magit-insert-section ((eval (concat "kubernetes-section-" (kubernetes--pod-name pod))))
-              (insert (kubernetes--format-pod-line pod))
-              (newline))))))
+        (insert column-heading)
+        (dolist (pod (append pods nil))
+          (magit-insert-section ((eval (intern (kubernetes--pod-name pod))) nil t)
+            (magit-insert-heading (concat (kubernetes--format-pod-line pod) "\n"))
+            (insert (kubernetes--format-pod-details pod))))))
      (t
       (magit-insert-section (pods-container)
         (magit-insert-heading "Pods \n")
         (magit-insert-section (pods-list)
           (insert column-heading)
-          (insert (propertize "  Fetching... " 'face 'kubernetes-progress-indicator))))))))
+          (insert (propertize "  Fetching...\n" 'face 'kubernetes-progress-indicator))))))))
 
 
 ;; Root rendering routines.
