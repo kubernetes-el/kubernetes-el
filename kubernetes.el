@@ -571,20 +571,21 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
     buf))
 
 (defun kubernetes--redraw-main-buffer ()
-  "Redraws the main buffer using the current state."
-  (with-current-buffer (get-buffer kubernetes-display-pods-buffer-name)
-    (let ((pt (point))
-          (inhibit-read-only t)
-          (inhibit-redisplay t))
-      (erase-buffer)
-      (magit-insert-section (root)
-        (kubernetes--draw-context-section kubernetes--view-context-response)
-        (kubernetes--draw-pods-section kubernetes--get-pods-response))
+  "Redraws the main buffer BUF using the current state."
+  (when-let (buf (get-buffer kubernetes-display-pods-buffer-name))
+    (with-current-buffer buf
+      (let ((pos (point))
+            (inhibit-read-only t)
+            (inhibit-redisplay t))
+        (erase-buffer)
+        (magit-insert-section (root)
+          (kubernetes--draw-context-section kubernetes--view-context-response)
+          (kubernetes--draw-pods-section kubernetes--get-pods-response))
 
-      (goto-char pt))
+        (goto-char pos))
 
-    ;; Force the section at point to highlight.
-    (magit-section-update-highlight)))
+      ;; Force the section at point to highlight.
+      (magit-section-update-highlight))))
 
 (defun kubernetes--kill-process-quietly (proc)
   (when (and proc (process-live-p proc))
@@ -691,24 +692,26 @@ what to copy."
 Requests the data needed to build the buffer, and updates the UI
 state as responses arrive."
   (interactive)
+  ;; Make sure not to trigger a refresh if the buffer closes.
+  (when (get-buffer kubernetes-display-pods-buffer-name)
 
-  (unless kubernetes--view-context-process
-    (kubernetes--set-view-context-process
-     (kubernetes-config-view
-      (lambda (config)
-        (setq kubernetes--view-context-response config)
-        (kubernetes--redraw-main-buffer))
-      (lambda ()
-        (kubernetes--release-view-context-process)))))
+    (unless kubernetes--view-context-process
+      (kubernetes--set-view-context-process
+       (kubernetes-config-view
+        (lambda (config)
+          (setq kubernetes--view-context-response config)
+          (kubernetes--redraw-main-buffer))
+        (lambda ()
+          (kubernetes--release-view-context-process)))))
 
-  (unless kubernetes--get-pods-process
-    (kubernetes--set-get-pods-process
-     (kubernetes-get-pods
-      (lambda (response)
-        (setq kubernetes--get-pods-response response)
-        (kubernetes--redraw-main-buffer))
-      (lambda ()
-        (kubernetes--release-get-pods-process))))))
+    (unless kubernetes--get-pods-process
+      (kubernetes--set-get-pods-process
+       (kubernetes-get-pods
+        (lambda (response)
+          (setq kubernetes--get-pods-response response)
+          (kubernetes--redraw-main-buffer))
+        (lambda ()
+          (kubernetes--release-get-pods-process)))))))
 
 
 ;; Logs
