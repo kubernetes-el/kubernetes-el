@@ -203,7 +203,6 @@ ERROR-CB is called if an error occurred."
                (let ((s (with-current-buffer buf (buffer-string))))
                  (funcall cb s)))))
 
-
 (defun kubernetes--await-on-async (fn)
   "Turn an async function requiring a callback into a synchronous one.
 
@@ -225,49 +224,72 @@ to a function of the type:
     result))
 
 
-;; View management
+;; Main state
 
-(defun kubernetes-display-buffer-fullframe (buffer)
-  (let ((display-fn
-         (lambda (buffer alist)
-           (when-let (window (or (display-buffer-reuse-window buffer alist)
-                                 (display-buffer-same-window buffer alist)
-                                 (display-buffer-pop-up-window buffer alist)
-                                 (display-buffer-use-some-window buffer alist)))
-             (delete-other-windows window)
-             window))))
-    (display-buffer buffer (list display-fn))))
+(defvar kubernetes--get-pods-response nil
+  "State representing the get pods response from the API.
 
-(defun kubernetes-display-buffer (buffer)
-  (let ((window (funcall kubernetes-display-buffer-function buffer)))
-    (when kubernetes-display-buffer-select
-      (select-frame-set-input-focus
-       (window-frame (select-window window))))))
+Used to draw the pods list of the main buffer.")
 
-(defun kubernetes-navigate (point)
-  "Perform a context-sensitive navigation action.
+(defvar kubernetes--view-context-response nil
+  "State representing the view context response from the API.
 
-Inspecs the `kubernetes-nav' text property at POINT to determine
-how to navigate.  If that property is not found, no action is
-taken."
-  (interactive "d")
-  (pcase (get-text-property point 'kubernetes-nav)
-    (`(:config ,config)
-     (kubernetes-display-config config))
+Used to draw the context section of the main buffer.")
+
+(defun kubernetes--clear-main-state ()
+  (setq kubernetes--get-pods-response nil)
+  (setq kubernetes--view-context-response nil))
+
+;; Utilities
+
+(defun kubernetes--pod-name (pod)
+  (-let [(&alist 'metadata (&alist 'name name)) pod]
+    name))
+
+(defun kubernetes--read-pod ()
+  (-let* (((&alist 'items pods)
+           (or kubernetes--get-pods-response
+               (progn
+                 (message "Getting pods...")
+                 (kubernetes--await-on-async #'kubernetes-get-pods))))
+          (pods (append pods nil))
+          (names (-map #'kubernetes--pod-name pods))
+          (choice (completing-read "Pod: " names nil t)))
+    (--find (equal choice (kubernetes--pod-name it)) pods)))
+
+(defun kubernetes--read-iso-datetime (&rest _)
+  (let* ((date (org-read-date nil t))
+         (tz (format-time-string "%z" date)))
+    (concat
+     (format-time-string "%Y-%m-%dT%H:%M:%S" date)
+     (replace-regexp-in-string (rx (group (? (any "+-")) digit digit)
+                                   (group digit digit))
+                               "\\1:\\2"
+                               tz))))
+
+(defun kubernetes--read-time-value (&rest _)
+  "Read a relative time value in the style accepted by kubectl.  E.g. 20s, 3h, 5m."
+  (let (result)
+    (while (null result)
+      (let ((input (read-string "Time value (e.g. 20s): ")))
+        (if (string-match-p (rx bol (* space) (+ digit) (* space) (any "smh") (* space) eol)
+                            input)
+            (setq result input)
+          (message "Invalid time value")
+          (sit-for 1))))
+    result))
+
+(defun kubernetes--maybe-pod-at-point ()
+  (pcase (get-text-property (point) 'kubernetes-nav)
     (`(:pod ,pod)
-     (kubernetes-display-pod pod))))
-
-(defun kubernetes-copy-thing-at-point (point)
-  "Perform a context-sensitive copy action.
-
-Inspecs the `kubernetes-copy' text property at POINT to determine
-what to copy."
-  (interactive "d")
-  (when-let (s (get-text-property point 'kubernetes-copy))
-    (kill-new s)
-    (message "Copied: %s" s)))
+     pod)))
 
 (defun kubernetes--json-to-yaml (json &optional level)
+  "Process some parsed JSON and pretty-print as YAML.
+
+JSON is a parsed JSON value.
+
+LEVEL indentation level to use.  It defaults to 0 if not supplied."
   (let* ((level (or level 0))
          (space (string-to-char " "))
          (indentation (make-string (* level kubernetes-yaml-indentation-width) space))
@@ -305,39 +327,41 @@ what to copy."
         (concat (propertize "---\n" 'face 'magit-dimmed) body)
       body)))
 
-(defvar kubernetes-mode-map
-  (let ((keymap (make-sparse-keymap)))
-    (define-key keymap (kbd "q") #'quit-window)
-    (define-key keymap (kbd "RET") #'kubernetes-navigate)
-    (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
-    keymap)
-  "Keymap for `kubernetes-mode'.  This is the base keymap for all derived modes.")
+(defun kubernetes--ellipsize (s threshold)
+  (if (> (length s) threshold)
+      (concat (substring s 0 (1- threshold)) "…")
+    s))
 
-(define-derived-mode kubernetes-mode special-mode "Kubernetes"
-  "Base mode for Kubernetes modes.
+(defun kubernetes--parse-utc-timestamp (timestamp)
+  "Parse TIMESTAMP string from the API into the representation used by Emacs."
+  (let ((parsed (parse-time-string (replace-regexp-in-string "Z" "" (replace-regexp-in-string "T" " " timestamp)))))
+    (setf (nth 8 parsed) 0)
+    parsed))
 
-\\{kubernetes-mode-map}"
-  :group 'kubernetes
-  (read-only-mode)
-  (buffer-disable-undo)
-  (setq truncate-lines t)
-  (setq-local line-move-visual t)
-  (setq show-trailing-whitespace nil)
-  (setq list-buffers-directory (abbreviate-file-name default-directory))
-  (hack-dir-local-variables-non-file-buffer)
-  (make-local-variable 'text-property-default-nonsticky)
-  (push (cons 'keymap t) text-property-default-nonsticky)
-  (add-hook 'post-command-hook #'magit-section-update-highlight t t)
-  (setq-local redisplay-highlight-region-function 'magit-highlight-region)
-  (setq-local redisplay-unhighlight-region-function 'magit-unhighlight-region)
-  (when (bound-and-true-p global-linum-mode)
-    (linum-mode -1))
-  (when (and (fboundp 'nlinum-mode)
-             (bound-and-true-p global-nlinum-mode))
-    (nlinum-mode -1)))
+(defun kubernetes--time-diff-string (start now)
+  "Find the interval between START and NOW, and return a string of the coarsest unit."
+  (let ((diff (time-to-seconds (time-subtract now start))))
+    (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff) ","))))
 
 
-;;; Displaying config
+;; View management
+
+(defun kubernetes-display-buffer-fullframe (buffer)
+  (let ((display-fn
+         (lambda (buffer alist)
+           (when-let (window (or (display-buffer-reuse-window buffer alist)
+                                 (display-buffer-same-window buffer alist)
+                                 (display-buffer-pop-up-window buffer alist)
+                                 (display-buffer-use-some-window buffer alist)))
+             (delete-other-windows window)
+             window))))
+    (display-buffer buffer (list display-fn))))
+
+(defun kubernetes-display-buffer (buffer)
+  (let ((window (funcall kubernetes-display-buffer-function buffer)))
+    (when kubernetes-display-buffer-select
+      (select-frame-set-input-focus
+       (window-frame (select-window window))))))
 
 (defun kubernetes-display-config-refresh (config)
   (let ((buf (get-buffer-create kubernetes-display-config-buffer-name)))
@@ -356,33 +380,6 @@ what to copy."
     (goto-char (point-min))
     (select-window (display-buffer (current-buffer)))))
 
-(define-derived-mode kubernetes-display-config-mode kubernetes-mode "Kubernetes Config"
-  "Mode for inspecting a Kubernetes config.
-
-\\{kubernetes-display-config-mode-map}"
-  :group 'kubernetes)
-
-
-;;; Displaying a specific pod
-
-(defvar kubernetes--pods-response nil
-  "Cache of last pods response received over the API.")
-
-(defun kubernetes--pod-name (pod)
-  (-let [(&alist 'metadata (&alist 'name name)) pod]
-    name))
-
-(defun kubernetes--read-pod ()
-  (-let* (((&alist 'items pods)
-           (or kubernetes--pods-response
-               (progn
-                 (message "Getting pods...")
-                 (kubernetes--await-on-async #'kubernetes-get-pods))))
-          (pods (append pods nil))
-          (names (-map #'kubernetes--pod-name pods))
-          (choice (completing-read "Pod: " names nil t)))
-    (--find (equal choice (kubernetes--pod-name it)) pods)))
-
 (defun kubernetes-display-pod-refresh (pod)
   (let ((buf (get-buffer-create kubernetes-pod-buffer-name)))
     (with-current-buffer buf
@@ -391,13 +388,6 @@ what to copy."
         (erase-buffer)
         (insert (kubernetes--json-to-yaml pod))))
     buf))
-
-(define-derived-mode kubernetes-display-thing-mode kubernetes-mode "Kubernetes Object"
-  "Mode for inspecting a Kubernetes object.
-
-\\{kubernetes-display-thing-mode-map}"
-  :group 'kubernetes)
-
 
 ;;;###autoload
 (defun kubernetes-display-pod (pod)
@@ -408,30 +398,20 @@ what to copy."
     (select-window (display-buffer (current-buffer)))))
 
 
-;;; Displaying all pods
-
-;; Marker variables used track buffer locations to update.
-(defvar kubernetes--config-start-marker nil)
-(defvar kubernetes--config-end-marker nil)
-(defvar kubernetes--pods-count-marker nil)
-(defvar kubernetes--pods-start-marker nil)
-(defvar kubernetes--pods-end-marker nil)
-
 ;; Context section rendering.
 
-(defvar kubernetes--view-config-process nil
+(defvar kubernetes--view-context-process nil
   "Single process used to prevent concurrent config refreshes.")
 
-(defun kubernetes--set-view-config-process (proc)
-  (kubernetes--release-view-config-process)
-  (setq kubernetes--view-config-process proc))
+(defun kubernetes--set-view-context-process (proc)
+  (kubernetes--release-view-context-process)
+  (setq kubernetes--view-context-process proc))
 
-(defun kubernetes--release-view-config-process ()
-  (when-let (proc kubernetes--view-config-process)
+(defun kubernetes--release-view-context-process ()
+  (when-let (proc kubernetes--view-context-process)
     (when (process-live-p proc)
       (kill-process proc)))
-  (setq kubernetes--view-config-process nil))
-
+  (setq kubernetes--view-context-process nil))
 
 (defun kubernetes--context-section-lines (config)
   (with-temp-buffer
@@ -455,42 +435,15 @@ what to copy."
       (--map (propertize it 'kubernetes-nav (list :config config))
              (-non-nil (-flatten lines))))))
 
-(defun kubernetes--redraw-context-section (start-marker end-marker config)
-  (when (and (buffer-live-p (marker-buffer start-marker))
-             (buffer-live-p (marker-buffer end-marker)))
-    (with-current-buffer (marker-buffer start-marker)
-      (let ((pos (point)))
-        (save-excursion
-          (goto-char (marker-position start-marker))
-          (let ((inhibit-read-only t))
-            (delete-region (point) (1- (marker-position end-marker)))
-            (magit-insert-section (kubernetes-context)
-              (-let [(context . lines) (kubernetes--context-section-lines config)]
-                (magit-insert-heading (concat context "\n"))
-                (dolist (line lines)
-                  (magit-insert-section (kubernetes-context-line)
-                    (insert line)
-                    (newline)))))))
-        (goto-char pos)))))
-
-(defun kubernetes--initialize-context-section (buf)
-  (with-current-buffer buf
-    (set-marker kubernetes--config-start-marker (point))
-    (kubernetes--set-view-config-process
-     (kubernetes-config-view (lambda (config)
-                     (kubernetes--redraw-context-section kubernetes--config-start-marker kubernetes--config-end-marker config))
-                   (lambda ()
-                     (kubernetes--release-view-config-process))))
-    (insert " ")
-    (set-marker kubernetes--config-end-marker (point))))
-
-(defun kubernetes--refresh-context-section ()
-  (unless kubernetes--view-config-process
-    (kubernetes--set-view-config-process
-     (kubernetes-config-view (lambda (config)
-                     (kubernetes--redraw-context-section kubernetes--config-start-marker kubernetes--config-end-marker config))
-                   (lambda ()
-                     (kubernetes--release-view-config-process))))))
+(defun kubernetes--draw-context-section (config)
+  (magit-insert-section (context-container)
+    (magit-insert-section (context)
+      (if config
+          (-let [(context . lines) (kubernetes--context-section-lines config)]
+            (magit-insert-heading (concat context "\n"))
+            (insert (string-join lines "\n")))
+        (insert (concat (format "%-12s" "Context: ") (propertize "<none>" 'face 'kubernetes-context-name))))
+      (newline 2))))
 
 
 ;; Pod section rendering.
@@ -508,26 +461,12 @@ what to copy."
       (kill-process proc)))
   (setq kubernetes--get-pods-process nil))
 
-
 (defvar kubernetes--refresh-timer nil
   "Background timer used to poll for updates.")
 
 (defvar-local kubernetes--marked-pod-names nil)
+
 (defvar-local kubernetes--pods-pending-deletion nil)
-
-(defun kubernetes--ellipsize (s threshold)
-  (if (> (length s) threshold)
-      (concat (substring s 0 (1- threshold)) "…")
-    s))
-
-(defun kubernetes--parse-utc-timestamp (s)
-  (let ((parsed (parse-time-string (replace-regexp-in-string "Z" "" (replace-regexp-in-string "T" " " s)))))
-    (setf (nth 8 parsed) 0)
-    parsed))
-
-(defun kubernetes--time-diff-string (start now)
-  (let ((diff (time-to-seconds (time-subtract now start))))
-    (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff) ","))))
 
 (defun kubernetes--format-pod-line (pod)
   (-let* (((&alist 'metadata (&alist 'name name)
@@ -573,101 +512,79 @@ what to copy."
                 'kubernetes-nav (list :pod pod)
                 'kubernetes-copy name)))
 
-(defun kubernetes--update-pod-state-vars (pods)
+(defun kubernetes--update-pod-marks-state (pods)
   (let ((pod-names (-map #'kubernetes--pod-name pods)))
     (setq kubernetes--pods-pending-deletion
           (-intersection kubernetes--pods-pending-deletion pod-names))
     (setq kubernetes--marked-pod-names
           (-intersection kubernetes--marked-pod-names pod-names))))
 
-(defun kubernetes--format-pods-list-heading ()
-  (propertize (format "  %-45s %-10s %8s %8s\n" "Name" "Status" "Restarts" "Age") 'face 'magit-section-heading))
+(defun kubernetes--draw-pods-section (get-pods-response)
+  (-let (((&alist 'items pods) get-pods-response)
+         (column-heading (propertize (format "  %-45s %-10s %8s %8s\n" "Name" "Status" "Restarts" "Age")
+                                     'face 'magit-section-heading)))
+    (kubernetes--update-pod-marks-state pods)
+    (cond
+     (pods
+      (magit-insert-section (pods-container)
+        (magit-insert-heading (concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)\n" (length pods))))
 
-(defun kubernetes--redraw-pods-section (pods)
-  (when (and (buffer-live-p (marker-buffer kubernetes--pods-count-marker))
-             (buffer-live-p (marker-buffer kubernetes--pods-start-marker))
-             (buffer-live-p (marker-buffer kubernetes--pods-end-marker)))
-    (-let [(&alist 'items pods) pods]
-      (with-current-buffer (marker-buffer kubernetes--pods-count-marker)
-        (let ((pos (point))
-              (inhibit-read-only t))
-
-          ;; Update pod count.
-          (goto-char (marker-position kubernetes--pods-count-marker))
-          (delete-region (point) (line-end-position))
-          (insert (format "(%s)" (length pods)))
-
-          ;; Erase existing section.
-          (goto-char (marker-position kubernetes--pods-start-marker))
-          (delete-region (point) (1- (marker-position kubernetes--pods-end-marker)))
-
-          ;; Write new pods list.
-          (kubernetes--update-pod-state-vars pods)
-          (magit-insert-section (kubernetes-pods-list)
-            (insert (kubernetes--format-pods-list-heading))
-            (--each (append pods nil)
-              (magit-insert-section (kubernetes-pod-line)
-                (insert (kubernetes--format-pod-line it))
-                (newline))))
-          (set-marker kubernetes--pods-end-marker (point))
-
-          (goto-char pos))))))
-
-(defun kubernetes--initialize-pods-section (buf)
-  (with-current-buffer buf
-    (magit-insert-section (kubernetes-pods)
-      (magit-insert-heading "Pods \n")
-      (set-marker kubernetes--pods-count-marker (1- (point)))
-
-      (set-marker kubernetes--pods-start-marker (point))
-      (magit-insert-section (kubernetes-pods-list)
-        (insert (kubernetes--format-pods-list-heading))
-        (insert (propertize "  Fetching... " 'face 'kubernetes-progress-indicator)))
-      (set-marker kubernetes--pods-end-marker (point))
-
-      (kubernetes--set-get-pods-process
-       (kubernetes-get-pods
-        (lambda (response)
-          (setq kubernetes--pods-response response)
-          (kubernetes--redraw-pods-section response))
-        (lambda ()
-          (kubernetes--release-get-pods-process)))))))
-
-(defun kubernetes--refresh-pods-section ()
-  (unless kubernetes--get-pods-process
-    (kubernetes--set-get-pods-process
-     (kubernetes-get-pods
-      (lambda (response)
-        (setq kubernetes--pods-response response)
-        (kubernetes--redraw-pods-section response))
-      (lambda ()
-        (kubernetes--release-get-pods-process))))))
+        (magit-insert-section (pods-list)
+          (insert column-heading)
+          (dolist (pod (append pods nil))
+            (magit-insert-section ((eval (concat "kubernetes-section-" (kubernetes--pod-name pod))))
+              (insert (kubernetes--format-pod-line pod))
+              (newline))))))
+     (t
+      (magit-insert-section (pods-container)
+        (magit-insert-heading "Pods \n")
+        (magit-insert-section (pods-list)
+          (insert column-heading)
+          (insert (propertize "  Fetching... " 'face 'kubernetes-progress-indicator))))))))
 
 
 ;; Root rendering routines.
 
-(defun kubernetes-display-pods-initialize-buffer ()
+(defun kubernetes--display-pods-initialize-buffer ()
+  "Called the first time the pods buffer is opened to set up the buffer."
   (let ((buf (get-buffer-create kubernetes-display-pods-buffer-name)))
     (with-current-buffer buf
       (kubernetes-display-pods-mode)
-      (let ((inhibit-read-only t))
-        (erase-buffer)
-        (kubernetes--initialize-context-section buf)
-        (newline)
-        (kubernetes--initialize-pods-section buf))
 
+      ;; Render buffer.
+      (kubernetes--redraw-main-buffer)
       (goto-char (point-min))
 
       ;; Initialize refresh timer.
       (setq kubernetes--refresh-timer (run-with-timer kubernetes-refresh-frequency kubernetes-refresh-frequency #'kubernetes-display-pods-refresh))
+
       (add-hook 'kill-buffer-hook
                 (lambda ()
+                  (kubernetes--clear-main-state)
+
+                  ;; Kill the timer and any running processes.
                   (kubernetes--kill-polling-processes)
                   (when-let (timer kubernetes--refresh-timer)
                     (setq kubernetes--refresh-timer nil)
                     (cancel-timer timer)))
                 nil t))
     buf))
+
+(defun kubernetes--redraw-main-buffer ()
+  "Redraws the main buffer using the current state."
+  (with-current-buffer (get-buffer kubernetes-display-pods-buffer-name)
+    (let ((pt (point))
+          (inhibit-read-only t)
+          (inhibit-redisplay t))
+      (erase-buffer)
+      (magit-insert-section (root)
+        (kubernetes--draw-context-section kubernetes--view-context-response)
+        (kubernetes--draw-pods-section kubernetes--get-pods-response))
+
+      (goto-char pt))
+
+    ;; Force the section at point to highlight.
+    (magit-section-update-highlight)))
 
 (defun kubernetes--kill-process-quietly (proc)
   (when (and proc (process-live-p proc))
@@ -678,71 +595,12 @@ what to copy."
 
 (defun kubernetes--kill-polling-processes ()
   (mapc #'kubernetes--kill-process-quietly (list kubernetes--get-pods-process
-                                       kubernetes--view-config-process))
+                                       kubernetes--view-context-process))
   (setq kubernetes--get-pods-process nil)
-  (setq kubernetes--view-config-process nil))
+  (setq kubernetes--view-context-process nil))
 
-;;;###autoload
-(defun kubernetes-display-pods-refresh ()
-  "Refresh the Kubernetes pods buffer."
-  (interactive)
-  (if-let (buf (get-buffer kubernetes-display-pods-buffer-name))
-      (progn
-        (kubernetes--refresh-context-section)
-        (kubernetes--refresh-pods-section)
-        buf)
-    (error "Attempted to refresh kubernetes pods buffer, but it does not exist")))
 
-(defvar kubernetes-display-pods-mode-map
-  (let ((keymap (make-sparse-keymap)))
-    (define-key keymap (kbd "TAB") #'magit-section-toggle)
-    (define-key keymap (kbd "g") #'kubernetes-display-pods-refresh)
-    (define-key keymap (kbd "d") #'kubernetes-describe)
-    (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
-    (define-key keymap (kbd "u") #'kubernetes-unmark)
-    (define-key keymap (kbd "U") #'kubernetes-unmark-all)
-    (define-key keymap (kbd "x") #'kubernetes-execute-marks)
-    (define-key keymap (kbd "l") #'kubernetes-logs)
-    (define-key keymap (kbd "h") #'describe-mode)
-    keymap)
-  "Keymap for `kubernetes-display-pods-mode'.")
-
-(define-derived-mode kubernetes-display-pods-mode kubernetes-mode "Kubernetes Pods"
-  "Mode for working with Kubernetes pods.
-
-\\<kubernetes-display-pods-mode-map>\
-Type \\[kubernetes-mark-for-delete] to mark a pod for deletion, and \\[kubernetes-execute-marks] to execute.
-Type \\[kubernetes-unmark] to unmark the pod at point, or \\[kubernetes-unmark-all] to unmark all pods.
-
-Type \\[kubernetes-navigate] to inspect the object on the current line, and \\[kubernetes-describe-pod] to
-specifically describe a pod.
-
-Type \\[kubernetes-logs] when point is on a pod to view its logs.
-
-Type \\[kubernetes-copy-thing-at-point] to copy the pod name at point.
-
-Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
-
-\\{kubernetes-display-pods-mode-map}"
-  (setq kubernetes--config-start-marker (make-marker))
-  (setq kubernetes--config-end-marker (make-marker))
-  (setq kubernetes--pods-count-marker (make-marker))
-  (setq kubernetes--pods-start-marker (make-marker))
-  (setq kubernetes--pods-end-marker (make-marker))
-  :group 'kubernetes)
-
-;;;###autoload
-(defun kubernetes-display-pods ()
-  "Display a list of pods in the current Kubernetes context."
-  (interactive)
-  (let ((buf (if (get-buffer kubernetes-display-pods-buffer-name)
-                 (kubernetes-display-pods-refresh)
-               (kubernetes-display-pods-initialize-buffer))))
-    (kubernetes-display-buffer buf)
-    (message (substitute-command-keys
-              "\\<kubernetes-display-pods-mode-map>Type \\[describe-mode] for usage."))))
-
-;; Marked pod state management.
+;; Marking pods for deletion
 
 (defun kubernetes-mark-for-delete (point)
   "Mark the thing at POINT for deletion, then advance to the next line."
@@ -752,7 +610,7 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
      (let ((name (kubernetes--pod-name pod)))
        (unless (member name kubernetes--pods-pending-deletion)
          (add-to-list 'kubernetes--marked-pod-names name)
-         (kubernetes--redraw-pods-section kubernetes--pods-response))))
+         (kubernetes--redraw-main-buffer))))
     (_
      (user-error "Nothing here can be marked")))
   (goto-char point)
@@ -765,7 +623,7 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
     (`(:pod ,pod)
      (let ((name (kubernetes--pod-name pod)))
        (setq kubernetes--marked-pod-names (delete name kubernetes--marked-pod-names))
-       (kubernetes--redraw-pods-section kubernetes--pods-response))))
+       (kubernetes--redraw-main-buffer))))
   (goto-char point)
   (forward-line 1))
 
@@ -774,7 +632,7 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
   (interactive)
   (setq kubernetes--marked-pod-names nil)
   (let ((pt (point)))
-    (kubernetes--redraw-pods-section kubernetes--pods-response)
+    (kubernetes--redraw-main-buffer)
     (goto-char pt)))
 
 (defun kubernetes-execute-marks ()
@@ -802,38 +660,58 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
       (message "Cancelled."))))
 
 
+;;; Misc commands
+
+(defun kubernetes-navigate (point)
+  "Perform a context-sensitive navigation action.
+
+Inspecs the `kubernetes-nav' text property at POINT to determine
+how to navigate.  If that property is not found, no action is
+taken."
+  (interactive "d")
+  (pcase (get-text-property point 'kubernetes-nav)
+    (`(:config ,config)
+     (kubernetes-display-config config))
+    (`(:pod ,pod)
+     (kubernetes-display-pod pod))))
+
+(defun kubernetes-copy-thing-at-point (point)
+  "Perform a context-sensitive copy action.
+
+Inspecs the `kubernetes-copy' text property at POINT to determine
+what to copy."
+  (interactive "d")
+  (when-let (s (get-text-property point 'kubernetes-copy))
+    (kill-new s)
+    (message "Copied: %s" s)))
+
+(defun kubernetes-display-pods-refresh ()
+  "Trigger a manual refresh the Kubernetes pods buffer.
+
+Requests the data needed to build the buffer, and updates the UI
+state as responses arrive."
+  (interactive)
+
+  (unless kubernetes--view-context-process
+    (kubernetes--set-view-context-process
+     (kubernetes-config-view
+      (lambda (config)
+        (setq kubernetes--view-context-response config)
+        (kubernetes--redraw-main-buffer))
+      (lambda ()
+        (kubernetes--release-view-context-process)))))
+
+  (unless kubernetes--get-pods-process
+    (kubernetes--set-get-pods-process
+     (kubernetes-get-pods
+      (lambda (response)
+        (setq kubernetes--get-pods-response response)
+        (kubernetes--redraw-main-buffer))
+      (lambda ()
+        (kubernetes--release-get-pods-process))))))
+
+
 ;; Logs
-
-(defvar kubernetes-logs-mode-map
-  (let ((keymap (make-sparse-keymap)))
-    (define-key keymap (kbd "n") #'kubernetes-logs-forward-line)
-    (define-key keymap (kbd "p") #'kubernetes-logs-previous-line)
-    (define-key keymap (kbd "RET") #'kubernetes-logs-inspect-line)
-    keymap)
-  "Keymap for `kubernetes-logs-mode'.")
-
-(define-compilation-mode kubernetes-logs-mode "Kubernetes Logs"
-  "Mode for displaying and inspecting Kubernetes logs.
-
-\\<kubernetes-logs-mode-map>\
-Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
-
-\\{kubernetes-logs-mode-map}")
-
-(defvar kubernetes-log-line-mode-map
-  (let ((keymap (make-sparse-keymap)))
-    (define-key keymap (kbd "n") #'kubernetes-logs-forward-line)
-    (define-key keymap (kbd "p") #'kubernetes-logs-previous-line)
-    keymap)
-  "Keymap for `kubernetes-log-line-mode'.")
-
-(define-compilation-mode kubernetes-log-line-mode "Log Line"
-  "Mode for inspecting Kubernetes log lines.
-
-\\{kubernetes-log-line-mode-map}"
-  (read-only-mode)
-  (setq-local compilation-error-regexp-alist nil)
-  (setq-local compilation-error-regexp-alist-alist nil))
 
 (defun kubernetes--log-line-buffer-for-string (s)
   (let ((propertized (with-temp-buffer
@@ -878,7 +756,7 @@ Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
       (kubernetes-logs-inspect-line (point)))))
 
 
-;; Logs popup
+;; Popups
 
 (defvar kubernetes--pod-to-log nil
   "Identifies the pod to log after querying the user for flags.
@@ -889,7 +767,6 @@ will be logged.
 
 This variable is reset after use by the logging functions.")
 
-;;;###autoload
 (defun kubernetes-logs (pod)
   "Popup console for logging commands for POD."
   (interactive (list (or (kubernetes--maybe-pod-at-point) (kubernetes--read-pod))))
@@ -914,33 +791,6 @@ This variable is reset after use by the logging functions.")
 
   :default-action 'kubernetes-logs)
 
-(defun kubernetes--read-iso-datetime (&rest _)
-  (let* ((date (org-read-date nil t))
-         (tz (format-time-string "%z" date)))
-    (concat
-     (format-time-string "%Y-%m-%dT%H:%M:%S" date)
-     (replace-regexp-in-string (rx (group (? (any "+-")) digit digit)
-                                   (group digit digit))
-                               "\\1:\\2"
-                               tz))))
-
-(defun kubernetes--read-time-value (&rest _)
-  (let (result)
-    (while (null result)
-      (let ((input (read-string "Time value (e.g. 20s): ")))
-        (if (string-match-p (rx bol (* space) (+ digit) (* space) (any "smh") (* space) eol)
-                            input)
-            (setq result input)
-          (message "Invalid time value")
-          (sit-for 1))))
-    result))
-
-(defun kubernetes--maybe-pod-at-point ()
-  (pcase (get-text-property (point) 'kubernetes-nav)
-    (`(:pod ,pod)
-     pod)))
-
-;;;###autoload
 (defun kubernetes-logs-follow ()
   "Open a streaming logs buffer for a pod.
 
@@ -948,7 +798,6 @@ Should be invoked via `kubernetes-logs-popup'."
   (interactive)
   (kubernetes-logs-fetch-all (cons "-f" (kubernetes-logs-arguments))))
 
-;;;###autoload
 (defun kubernetes-logs-fetch-all (args)
   "Open a streaming logs buffer for a pod.
 
@@ -963,9 +812,6 @@ Should be invoked via `kubernetes-logs-popup'."
     (with-current-buffer (compilation-start (string-join command " ") 'kubernetes-logs-mode)
       (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
       (display-buffer (current-buffer)))))
-
-
-;; Describing things
 
 (defvar kubernetes--thing-to-describe nil
   "Identifies the thing to log for `kubernetes-describe-dwim'.
@@ -983,7 +829,6 @@ This variable is reset after use by the logging functions.")
     (back-to-indentation)
     (get-text-property (point) 'kubernetes-nav)))
 
-;;;###autoload
 (defun kubernetes-describe (&optional thing)
   "Popup console for describing things.
 
@@ -1003,7 +848,6 @@ THING is the thing to be used if the user selects
 
   :default-action 'kubernetes-logs)
 
-;;;###autoload
 (defun kubernetes-describe-dwim (thing)
   "Describe the thing at point.
 
@@ -1016,7 +860,6 @@ THING must be a valid target for `kubectl describe'."
      (user-error "Nothing at point to describe")))
   (setq kubernetes--thing-to-describe nil))
 
-;;;###autoload
 (defun kubernetes-describe-pod (pod)
   "Display a buffer for describing POD."
   (interactive (list (or (kubernetes--maybe-pod-at-point) (kubernetes--read-pod))))
@@ -1045,6 +888,133 @@ THING must be a valid target for `kubectl describe'."
 
     (select-window (display-buffer buf))
     buf))
+
+
+;; Mode definitions
+
+;;;###autoload
+(defvar kubernetes-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "q") #'quit-window)
+    (define-key keymap (kbd "RET") #'kubernetes-navigate)
+    (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
+    keymap)
+  "Keymap for `kubernetes-mode'.  This is the base keymap for all derived modes.")
+
+;;;###autoload
+(define-derived-mode kubernetes-mode special-mode "Kubernetes"
+  "Base mode for Kubernetes modes.
+
+\\{kubernetes-mode-map}"
+  :group 'kubernetes
+  (read-only-mode)
+  (buffer-disable-undo)
+  (setq truncate-lines t)
+  (setq-local line-move-visual t)
+  (setq show-trailing-whitespace nil)
+  (setq list-buffers-directory (abbreviate-file-name default-directory))
+  (hack-dir-local-variables-non-file-buffer)
+  (make-local-variable 'text-property-default-nonsticky)
+  (push (cons 'keymap t) text-property-default-nonsticky)
+  (add-hook 'post-command-hook #'magit-section-update-highlight t t)
+  (setq-local redisplay-highlight-region-function 'magit-highlight-region)
+  (setq-local redisplay-unhighlight-region-function 'magit-unhighlight-region)
+  (when (bound-and-true-p global-linum-mode)
+    (linum-mode -1))
+  (when (and (fboundp 'nlinum-mode)
+             (bound-and-true-p global-nlinum-mode))
+    (nlinum-mode -1)))
+
+;;;###autoload
+(defvar kubernetes-display-pods-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "TAB") #'magit-section-toggle)
+    (define-key keymap (kbd "g") #'kubernetes-display-pods-refresh)
+    (define-key keymap (kbd "d") #'kubernetes-describe)
+    (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
+    (define-key keymap (kbd "u") #'kubernetes-unmark)
+    (define-key keymap (kbd "U") #'kubernetes-unmark-all)
+    (define-key keymap (kbd "x") #'kubernetes-execute-marks)
+    (define-key keymap (kbd "l") #'kubernetes-logs)
+    (define-key keymap (kbd "h") #'describe-mode)
+    keymap)
+  "Keymap for `kubernetes-display-pods-mode'.")
+
+;;;###autoload
+(define-derived-mode kubernetes-display-pods-mode kubernetes-mode "Kubernetes Pods"
+  "Mode for working with Kubernetes pods.
+
+\\<kubernetes-display-pods-mode-map>\
+Type \\[kubernetes-mark-for-delete] to mark a pod for deletion, and \\[kubernetes-execute-marks] to execute.
+Type \\[kubernetes-unmark] to unmark the pod at point, or \\[kubernetes-unmark-all] to unmark all pods.
+
+Type \\[kubernetes-navigate] to inspect the object on the current line, and \\[kubernetes-describe-pod] to
+specifically describe a pod.
+
+Type \\[kubernetes-logs] when point is on a pod to view its logs.
+
+Type \\[kubernetes-copy-thing-at-point] to copy the pod name at point.
+
+Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
+
+\\{kubernetes-display-pods-mode-map}"
+  :group 'kubernetes)
+
+;;;###autoload
+(defvar kubernetes-logs-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "n") #'kubernetes-logs-forward-line)
+    (define-key keymap (kbd "p") #'kubernetes-logs-previous-line)
+    (define-key keymap (kbd "RET") #'kubernetes-logs-inspect-line)
+    keymap)
+  "Keymap for `kubernetes-logs-mode'.")
+
+;;;###autoload
+(define-compilation-mode kubernetes-logs-mode "Kubernetes Logs"
+  "Mode for displaying and inspecting Kubernetes logs.
+
+\\<kubernetes-logs-mode-map>\
+Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
+
+\\{kubernetes-logs-mode-map}")
+
+;;;###autoload
+(defvar kubernetes-log-line-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "n") #'kubernetes-logs-forward-line)
+    (define-key keymap (kbd "p") #'kubernetes-logs-previous-line)
+    keymap)
+  "Keymap for `kubernetes-log-line-mode'.")
+
+;;;###autoload
+(define-compilation-mode kubernetes-log-line-mode "Log Line"
+  "Mode for inspecting Kubernetes log lines.
+
+\\{kubernetes-log-line-mode-map}"
+  (read-only-mode)
+  (setq-local compilation-error-regexp-alist nil)
+  (setq-local compilation-error-regexp-alist-alist nil))
+
+;;;###autoload
+(define-derived-mode kubernetes-display-config-mode kubernetes-mode "Kubernetes Config"
+  "Mode for inspecting a Kubernetes config.
+
+\\{kubernetes-display-config-mode-map}"
+  :group 'kubernetes)
+
+;;;###autoload
+(define-derived-mode kubernetes-display-thing-mode kubernetes-mode "Kubernetes Object"
+  "Mode for inspecting a Kubernetes object.
+
+\\{kubernetes-display-thing-mode-map}"
+  :group 'kubernetes)
+
+;;;###autoload
+(defun kubernetes-display-pods ()
+  "Display a list of pods in the current Kubernetes context."
+  (interactive)
+  (kubernetes-display-buffer (kubernetes--display-pods-initialize-buffer))
+  (message (substitute-command-keys "\\<kubernetes-display-pods-mode-map>Type \\[describe-mode] for usage.")))
 
 (provide 'kubernetes)
 
