@@ -27,9 +27,8 @@
 
 (require 'compile)
 (require 'dash)
+(require 'magit)
 (require 'subr-x)
-(require 'magit-popup)
-(require 'magit-section)
 
 (autoload 'json-pretty-print-buffer "json")
 (autoload 'json-read-from-string "json")
