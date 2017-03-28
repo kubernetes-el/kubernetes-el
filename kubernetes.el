@@ -318,7 +318,23 @@ what to copy."
 
 \\{kubernetes-mode-map}"
   :group 'kubernetes
-  (read-only-mode +1))
+  (read-only-mode)
+  (buffer-disable-undo)
+  (setq truncate-lines t)
+  (setq-local line-move-visual t)
+  (setq show-trailing-whitespace nil)
+  (setq list-buffers-directory (abbreviate-file-name default-directory))
+  (hack-dir-local-variables-non-file-buffer)
+  (make-local-variable 'text-property-default-nonsticky)
+  (push (cons 'keymap t) text-property-default-nonsticky)
+  (add-hook 'post-command-hook #'magit-section-update-highlight t t)
+  (setq-local redisplay-highlight-region-function 'magit-highlight-region)
+  (setq-local redisplay-unhighlight-region-function 'magit-unhighlight-region)
+  (when (bound-and-true-p global-linum-mode)
+    (linum-mode -1))
+  (when (and (fboundp 'nlinum-mode)
+             (bound-and-true-p global-nlinum-mode))
+    (nlinum-mode -1)))
 
 
 ;;; Displaying config
