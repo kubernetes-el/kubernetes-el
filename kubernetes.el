@@ -988,8 +988,8 @@ THING is the thing to be used if the user selects
   :group 'kubernetes
 
   :actions
-  '((?d "dwim" kubernetes-describe-dwim)
-    (?p "pod" kubernetes-describe-pod))
+  '((?d "Dwim" kubernetes-describe-dwim)
+    (?p "Pod" kubernetes-describe-pod))
 
   :default-action 'kubernetes-logs)
 
