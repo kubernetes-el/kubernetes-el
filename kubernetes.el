@@ -240,6 +240,7 @@ Used to draw the context section of the main buffer.")
   (setq kubernetes--get-pods-response nil)
   (setq kubernetes--view-context-response nil))
 
+
 ;; Utilities
 
 (defun kubernetes--pod-name (pod)
