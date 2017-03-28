@@ -935,6 +935,8 @@ THING must be a valid target for `kubectl describe'."
   (hack-dir-local-variables-non-file-buffer)
   (make-local-variable 'text-property-default-nonsticky)
   (push (cons 'keymap t) text-property-default-nonsticky)
+  (push (cons 'kubernetes-nav t) text-property-default-nonsticky)
+  (push (cons 'kubernetes-copy t) text-property-default-nonsticky)
   (add-hook 'post-command-hook #'magit-section-update-highlight t t)
   (setq-local redisplay-highlight-region-function 'magit-highlight-region)
   (setq-local redisplay-unhighlight-region-function 'magit-unhighlight-region)
