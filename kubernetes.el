@@ -447,17 +447,19 @@ what to copy."
   (when (and (buffer-live-p (marker-buffer start-marker))
              (buffer-live-p (marker-buffer end-marker)))
     (with-current-buffer (marker-buffer start-marker)
-      (save-excursion
-        (goto-char (marker-position start-marker))
-        (let ((inhibit-read-only t))
-          (delete-region (point) (1- (marker-position end-marker)))
-          (magit-insert-section (kubernetes-context)
-            (-let [(context . lines) (kubernetes--context-section-lines config)]
-              (magit-insert-heading (concat context "\n"))
-              (dolist (line lines)
-                (magit-insert-section (kubernetes-context-line)
-                  (insert line)
-                  (newline))))))))))
+      (let ((pos (point)))
+        (save-excursion
+          (goto-char (marker-position start-marker))
+          (let ((inhibit-read-only t))
+            (delete-region (point) (1- (marker-position end-marker)))
+            (magit-insert-section (kubernetes-context)
+              (-let [(context . lines) (kubernetes--context-section-lines config)]
+                (magit-insert-heading (concat context "\n"))
+                (dolist (line lines)
+                  (magit-insert-section (kubernetes-context-line)
+                    (insert line)
+                    (newline)))))))
+        (goto-char pos)))))
 
 (defun kubernetes--initialize-context-section (buf)
   (with-current-buffer buf
@@ -559,7 +561,7 @@ what to copy."
                 'kubernetes-nav (list :pod pod)
                 'kubernetes-copy name)))
 
-(defun kubernetes--clean-pod-state-vars (pods)
+(defun kubernetes--update-pod-state-vars (pods)
   (let ((pod-names
          (-map (-lambda ((&alist 'metadata (&alist 'name name)))
                  name)
@@ -578,26 +580,28 @@ what to copy."
              (buffer-live-p (marker-buffer kubernetes--pods-end-marker)))
     (-let [(&alist 'items pods) pods]
       (with-current-buffer (marker-buffer kubernetes--pods-count-marker)
-        (let ((pos (point)))
-          (save-excursion
-            (goto-char (marker-position kubernetes--pods-count-marker))
-            (let ((inhibit-read-only t))
-              (delete-region (point) (line-end-position))
-              (insert (format "(%s)" (length pods)))))
-          (save-excursion
-            (goto-char (marker-position kubernetes--pods-start-marker))
-            (let ((inhibit-read-only t))
-              (delete-region (point) (1- (marker-position kubernetes--pods-end-marker)))
+        (let ((pos (point))
+              (inhibit-read-only t))
 
-              (magit-insert-section (kubernetes-pods-list)
-                (insert (kubernetes--format-pods-list-heading))
-                (--each (append pods nil)
-                  (magit-insert-section (kubernetes-pod-line)
-                    (insert (kubernetes--format-pod-line it))
-                    (newline))))
-              (set-marker kubernetes--pods-end-marker (point))))
+          ;; Update pod count.
+          (goto-char (marker-position kubernetes--pods-count-marker))
+          (delete-region (point) (line-end-position))
+          (insert (format "(%s)" (length pods)))
 
-          (kubernetes--clean-pod-state-vars pods)
+          ;; Erase existing section.
+          (goto-char (marker-position kubernetes--pods-start-marker))
+          (delete-region (point) (1- (marker-position kubernetes--pods-end-marker)))
+
+          ;; Write new pods list.
+          (kubernetes--update-pod-state-vars pods)
+          (magit-insert-section (kubernetes-pods-list)
+            (insert (kubernetes--format-pods-list-heading))
+            (--each (append pods nil)
+              (magit-insert-section (kubernetes-pod-line)
+                (insert (kubernetes--format-pod-line it))
+                (newline))))
+          (set-marker kubernetes--pods-end-marker (point))
+
           (goto-char pos))))))
 
 (defun kubernetes--initialize-pods-section (buf)
