@@ -660,15 +660,18 @@ what to copy."
                 nil t))
     buf))
 
+(defun kubernetes--kill-process-quietly (proc)
+  (when (and proc (process-live-p proc))
+    (set-process-query-on-exit-flag proc nil)
+    (set-process-sentinel proc nil)
+    (set-process-buffer proc nil)
+    (kill-process proc)))
+
 (defun kubernetes--kill-polling-processes ()
-  (dolist (proc (list kubernetes--get-pods-process
-                      kubernetes--view-config-process))
-    (when (and proc (process-live-p proc))
-      (set-process-sentinel proc nil)
-      (set-process-buffer proc nil)
-      (kill-process proc))
-    (setq kubernetes--get-pods-process nil)
-    (setq kubernetes--view-config-process nil)))
+  (mapc #'kubernetes--kill-process-quietly (list kubernetes--get-pods-process
+                                       kubernetes--view-config-process))
+  (setq kubernetes--get-pods-process nil)
+  (setq kubernetes--view-config-process nil))
 
 ;;;###autoload
 (defun kubernetes-display-pods-refresh ()
@@ -1021,18 +1024,21 @@ THING must be a valid target for `kubectl describe'."
         (erase-buffer)
         (set-marker marker (point))
         (insert (propertize "Loading..." 'face 'kubernetes-dimmed))))
+    (let* ((populate-buffer (lambda (s)
+                              (with-current-buffer (marker-buffer marker)
+                                (setq-local tab-width 8)
+                                (let ((inhibit-read-only t)
+                                      (inhibit-redisplay t))
+                                  (erase-buffer)
+                                  (insert "---\n")
+                                  (insert s)
+                                  (untabify (point-min) (point-max))
+                                  (goto-char (point-min))))))
+           (proc (kubernetes-kubectl-describe-pod pod-name populate-buffer)))
+      (with-current-buffer buf
+        (add-hook 'kill-buffer-hook (lambda () (kubernetes--kill-process-quietly proc)) nil t)))
+
     (select-window (display-buffer buf))
-    (kubernetes-kubectl-describe-pod pod-name
-                           (lambda (s)
-                             (with-current-buffer (marker-buffer marker)
-                               (setq-local tab-width 8)
-                               (let ((inhibit-read-only t)
-                                     (inhibit-redisplay t))
-                                 (erase-buffer)
-                                 (insert "---\n")
-                                 (insert s)
-                                 (untabify (point-min) (point-max))
-                                 (goto-char (point-min))))))
     buf))
 
 (provide 'kubernetes)
