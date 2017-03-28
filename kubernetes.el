@@ -368,6 +368,10 @@ what to copy."
 (defvar kubernetes--pods-response nil
   "Cache of last pods response received over the API.")
 
+(defun kubernetes--pod-name (pod)
+  (-let [(&alist 'metadata (&alist 'name name)) pod]
+    name))
+
 (defun kubernetes--read-pod ()
   (-let* (((&alist 'items pods)
            (or kubernetes--pods-response
@@ -375,11 +379,9 @@ what to copy."
                  (message "Getting pods...")
                  (kubernetes--await-on-async #'kubernetes-get-pods))))
           (pods (append pods nil))
-          (podname (-lambda ((&alist 'metadata (&alist 'name name)))
-                     name))
-          (names (-map podname pods))
+          (names (-map #'kubernetes--pod-name pods))
           (choice (completing-read "Pod: " names nil t)))
-    (--find (equal choice (funcall podname it)) pods)))
+    (--find (equal choice (kubernetes--pod-name it)) pods)))
 
 (defun kubernetes-display-pod-refresh (pod)
   (let ((buf (get-buffer-create kubernetes-pod-buffer-name)))
@@ -573,10 +575,7 @@ what to copy."
                 'kubernetes-copy name)))
 
 (defun kubernetes--update-pod-state-vars (pods)
-  (let ((pod-names
-         (-map (-lambda ((&alist 'metadata (&alist 'name name)))
-                 name)
-               pods)))
+  (let ((pod-names (-map #'kubernetes--pod-name pods)))
     (setq kubernetes--pods-pending-deletion
           (-intersection kubernetes--pods-pending-deletion pod-names))
     (setq kubernetes--marked-pod-names
@@ -752,7 +751,7 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
   (interactive "d")
   (pcase (get-text-property point 'kubernetes-nav)
     (`(:pod ,pod)
-     (-let [(&alist 'metadata (&alist 'name name)) pod]
+     (let ((name (kubernetes--pod-name pod)))
        (unless (member name kubernetes--pods-pending-deletion)
          (add-to-list 'kubernetes--marked-pod-names name)
          (kubernetes--redraw-pods-section kubernetes--pods-response))))
@@ -766,7 +765,7 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
   (interactive "d")
   (pcase (get-text-property point 'kubernetes-nav)
     (`(:pod ,pod)
-     (-let [(&alist 'metadata (&alist 'name name)) pod]
+     (let ((name (kubernetes--pod-name pod)))
        (setq kubernetes--marked-pod-names (delete name kubernetes--marked-pod-names))
        (kubernetes--redraw-pods-section kubernetes--pods-response))))
   (goto-char point)
@@ -959,9 +958,9 @@ ARGS are additional args to pass to kubectl.
 
 Should be invoked via `kubernetes-logs-popup'."
   (interactive (list (kubernetes-logs-arguments)))
-  (-let* (((&alist 'metadata (&alist 'name pod-name)) kubernetes--pod-to-log)
-          (compilation-buffer-name-function (lambda (_) kubernetes-logs-buffer-name))
-          (command (-flatten (list kubernetes-kubectl-executable "logs" args pod-name))))
+  (let* ((name (kubernetes--pod-name kubernetes--pod-to-log))
+         (compilation-buffer-name-function (lambda (_) kubernetes-logs-buffer-name))
+         (command (-flatten (list kubernetes-kubectl-executable "logs" args name))))
     (setq kubernetes--pod-to-log nil)
     (with-current-buffer (compilation-start (string-join command " ") 'kubernetes-logs-mode)
       (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
@@ -1023,9 +1022,9 @@ THING must be a valid target for `kubectl describe'."
 (defun kubernetes-describe-pod (pod)
   "Display a buffer for describing POD."
   (interactive (list (or (kubernetes--maybe-pod-at-point) (kubernetes--read-pod))))
-  (-let ((buf (get-buffer-create kubernetes-pod-buffer-name))
-         ((&alist 'metadata (&alist 'name pod-name)) pod)
-         (marker (make-marker)))
+  (let ((buf (get-buffer-create kubernetes-pod-buffer-name))
+        (pod-name (kubernetes--pod-name pod))
+        (marker (make-marker)))
     (with-current-buffer buf
       (kubernetes-display-thing-mode)
       (let ((inhibit-read-only t))
