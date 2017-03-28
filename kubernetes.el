@@ -443,7 +443,7 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
           (-let [(context . lines) (kubernetes--context-section-lines config)]
             (magit-insert-heading (concat context "\n"))
             (insert (string-join lines "\n")))
-        (insert (concat (format "%-12s" "Context: ") (propertize "<none>" 'face 'kubernetes-context-name))))
+        (insert (concat (format "%-12s" "Context: ") (propertize "Fetching..." 'face 'magit-dimmed))))
       (newline 2))))
 
 
