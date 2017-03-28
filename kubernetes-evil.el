@@ -15,12 +15,15 @@
 (autoload 'kubernetes-logs-mode-map "kubernetes")
 (autoload 'kubernetes-log-line-mode-map "kubernetes")
 
+(autoload 'magit-section-toggle "magit-section")
+
 (evil-define-key 'normal kubernetes-mode-map
   (kbd "RET") #'kubernetes-navigate
   (kbd "q") #'quit-window
   (kbd "M-w") #'kubernetes-copy-thing-at-point)
 
 (evil-define-key 'normal kubernetes-display-pods-mode-map
+  (kbd "TAB") #'magit-section-toggle
   (kbd "g") #'kubernetes-display-pods-refresh
   (kbd "h") #'describe-mode
   (kbd "d") #'kubernetes-describe-pod

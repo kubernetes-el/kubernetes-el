@@ -6,7 +6,7 @@
 
 ;; Version: 0.0.1
 
-;; Package-Requires: ((emacs "25.1") (dash "2.13.0") (magit-popup "2.8.0"))
+;; Package-Requires: ((emacs "25.1") (dash "2.13.0") (magit "2.8.0"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 (require 'dash)
 (require 'subr-x)
 (require 'magit-popup)
+(require 'magit-section)
 
 (autoload 'json-pretty-print-buffer "json")
 (autoload 'json-read-from-string "json")
@@ -87,18 +88,6 @@ The function must take a single argument, which is the buffer to display."
   '((((class color) (background light)) :foreground "SkyBlue4")
     (((class color) (background  dark)) :foreground "LightSkyBlue1"))
   "Face for context names in report buffers."
-  :group 'kubernetes)
-
-(defface kubernetes-section-heading
-  '((((class color) (background light)) :foreground "DarkGoldenrod4" :weight bold)
-    (((class color) (background  dark)) :foreground "LightGoldenrod2" :weight bold))
-  "Face for section headings."
-  :group 'kubernetes)
-
-(defface kubernetes-column-heading
-  '((((class color) (background light)) :foreground "grey30" :weight bold)
-    (((class color) (background  dark)) :foreground "grey80" :weight bold))
-  "Face for section headings."
   :group 'kubernetes)
 
 (defface kubernetes-json-key
@@ -412,7 +401,7 @@ what to copy."
 ;; Marker variables used track buffer locations to update.
 (defvar kubernetes--config-start-marker nil)
 (defvar kubernetes--config-end-marker nil)
-(defvar kubernetes--pod-count-marker nil)
+(defvar kubernetes--pods-count-marker nil)
 (defvar kubernetes--pods-start-marker nil)
 (defvar kubernetes--pods-end-marker nil)
 
@@ -432,28 +421,27 @@ what to copy."
   (setq kubernetes--view-config-process nil))
 
 
-(defun kubernetes--format-context-section (config)
+(defun kubernetes--context-section-lines (config)
   (with-temp-buffer
-    (-let [(&alist 'current-context current 'contexts contexts) config]
-      (insert (propertize (concat
+    (-let* (((&alist 'current-context current 'contexts contexts) config)
+            (lines
+             (list
+              (propertize (concat
                            (format "%-12s" "Context: ")
                            (propertize (or current "<none>") 'face 'kubernetes-context-name))
-                          'kubernetes-copy current))
-      (newline)
+                          'kubernetes-copy current)
 
-      (-when-let* ((ctx (--find (equal current (alist-get 'name it)) (append contexts nil)))
-                   ((&alist 'name n 'context (&alist 'cluster c 'namespace ns)) ctx))
-        (unless (string-empty-p c)
-          (insert (propertize (format "%-12s%s" "Cluster: " c)
-                              'kubernetes-copy c))
-          (newline))
+              (-when-let* ((ctx (--find (equal current (alist-get 'name it)) (append contexts nil)))
+                           ((&alist 'name n 'context (&alist 'cluster c 'namespace ns)) ctx))
+                (list (unless (string-empty-p c)
+                        (propertize (format "%-12s%s" "Cluster: " c)
+                                    'kubernetes-copy c))
+                      (unless (string-empty-p ns)
+                        (propertize (format "%-12s%s" "Namespace: " ns)
+                                    'kubernetes-copy ns)))))))
 
-        (unless (string-empty-p ns)
-          (insert (propertize (format "%-12s%s" "Namespace: " ns)
-                              'kubernetes-copy ns))
-          (newline))))
-
-    (propertize (buffer-string) 'kubernetes-nav (list :config config))))
+      (--map (propertize it 'kubernetes-nav (list :config config))
+             (-non-nil (-flatten lines))))))
 
 (defun kubernetes--redraw-context-section (start-marker end-marker config)
   (when (and (buffer-live-p (marker-buffer start-marker))
@@ -463,18 +451,24 @@ what to copy."
         (goto-char (marker-position start-marker))
         (let ((inhibit-read-only t))
           (delete-region (point) (1- (marker-position end-marker)))
-          (insert (kubernetes--format-context-section config)))))))
+          (magit-insert-section (kubernetes-context)
+            (-let [(context . lines) (kubernetes--context-section-lines config)]
+              (magit-insert-heading (concat context "\n"))
+              (dolist (line lines)
+                (magit-insert-section (kubernetes-context-line)
+                  (insert line)
+                  (newline))))))))))
 
-(defun kubernetes--initialize-context-section ()
-  (set-marker kubernetes--config-start-marker (point))
-
-  (kubernetes--set-view-config-process
-   (kubernetes-config-view (lambda (config)
-                   (kubernetes--redraw-context-section kubernetes--config-start-marker kubernetes--config-end-marker config))
-                 (lambda ()
-                   (kubernetes--release-view-config-process))))
-  (insert " ")
-  (set-marker kubernetes--config-end-marker (point)))
+(defun kubernetes--initialize-context-section (buf)
+  (with-current-buffer buf
+    (set-marker kubernetes--config-start-marker (point))
+    (kubernetes--set-view-config-process
+     (kubernetes-config-view (lambda (config)
+                     (kubernetes--redraw-context-section kubernetes--config-start-marker kubernetes--config-end-marker config))
+                   (lambda ()
+                     (kubernetes--release-view-config-process))))
+    (insert " ")
+    (set-marker kubernetes--config-end-marker (point))))
 
 (defun kubernetes--refresh-context-section ()
   (unless kubernetes--view-config-process
@@ -575,48 +569,56 @@ what to copy."
     (setq kubernetes--marked-pod-names
           (-intersection kubernetes--marked-pod-names pod-names))))
 
+(defun kubernetes--format-pods-list-heading ()
+  (propertize (format "  %-45s %-10s %8s %8s\n" "Name" "Status" "Restarts" "Age") 'face 'magit-section-heading))
 
-(defun kubernetes--redraw-pods-section (count-marker pods-start-marker pods-end-marker pods)
-  (when (and (buffer-live-p (marker-buffer count-marker))
-             (buffer-live-p (marker-buffer pods-start-marker))
-             (buffer-live-p (marker-buffer pods-end-marker)))
+(defun kubernetes--redraw-pods-section (pods)
+  (when (and (buffer-live-p (marker-buffer kubernetes--pods-count-marker))
+             (buffer-live-p (marker-buffer kubernetes--pods-start-marker))
+             (buffer-live-p (marker-buffer kubernetes--pods-end-marker)))
     (-let [(&alist 'items pods) pods]
-      (with-current-buffer (marker-buffer count-marker)
+      (with-current-buffer (marker-buffer kubernetes--pods-count-marker)
         (let ((pos (point)))
           (save-excursion
-            (goto-char (marker-position count-marker))
+            (goto-char (marker-position kubernetes--pods-count-marker))
             (let ((inhibit-read-only t))
               (delete-region (point) (line-end-position))
               (insert (format "(%s)" (length pods)))))
           (save-excursion
-            (goto-char (marker-position pods-start-marker))
+            (goto-char (marker-position kubernetes--pods-start-marker))
             (let ((inhibit-read-only t))
-              (delete-region (point) (1- (marker-position pods-end-marker)))
-              (--each (append pods nil)
-                (insert (kubernetes--format-pod-line it))
-                (newline))))
+              (delete-region (point) (1- (marker-position kubernetes--pods-end-marker)))
+
+              (magit-insert-section (kubernetes-pods-list)
+                (insert (kubernetes--format-pods-list-heading))
+                (--each (append pods nil)
+                  (magit-insert-section (kubernetes-pod-line)
+                    (insert (kubernetes--format-pod-line it))
+                    (newline))))
+              (set-marker kubernetes--pods-end-marker (point))))
+
           (kubernetes--clean-pod-state-vars pods)
           (goto-char pos))))))
 
-(defun kubernetes--initialize-pods-section ()
-  (insert (propertize "Pods " 'face 'kubernetes-section-heading))
-  (set-marker kubernetes--pod-count-marker (point))
-  (newline)
-  (insert (propertize (format "  %-45s %-10s %8s %8s\n" "Name" "Status" "Restarts" "Age")
-                      'face 'kubernetes-column-heading))
-  (set-marker kubernetes--pods-start-marker (point))
-  (insert (propertize "  Fetching... " 'face 'kubernetes-progress-indicator))
-  (set-marker kubernetes--pods-end-marker (point))
+(defun kubernetes--initialize-pods-section (buf)
+  (with-current-buffer buf
+    (magit-insert-section (kubernetes-pods)
+      (magit-insert-heading "Pods \n")
+      (set-marker kubernetes--pods-count-marker (1- (point)))
 
-  (kubernetes--set-get-pods-process
-   (kubernetes-get-pods
-    (lambda (response)
-      (setq kubernetes--pods-response response)
-      (kubernetes--redraw-pods-section kubernetes--pod-count-marker kubernetes--pods-start-marker kubernetes--pods-end-marker response))
-    (lambda ()
-      (kubernetes--release-get-pods-process))))
+      (set-marker kubernetes--pods-start-marker (point))
+      (magit-insert-section (kubernetes-pods-list)
+        (insert (kubernetes--format-pods-list-heading))
+        (insert (propertize "  Fetching... " 'face 'kubernetes-progress-indicator)))
+      (set-marker kubernetes--pods-end-marker (point))
 
-  (newline))
+      (kubernetes--set-get-pods-process
+       (kubernetes-get-pods
+        (lambda (response)
+          (setq kubernetes--pods-response response)
+          (kubernetes--redraw-pods-section response))
+        (lambda ()
+          (kubernetes--release-get-pods-process)))))))
 
 (defun kubernetes--refresh-pods-section ()
   (unless kubernetes--get-pods-process
@@ -624,7 +626,7 @@ what to copy."
      (kubernetes-get-pods
       (lambda (response)
         (setq kubernetes--pods-response response)
-        (kubernetes--redraw-pods-section kubernetes--pod-count-marker kubernetes--pods-start-marker kubernetes--pods-end-marker response))
+        (kubernetes--redraw-pods-section response))
       (lambda ()
         (kubernetes--release-get-pods-process))))))
 
@@ -637,9 +639,10 @@ what to copy."
       (kubernetes-display-pods-mode)
       (let ((inhibit-read-only t))
         (erase-buffer)
-        (kubernetes--initialize-context-section)
+        (kubernetes--initialize-context-section buf)
         (newline)
-        (kubernetes--initialize-pods-section))
+        (kubernetes--initialize-pods-section buf))
+
       (goto-char (point-min))
 
       ;; Initialize refresh timer.
@@ -665,6 +668,7 @@ what to copy."
 
 (defvar kubernetes-display-pods-mode-map
   (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "TAB") #'magit-section-toggle)
     (define-key keymap (kbd "g") #'kubernetes-display-pods-refresh)
     (define-key keymap (kbd "d") #'kubernetes-describe-pod)
     (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
@@ -697,7 +701,7 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
   (read-only-mode +1)
   (setq kubernetes--config-start-marker (make-marker))
   (setq kubernetes--config-end-marker (make-marker))
-  (setq kubernetes--pod-count-marker (make-marker))
+  (setq kubernetes--pods-count-marker (make-marker))
   (setq kubernetes--pods-start-marker (make-marker))
   (setq kubernetes--pods-end-marker (make-marker)))
 
@@ -722,10 +726,7 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
      (-let [(&alist 'metadata (&alist 'name name)) pod]
        (unless (member name kubernetes--pods-pending-deletion)
          (add-to-list 'kubernetes--marked-pod-names name)
-         (kubernetes--redraw-pods-section kubernetes--pod-count-marker
-                                kubernetes--pods-start-marker
-                                kubernetes--pods-end-marker
-                                kubernetes--pods-response))))
+         (kubernetes--redraw-pods-section kubernetes--pods-response))))
     (_
      (user-error "Nothing here can be marked")))
   (goto-char point)
@@ -738,10 +739,7 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
     (`(:pod ,pod)
      (-let [(&alist 'metadata (&alist 'name name)) pod]
        (setq kubernetes--marked-pod-names (delete name kubernetes--marked-pod-names))
-       (kubernetes--redraw-pods-section kubernetes--pod-count-marker
-                              kubernetes--pods-start-marker
-                              kubernetes--pods-end-marker
-                              kubernetes--pods-response))))
+       (kubernetes--redraw-pods-section kubernetes--pods-response))))
   (goto-char point)
   (forward-line 1))
 
@@ -750,10 +748,7 @@ Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
   (interactive)
   (setq kubernetes--marked-pod-names nil)
   (let ((pt (point)))
-    (kubernetes--redraw-pods-section kubernetes--pod-count-marker
-                           kubernetes--pods-start-marker
-                           kubernetes--pods-end-marker
-                           kubernetes--pods-response)
+    (kubernetes--redraw-pods-section kubernetes--pods-response)
     (goto-char pt)))
 
 (defun kubernetes-execute-marks ()
