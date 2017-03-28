@@ -396,8 +396,7 @@ what to copy."
   "Mode for inspecting a Kubernetes object.
 
 \\{kubernetes-display-thing-mode-map}"
-  :group 'kubernetes
-  (read-only-mode))
+  :group 'kubernetes)
 
 
 ;;;###autoload
@@ -725,13 +724,12 @@ Type \\[kubernetes-copy-thing-at-point] to copy the pod name at point.
 Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
 
 \\{kubernetes-display-pods-mode-map}"
-  :group 'kubernetes
-  (read-only-mode +1)
   (setq kubernetes--config-start-marker (make-marker))
   (setq kubernetes--config-end-marker (make-marker))
   (setq kubernetes--pods-count-marker (make-marker))
   (setq kubernetes--pods-start-marker (make-marker))
-  (setq kubernetes--pods-end-marker (make-marker)))
+  (setq kubernetes--pods-end-marker (make-marker))
+  :group 'kubernetes)
 
 ;;;###autoload
 (defun kubernetes-display-pods ()
