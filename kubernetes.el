@@ -895,10 +895,7 @@ This variable is reset after use by the logging functions.")
 
   :actions
   '((?l "Logs" kubernetes-logs-fetch-all)
-    (?f "Logs (stream and follow)" kubernetes-logs-follow)
-
-    (?s "Set defaults"  magit-log-set-default-arguments) nil
-    (?w "Save defaults" magit-log-save-default-arguments))
+    (?f "Logs (stream and follow)" kubernetes-logs-follow))
 
   :max-action-columns 2
 
