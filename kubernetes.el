@@ -549,7 +549,8 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
         (dolist (pod (append pods nil))
           (magit-insert-section ((eval (intern (kubernetes--pod-name pod))) nil t)
             (magit-insert-heading (concat (kubernetes--format-pod-line pod) "\n"))
-            (insert (kubernetes--format-pod-details pod))))))
+            (insert (kubernetes--format-pod-details pod))
+            (newline)))))
      (t
       (magit-insert-section (pods-container)
         (magit-insert-heading "Pods \n")
