@@ -814,7 +814,7 @@ Should be invoked via `kubernetes-logs-popup'."
     (setq kubernetes--pod-to-log nil)
     (with-current-buffer (compilation-start (string-join command " ") 'kubernetes-logs-mode)
       (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
-      (display-buffer (current-buffer)))))
+      (select-window (display-buffer (current-buffer))))))
 
 (defvar kubernetes--thing-to-describe nil
   "Identifies the thing to log for `kubernetes-describe-dwim'.
