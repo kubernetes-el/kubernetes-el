@@ -1,4 +1,4 @@
-;;; kubernetes-test.el --- Tests for kubernetes.el  -*- lexical-binding: t; -*-
+;;; kubectl-integration-test.el --- Tests for integration with kubectl  -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -15,8 +15,6 @@
 (require 'json)
 (require 'noflet)
 (require 'kubernetes (f-join project-root "kubernetes.el"))
-
-;; Test resources
 
 ;; Test helpers
 
@@ -77,4 +75,4 @@ will be mocked."
                    (lambda (result)
                      (should (equal pod-name result)))))))
 
-;;; kubernetes-test.el ends here
+;;; kubectl-integration-test.el ends here
