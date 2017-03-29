@@ -363,7 +363,7 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
 (defun kubernetes-display-config-refresh (config)
   (let ((buf (get-buffer-create kubernetes-display-config-buffer-name)))
     (with-current-buffer buf
-      (kubernetes-display-config-mode)
+      (kubernetes-display-thing-mode)
       (let ((inhibit-read-only t))
         (erase-buffer)
         (insert (kubernetes--json-to-yaml config))))
@@ -1020,13 +1020,6 @@ Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
   (read-only-mode)
   (setq-local compilation-error-regexp-alist nil)
   (setq-local compilation-error-regexp-alist-alist nil))
-
-;;;###autoload
-(define-derived-mode kubernetes-display-config-mode kubernetes-mode "Kubernetes Config"
-  "Mode for inspecting a Kubernetes config.
-
-\\{kubernetes-display-config-mode-map}"
-  :group 'kubernetes)
 
 ;;;###autoload
 (define-derived-mode kubernetes-display-thing-mode kubernetes-mode "Kubernetes Object"

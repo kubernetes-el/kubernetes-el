@@ -13,17 +13,14 @@
 
 (autoload 'evil-delay "evil-common")
 (autoload 'evil-set-initial-state "evil-core")
-(autoload 'kubernetes-display-pods-mode-map "kubernetes")
-(autoload 'kubernetes-log-line-mode-map "kubernetes")
-(autoload 'kubernetes-logs-mode-map "kubernetes")
-(autoload 'kubernetes-mode-map "kubernetes")
 (autoload 'magit-section-toggle "magit-section")
 
 (with-eval-after-load 'evil
   (evil-set-initial-state 'kubernetes-mode 'motion)
   (evil-set-initial-state 'kubernetes-display-pods-mode 'motion)
-  (evil-set-initial-state 'kubernetes-logs-mode 'motion)
+  (evil-set-initial-state 'kubernetes-display-thing-mode 'motion)
   (evil-set-initial-state 'kubernetes-log-line-mode 'motion)
+  (evil-set-initial-state 'kubernetes-logs-mode 'motion)
 
   (evil-define-key 'motion kubernetes-mode-map
     (kbd "RET") #'kubernetes-navigate
