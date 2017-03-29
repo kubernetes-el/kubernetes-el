@@ -12,10 +12,11 @@
   (require 'evil nil t))
 
 (autoload 'evil-delay "evil-common")
-(autoload 'kubernetes-mode-map "kubernetes")
+(autoload 'evil-set-initial-state "evil-core")
 (autoload 'kubernetes-display-pods-mode-map "kubernetes")
-(autoload 'kubernetes-logs-mode-map "kubernetes")
 (autoload 'kubernetes-log-line-mode-map "kubernetes")
+(autoload 'kubernetes-logs-mode-map "kubernetes")
+(autoload 'kubernetes-mode-map "kubernetes")
 (autoload 'magit-section-toggle "magit-section")
 
 (with-eval-after-load 'evil
