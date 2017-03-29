@@ -8,39 +8,41 @@
 
 ;;; Code:
 
-(require 'evil)
+(eval-when-compile
+  (require 'evil nil t))
 
+(autoload 'evil-delay "evil-common")
 (autoload 'kubernetes-mode-map "kubernetes")
 (autoload 'kubernetes-display-pods-mode-map "kubernetes")
 (autoload 'kubernetes-logs-mode-map "kubernetes")
 (autoload 'kubernetes-log-line-mode-map "kubernetes")
-
 (autoload 'magit-section-toggle "magit-section")
 
-(evil-define-key 'normal kubernetes-mode-map
-  (kbd "RET") #'kubernetes-navigate
-  (kbd "q") #'quit-window
-  (kbd "M-w") #'kubernetes-copy-thing-at-point)
+(with-eval-after-load 'evil
+  (evil-define-key 'normal kubernetes-mode-map
+    (kbd "RET") #'kubernetes-navigate
+    (kbd "q") #'quit-window
+    (kbd "M-w") #'kubernetes-copy-thing-at-point)
 
-(evil-define-key 'normal kubernetes-display-pods-mode-map
-  (kbd "TAB") #'magit-section-toggle
-  (kbd "g") #'kubernetes-display-pods-refresh
-  (kbd "h") #'describe-mode
-  (kbd "d") #'kubernetes-describe
-  (kbd "D") #'kubernetes-mark-for-delete
-  (kbd "u") #'kubernetes-unmark
-  (kbd "U") #'kubernetes-unmark-all
-  (kbd "x") #'kubernetes-execute-marks
-  (kbd "l") #'kubernetes-logs)
+  (evil-define-key 'normal kubernetes-display-pods-mode-map
+    (kbd "TAB") #'magit-section-toggle
+    (kbd "g") #'kubernetes-display-pods-refresh
+    (kbd "h") #'describe-mode
+    (kbd "d") #'kubernetes-describe
+    (kbd "D") #'kubernetes-mark-for-delete
+    (kbd "u") #'kubernetes-unmark
+    (kbd "U") #'kubernetes-unmark-all
+    (kbd "x") #'kubernetes-execute-marks
+    (kbd "l") #'kubernetes-logs)
 
-(evil-define-key 'normal kubernetes-logs-mode-map
-  (kbd "n") #'kubernetes-logs-forward-line
-  (kbd "p") #'kubernetes-logs-previous-line
-  (kbd "RET") #'kubernetes-logs-inspect-line)
+  (evil-define-key 'normal kubernetes-logs-mode-map
+    (kbd "n") #'kubernetes-logs-forward-line
+    (kbd "p") #'kubernetes-logs-previous-line
+    (kbd "RET") #'kubernetes-logs-inspect-line)
 
-(evil-define-key 'normal kubernetes-log-line-mode-map
-  (kbd "n") #'kubernetes-logs-forward-line
-  (kbd "p") #'kubernetes-logs-previous-line)
+  (evil-define-key 'normal kubernetes-log-line-mode-map
+    (kbd "n") #'kubernetes-logs-forward-line
+    (kbd "p") #'kubernetes-logs-previous-line))
 
 (provide 'kubernetes-evil)
 
