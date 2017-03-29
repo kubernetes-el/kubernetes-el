@@ -471,6 +471,13 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
 (defvar kubernetes--refresh-timer nil
   "Background timer used to poll for updates.")
 
+(defvar kubernetes--redraw-timer nil
+  "Background timer used to redraw the buffer.
+
+This runs at half the frequency as the main refresh.  It is needed
+so that inconsistent UI states due to the refresh supression hack
+are cleaned up faster.")
+
 (defvar-local kubernetes--marked-pod-names nil)
 
 (defvar-local kubernetes--pods-pending-deletion nil)
@@ -583,37 +590,52 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
       (kubernetes-display-pods-mode)
 
       ;; Render buffer.
-      (kubernetes--redraw-main-buffer)
+      (kubernetes--redraw-main-buffer t)
       (goto-char (point-min))
 
-      ;; Initialize refresh timer.
+      ;; Initialize timers.
       (setq kubernetes--refresh-timer (run-with-timer kubernetes-refresh-frequency kubernetes-refresh-frequency #'kubernetes-display-pods-refresh))
+      (setq kubernetes--redraw-timer (run-with-timer (/ kubernetes-refresh-frequency 2) (/ kubernetes-refresh-frequency 2) #'kubernetes--redraw-main-buffer))
 
       (add-hook 'kill-buffer-hook
                 (lambda ()
-                  (kubernetes--clear-main-state)
+                  (with-current-buffer buf
+                    (kubernetes--clear-main-state)
+                    (kubernetes--kill-polling-processes)
 
-                  ;; Kill the timer and any running processes.
-                  (kubernetes--kill-polling-processes)
-                  (when-let (timer kubernetes--refresh-timer)
-                    (setq kubernetes--refresh-timer nil)
-                    (cancel-timer timer)))
+                    ;; Kill timers.
+                    (when-let (timer kubernetes--refresh-timer)
+                      (setq kubernetes--refresh-timer nil)
+                      (cancel-timer timer))
+                    (when-let (timer kubernetes--redraw-timer)
+                      (setq kubernetes--refresh-timer nil)
+                      (cancel-timer timer))))
+
                 nil t))
     buf))
 
-(defun kubernetes--redraw-main-buffer ()
-  "Redraws the main buffer BUF using the current state."
+(defun kubernetes--redraw-main-buffer (&optional force)
+  "Redraws the main buffer using the current state.
+
+FORCE ensures it happens."
   (when-let (buf (get-buffer kubernetes-display-pods-buffer-name))
     (with-current-buffer buf
-      (let ((pos (point))
-            (inhibit-read-only t)
-            (inhibit-redisplay t))
-        (erase-buffer)
-        (magit-insert-section (root)
-          (kubernetes--draw-context-section kubernetes--view-context-response)
-          (kubernetes--draw-pods-section kubernetes--get-pods-response))
+      (when (or force
+                ;; HACK: Only redraw the buffer if it is in the selected window.
+                ;;
+                ;; The cursor moves unpredictably in a redraw, which ruins the current
+                ;; position in the buffer if a popup window is open.
+                (equal (window-buffer) buf))
 
-        (goto-char pos))
+        (let ((pos (point))
+              (inhibit-read-only t)
+              (inhibit-redisplay t))
+          (erase-buffer)
+          (magit-insert-section (root)
+            (kubernetes--draw-context-section kubernetes--view-context-response)
+            (kubernetes--draw-pods-section kubernetes--get-pods-response))
+
+          (goto-char pos)))
 
       ;; Force the section at point to highlight.
       (magit-section-update-highlight))))
