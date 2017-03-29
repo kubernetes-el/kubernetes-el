@@ -83,6 +83,16 @@ The function must take a single argument, which is the buffer to display."
   :group 'kubernetes
   :type 'function)
 
+(defcustom kubernetes-default-exec-command "bash"
+  "The default command to use when exec'ing into a pod's container."
+  :group 'kubernetes
+  :type 'string)
+
+(defcustom kubernetes-clean-up-interactive-exec-buffers t
+  "If non-nil, automatically kill interactive exec buffers on process exit."
+  :group 'kubernetes
+  :type 'boolean)
+
 (defface kubernetes-context-name
   '((((class color) (background light)) :foreground "SkyBlue4")
     (((class color) (background  dark)) :foreground "LightSkyBlue1"))
@@ -913,6 +923,76 @@ THING must be a valid target for `kubectl describe'."
     (select-window (display-buffer buf))
     buf))
 
+(defvar kubernetes--pod-to-exec nil
+  "Identifies the pod to exec into after querying the user for flags.
+
+Assigned before opening the exec popup, when the target pod is
+likely to be at point.  After choosing flags, this is the pod that
+will be exec'ed into.
+
+This variable is reset after use by the exec functions.")
+
+(defun kubernetes-exec (pod)
+  "Popup console for exec'ing into POD."
+  (interactive (list (or (kubernetes--maybe-pod-at-point) (kubernetes--read-pod))))
+  (setq kubernetes--pod-to-exec pod)
+  (call-interactively #'kubernetes-exec-popup))
+
+(magit-define-popup kubernetes-exec-popup
+  "Popup console for exec commands for POD."
+  :group 'kubernetes
+
+  :default-arguments '("-i" "-t")
+
+  :switches
+  '((?i "Pass stdin to container" "-i" t)
+    (?t "Stdin is a TTY" "-t" t))
+
+  :actions
+  '((?e "Exec" kubernetes-exec-into))
+
+  :default-action 'kubernetes-exec-into)
+
+(defun kubernetes-exec-into (args exec-command)
+  "Open a terminal for execting into a pod.
+
+ARGS are additional args to pass to kubectl.
+
+EXEC-COMMAND is the command to run in the container.
+
+Should be invoked via `kubernetes-logs-popup'."
+  (interactive (list (kubernetes-exec-arguments)
+                     (read-string (format "Command (default: %s): " kubernetes-default-exec-command) nil 'kubernetes-exec-history)))
+  (let* ((name (kubernetes--pod-name kubernetes--pod-to-exec))
+
+         (exec-command
+          (cond
+           ((null exec-command)
+            kubernetes-default-exec-command)
+           ((string-empty-p (string-trim exec-command))
+            kubernetes-default-exec-command)
+           (t
+            (string-trim exec-command))))
+
+         (command (-flatten (list kubernetes-kubectl-executable "exec" args name exec-command)))
+         (interactive-tty (member "-t" args))
+         (mode (if interactive-tty
+                   t ; Means use compilation-shell-minor-mode
+                 #'kubernetes-logs-mode)))
+
+    (setq kubernetes--pod-to-exec nil)
+    (with-current-buffer (compilation-start (string-join command " ") mode (lambda (_) kubernetes-pod-buffer-name))
+      (when (and interactive-tty kubernetes-clean-up-interactive-exec-buffers)
+        (make-local-variable 'compilation-finish-functions)
+        (add-to-list 'compilation-finish-functions #'kubernetes--kill-compilation-buffer t))
+      (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
+      (select-window (display-buffer (current-buffer))))))
+
+(defun kubernetes--kill-compilation-buffer (proc-buf &rest _)
+  (if-let (win (get-buffer-window proc-buf))
+      (quit-window t win)
+    (kill-buffer proc-buf)))
+
 
 ;; Mode definitions
 
@@ -958,6 +1038,7 @@ THING must be a valid target for `kubectl describe'."
     (define-key keymap (kbd "g") #'kubernetes-display-pods-refresh)
     (define-key keymap (kbd "d") #'kubernetes-describe)
     (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
+    (define-key keymap (kbd "e") #'kubernetes-exec)
     (define-key keymap (kbd "u") #'kubernetes-unmark)
     (define-key keymap (kbd "U") #'kubernetes-unmark-all)
     (define-key keymap (kbd "x") #'kubernetes-execute-marks)
@@ -976,6 +1057,8 @@ Type \\[kubernetes-unmark] to unmark the pod at point, or \\[kubernetes-unmark-a
 
 Type \\[kubernetes-navigate] to inspect the object on the current line, and \\[kubernetes-describe-pod] to
 specifically describe a pod.
+
+Type \\[kubernetes-exec] to exec into a pod.
 
 Type \\[kubernetes-logs] when point is on a pod to view its logs.
 
