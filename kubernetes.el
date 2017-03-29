@@ -157,7 +157,6 @@ Returns the process object for this execution of kubectl."
     (set-process-sentinel process sentinel)
     process))
 
-;;;###autoload
 (defun kubernetes-get-pods (cb &optional cleanup-cb)
   "Get all pods and execute callback CB with the parsed JSON.
 
@@ -170,7 +169,6 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
                      (funcall cb json))
                  (funcall (or cleanup-cb #'ignore))))))
 
-;;;###autoload
 (defun kubernetes-config-view (cb &optional cleanup-cb)
   "Get the current configuration and pass it to CB.
 
@@ -183,7 +181,6 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
                      (funcall cb json))
                  (funcall (or cleanup-cb #'ignore))))))
 
-;;;###autoload
 (defun kubernetes-delete-pod (pod-name cb &optional error-cb)
   "Delete pod with POD-NAME, then execute CB with the response buffer.
 
@@ -195,7 +192,6 @@ ERROR-CB is called if an error occurred."
                  (funcall cb (match-string 1 (buffer-string)))))
              error-cb))
 
-;;;###autoload
 (defun kubernetes-kubectl-describe-pod (pod-name cb)
   "Describe pod with POD-NAME, then execute CB with the string response."
   (kubernetes--kubectl (list "describe" "pod" pod-name)
