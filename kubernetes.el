@@ -551,20 +551,21 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
     (cond
      (pods
       (magit-insert-section (pods-container)
-        (magit-insert-heading (concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)\n" (length pods))))
+        (magit-insert-heading (concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods))))
         (insert column-heading)
         (dolist (pod (append pods nil))
           (magit-insert-section ((eval (intern (kubernetes--pod-name pod))) nil t)
-            (magit-insert-heading (concat (kubernetes--format-pod-line pod) "\n"))
+            (magit-insert-heading (kubernetes--format-pod-line pod))
             (magit-insert-section (details)
               (insert (kubernetes--format-pod-details pod))
-              (newline))))))
+              (insert ?\n))))))
      (t
       (magit-insert-section (pods-container)
-        (magit-insert-heading "Pods \n")
+        (magit-insert-heading "Pods")
         (magit-insert-section (pods-list)
           (insert column-heading)
-          (insert (propertize "  Fetching...\n" 'face 'kubernetes-progress-indicator))))))))
+          (insert (propertize "  Fetching..." 'face 'kubernetes-progress-indicator))
+          (newline)))))))
 
 
 ;; Root rendering routines.
