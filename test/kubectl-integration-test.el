@@ -28,12 +28,17 @@ Executes the on-success callback with a buffer containing RESPONSE-STRING.
 FORM is the Elisp form to be evaluated, in which `kubernetes--kubectl'
 will be mocked."
   (declare (indent 2))
-  `(noflet ((kubernetes--kubectl (args on-success &optional on-error)
-                       (let ((buf (generate-new-buffer " test")))
-                         (with-current-buffer buf
-                           (insert ,response-string)
-                           (should (equal args ,expected-args))
-                           (funcall on-success buf)))))
+  `(noflet ((kubernetes--kubectl
+             (args on-success &optional on-error cleanup-cb)
+             (let ((buf (generate-new-buffer " test")))
+               (with-current-buffer buf
+                 (unwind-protect
+                     (progn
+                       (insert ,response-string)
+                       (should (equal args ,expected-args))
+                       (funcall on-success buf)))
+                 (when cleanup-cb
+                   (funcall cleanup-cb))))))
      ,form))
 
 (defmacro with-error-response-at (expected-args response-string form)
@@ -46,13 +51,18 @@ Executes the on-error callback with a buffer containing RESPONSE-STRING.
 FORM is the Elisp form to be evaluated, in which `kubernetes--kubectl'
 will be mocked."
   (declare (indent 2))
-  `(noflet ((kubernetes--kubectl (args _on-success &optional on-error)
-                       (let ((buf (generate-new-buffer " test")))
-                         (with-current-buffer buf
-                           (insert ,response-string)
-                           (should (equal args ,expected-args))
-                           (should on-error)
-                           (funcall on-error buf)))))
+  `(noflet ((kubernetes--kubectl
+             (args _on-success &optional on-error cleanup-cb)
+             (let ((buf (generate-new-buffer " test")))
+               (with-current-buffer buf
+                 (unwind-protect
+                     (progn
+                       (insert ,response-string)
+                       (should (equal args ,expected-args))
+                       (should on-error)
+                       (funcall on-error buf))
+                   (when cleanup-cb
+                     (funcall cleanup-cb)))))))
      ,form))
 
 ;; Test cases
@@ -96,18 +106,18 @@ will be mocked."
   (let ((pod-name "example-v3-4120544588-55kmw"))
     (with-successful-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
       (kubernetes-delete-pod "example-pod"
-                   (lambda (result)
-                     (should (equal pod-name result)))))))
+                             (lambda (result)
+                               (should (equal pod-name result)))))))
 
 (ert-deftest deleting-pod-fails ()
   (let ((pod-name "example-v3-4120544588-55kmw")
         (on-error-called))
     (with-error-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
       (kubernetes-delete-pod "example-pod"
-                   (lambda (_)
-                     (error "Unexpected success response"))
-                   (lambda (result)
-                     (setq on-error-called t))))
+                             (lambda (_)
+                               (error "Unexpected success response"))
+                             (lambda (result)
+                               (setq on-error-called t))))
     (should on-error-called)))
 
 (ert-deftest describing-pods ()
@@ -116,9 +126,9 @@ will be mocked."
         (on-success-called))
     (with-successful-response-at `("describe" "pod" ,pod-name) sample-response
       (kubernetes-kubectl-describe-pod pod-name
-                             (lambda (str)
-                               (setq on-success-called t)
-                               (should (equal sample-response str)))))
+                                       (lambda (str)
+                                         (setq on-success-called t)
+                                         (should (equal sample-response str)))))
     (should on-success-called)))
 
 ;;; kubectl-integration-test.el ends here

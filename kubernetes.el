@@ -137,33 +137,40 @@ The function must take a single argument, which is the buffer to display."
   (with-current-buffer buf
     (error "Kubectl failed.  Reason: %s" (buffer-string))))
 
-(defun kubernetes--kubectl (args on-success &optional on-error)
+(defun kubernetes--kubectl (args on-success &optional on-error cleanup-cb)
   "Run kubectl with ARGS.
 
 ON-SUCCESS is a function of one argument, called with the process' buffer.
 
-ON-ERROR is a function of one argument, called with the process'
-buffer.  If omitted, it defaults to
+Optional ON-ERROR is a function of one argument, called with the
+process' buffer.  If omitted, it defaults to
 `kubernetes--kubectl-default-error-handler', which raises an
 error.
+
+Optional CLEANUP-CB is a function of no arguments that is always
+called after the other callbacks.  It can be used for releasing
+resources.
 
 Returns the process object for this execution of kubectl."
   (let* ((buf (generate-new-buffer " kubectl"))
          (process (apply #'start-process "kubectl" buf kubernetes-kubectl-executable args))
          (sentinel
           (lambda (proc _status)
-            (cond
-             ((zerop (process-exit-status proc))
-              (funcall on-success buf))
-             (t
-              (cond (on-error
-                     (message "Kubectl failed.  Reason: %s"
-                              (with-current-buffer buf
-                                (buffer-string)))
-                     (funcall on-error buf))
+            (unwind-protect
+                (cond
+                 ((zerop (process-exit-status proc))
+                  (funcall on-success buf))
+                 (t
+                  (cond (on-error
+                         (message "Kubectl failed.  Reason: %s"
+                                  (with-current-buffer buf
+                                    (buffer-string)))
+                         (funcall on-error buf))
 
-                    (t
-                     (kubernetes--kubectl-default-error-handler (process-buffer proc)))))))))
+                        (t
+                         (kubernetes--kubectl-default-error-handler (process-buffer proc))))))
+              (when cleanup-cb
+                (funcall cleanup-cb))))))
     (set-process-sentinel process sentinel)
     process))
 
@@ -173,11 +180,11 @@ Returns the process object for this execution of kubectl."
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (kubernetes--kubectl '("get" "pods" "-o" "json")
              (lambda (buf)
-               (unwind-protect
-                   (let ((json (with-current-buffer buf
-                                 (json-read-from-string (buffer-string)))))
-                     (funcall cb json))
-                 (funcall (or cleanup-cb #'ignore))))))
+               (let ((json (with-current-buffer buf
+                             (json-read-from-string (buffer-string)))))
+                 (funcall cb json)))
+             nil
+             cleanup-cb))
 
 (defun kubernetes-config-view (cb &optional cleanup-cb)
   "Get the current configuration and pass it to CB.
@@ -185,11 +192,11 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (kubernetes--kubectl '("config" "view" "-o" "json")
              (lambda (buf)
-               (unwind-protect
-                   (let ((json (with-current-buffer buf
-                                 (json-read-from-string (buffer-string)))))
-                     (funcall cb json))
-                 (funcall (or cleanup-cb #'ignore))))))
+               (let ((json (with-current-buffer buf
+                             (json-read-from-string (buffer-string)))))
+                 (funcall cb json)))
+             nil
+             cleanup-cb))
 
 (defun kubernetes-delete-pod (pod-name cb &optional error-cb)
   "Delete pod with POD-NAME, then execute CB with the response buffer.
