@@ -36,6 +36,24 @@ will be mocked."
                            (funcall on-success buf)))))
      ,form))
 
+(defmacro with-error-response-at (expected-args response-string form)
+  "Rebind `kubernetes--kubectl' to test handling of failed responses.
+
+Asserts the the args parsed to that function are equal to EXPECTED-ARGS.
+
+Executes the on-error callback with a buffer containing RESPONSE-STRING.
+
+FORM is the Elisp form to be evaluated, in which `kubernetes--kubectl'
+will be mocked."
+  (declare (indent 2))
+  `(noflet ((kubernetes--kubectl (args _on-success &optional on-error)
+                       (let ((buf (generate-new-buffer " test")))
+                         (with-current-buffer buf
+                           (insert ,response-string)
+                           (should (equal args ,expected-args))
+                           (should on-error)
+                           (funcall on-error buf)))))
+     ,form))
 
 ;; Test cases
 
@@ -51,28 +69,56 @@ will be mocked."
 
 (ert-deftest listing-pods-returns-parsed-json ()
   (let* ((sample-response (f-read-text (f-join this-directory "get-pods-output.json")))
-         (parsed-response (json-read-from-string sample-response)))
+         (parsed-response (json-read-from-string sample-response))
+         (cleanup-callback-called))
 
     (with-successful-response-at '("get" "pods" "-o" "json") sample-response
       (kubernetes-get-pods
        (lambda (response)
-         (should (equal parsed-response response)))))))
+         (should (equal parsed-response response)))
+       (lambda ()
+         (setq cleanup-callback-called t))))
+    (should cleanup-callback-called)))
 
 (ert-deftest viewing-config-returns-parsed-json ()
   (let* ((sample-response (f-read-text (f-join this-directory "config-view-output.json")))
-         (parsed-response (json-read-from-string sample-response)))
+         (parsed-response (json-read-from-string sample-response))
+         (cleanup-callback-called))
     (with-successful-response-at '("config" "view" "-o" "json") sample-response
       (kubernetes-config-view
        (lambda (response)
-         (should (equal parsed-response response)))))))
+         (should (equal parsed-response response)))
+       (lambda ()
+         (setq cleanup-callback-called t))))
+    (should cleanup-callback-called)))
 
 (ert-deftest deleting-pod-succeeds ()
-  (let* ((pod-name "example-v3-4120544588-55kmw")
-         (response (concat "pod/" pod-name))
-         response-buffer)
+  (let ((pod-name "example-v3-4120544588-55kmw"))
     (with-successful-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
       (kubernetes-delete-pod "example-pod"
                    (lambda (result)
                      (should (equal pod-name result)))))))
+
+(ert-deftest deleting-pod-fails ()
+  (let ((pod-name "example-v3-4120544588-55kmw")
+        (on-error-called))
+    (with-error-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
+      (kubernetes-delete-pod "example-pod"
+                   (lambda (_)
+                     (error "Unexpected success response"))
+                   (lambda (result)
+                     (setq on-error-called t))))
+    (should on-error-called)))
+
+(ert-deftest describing-pods ()
+  (let ((pod-name "example-v3-4120544588-55kmw")
+        (sample-response "foo bar baz")
+        (on-success-called))
+    (with-successful-response-at `("describe" "pod" ,pod-name) sample-response
+      (kubernetes-kubectl-describe-pod pod-name
+                             (lambda (str)
+                               (setq on-success-called t)
+                               (should (equal sample-response str)))))
+    (should on-success-called)))
 
 ;;; kubectl-integration-test.el ends here
