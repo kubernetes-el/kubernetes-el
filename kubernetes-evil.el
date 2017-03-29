@@ -19,12 +19,19 @@
 (autoload 'magit-section-toggle "magit-section")
 
 (with-eval-after-load 'evil
-  (evil-define-key 'normal kubernetes-mode-map
+  (evil-set-initial-state 'kubernetes-mode 'motion)
+  (evil-set-initial-state 'kubernetes-display-pods-mode 'motion)
+  (evil-set-initial-state 'kubernetes-logs-mode 'motion)
+  (evil-set-initial-state 'kubernetes-log-line-mode 'motion)
+
+  (evil-define-key 'motion kubernetes-mode-map
     (kbd "RET") #'kubernetes-navigate
+    (kbd "j") #'next-line
+    (kbd "k") #'previous-line
     (kbd "q") #'quit-window
     (kbd "M-w") #'kubernetes-copy-thing-at-point)
 
-  (evil-define-key 'normal kubernetes-display-pods-mode-map
+  (evil-define-key 'motion kubernetes-display-pods-mode-map
     (kbd "TAB") #'magit-section-toggle
     (kbd "g") #'kubernetes-display-pods-refresh
     (kbd "h") #'describe-mode
@@ -35,12 +42,12 @@
     (kbd "x") #'kubernetes-execute-marks
     (kbd "l") #'kubernetes-logs)
 
-  (evil-define-key 'normal kubernetes-logs-mode-map
+  (evil-define-key 'motion kubernetes-logs-mode-map
     (kbd "n") #'kubernetes-logs-forward-line
     (kbd "p") #'kubernetes-logs-previous-line
     (kbd "RET") #'kubernetes-logs-inspect-line)
 
-  (evil-define-key 'normal kubernetes-log-line-mode-map
+  (evil-define-key 'motion kubernetes-log-line-mode-map
     (kbd "n") #'kubernetes-logs-forward-line
     (kbd "p") #'kubernetes-logs-previous-line))
 
