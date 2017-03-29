@@ -471,19 +471,26 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
 
 (defun kubernetes--format-pod-details (pod)
   (with-temp-buffer
-    (-let [(&alist 'metadata (&alist 'namespace ns)
-                   'status (&alist 'containerStatuses [(&alist 'image image 'name name)]
-                                   'hostIP host-ip
-                                   'podIP pod-ip
-                                   'startTime start-time))
-           pod]
-      (insert (format "    %-12s%s\n" "Name:" name))
-      (insert (format "    %-12s%s\n" "Namespace:" ns))
-      (insert (format "    %-12s%s\n" "Image:" image))
-      (insert (format "    %-12s%s\n" "Host IP:" host-ip))
-      (insert (format "    %-12s%s\n" "Pod IP:" pod-ip))
-      (insert (format "    %-12s%s\n" "Start:" start-time))
-      (propertize (buffer-string) 'kubernetes-nav (list :pod pod) 'kubernetes-copy name))))
+    (-let ((insert-detail
+            (lambda (key value)
+              (let ((str (concat (propertize (format "    %-12s" key) 'face 'magit-header-line)
+                                 value)))
+                (insert (concat (propertize str 'kubernetes-copy value)))
+                (newline))))
+
+           ((&alist 'metadata (&alist 'namespace ns)
+                    'status (&alist 'containerStatuses [(&alist 'image image 'name name)]
+                                    'hostIP host-ip
+                                    'podIP pod-ip
+                                    'startTime start-time))
+            pod))
+      (funcall insert-detail "Name:" name)
+      (funcall insert-detail "Namespace:" ns)
+      (funcall insert-detail "Image:" image)
+      (funcall insert-detail "Host IP:" host-ip)
+      (funcall insert-detail "Pod IP:" pod-ip)
+      (funcall insert-detail "Started:" start-time)
+      (buffer-string))))
 
 (defun kubernetes--format-pod-line (pod)
   (-let* (((&alist 'metadata (&alist 'name name)
@@ -549,8 +556,9 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
         (dolist (pod (append pods nil))
           (magit-insert-section ((eval (intern (kubernetes--pod-name pod))) nil t)
             (magit-insert-heading (concat (kubernetes--format-pod-line pod) "\n"))
-            (insert (kubernetes--format-pod-details pod))
-            (newline)))))
+            (magit-insert-section (details)
+              (insert (kubernetes--format-pod-details pod))
+              (newline))))))
      (t
       (magit-insert-section (pods-container)
         (magit-insert-heading "Pods \n")
