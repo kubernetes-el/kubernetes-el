@@ -56,3 +56,26 @@ clean-all: clean
 
 .cask :
 	$(CASK) install
+
+
+# Assert cask is installed
+
+ifeq (, $(shell which cask))
+
+define MESSAGE
+Building this project requires Cask.
+
+	https://github.com/cask/cask
+
+macOS:
+
+	brew install cask
+
+*Nix:
+
+	curl -fsSL https://raw.githubusercontent.com/cask/cask/master/go | python
+
+endef
+
+$(error $(MESSAGE))
+endif
