@@ -30,6 +30,7 @@
     (kbd "M-w") #'kubernetes-copy-thing-at-point)
 
   (evil-define-key 'motion kubernetes-display-pods-mode-map
+    (kbd "?") #'kubernetes-overview-popup
     (kbd "TAB") #'magit-section-toggle
     (kbd "g") #'kubernetes-display-pods-refresh
     (kbd "h") #'describe-mode

@@ -993,6 +993,21 @@ Should be invoked via `kubernetes-logs-popup'."
       (quit-window t win)
     (kill-buffer proc-buf)))
 
+(magit-define-popup kubernetes-overview-popup
+  "Popup console for showing an overview of available popup commands."
+  :group 'kubernetes
+  :actions
+  '("Marking pods"
+    (?D "Delete pod at point" kubernetes-mark-for-delete)
+    (?u "Unmark pod at point" kubernetes-unmark)
+    (?U "Unmark all pods" kubernetes-unmark-all)
+    "Popup commands"
+    (?d "Describe" kubernetes-describe-popup)
+    (?e "Exec" kubernetes-exec-popup)
+    (?l "Logs" kubernetes-logs-popup)
+    "Misc"
+    (?h "Describe mode and keybindings" describe-mode)))
+
 
 ;; Mode definitions
 
@@ -1034,6 +1049,7 @@ Should be invoked via `kubernetes-logs-popup'."
 ;;;###autoload
 (defvar kubernetes-display-pods-mode-map
   (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "?") #'kubernetes-overview-popup)
     (define-key keymap (kbd "TAB") #'magit-section-toggle)
     (define-key keymap (kbd "g") #'kubernetes-display-pods-refresh)
     (define-key keymap (kbd "d") #'kubernetes-describe)
@@ -1116,7 +1132,7 @@ Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
   "Display a list of pods in the current Kubernetes context."
   (interactive)
   (kubernetes-display-buffer (kubernetes--display-pods-initialize-buffer))
-  (message (substitute-command-keys "\\<kubernetes-display-pods-mode-map>Type \\[describe-mode] for usage.")))
+  (message (substitute-command-keys "\\<kubernetes-display-pods-mode-map>Type \\[kubernetes-overview-popup] for usage.")))
 
 (provide 'kubernetes)
 
