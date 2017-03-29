@@ -77,6 +77,4 @@ will be mocked."
                    (lambda (result)
                      (should (equal pod-name result)))))))
 
-(provide 'kubernetes-test)
-
 ;;; kubernetes-test.el ends here
