@@ -5,7 +5,8 @@ A magit-style interface to the Kubernetes command-line client.
 This project is in early stages, but the following are implemented:
 
 - Live-updating list of pods
-- Showing logs for the pod at point
+- Showing logs for the pods
+- Exec'ing into a pod's docker container
 - Deleting pods
 - Inspecting pods.
 
