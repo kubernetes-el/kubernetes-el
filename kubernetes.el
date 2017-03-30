@@ -607,6 +607,18 @@ This runs at half the frequency as the main refresh.  It is needed
 so that inconsistent UI states due to the refresh supression hack
 are cleaned up faster.")
 
+(defun kubernetes--initialize-timers ()
+  (setq kubernetes--poll-timer (run-with-timer kubernetes-poll-frequency kubernetes-poll-frequency #'kubernetes--poll))
+  (setq kubernetes--redraw-timer (run-with-timer kubernetes-redraw-frequency kubernetes-redraw-frequency #'kubernetes--redraw-main-buffer)))
+
+(defun kubernetes--kill-timers ()
+  (when-let (timer kubernetes--poll-timer)
+    (cancel-timer timer))
+  (when-let (timer kubernetes--redraw-timer)
+    (cancel-timer timer))
+  (setq kubernetes--poll-timer nil)
+  (setq kubernetes--redraw-timer nil))
+
 (defvar-local kubernetes--marked-pod-names nil)
 
 (defvar-local kubernetes--pods-pending-deletion nil)
@@ -721,24 +733,14 @@ are cleaned up faster.")
       (kubernetes--redraw-main-buffer t)
       (goto-char (point-min))
 
-      ;; Initialize timers.
-      (setq kubernetes--poll-timer (run-with-timer kubernetes-poll-frequency kubernetes-poll-frequency #'kubernetes--poll))
-      (setq kubernetes--redraw-timer (run-with-timer kubernetes-redraw-frequency kubernetes-redraw-frequency #'kubernetes--redraw-main-buffer))
+      (kubernetes--initialize-timers)
 
       (add-hook 'kill-buffer-hook
                 (lambda ()
                   (with-current-buffer buf
                     (kubernetes--clear-main-state)
                     (kubernetes--kill-polling-processes)
-
-                    ;; Kill timers.
-                    (when-let (timer kubernetes--poll-timer)
-                      (setq kubernetes--poll-timer nil)
-                      (cancel-timer timer))
-                    (when-let (timer kubernetes--redraw-timer)
-                      (setq kubernetes--poll-timer nil)
-                      (cancel-timer timer))))
-
+                    (kubernetes--kill-timers)))
                 nil t))
     buf))
 
@@ -1150,14 +1152,15 @@ Should be invoked via command `kubernetes-logs-popup'."
 
 CONTEXT is the name of a context as a string."
   (interactive (list (completing-read "Context: " (kubernetes--context-names) nil t)))
-  (kubernetes--kubectl-config-use-context context
-                                (lambda (_)
-                                  ;; Re-render buffer.
-                                  (kubernetes--kill-polling-processes)
-                                  (kubernetes--clear-main-state)
-                                  (kubernetes--redraw-main-buffer t)
-                                  (goto-char (point-min))
-                                  (kubernetes--poll))))
+
+  ;; Reset pods list buffer.
+  (kubernetes--kill-polling-processes)
+  (kubernetes--clear-main-state)
+  (kubernetes--redraw-main-buffer t)
+  (goto-char (point-min))
+
+  (kubernetes--kubectl-config-use-context context (lambda (_)
+                                          (kubernetes--poll))))
 
 (defun kubernetes--context-names ()
   (-let* ((config (or kubernetes--view-context-response (kubernetes--await-on-async #'kubernetes--kubectl-config-view)))
