@@ -855,8 +855,12 @@ This variable is reset after use by the logging functions.")
   :options
   '("Options for customizing logging behaviour"
     (?t "Number of lines to display" "--tail=" read-number "-1")
+    "Time controls"
     (?s "Since relative time" "--since=" kubernetes--read-time-value)
     (?d "Since absolute datetime" "--since-time=" kubernetes--read-iso-datetime))
+
+  :switches
+  '((?p "Print logs for previous instances of the container in this pod" "-p"))
 
   :actions
   '((?l "Logs" kubernetes-logs-fetch-all)
