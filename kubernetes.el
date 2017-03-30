@@ -700,6 +700,11 @@ This is used to regularly synchronise local state with Kubernetes.")
     (kubernetes--update-pod-marks-state pods)
     (magit-insert-section (pods-container)
       (cond
+       ((and get-pods-response (null (append pods nil)))
+        (magit-insert-heading "Pods")
+        (magit-insert-section (pods-list)
+          (insert (propertize "  None." 'face 'magit-dimmed))
+          (newline)))
        (pods
         (magit-insert-heading (concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods))))
         (insert column-heading)
