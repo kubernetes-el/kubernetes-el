@@ -1095,16 +1095,20 @@ Should be invoked via command `kubernetes-logs-popup'."
                      (read-string (format "Command (default: %s): " kubernetes-default-exec-command) nil 'kubernetes-exec-history)))
   (let* ((name (kubernetes--pod-name kubernetes--pod-to-exec))
 
-         (exec-command
-          (cond
-           ((null exec-command)
-            kubernetes-default-exec-command)
-           ((string-empty-p (string-trim exec-command))
-            kubernetes-default-exec-command)
-           (t
-            (string-trim exec-command))))
+         (exec-command (cond
+                        ((null exec-command)
+                         kubernetes-default-exec-command)
+                        ((string-empty-p (string-trim exec-command))
+                         kubernetes-default-exec-command)
+                        (t
+                         (string-trim exec-command))))
 
-         (command (-flatten (list kubernetes-kubectl-executable "exec" args name exec-command)))
+         (command (append (list kubernetes-kubectl-executable "exec")
+                          args
+                          (when kubernetes--current-namespace
+                            (list (format "--namespace=%s" kubernetes--current-namespace)))
+                          (list name exec-command)))
+
          (interactive-tty (member "-t" args))
          (mode (if interactive-tty
                    t ; Means use compilation-shell-minor-mode
