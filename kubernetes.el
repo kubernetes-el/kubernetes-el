@@ -498,6 +498,36 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
   (setq kubernetes--poll-context-process nil))
 
 
+;; Timers
+;;
+;; These timers are used to keep the pods list buffer up-to-date. One timer is
+;; used call `kubernetes--poll', which refreshes the main state. Another is used to
+;; trigger regular refreshes of the pods buffer to redraw the UI to ensure it
+;; does not stay out of sync for long when user commands fail.
+
+(defvar kubernetes--poll-timer nil
+  "Background timer used to poll for updates.")
+
+(defvar kubernetes--redraw-timer nil
+  "Background timer used to redraw the buffer.
+
+This runs at half the frequency as the main refresh.  It is needed
+so that inconsistent UI states due to the refresh supression hack
+are cleaned up faster.")
+
+(defun kubernetes--initialize-timers ()
+  (setq kubernetes--poll-timer (run-with-timer kubernetes-poll-frequency kubernetes-poll-frequency #'kubernetes--poll))
+  (setq kubernetes--redraw-timer (run-with-timer kubernetes-redraw-frequency kubernetes-redraw-frequency #'kubernetes--redraw-main-buffer)))
+
+(defun kubernetes--kill-timers ()
+  (when-let (timer kubernetes--poll-timer)
+    (cancel-timer timer))
+  (when-let (timer kubernetes--redraw-timer)
+    (cancel-timer timer))
+  (setq kubernetes--poll-timer nil)
+  (setq kubernetes--redraw-timer nil))
+
+
 ;; View management
 
 (defun kubernetes-display-buffer-fullframe (buffer)
@@ -596,28 +626,6 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
 
 
 ;; Pod section rendering.
-
-(defvar kubernetes--poll-timer nil
-  "Background timer used to poll for updates.")
-
-(defvar kubernetes--redraw-timer nil
-  "Background timer used to redraw the buffer.
-
-This runs at half the frequency as the main refresh.  It is needed
-so that inconsistent UI states due to the refresh supression hack
-are cleaned up faster.")
-
-(defun kubernetes--initialize-timers ()
-  (setq kubernetes--poll-timer (run-with-timer kubernetes-poll-frequency kubernetes-poll-frequency #'kubernetes--poll))
-  (setq kubernetes--redraw-timer (run-with-timer kubernetes-redraw-frequency kubernetes-redraw-frequency #'kubernetes--redraw-main-buffer)))
-
-(defun kubernetes--kill-timers ()
-  (when-let (timer kubernetes--poll-timer)
-    (cancel-timer timer))
-  (when-let (timer kubernetes--redraw-timer)
-    (cancel-timer timer))
-  (setq kubernetes--poll-timer nil)
-  (setq kubernetes--redraw-timer nil))
 
 (defvar-local kubernetes--marked-pod-names nil)
 
