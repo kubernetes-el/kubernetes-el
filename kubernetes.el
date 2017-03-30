@@ -174,7 +174,7 @@ Returns the process object for this execution of kubectl."
     (set-process-sentinel process sentinel)
     process))
 
-(defun kubernetes-get-pods (cb &optional cleanup-cb)
+(defun kubernetes--kubectl-get-pods (cb &optional cleanup-cb)
   "Get all pods and execute callback CB with the parsed JSON.
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
@@ -186,7 +186,7 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
              nil
              cleanup-cb))
 
-(defun kubernetes-config-view (cb &optional cleanup-cb)
+(defun kubernetes--kubectl-config-view (cb &optional cleanup-cb)
   "Get the current configuration and pass it to CB.
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
@@ -198,7 +198,7 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
              nil
              cleanup-cb))
 
-(defun kubernetes-kubectl-config-use-context (context-name cb)
+(defun kubernetes--kubectl-config-use-context (context-name cb)
   "Change the current kubernetes context to CONTEXT-NAME, a string.
 
 CB is a function taking the name of the context that was switched to."
@@ -209,7 +209,7 @@ CB is a function taking the name of the context that was switched to."
                                (buffer-string))
                  (funcall cb (match-string 1 (buffer-string)))))))
 
-(defun kubernetes-delete-pod (pod-name cb &optional error-cb)
+(defun kubernetes--kubectl-delete-pod (pod-name cb &optional error-cb)
   "Delete pod with POD-NAME, then execute CB with the response buffer.
 
 ERROR-CB is called if an error occurred."
@@ -220,7 +220,7 @@ ERROR-CB is called if an error occurred."
                  (funcall cb (match-string 1 (buffer-string)))))
              error-cb))
 
-(defun kubernetes-kubectl-describe-pod (pod-name cb)
+(defun kubernetes--kubectl-describe-pod (pod-name cb)
   "Describe pod with POD-NAME, then execute CB with the string response."
   (kubernetes--kubectl (list "describe" "pod" pod-name)
              (lambda (buf)
@@ -276,7 +276,7 @@ Used to draw the context section of the main buffer.")
            (or kubernetes--get-pods-response
                (progn
                  (message "Getting pods...")
-                 (kubernetes--await-on-async #'kubernetes-get-pods))))
+                 (kubernetes--await-on-async #'kubernetes--kubectl-get-pods))))
           (pods (append pods nil))
           (names (-map #'kubernetes--pod-name pods))
           (choice (completing-read "Pod: " names nil t)))
@@ -400,7 +400,7 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
 ;;;###autoload
 (defun kubernetes-display-config (config)
   "Display information for CONFIG in a new window."
-  (interactive (list (kubernetes--await-on-async #'kubernetes-config-view)))
+  (interactive (list (kubernetes--await-on-async #'kubernetes--kubectl-config-view)))
   (with-current-buffer (kubernetes-display-config-refresh config)
     (goto-char (point-min))
     (select-window (display-buffer (current-buffer)))))
@@ -720,13 +720,13 @@ FORCE ensures it happens."
           (dolist (pod kubernetes--marked-pod-names)
             (add-to-list 'kubernetes--pods-pending-deletion pod)
 
-            (kubernetes-delete-pod pod
-                         (lambda (_)
-                           (message "Deleting pod %s succeeded." pod)
-                           (kubernetes-display-pods-refresh))
-                         (lambda (_)
-                           (message "Deleting pod %s failed" pod)
-                           (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))
+            (kubernetes--kubectl-delete-pod pod
+                                            (lambda (_)
+                                              (message "Deleting pod %s succeeded." pod)
+                                              (kubernetes-display-pods-refresh))
+                                            (lambda (_)
+                                              (message "Deleting pod %s failed" pod)
+                                              (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))
 
           (kubernetes-unmark-all))
       (message "Cancelled."))))
@@ -768,7 +768,7 @@ state as responses arrive."
 
     (unless kubernetes--view-context-process
       (kubernetes--set-view-context-process
-       (kubernetes-config-view
+       (kubernetes--kubectl-config-view
         (lambda (config)
           (setq kubernetes--view-context-response config)
           (kubernetes--redraw-main-buffer))
@@ -777,7 +777,7 @@ state as responses arrive."
 
     (unless kubernetes--get-pods-process
       (kubernetes--set-get-pods-process
-       (kubernetes-get-pods
+       (kubernetes--kubectl-get-pods
         (lambda (response)
           (setq kubernetes--get-pods-response response)
           (kubernetes--redraw-main-buffer))
@@ -956,7 +956,7 @@ THING must be a valid target for `kubectl describe'."
                                   (insert s)
                                   (untabify (point-min) (point-max))
                                   (goto-char (point-min))))))
-           (proc (kubernetes-kubectl-describe-pod pod-name populate-buffer)))
+           (proc (kubernetes--kubectl-describe-pod pod-name populate-buffer)))
       (with-current-buffer buf
         (add-hook 'kill-buffer-hook (lambda () (kubernetes--kill-process-quietly proc)) nil t)))
 

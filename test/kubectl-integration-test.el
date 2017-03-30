@@ -83,7 +83,7 @@ will be mocked."
          (cleanup-callback-called))
 
     (with-successful-response-at '("get" "pods" "-o" "json") sample-response
-      (kubernetes-get-pods
+      (kubernetes--kubectl-get-pods
        (lambda (response)
          (should (equal parsed-response response)))
        (lambda ()
@@ -95,7 +95,7 @@ will be mocked."
          (parsed-response (json-read-from-string sample-response))
          (cleanup-callback-called))
     (with-successful-response-at '("config" "view" "-o" "json") sample-response
-      (kubernetes-config-view
+      (kubernetes--kubectl-config-view
        (lambda (response)
          (should (equal parsed-response response)))
        (lambda ()
@@ -105,30 +105,30 @@ will be mocked."
 (ert-deftest deleting-pod-succeeds ()
   (let ((pod-name "example-v3-4120544588-55kmw"))
     (with-successful-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
-      (kubernetes-delete-pod "example-pod"
-                             (lambda (result)
-                               (should (equal pod-name result)))))))
+      (kubernetes--kubectl-delete-pod "example-pod"
+                                      (lambda (result)
+                                        (should (equal pod-name result)))))))
 
 (ert-deftest deleting-pod-fails ()
   (let ((pod-name "example-v3-4120544588-55kmw")
         (on-error-called))
     (with-error-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
-      (kubernetes-delete-pod "example-pod"
-                             (lambda (_)
-                               (error "Unexpected success response"))
-                             (lambda (result)
-                               (setq on-error-called t))))
-    (should on-error-called)))
+      kubernetes--kubectl-delete-podod "example-pod"
+      (lambda (_)
+        (error "Unexpected success response"))
+      (lambda (result)
+        (setq on-error-called t))))
+  (should on-error-called)))
 
 (ert-deftest describing-pods ()
   (let ((pod-name "example-v3-4120544588-55kmw")
         (sample-response "foo bar baz")
         (on-success-called))
     (with-successful-response-at `("describe" "pod" ,pod-name) sample-response
-      (kubernetes-kubectl-describe-pod pod-name
-                                       (lambda (str)
-                                         (setq on-success-called t)
-                                         (should (equal sample-response str)))))
+      (kubernetes--kubectl-describe-pod pod-name
+                                        (lambda (str)
+                                          (setq on-success-called t)
+                                          (should (equal sample-response str)))))
     (should on-success-called)))
 
 (ert-deftest changing-current-context ()
@@ -136,10 +136,10 @@ will be mocked."
          (sample-response (format "Switched to context \"%s\".\n" context-name))
          (on-success-called))
     (with-successful-response-at (list "config" "use-context" context-name) sample-response
-      (kubernetes-kubectl-config-use-context context-name
-                                             (lambda (str)
-                                               (setq on-success-called t)
-                                               (should (equal context-name str)))))
+      (kubernetes--kubectl-config-use-context context-name
+                                              (lambda (str)
+                                                (setq on-success-called t)
+                                                (should (equal context-name str)))))
     (should on-success-called)))
 
 ;;; kubectl-integration-test.el ends here
