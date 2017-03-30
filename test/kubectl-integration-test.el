@@ -90,6 +90,16 @@ will be mocked."
          (setq cleanup-callback-called t))))
     (should cleanup-callback-called)))
 
+(ert-deftest get-pods-returning-no-response ()
+  (let* ((err-response (f-read-text (f-join this-directory "get-pods-no-resources-response.txt")))
+         (sans-first-line (string-join (cdr (split-string err-response (rx (any "\n")))) "\n"))
+         (parsed-response (json-read-from-string sans-first-line)))
+
+    (with-successful-response-at '("get" "pods" "-o" "json") err-response
+      (kubernetes--kubectl-get-pods
+       (lambda (response)
+         (should (equal parsed-response response)))))))
+
 (ert-deftest get-pods-applies-current-namespace ()
   (let ((kubernetes--current-namespace "foo"))
     (with-successful-response-at `("get" "pods" "-o" "json" "--namespace=foo")

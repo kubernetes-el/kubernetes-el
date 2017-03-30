@@ -247,7 +247,12 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
     (kubernetes--kubectl args
                (lambda (buf)
                  (let ((json (with-current-buffer buf
-                               (json-read-from-string (buffer-string)))))
+                               ;; Skip past stderr written to this buffer.
+                               (goto-char (point-min))
+                               (search-forward "No resources found." (line-end-position) t)
+
+                               (json-read-from-string
+                                (buffer-substring (point) (point-max))))))
                    (funcall cb json)))
                nil
                cleanup-cb)))
