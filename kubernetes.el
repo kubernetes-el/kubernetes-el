@@ -411,7 +411,7 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
                                       (propertize (format "%s: " (symbol-name k)) 'face 'kubernetes-json-key)
                                       (cond
                                        ((equal t v) "true")
-                                       ((equal nil v) "false")
+                                       ((equal :json-false v) "false")
                                        ((numberp v) (number-to-string v))
                                        ((and (stringp v) (< (length v) kubernetes-yaml-string-drop-threshold)) v)
                                        (t
