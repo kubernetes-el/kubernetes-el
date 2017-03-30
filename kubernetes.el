@@ -987,7 +987,11 @@ Should be invoked via command `kubernetes-logs-popup'."
   (interactive (list (kubernetes-logs-arguments)))
   (let* ((name (kubernetes--pod-name kubernetes--pod-to-log))
          (compilation-buffer-name-function (lambda (_) kubernetes-logs-buffer-name))
-         (command (-flatten (list kubernetes-kubectl-executable "logs" args name))))
+         (command (append (list kubernetes-kubectl-executable "logs")
+                          args
+                          (list name)
+                          (when kubernetes--current-namespace
+                            (list (format "--namespace=%s" kubernetes--current-namespace))))))
     (setq kubernetes--pod-to-log nil)
     (with-current-buffer (compilation-start (string-join command " ") 'kubernetes-logs-mode)
       (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
