@@ -628,13 +628,14 @@ This is used to regularly synchronise local state with Kubernetes.")
                 (insert (concat (propertize str 'kubernetes-copy value)))
                 (newline))))
 
-           ((&alist 'metadata (&alist 'namespace ns)
+           ((&alist 'metadata (&alist 'namespace ns 'labels (&alist 'name label-name))
                     'status (&alist 'containerStatuses [(&alist 'image image 'name name)]
                                     'hostIP host-ip
                                     'podIP pod-ip
                                     'startTime start-time))
             pod))
       (funcall insert-detail "Name:" name)
+      (funcall insert-detail "Labels:" label-name)
       (funcall insert-detail "Namespace:" ns)
       (funcall insert-detail "Image:" image)
       (funcall insert-detail "Host IP:" host-ip)
