@@ -573,7 +573,7 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
                        (if (and ns namespace-state)
                            (format "%-12s%s (overridden to %s)" "Namespace: " ns namespace-state)
                          (format "%-12s%s" "Namespace: " (or ns namespace-state)))
-                       'kubernetes-copy ns))))))
+                       'kubernetes-copy (or namespace-state ns)))))))
 
       (--map (propertize it 'kubernetes-nav (list :config config))
              (-non-nil (-flatten lines))))))
@@ -581,11 +581,17 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
 (defun kubernetes--draw-context-section (namespace-state config)
   (magit-insert-section (context-container)
     (magit-insert-section (context)
-      (if config
-          (-let [(context . lines) (kubernetes--context-section-lines namespace-state config)]
-            (magit-insert-heading (concat context "\n"))
-            (insert (string-join lines "\n")))
-        (insert (concat (format "%-12s" "Context: ") (propertize "Fetching..." 'face 'magit-dimmed))))
+      (cond
+       (config
+        (-let [(context . lines) (kubernetes--context-section-lines namespace-state config)]
+          (magit-insert-heading (concat context "\n"))
+          (insert (string-join lines "\n"))))
+       (namespace-state
+        (magit-insert-heading (concat (format "%-12s" "Context: ") (propertize "<none>" 'face 'magit-dimmed)))
+        (insert (propertize (format "%-12s%s" "Namespace: " namespace-state) 'kubernetes-copy namespace-state))
+        (newline))
+       (t
+        (insert (concat (format "%-12s" "Context: ") (propertize "Fetching..." 'face 'magit-dimmed)))))
       (newline 2))))
 
 
