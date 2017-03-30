@@ -2,6 +2,8 @@
 
 A magit-style interface to the Kubernetes command-line client.
 
+![Screenshot of Kubernetes Emacs client](assets/screenshot.png)
+
 This project is in early stages, but the following are implemented:
 
 - Live-updating list of pods
