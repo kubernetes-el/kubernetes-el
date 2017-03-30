@@ -113,12 +113,12 @@ will be mocked."
   (let ((pod-name "example-v3-4120544588-55kmw")
         (on-error-called))
     (with-error-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
-      kubernetes--kubectl-delete-podod "example-pod"
-      (lambda (_)
-        (error "Unexpected success response"))
-      (lambda (result)
-        (setq on-error-called t))))
-  (should on-error-called)))
+      (kubernetes--kubectl-delete-pod "example-pod"
+                                      (lambda (_)
+                                        (error "Unexpected success response"))
+                                      (lambda (result)
+                                        (setq on-error-called t))))
+    (should on-error-called)))
 
 (ert-deftest describing-pods ()
   (let ((pod-name "example-v3-4120544588-55kmw")
