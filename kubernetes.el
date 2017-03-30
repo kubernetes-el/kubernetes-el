@@ -506,12 +506,14 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
 ;; does not stay out of sync for long when user commands fail.
 
 (defvar kubernetes--poll-timer nil
-  "Background timer used to poll for updates.")
+  "Background timer used to poll for updates.
+
+This is used to regularly synchronise local state with Kubernetes.")
 
 (defvar kubernetes--redraw-timer nil
   "Background timer used to redraw the buffer.
 
-This runs at half the frequency as the main refresh.  It is needed
+This runs more frequency than the poll timer.  It is needed
 so that inconsistent UI states due to the refresh supression hack
 are cleaned up faster.")
 
