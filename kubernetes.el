@@ -645,29 +645,48 @@ This is used to regularly synchronise local state with Kubernetes.")
 
 (defun kubernetes--format-pod-line (pod)
   (-let* (((&alist 'metadata (&alist 'name name)
-                   'status (&alist 'containerStatuses [(&alist 'restartCount restarts
-                                                               'state state)]
+                   'status (&alist 'containerStatuses containers
                                    'startTime start-time
                                    'phase phase))
            pod)
+          ([(&alist 'restartCount restarts 'state state)] containers)
           (state (or (alist-get 'reason (alist-get 'waiting state))
                      phase))
           (str
-           (concat (format "%-45s " (kubernetes--ellipsize name 45))
-                   (let ((s (format "%-10s " (kubernetes--ellipsize state 10))))
-                     (if (equal state "Running") (propertize s 'face 'magit-dimmed) s))
-                   (let ((s (format "%8s " restarts)))
-                     (cond
-                      ((equal 0 restarts)
-                       (propertize s 'face 'magit-dimmed))
-                      ((<= kubernetes-pod-restart-warning-threshold restarts)
-                       (propertize s 'face 'warning))
-                      (t
-                       s)))
-                   (let* ((start (apply #'encode-time (kubernetes--parse-utc-timestamp start-time)))
-                          (now (current-time)))
-                     (propertize (format "%8s" (kubernetes--time-diff-string start now))
-                                 'face 'magit-dimmed))))
+           (concat
+            ;; Name
+            (format "%-45s " (kubernetes--ellipsize name 45))
+
+            ;; State
+            (let ((s (format "%-10s " (kubernetes--ellipsize state 10))))
+              (if (equal state "Running") (propertize s 'face 'magit-dimmed) s))
+
+            ;; Count
+            (format "%5s "
+                    (let* ((n-ready (seq-count (-lambda ((it &as &alist 'ready r))
+                                                 (eq r t))
+                                               containers))
+                           (count-str (format "%s/%s" n-ready (seq-length containers))))
+                      (if (zerop n-ready)
+                          count-str
+                        (propertize count-str 'face 'magit-dimmed))))
+
+            ;; Restarts
+            (let ((s (format "%8s " restarts)))
+              (cond
+               ((equal 0 restarts)
+                (propertize s 'face 'magit-dimmed))
+               ((<= kubernetes-pod-restart-warning-threshold restarts)
+                (propertize s 'face 'warning))
+               (t
+                s)))
+
+            ;; Age
+            (let* ((start (apply #'encode-time (kubernetes--parse-utc-timestamp start-time)))
+                   (now (current-time)))
+              (propertize (format "%8s" (kubernetes--time-diff-string start now))
+                          'face 'magit-dimmed))))
+
           (str (cond
                 ((member (downcase state) '("running" "containercreating" "terminated"))
                  str)
@@ -696,7 +715,7 @@ This is used to regularly synchronise local state with Kubernetes.")
 
 (defun kubernetes--draw-pods-section (get-pods-response)
   (-let (((&alist 'items pods) get-pods-response)
-         (column-heading (propertize (format "  %-45s %-10s %8s %8s\n" "Name" "Status" "Restarts" "Age")
+         (column-heading (propertize (format "  %-45s %-10s %-5s   %6s %6s\n" "Name" "Status" "Ready" "Restarts" "Age")
                                      'face 'magit-section-heading)))
     (kubernetes--update-pod-marks-state pods)
     (magit-insert-section (pods-container)
