@@ -32,6 +32,7 @@
   (evil-define-key 'motion kubernetes-display-pods-mode-map
     (kbd "?") #'kubernetes-overview-popup
     (kbd "TAB") #'magit-section-toggle
+    (kbd "c") #'kubernetes-config-popup
     (kbd "g") #'kubernetes-display-pods-refresh
     (kbd "h") #'describe-mode
     (kbd "d") #'kubernetes-describe

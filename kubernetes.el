@@ -133,19 +133,20 @@ The function must take a single argument, which is the buffer to display."
 
 ;; Main Kubernetes query routines
 
-(defun kubernetes--kubectl-default-error-handler (buf)
+(defun kubernetes--kubectl-default-error-handler (buf status)
   (with-current-buffer buf
-    (error "Kubectl failed.  Reason: %s" (buffer-string))))
+    (unless (string-match-p (rx bol (* space) "killed:" (* space) "9" (* space) eol) status)
+      (error "Kubectl failed.  Reason: %s" (buffer-string)))))
 
 (defun kubernetes--kubectl (args on-success &optional on-error cleanup-cb)
   "Run kubectl with ARGS.
 
 ON-SUCCESS is a function of one argument, called with the process' buffer.
 
-Optional ON-ERROR is a function of one argument, called with the
+Optional ON-ERROR is a function of two argument, called with the
 process' buffer.  If omitted, it defaults to
 `kubernetes--kubectl-default-error-handler', which raises an
-error.
+error if the process exited unexpectedly.
 
 Optional CLEANUP-CB is a function of no arguments that is always
 called after the other callbacks.  It can be used for releasing
@@ -155,7 +156,7 @@ Returns the process object for this execution of kubectl."
   (let* ((buf (generate-new-buffer " kubectl"))
          (process (apply #'start-process "kubectl" buf kubernetes-kubectl-executable args))
          (sentinel
-          (lambda (proc _status)
+          (lambda (proc status)
             (unwind-protect
                 (cond
                  ((zerop (process-exit-status proc))
@@ -168,7 +169,7 @@ Returns the process object for this execution of kubectl."
                          (funcall on-error buf))
 
                         (t
-                         (kubernetes--kubectl-default-error-handler (process-buffer proc))))))
+                         (kubernetes--kubectl-default-error-handler (process-buffer proc) status)))))
               (when cleanup-cb
                 (funcall cleanup-cb))))))
     (set-process-sentinel process sentinel)
@@ -1033,11 +1034,39 @@ Should be invoked via `kubernetes-logs-popup'."
       (quit-window t win)
     (kill-buffer proc-buf)))
 
+(magit-define-popup kubernetes-config-popup
+  "Popup console for showing an overview of available config commands."
+  :group 'kubernetes
+  :actions
+  '("Managing contexts"
+    (?c "Change context" kubernetes-use-context)))
+
+(defun kubernetes-use-context (context)
+  "Switch Kubernetes context refresh the pods buffer.
+
+CONTEXT is the name of a context as a string."
+  (interactive (list (completing-read "Context: " (kubernetes--context-names) nil t)))
+  (kubernetes--kubectl-config-use-context context
+                                (lambda (_)
+                                  ;; Re-render buffer.
+                                  (kubernetes--kill-polling-processes)
+                                  (kubernetes--clear-main-state)
+                                  (kubernetes--redraw-main-buffer t)
+                                  (goto-char (point-min))
+                                  (kubernetes-display-pods-refresh))))
+
+(defun kubernetes--context-names ()
+  (-let* ((config (or kubernetes--view-context-response (kubernetes--await-on-async #'kubernetes--kubectl-config-view)))
+          ((&alist 'contexts contexts) config))
+    (--map (alist-get 'name it) contexts)))
+
 (magit-define-popup kubernetes-overview-popup
   "Popup console for showing an overview of available popup commands."
   :group 'kubernetes
   :actions
-  '("Marking pods"
+  '("Environment"
+    (?c "Configuration" kubernetes-config-popup)
+    "Marking pods"
     (?D "Delete pod at point" kubernetes-mark-for-delete)
     (?u "Unmark pod at point" kubernetes-unmark)
     (?U "Unmark all pods" kubernetes-unmark-all)
@@ -1091,10 +1120,11 @@ Should be invoked via `kubernetes-logs-popup'."
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "?") #'kubernetes-overview-popup)
     (define-key keymap (kbd "TAB") #'magit-section-toggle)
-    (define-key keymap (kbd "g") #'kubernetes-display-pods-refresh)
+    (define-key keymap (kbd "c") #'kubernetes-config-popup)
     (define-key keymap (kbd "d") #'kubernetes-describe)
     (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
     (define-key keymap (kbd "e") #'kubernetes-exec)
+    (define-key keymap (kbd "g") #'kubernetes-display-pods-refresh)
     (define-key keymap (kbd "u") #'kubernetes-unmark)
     (define-key keymap (kbd "U") #'kubernetes-unmark-all)
     (define-key keymap (kbd "x") #'kubernetes-execute-marks)
