@@ -136,6 +136,68 @@ The function must take a single argument, which is the buffer to display."
 (defconst kubernetes-pod-buffer-name "*kubernetes pod*")
 
 
+;; Main state
+;;
+;; This state is cleared whenever the buffer is deleted or the context is
+;; switched.
+
+(defvar kubernetes--get-pods-response nil
+  "State representing the get pods response from the API.
+
+Used to draw the pods list of the main buffer.")
+
+(defvar kubernetes--view-context-response nil
+  "State representing the view context response from the API.
+
+Used to draw the context section of the main buffer.")
+
+(defvar kubernetes--get-namespaces-response nil
+  "State representing the namespaces response from the API.
+
+Used for namespace selection within a cluster.")
+
+(defvar kubernetes--current-namespace nil
+  "The namespace to use in queries.  Overrides the context settings.")
+
+(defvar kubernetes--pod-to-exec nil
+  "Identifies the pod to exec into after querying the user for flags.
+
+Assigned before opening the exec popup, when the target pod is
+likely to be at point.  After choosing flags, this is the pod that
+will be exec'ed into.
+
+This variable is reset after use by the exec functions.")
+
+(defvar kubernetes--pod-to-log nil
+  "Identifies the pod to log after querying the user for flags.
+
+Assigned before opening the logging popup, when the target pod is
+likely to be at point.  After choosing flags, this is the pod that
+will be logged.
+
+This variable is reset after use by the logging functions.")
+
+(defvar kubernetes--thing-to-describe nil
+  "Identifies the thing to log for `kubernetes-describe-dwim'.
+
+When set, it is the value of the 'kubernetes-nav' property at point.
+
+Assigned before opening the describe popup, when the target is
+likely to be at point.  If `kubernetes-describe-dwim' is selected
+in the popup, this is the thing that will be inspected.
+
+This variable is reset after use by the logging functions.")
+
+(defun kubernetes--clear-main-state ()
+  (setq kubernetes--get-pods-response nil)
+  (setq kubernetes--view-context-response nil)
+  (setq kubernetes--get-namespaces-response nil)
+  (setq kubernetes--current-namespace nil)
+  (setq kubernetes--pod-to-exec nil)
+  (setq kubernetes--pod-to-log nil)
+  (setq kubernetes--thing-to-describe nil))
+
+
 ;; Main Kubernetes query routines
 
 (defun kubernetes--kubectl-default-error-handler (buf status)
@@ -264,68 +326,6 @@ to a function of the type:
       (sleep-for 0.001))
 
     result))
-
-
-;; Main state
-;;
-;; This state is cleared whenever the buffer is deleted or the context is
-;; switched.
-
-(defvar kubernetes--get-pods-response nil
-  "State representing the get pods response from the API.
-
-Used to draw the pods list of the main buffer.")
-
-(defvar kubernetes--view-context-response nil
-  "State representing the view context response from the API.
-
-Used to draw the context section of the main buffer.")
-
-(defvar kubernetes--get-namespaces-response nil
-  "State representing the namespaces response from the API.
-
-Used for namespace selection within a cluster.")
-
-(defvar kubernetes--current-namespace nil
-  "The namespace to use in queries.  Overrides the context settings.")
-
-(defvar kubernetes--pod-to-exec nil
-  "Identifies the pod to exec into after querying the user for flags.
-
-Assigned before opening the exec popup, when the target pod is
-likely to be at point.  After choosing flags, this is the pod that
-will be exec'ed into.
-
-This variable is reset after use by the exec functions.")
-
-(defvar kubernetes--pod-to-log nil
-  "Identifies the pod to log after querying the user for flags.
-
-Assigned before opening the logging popup, when the target pod is
-likely to be at point.  After choosing flags, this is the pod that
-will be logged.
-
-This variable is reset after use by the logging functions.")
-
-(defvar kubernetes--thing-to-describe nil
-  "Identifies the thing to log for `kubernetes-describe-dwim'.
-
-When set, it is the value of the 'kubernetes-nav' property at point.
-
-Assigned before opening the describe popup, when the target is
-likely to be at point.  If `kubernetes-describe-dwim' is selected
-in the popup, this is the thing that will be inspected.
-
-This variable is reset after use by the logging functions.")
-
-(defun kubernetes--clear-main-state ()
-  (setq kubernetes--get-pods-response nil)
-  (setq kubernetes--view-context-response nil)
-  (setq kubernetes--get-namespaces-response nil)
-  (setq kubernetes--current-namespace nil)
-  (setq kubernetes--pod-to-exec nil)
-  (setq kubernetes--pod-to-log nil)
-  (setq kubernetes--thing-to-describe nil))
 
 
 ;; Utilities
@@ -885,6 +885,7 @@ state as responses arrive."
             (message "Updated pods.")))
         (lambda ()
           (kubernetes--release-poll-pods-process)))))))
+
 
 ;; Logs
 
