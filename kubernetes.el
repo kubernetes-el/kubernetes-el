@@ -869,7 +869,7 @@ This variable is reset after use by the logging functions.")
 (defun kubernetes-logs-follow ()
   "Open a streaming logs buffer for a pod.
 
-Should be invoked via `kubernetes-logs-popup'."
+Should be invoked via command `kubernetes-logs-popup'."
   (interactive)
   (kubernetes-logs-fetch-all (cons "-f" (kubernetes-logs-arguments))))
 
@@ -878,7 +878,7 @@ Should be invoked via `kubernetes-logs-popup'."
 
 ARGS are additional args to pass to kubectl.
 
-Should be invoked via `kubernetes-logs-popup'."
+Should be invoked via command `kubernetes-logs-popup'."
   (interactive (list (kubernetes-logs-arguments)))
   (let* ((name (kubernetes--pod-name kubernetes--pod-to-log))
          (compilation-buffer-name-function (lambda (_) kubernetes-logs-buffer-name))
@@ -1001,7 +1001,7 @@ ARGS are additional args to pass to kubectl.
 
 EXEC-COMMAND is the command to run in the container.
 
-Should be invoked via `kubernetes-logs-popup'."
+Should be invoked via command `kubernetes-logs-popup'."
   (interactive (list (kubernetes-exec-arguments)
                      (read-string (format "Command (default: %s): " kubernetes-default-exec-command) nil 'kubernetes-exec-history)))
   (let* ((name (kubernetes--pod-name kubernetes--pod-to-exec))
