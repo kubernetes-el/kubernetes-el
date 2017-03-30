@@ -142,4 +142,18 @@ will be mocked."
                                                 (should (equal context-name str)))))
     (should on-success-called)))
 
+(ert-deftest getting-namespaces ()
+  (let* ((sample-response (f-read-text (f-join this-directory "get-namespaces-output.json")))
+         (parsed-response (json-read-from-string sample-response))
+         (on-success-called)
+         (cleanup-callback-called))
+    (with-successful-response-at '("get" "namespaces" "-o" "json") sample-response
+      (kubernetes--kubectl-get-namespaces (lambda (response)
+                                            (setq on-success-called t)
+                                            (should (equal parsed-response response)))
+                                          (lambda ()
+                                            (setq cleanup-callback-called t))))
+    (should on-success-called)
+    (should cleanup-callback-called)))
+
 ;;; kubectl-integration-test.el ends here

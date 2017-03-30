@@ -73,8 +73,13 @@ The function must take a single argument, which is the buffer to display."
   :group 'kubernetes
   :type 'integer)
 
-(defcustom kubernetes-refresh-frequency 10
+(defcustom kubernetes-poll-frequency 10
   "The background refresh frequency in seconds."
+  :group 'kubernetes
+  :type 'integer)
+
+(defcustom kubernetes-redraw-frequency 3
+  "The frequency at which to redraw the pods buffer."
   :group 'kubernetes
   :type 'integer)
 
@@ -210,6 +215,18 @@ CB is a function taking the name of the context that was switched to."
                                (buffer-string))
                  (funcall cb (match-string 1 (buffer-string)))))))
 
+(defun kubernetes--kubectl-get-namespaces (cb &optional cleanup-cb)
+  "Get namespaces for the current cluster and pass the parsed response to CB.
+
+CLEANUP-CB is a function taking no arguments used to release any resources."
+  (kubernetes--kubectl '("get" "namespaces" "-o" "json")
+             (lambda (buf)
+               (let ((json (with-current-buffer buf
+                             (json-read-from-string (buffer-string)))))
+                 (funcall cb json)))
+             nil
+             cleanup-cb))
+
 (defun kubernetes--kubectl-delete-pod (pod-name cb &optional error-cb)
   "Delete pod with POD-NAME, then execute CB with the response buffer.
 
@@ -250,6 +267,9 @@ to a function of the type:
 
 
 ;; Main state
+;;
+;; This state is cleared whenever the buffer is deleted or the context is
+;; switched.
 
 (defvar kubernetes--get-pods-response nil
   "State representing the get pods response from the API.
@@ -261,9 +281,51 @@ Used to draw the pods list of the main buffer.")
 
 Used to draw the context section of the main buffer.")
 
+(defvar kubernetes--get-namespaces-response nil
+  "State representing the namespaces response from the API.
+
+Used for namespace selection within a cluster.")
+
+(defvar kubernetes--current-namespace nil
+  "The namespace to use in queries.  Overrides the context settings.")
+
+(defvar kubernetes--pod-to-exec nil
+  "Identifies the pod to exec into after querying the user for flags.
+
+Assigned before opening the exec popup, when the target pod is
+likely to be at point.  After choosing flags, this is the pod that
+will be exec'ed into.
+
+This variable is reset after use by the exec functions.")
+
+(defvar kubernetes--pod-to-log nil
+  "Identifies the pod to log after querying the user for flags.
+
+Assigned before opening the logging popup, when the target pod is
+likely to be at point.  After choosing flags, this is the pod that
+will be logged.
+
+This variable is reset after use by the logging functions.")
+
+(defvar kubernetes--thing-to-describe nil
+  "Identifies the thing to log for `kubernetes-describe-dwim'.
+
+When set, it is the value of the 'kubernetes-nav' property at point.
+
+Assigned before opening the describe popup, when the target is
+likely to be at point.  If `kubernetes-describe-dwim' is selected
+in the popup, this is the thing that will be inspected.
+
+This variable is reset after use by the logging functions.")
+
 (defun kubernetes--clear-main-state ()
   (setq kubernetes--get-pods-response nil)
-  (setq kubernetes--view-context-response nil))
+  (setq kubernetes--view-context-response nil)
+  (setq kubernetes--get-namespaces-response nil)
+  (setq kubernetes--current-namespace nil)
+  (setq kubernetes--pod-to-exec nil)
+  (setq kubernetes--pod-to-log nil)
+  (setq kubernetes--thing-to-describe nil))
 
 
 ;; Utilities
@@ -370,6 +432,63 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
     (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff) ","))))
 
 
+;; Background polling processes
+
+(defvar kubernetes--poll-namespaces-process nil
+  "Single process used to prevent concurrent namespace refreshes.")
+
+(defun kubernetes--set-poll-namespaces-process (proc)
+  (kubernetes--release-poll-namespaces-process)
+  (setq kubernetes--poll-namespaces-process proc))
+
+(defun kubernetes--release-poll-namespaces-process ()
+  (when-let (proc kubernetes--poll-namespaces-process)
+    (when (process-live-p proc)
+      (kill-process proc)))
+  (setq kubernetes--poll-namespaces-process nil))
+
+(defvar kubernetes--poll-context-process nil
+  "Single process used to prevent concurrent config refreshes.")
+
+(defun kubernetes--set-poll-context-process (proc)
+  (kubernetes--release-poll-context-process)
+  (setq kubernetes--poll-context-process proc))
+
+(defun kubernetes--release-poll-context-process ()
+  (when-let (proc kubernetes--poll-context-process)
+    (when (process-live-p proc)
+      (kill-process proc)))
+  (setq kubernetes--poll-context-process nil))
+
+(defvar kubernetes--poll-pods-process nil
+  "Single process used to prevent concurrent get pods requests.")
+
+(defun kubernetes--set-poll-pods-process (proc)
+  (kubernetes--release-poll-pods-process)
+  (setq kubernetes--poll-pods-process proc))
+
+(defun kubernetes--release-poll-pods-process ()
+  (when-let (proc kubernetes--poll-pods-process)
+    (when (process-live-p proc)
+      (kill-process proc)))
+  (setq kubernetes--poll-pods-process nil))
+
+(defun kubernetes--kill-process-quietly (proc)
+  (when (and proc (process-live-p proc))
+    (set-process-query-on-exit-flag proc nil)
+    (set-process-sentinel proc nil)
+    (set-process-buffer proc nil)
+    (kill-process proc)))
+
+(defun kubernetes--kill-polling-processes ()
+  (mapc #'kubernetes--kill-process-quietly (list kubernetes--poll-pods-process
+                                       kubernetes--poll-context-process
+                                       kubernetes--poll-namespaces-process))
+  (setq kubernetes--poll-namespaces-process nil)
+  (setq kubernetes--poll-pods-process nil)
+  (setq kubernetes--poll-context-process nil))
+
+
 ;; View management
 
 (defun kubernetes-display-buffer-fullframe (buffer)
@@ -426,20 +545,7 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
 
 ;; Context section rendering.
 
-(defvar kubernetes--view-context-process nil
-  "Single process used to prevent concurrent config refreshes.")
-
-(defun kubernetes--set-view-context-process (proc)
-  (kubernetes--release-view-context-process)
-  (setq kubernetes--view-context-process proc))
-
-(defun kubernetes--release-view-context-process ()
-  (when-let (proc kubernetes--view-context-process)
-    (when (process-live-p proc)
-      (kill-process proc)))
-  (setq kubernetes--view-context-process nil))
-
-(defun kubernetes--context-section-lines (config)
+(defun kubernetes--context-section-lines (namespace-state config)
   (with-temp-buffer
     (-let* (((&alist 'current-context current 'contexts contexts) config)
             (lines
@@ -454,18 +560,20 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
                 (list (unless (string-empty-p c)
                         (propertize (format "%-12s%s" "Cluster: " c)
                                     'kubernetes-copy c))
-                      (unless (string-empty-p ns)
-                        (propertize (format "%-12s%s" "Namespace: " ns)
-                                    'kubernetes-copy ns)))))))
+                      (propertize
+                       (if (and ns namespace-state)
+                           (format "%-12s%s (overridden to %s)" "Namespace: " ns namespace-state)
+                         (format "%-12s%s" "Namespace: " (or ns namespace-state)))
+                       'kubernetes-copy ns))))))
 
       (--map (propertize it 'kubernetes-nav (list :config config))
              (-non-nil (-flatten lines))))))
 
-(defun kubernetes--draw-context-section (config)
+(defun kubernetes--draw-context-section (namespace-state config)
   (magit-insert-section (context-container)
     (magit-insert-section (context)
       (if config
-          (-let [(context . lines) (kubernetes--context-section-lines config)]
+          (-let [(context . lines) (kubernetes--context-section-lines namespace-state config)]
             (magit-insert-heading (concat context "\n"))
             (insert (string-join lines "\n")))
         (insert (concat (format "%-12s" "Context: ") (propertize "Fetching..." 'face 'magit-dimmed))))
@@ -474,20 +582,7 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
 
 ;; Pod section rendering.
 
-(defvar kubernetes--get-pods-process nil
-  "Single process used to prevent concurrent get pods requests.")
-
-(defun kubernetes--set-get-pods-process (proc)
-  (kubernetes--release-get-pods-process)
-  (setq kubernetes--get-pods-process proc))
-
-(defun kubernetes--release-get-pods-process ()
-  (when-let (proc kubernetes--get-pods-process)
-    (when (process-live-p proc)
-      (kill-process proc)))
-  (setq kubernetes--get-pods-process nil))
-
-(defvar kubernetes--refresh-timer nil
+(defvar kubernetes--poll-timer nil
   "Background timer used to poll for updates.")
 
 (defvar kubernetes--redraw-timer nil
@@ -613,8 +708,8 @@ are cleaned up faster.")
       (goto-char (point-min))
 
       ;; Initialize timers.
-      (setq kubernetes--refresh-timer (run-with-timer kubernetes-refresh-frequency kubernetes-refresh-frequency #'kubernetes-display-pods-refresh))
-      (setq kubernetes--redraw-timer (run-with-timer (/ kubernetes-refresh-frequency 2) (/ kubernetes-refresh-frequency 2) #'kubernetes--redraw-main-buffer))
+      (setq kubernetes--poll-timer (run-with-timer kubernetes-poll-frequency kubernetes-poll-frequency #'kubernetes--poll))
+      (setq kubernetes--redraw-timer (run-with-timer kubernetes-redraw-frequency kubernetes-redraw-frequency #'kubernetes--redraw-main-buffer))
 
       (add-hook 'kill-buffer-hook
                 (lambda ()
@@ -623,11 +718,11 @@ are cleaned up faster.")
                     (kubernetes--kill-polling-processes)
 
                     ;; Kill timers.
-                    (when-let (timer kubernetes--refresh-timer)
-                      (setq kubernetes--refresh-timer nil)
+                    (when-let (timer kubernetes--poll-timer)
+                      (setq kubernetes--poll-timer nil)
                       (cancel-timer timer))
                     (when-let (timer kubernetes--redraw-timer)
-                      (setq kubernetes--refresh-timer nil)
+                      (setq kubernetes--poll-timer nil)
                       (cancel-timer timer))))
 
                 nil t))
@@ -651,26 +746,13 @@ FORCE ensures it happens."
               (inhibit-redisplay t))
           (erase-buffer)
           (magit-insert-section (root)
-            (kubernetes--draw-context-section kubernetes--view-context-response)
+            (kubernetes--draw-context-section kubernetes--current-namespace kubernetes--view-context-response)
             (kubernetes--draw-pods-section kubernetes--get-pods-response))
 
           (goto-char pos)))
 
       ;; Force the section at point to highlight.
       (magit-section-update-highlight))))
-
-(defun kubernetes--kill-process-quietly (proc)
-  (when (and proc (process-live-p proc))
-    (set-process-query-on-exit-flag proc nil)
-    (set-process-sentinel proc nil)
-    (set-process-buffer proc nil)
-    (kill-process proc)))
-
-(defun kubernetes--kill-polling-processes ()
-  (mapc #'kubernetes--kill-process-quietly (list kubernetes--get-pods-process
-                                       kubernetes--view-context-process))
-  (setq kubernetes--get-pods-process nil)
-  (setq kubernetes--view-context-process nil))
 
 
 ;; Marking pods for deletion
@@ -722,12 +804,12 @@ FORCE ensures it happens."
             (add-to-list 'kubernetes--pods-pending-deletion pod)
 
             (kubernetes--kubectl-delete-pod pod
-                                            (lambda (_)
-                                              (message "Deleting pod %s succeeded." pod)
-                                              (kubernetes-display-pods-refresh))
-                                            (lambda (_)
-                                              (message "Deleting pod %s failed" pod)
-                                              (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))
+                                  (lambda (_)
+                                    (message "Deleting pod %s succeeded." pod)
+                                    (kubernetes--poll))
+                                  (lambda (_)
+                                    (message "Deleting pod %s failed" pod)
+                                    (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))
 
           (kubernetes-unmark-all))
       (message "Cancelled."))))
@@ -764,27 +846,45 @@ what to copy."
 Requests the data needed to build the buffer, and updates the UI
 state as responses arrive."
   (interactive)
+  (kubernetes--poll 'verbose))
+
+(defun kubernetes--poll (&optional verbose)
   ;; Make sure not to trigger a refresh if the buffer closes.
   (when (get-buffer kubernetes-display-pods-buffer-name)
+    (when verbose
+      (message "Refreshing..."))
 
-    (unless kubernetes--view-context-process
-      (kubernetes--set-view-context-process
+    (unless kubernetes--poll-namespaces-process
+      (kubernetes--set-poll-namespaces-process
+       (kubernetes--kubectl-get-namespaces
+        (lambda (config)
+          (setq kubernetes--get-namespaces-response config)
+          (when verbose
+            (message "Updated namespaces.")))
+        (lambda ()
+          (kubernetes--release-poll-namespaces-process)))))
+
+    (unless kubernetes--poll-context-process
+      (kubernetes--set-poll-context-process
        (kubernetes--kubectl-config-view
         (lambda (config)
           (setq kubernetes--view-context-response config)
-          (kubernetes--redraw-main-buffer))
+          (kubernetes--redraw-main-buffer)
+          (when verbose
+            (message "Updated contexts.")))
         (lambda ()
-          (kubernetes--release-view-context-process)))))
+          (kubernetes--release-poll-context-process)))))
 
-    (unless kubernetes--get-pods-process
-      (kubernetes--set-get-pods-process
+    (unless kubernetes--poll-pods-process
+      (kubernetes--set-poll-pods-process
        (kubernetes--kubectl-get-pods
         (lambda (response)
           (setq kubernetes--get-pods-response response)
-          (kubernetes--redraw-main-buffer))
+          (kubernetes--redraw-main-buffer)
+          (when verbose
+            (message "Updated pods.")))
         (lambda ()
-          (kubernetes--release-get-pods-process)))))))
-
+          (kubernetes--release-poll-pods-process)))))))
 
 ;; Logs
 
@@ -832,15 +932,6 @@ state as responses arrive."
 
 
 ;; Popups
-
-(defvar kubernetes--pod-to-log nil
-  "Identifies the pod to log after querying the user for flags.
-
-Assigned before opening the logging popup, when the target pod is
-likely to be at point.  After choosing flags, this is the pod that
-will be logged.
-
-This variable is reset after use by the logging functions.")
 
 (defun kubernetes-logs (pod)
   "Popup console for logging commands for POD."
@@ -891,17 +982,6 @@ Should be invoked via command `kubernetes-logs-popup'."
     (with-current-buffer (compilation-start (string-join command " ") 'kubernetes-logs-mode)
       (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
       (select-window (display-buffer (current-buffer))))))
-
-(defvar kubernetes--thing-to-describe nil
-  "Identifies the thing to log for `kubernetes-describe-dwim'.
-
-When set, it is the value of the 'kubernetes-nav' property at point.
-
-Assigned before opening the describe popup, when the target is
-likely to be at point.  If `kubernetes-describe-dwim' is selected
-in the popup, this is the thing that will be inspected.
-
-This variable is reset after use by the logging functions.")
 
 (defun kubernetes--describable-thing-at-pt ()
   (save-excursion
@@ -967,15 +1047,6 @@ THING must be a valid target for `kubectl describe'."
 
     (select-window (display-buffer buf))
     buf))
-
-(defvar kubernetes--pod-to-exec nil
-  "Identifies the pod to exec into after querying the user for flags.
-
-Assigned before opening the exec popup, when the target pod is
-likely to be at point.  After choosing flags, this is the pod that
-will be exec'ed into.
-
-This variable is reset after use by the exec functions.")
 
 (defun kubernetes-exec (pod)
   "Popup console for exec'ing into POD."
@@ -1043,7 +1114,19 @@ Should be invoked via command `kubernetes-logs-popup'."
   :group 'kubernetes
   :actions
   '("Managing contexts"
-    (?c "Change context" kubernetes-use-context)))
+    (?c "Change context" kubernetes-use-context)
+    "Query settings"
+    (?n "Set namespace" kubernetes-set-namespace)))
+
+(defun kubernetes-set-namespace (ns)
+  "Set the namespace to query to NS, overriding the settings for the current context."
+  (interactive (list (completing-read "Use namespace: " (kubernetes--namespace-names) nil t)))
+  (setq kubernetes--current-namespace ns))
+
+(defun kubernetes--namespace-names ()
+  (-let* ((config (or kubernetes--get-namespaces-response (kubernetes--await-on-async #'kubernetes--kubectl-get-namespaces)))
+          ((&alist 'items items) config))
+    (-map (-lambda ((&alist 'metadata (&alist 'name name))) name) items)))
 
 (defun kubernetes-use-context (context)
   "Switch Kubernetes context refresh the pods buffer.
@@ -1057,7 +1140,7 @@ CONTEXT is the name of a context as a string."
                                   (kubernetes--clear-main-state)
                                   (kubernetes--redraw-main-buffer t)
                                   (goto-char (point-min))
-                                  (kubernetes-display-pods-refresh))))
+                                  (kubernetes--poll))))
 
 (defun kubernetes--context-names ()
   (-let* ((config (or kubernetes--view-context-response (kubernetes--await-on-async #'kubernetes--kubectl-config-view)))

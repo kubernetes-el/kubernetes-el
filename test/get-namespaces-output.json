@@ -1,0 +1,49 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "creationTimestamp": "2017-03-29T21:00:08Z",
+        "name": "ns1",
+        "namespace": "",
+        "resourceVersion": "72868822",
+        "selfLink": "/api/v1/namespacesns1",
+        "uid": "b1230745-14c2-11e7-834b-0ac49fbf6acd"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "creationTimestamp": "2016-04-12T03:38:30Z",
+        "name": "ns2",
+        "namespace": "",
+        "resourceVersion": "15",
+        "selfLink": "/api/v1/namespacesns2",
+        "uid": "062e68d6-0060-11e6-ad2a-0e9fa26c327b"
+      },
+      "spec": {
+        "finalizers": [
+          "kubernetes"
+        ]
+      },
+      "status": {
+        "phase": "Active"
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {},
+  "resourceVersion": "",
+  "selfLink": ""
+}
