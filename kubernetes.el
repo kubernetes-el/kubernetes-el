@@ -246,13 +246,16 @@ Returns the process object for this execution of kubectl."
   "Get all pods and execute callback CB with the parsed JSON.
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
-  (kubernetes--kubectl '("get" "pods" "-o" "json")
-             (lambda (buf)
-               (let ((json (with-current-buffer buf
-                             (json-read-from-string (buffer-string)))))
-                 (funcall cb json)))
-             nil
-             cleanup-cb))
+  (let ((args (append '("get" "pods" "-o" "json")
+                      (when kubernetes--current-namespace
+                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+    (kubernetes--kubectl args
+               (lambda (buf)
+                 (let ((json (with-current-buffer buf
+                               (json-read-from-string (buffer-string)))))
+                   (funcall cb json)))
+               nil
+               cleanup-cb)))
 
 (defun kubernetes--kubectl-config-view (cb &optional cleanup-cb)
   "Get the current configuration and pass it to CB.
@@ -293,19 +296,25 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
   "Delete pod with POD-NAME, then execute CB with the response buffer.
 
 ERROR-CB is called if an error occurred."
-  (kubernetes--kubectl (list "delete" "pod" pod-name "-o" "name")
-             (lambda (buf)
-               (with-current-buffer buf
-                 (string-match (rx bol "pod/" (group (+ nonl))) (buffer-string))
-                 (funcall cb (match-string 1 (buffer-string)))))
-             error-cb))
+  (let ((args (append (list "delete" "pod" pod-name "-o" "name")
+                      (when kubernetes--current-namespace
+                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+    (kubernetes--kubectl args
+               (lambda (buf)
+                 (with-current-buffer buf
+                   (string-match (rx bol "pod/" (group (+ nonl))) (buffer-string))
+                   (funcall cb (match-string 1 (buffer-string)))))
+               error-cb)))
 
 (defun kubernetes--kubectl-describe-pod (pod-name cb)
   "Describe pod with POD-NAME, then execute CB with the string response."
-  (kubernetes--kubectl (list "describe" "pod" pod-name)
-             (lambda (buf)
-               (let ((s (with-current-buffer buf (buffer-string))))
-                 (funcall cb s)))))
+  (let ((args (append (list "describe" "pod" pod-name)
+                      (when kubernetes--current-namespace
+                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+    (kubernetes--kubectl args
+               (lambda (buf)
+                 (let ((s (with-current-buffer buf (buffer-string))))
+                   (funcall cb s))))))
 
 (defun kubernetes--await-on-async (fn)
   "Turn an async function requiring a callback into a synchronous one.
@@ -853,6 +862,8 @@ state as responses arrive."
   (when (get-buffer kubernetes-display-pods-buffer-name)
     (when verbose
       (message "Refreshing..."))
+
+    (kubernetes--redraw-main-buffer)
 
     (unless kubernetes--poll-namespaces-process
       (kubernetes--set-poll-namespaces-process

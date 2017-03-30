@@ -90,6 +90,12 @@ will be mocked."
          (setq cleanup-callback-called t))))
     (should cleanup-callback-called)))
 
+(ert-deftest get-pods-applies-current-namespace ()
+  (let ((kubernetes--current-namespace "foo"))
+    (with-successful-response-at `("get" "pods" "-o" "json" "--namespace=foo")
+        "{}"
+      (kubernetes--kubectl-get-pods #'ignore))))
+
 (ert-deftest viewing-config-returns-parsed-json ()
   (let* ((sample-response (f-read-text (f-join this-directory "config-view-output.json")))
          (parsed-response (json-read-from-string sample-response))
@@ -120,6 +126,14 @@ will be mocked."
                                         (setq on-error-called t))))
     (should on-error-called)))
 
+(ert-deftest deleting-pod-applies-current-namespace ()
+  (let* ((pod-name "example-v3-4120544588-55kmw")
+         (kubernetes--current-namespace "foo"))
+    (with-successful-response-at `("delete" "pod" ,pod-name "-o" "name"
+                                   "--namespace=foo")
+        "pod/example-v3-4120544588-55kmw"
+      (kubernetes--kubectl-delete-pod pod-name #'ignore))))
+
 (ert-deftest describing-pods ()
   (let ((pod-name "example-v3-4120544588-55kmw")
         (sample-response "foo bar baz")
@@ -130,6 +144,13 @@ will be mocked."
                                           (setq on-success-called t)
                                           (should (equal sample-response str)))))
     (should on-success-called)))
+
+(ert-deftest describing-pod-applies-current-namespace ()
+  (let* ((pod-name "example-v3-4120544588-55kmw")
+         (kubernetes--current-namespace "foo"))
+    (with-successful-response-at `("describe" "pod" ,pod-name "--namespace=foo")
+        ""
+      (kubernetes--kubectl-describe-pod pod-name #'ignore))))
 
 (ert-deftest changing-current-context ()
   (let* ((context-name "context-name")
