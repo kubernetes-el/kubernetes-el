@@ -33,7 +33,7 @@
     (kbd "?") #'kubernetes-overview-popup
     (kbd "TAB") #'magit-section-toggle
     (kbd "c") #'kubernetes-config-popup
-    (kbd "g") #'kubernetes-display-pods-refresh
+    (kbd "g") #'kubernetes-refresh
     (kbd "h") #'describe-mode
     (kbd "d") #'kubernetes-describe
     (kbd "D") #'kubernetes-mark-for-delete

@@ -73,13 +73,8 @@ The function must take a single argument, which is the buffer to display."
   :group 'kubernetes
   :type 'integer)
 
-(defcustom kubernetes-poll-frequency 10
+(defcustom kubernetes-poll-frequency 5
   "The background refresh frequency in seconds."
-  :group 'kubernetes
-  :type 'integer)
-
-(defcustom kubernetes-redraw-frequency 3
-  "The frequency at which to redraw the pods buffer."
   :group 'kubernetes
   :type 'integer)
 
@@ -500,34 +495,20 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
 
 ;; Timers
 ;;
-;; These timers are used to keep the pods list buffer up-to-date. One timer is
-;; used call `kubernetes--poll', which refreshes the main state. Another is used to
-;; trigger regular refreshes of the pods buffer to redraw the UI to ensure it
-;; does not stay out of sync for long when user commands fail.
+;; A timer is used to poll Kubernetes to keep the pods list buffer up-to-date.
 
 (defvar kubernetes--poll-timer nil
   "Background timer used to poll for updates.
 
 This is used to regularly synchronise local state with Kubernetes.")
 
-(defvar kubernetes--redraw-timer nil
-  "Background timer used to redraw the buffer.
-
-This runs more frequency than the poll timer.  It is needed
-so that inconsistent UI states due to the refresh supression hack
-are cleaned up faster.")
-
 (defun kubernetes--initialize-timers ()
-  (setq kubernetes--poll-timer (run-with-timer kubernetes-poll-frequency kubernetes-poll-frequency #'kubernetes--poll))
-  (setq kubernetes--redraw-timer (run-with-timer kubernetes-redraw-frequency kubernetes-redraw-frequency #'kubernetes--redraw-main-buffer)))
+  (setq kubernetes--poll-timer (run-with-timer kubernetes-poll-frequency kubernetes-poll-frequency #'kubernetes-refresh)))
 
 (defun kubernetes--kill-timers ()
   (when-let (timer kubernetes--poll-timer)
     (cancel-timer timer))
-  (when-let (timer kubernetes--redraw-timer)
-    (cancel-timer timer))
-  (setq kubernetes--poll-timer nil)
-  (setq kubernetes--redraw-timer nil))
+  (setq kubernetes--poll-timer nil))
 
 
 ;; View management
@@ -603,7 +584,7 @@ are cleaned up faster.")
                                     'kubernetes-copy c))
                       (propertize
                        (if (and ns namespace-state)
-                           (format "%-12s%s (overridden to %s)" "Namespace: " ns namespace-state)
+                           (format "%-12s%s" "Namespace: " namespace-state)
                          (format "%-12s%s" "Namespace: " (or ns namespace-state)))
                        'kubernetes-copy (or namespace-state ns)))))))
 
@@ -832,7 +813,7 @@ FORCE ensures it happens."
             (kubernetes--kubectl-delete-pod pod
                                   (lambda (_)
                                     (message "Deleting pod %s succeeded." pod)
-                                    (kubernetes--poll))
+                                    (kubernetes-refresh))
                                   (lambda (_)
                                     (message "Deleting pod %s failed" pod)
                                     (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))
@@ -866,15 +847,15 @@ what to copy."
     (kill-new s)
     (message "Copied: %s" s)))
 
-(defun kubernetes-display-pods-refresh ()
+(defun kubernetes-refresh (&optional verbose)
   "Trigger a manual refresh the Kubernetes pods buffer.
 
 Requests the data needed to build the buffer, and updates the UI
-state as responses arrive."
-  (interactive)
-  (kubernetes--poll 'verbose))
+state as responses arrive.
 
-(defun kubernetes--poll (&optional verbose)
+With optional argument VERBOSE, log additional information of
+state changes."
+  (interactive (list t))
   ;; Make sure not to trigger a refresh if the buffer closes.
   (when (get-buffer kubernetes-display-pods-buffer-name)
     (when verbose
@@ -1150,7 +1131,14 @@ Should be invoked via command `kubernetes-logs-popup'."
 (defun kubernetes-set-namespace (ns)
   "Set the namespace to query to NS, overriding the settings for the current context."
   (interactive (list (completing-read "Use namespace: " (kubernetes--namespace-names) nil t)))
-  (setq kubernetes--current-namespace ns))
+  ;; The context is safe to preserve, but everything else should be reset.
+  (let ((context kubernetes--view-context-response))
+    (kubernetes--kill-polling-processes)
+    (kubernetes--clear-main-state)
+    (goto-char (point-min))
+    (setq kubernetes--view-context-response context)
+    (setq kubernetes--current-namespace ns)
+    (kubernetes--redraw-main-buffer t)))
 
 (defun kubernetes--namespace-names ()
   (-let* ((config (or kubernetes--get-namespaces-response (kubernetes--await-on-async #'kubernetes--kubectl-get-namespaces)))
@@ -1162,15 +1150,12 @@ Should be invoked via command `kubernetes-logs-popup'."
 
 CONTEXT is the name of a context as a string."
   (interactive (list (completing-read "Context: " (kubernetes--context-names) nil t)))
-
-  ;; Reset pods list buffer.
   (kubernetes--kill-polling-processes)
   (kubernetes--clear-main-state)
   (kubernetes--redraw-main-buffer t)
   (goto-char (point-min))
-
   (kubernetes--kubectl-config-use-context context (lambda (_)
-                                          (kubernetes--poll))))
+                                          (kubernetes-refresh))))
 
 (defun kubernetes--context-names ()
   (-let* ((config (or kubernetes--view-context-response (kubernetes--await-on-async #'kubernetes--kubectl-config-view)))
@@ -1241,7 +1226,7 @@ CONTEXT is the name of a context as a string."
     (define-key keymap (kbd "d") #'kubernetes-describe)
     (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
     (define-key keymap (kbd "e") #'kubernetes-exec)
-    (define-key keymap (kbd "g") #'kubernetes-display-pods-refresh)
+    (define-key keymap (kbd "g") #'kubernetes-refresh)
     (define-key keymap (kbd "u") #'kubernetes-unmark)
     (define-key keymap (kbd "U") #'kubernetes-unmark-all)
     (define-key keymap (kbd "x") #'kubernetes-execute-marks)
@@ -1267,7 +1252,7 @@ Type \\[kubernetes-logs] when point is on a pod to view its logs.
 
 Type \\[kubernetes-copy-thing-at-point] to copy the pod name at point.
 
-Type \\[kubernetes-display-pods-refresh] to refresh the buffer.
+Type \\[kubernetes-refresh] to refresh the buffer.
 
 \\{kubernetes-display-pods-mode-map}"
   :group 'kubernetes)
