@@ -198,6 +198,17 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
              nil
              cleanup-cb))
 
+(defun kubernetes-kubectl-config-use-context (context-name cb)
+  "Change the current kubernetes context to CONTEXT-NAME, a string.
+
+CB is a function taking the name of the context that was switched to."
+  (kubernetes--kubectl (list "config" "use-context" context-name)
+             (lambda (buf)
+               (with-current-buffer buf
+                 (string-match (rx bol "Switched to context \"" (group (+? nonl)) "\"." (* space) eol)
+                               (buffer-string))
+                 (funcall cb (match-string 1 (buffer-string)))))))
+
 (defun kubernetes-delete-pod (pod-name cb &optional error-cb)
   "Delete pod with POD-NAME, then execute CB with the response buffer.
 

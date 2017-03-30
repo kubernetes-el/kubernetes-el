@@ -131,4 +131,15 @@ will be mocked."
                                          (should (equal sample-response str)))))
     (should on-success-called)))
 
+(ert-deftest changing-current-context ()
+  (let* ((context-name "context-name")
+         (sample-response (format "Switched to context \"%s\".\n" context-name))
+         (on-success-called))
+    (with-successful-response-at (list "config" "use-context" context-name) sample-response
+      (kubernetes-kubectl-config-use-context context-name
+                                             (lambda (str)
+                                               (setq on-success-called t)
+                                               (should (equal context-name str)))))
+    (should on-success-called)))
+
 ;;; kubectl-integration-test.el ends here
