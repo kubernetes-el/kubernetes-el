@@ -690,9 +690,9 @@ are cleaned up faster.")
          (column-heading (propertize (format "  %-45s %-10s %8s %8s\n" "Name" "Status" "Restarts" "Age")
                                      'face 'magit-section-heading)))
     (kubernetes--update-pod-marks-state pods)
-    (cond
-     (pods
-      (magit-insert-section (pods-container)
+    (magit-insert-section (pods-container)
+      (cond
+       (pods
         (magit-insert-heading (concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods))))
         (insert column-heading)
         (dolist (pod (append pods nil))
@@ -700,9 +700,8 @@ are cleaned up faster.")
             (magit-insert-heading (kubernetes--format-pod-line pod))
             (magit-insert-section (details)
               (insert (kubernetes--format-pod-details pod))
-              (insert ?\n))))))
-     (t
-      (magit-insert-section (pods-container)
+              (insert ?\n)))))
+       (t
         (magit-insert-heading "Pods")
         (magit-insert-section (pods-list)
           (insert column-heading)
