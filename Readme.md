@@ -7,8 +7,9 @@ This project is in early stages, but the following are implemented:
 - Live-updating list of pods
 - Showing logs for the pods
 - Exec'ing into a pod's docker container
+- Describing pods
 - Deleting pods
-- Inspecting pods.
+- Switching contexts.
 
 ## Usage
 
