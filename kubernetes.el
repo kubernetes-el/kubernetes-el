@@ -141,8 +141,8 @@ The function must take a single argument, which is the buffer to display."
 
 Used to draw the pods list of the main buffer.")
 
-(defvar kubernetes--view-context-response nil
-  "State representing the view context response from the API.
+(defvar kubernetes--view-config-response nil
+  "State representing the view config response from the API.
 
 Used to draw the context section of the main buffer.")
 
@@ -154,43 +154,29 @@ Used for namespace selection within a cluster.")
 (defvar kubernetes--current-namespace nil
   "The namespace to use in queries.  Overrides the context settings.")
 
-(defvar kubernetes--pod-to-exec nil
-  "Identifies the pod to exec into after querying the user for flags.
-
-Assigned before opening the exec popup, when the target pod is
-likely to be at point.  After choosing flags, this is the pod that
-will be exec'ed into.
-
-This variable is reset after use by the exec functions.")
-
-(defvar kubernetes--pod-to-log nil
-  "Identifies the pod to log after querying the user for flags.
-
-Assigned before opening the logging popup, when the target pod is
-likely to be at point.  After choosing flags, this is the pod that
-will be logged.
-
-This variable is reset after use by the logging functions.")
-
-(defvar kubernetes--thing-to-describe nil
-  "Identifies the thing to log for `kubernetes-describe-dwim'.
-
-When set, it is the value of the 'kubernetes-nav' property at point.
-
-Assigned before opening the describe popup, when the target is
-likely to be at point.  If `kubernetes-describe-dwim' is selected
-in the popup, this is the thing that will be inspected.
-
-This variable is reset after use by the logging functions.")
-
-(defun kubernetes--clear-main-state ()
+(defun kubernetes--state-clear ()
   (setq kubernetes--get-pods-response nil)
-  (setq kubernetes--view-context-response nil)
+  (setq kubernetes--view-config-response nil)
   (setq kubernetes--get-namespaces-response nil)
-  (setq kubernetes--current-namespace nil)
-  (setq kubernetes--pod-to-exec nil)
-  (setq kubernetes--pod-to-log nil)
-  (setq kubernetes--thing-to-describe nil))
+  (setq kubernetes--current-namespace nil))
+
+(defun kubernetes--state ()
+  "Return the current state as an alist."
+  `((pods . ,kubernetes--get-pods-response)
+    (config . ,kubernetes--view-config-response)
+    (namespaces . ,kubernetes--get-namespaces-response)
+    (current-namespace . ,kubernetes--current-namespace)))
+
+(defun kubernetes--state-lookup-pod (pod-name)
+  "Look up a pod by name in the current state.
+
+POD-NAME is the name of the pod to search for.
+
+If lookup succeeds, return the alist representation of the pod.
+If lookup fails, return nil."
+  (-let [(&alist 'pods (&alist 'items pods)) (kubernetes--state)]
+    (--find (equal (kubernetes--pod-name it) pod-name)
+            (append pods nil))))
 
 
 ;; Main Kubernetes query routines
@@ -343,16 +329,20 @@ to a function of the type:
   (-let [(&alist 'metadata (&alist 'name name)) pod]
     name))
 
-(defun kubernetes--read-pod ()
+(defun kubernetes--read-pod-name ()
+  "Read a pod name from the user.
+
+Update the pod state if it not set yet."
   (-let* (((&alist 'items pods)
            (or kubernetes--get-pods-response
                (progn
                  (message "Getting pods...")
-                 (kubernetes--await-on-async #'kubernetes--kubectl-get-pods))))
+                 (let ((response (kubernetes--await-on-async #'kubernetes--kubectl-get-pods)))
+                   (setq kubernetes--get-pods-response response)
+                   response))))
           (pods (append pods nil))
-          (names (-map #'kubernetes--pod-name pods))
-          (choice (completing-read "Pod: " names nil t)))
-    (--find (equal choice (kubernetes--pod-name it)) pods)))
+          (names (-map #'kubernetes--pod-name pods)))
+    (completing-read "Pod: " names nil t)))
 
 (defun kubernetes--read-iso-datetime (&rest _)
   (let* ((date (org-read-date nil t))
@@ -376,10 +366,10 @@ to a function of the type:
           (sit-for 1))))
     result))
 
-(defun kubernetes--maybe-pod-at-point ()
+(defun kubernetes--maybe-pod-name-at-point ()
   (pcase (get-text-property (point) 'kubernetes-nav)
-    (`(:pod ,pod)
-     pod)))
+    (`(:pod-name ,value)
+     value)))
 
 (defun kubernetes--json-to-yaml (json &optional level)
   "Process some parsed JSON and pretty-print as YAML.
@@ -439,6 +429,11 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
   "Find the interval between START and NOW, and return a string of the coarsest unit."
   (let ((diff (time-to-seconds (time-subtract now start))))
     (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff) ","))))
+
+(defun kubernetes--kill-compilation-buffer (proc-buf &rest _)
+  (if-let (win (get-buffer-window proc-buf))
+      (quit-window t win)
+    (kill-buffer proc-buf)))
 
 
 ;; Background polling processes
@@ -552,20 +547,24 @@ This is used to regularly synchronise local state with Kubernetes.")
     (goto-char (point-min))
     (select-window (display-buffer (current-buffer)))))
 
-(defun kubernetes-display-pod-refresh (pod)
-  (let ((buf (get-buffer-create kubernetes-pod-buffer-name)))
-    (with-current-buffer buf
-      (kubernetes-display-thing-mode)
-      (let ((inhibit-read-only t))
-        (erase-buffer)
-        (insert (kubernetes--json-to-yaml pod))))
-    buf))
+(defun kubernetes-display-pod-refresh (pod-name)
+  (if-let (pod (kubernetes--state-lookup-pod pod-name))
+      (let ((buf (get-buffer-create kubernetes-pod-buffer-name)))
+        (with-current-buffer buf
+          (kubernetes-display-thing-mode)
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert (kubernetes--json-to-yaml pod))))
+        buf)
+    (error "Unknown pod: %s" pod-name)))
 
 ;;;###autoload
-(defun kubernetes-display-pod (pod)
-  "Display information for POD in a new window."
-  (interactive (list (kubernetes--read-pod)))
-  (with-current-buffer (kubernetes-display-pod-refresh pod)
+(defun kubernetes-display-pod (pod-name)
+  "Display information for a pod in a new window.
+
+POD-NAME is the name of the pod to display."
+  (interactive (list (kubernetes--read-pod-name)))
+  (with-current-buffer (kubernetes-display-pod-refresh pod-name)
     (goto-char (point-min))
     (select-window (display-buffer (current-buffer)))))
 
@@ -703,7 +702,7 @@ This is used to regularly synchronise local state with Kubernetes.")
                (concat (propertize "D" 'face 'kubernetes-delete-mark) " " str)
              (concat "  " str))))
     (propertize str
-                'kubernetes-nav (list :pod pod)
+                'kubernetes-nav (list :pod-name name)
                 'kubernetes-copy name)))
 
 (defun kubernetes--update-pod-marks-state (pods)
@@ -759,7 +758,7 @@ This is used to regularly synchronise local state with Kubernetes.")
       (add-hook 'kill-buffer-hook
                 (lambda ()
                   (with-current-buffer buf
-                    (kubernetes--clear-main-state)
+                    (kubernetes--state-clear)
                     (kubernetes--kill-polling-processes)
                     (kubernetes--kill-timers)))
                 nil t))
@@ -783,7 +782,7 @@ FORCE ensures it happens."
               (inhibit-redisplay t))
           (erase-buffer)
           (magit-insert-section (root)
-            (kubernetes--draw-context-section kubernetes--current-namespace kubernetes--view-context-response)
+            (kubernetes--draw-context-section kubernetes--current-namespace kubernetes--view-config-response)
             (kubernetes--draw-pods-section kubernetes--get-pods-response))
 
           (goto-char pos)))
@@ -798,11 +797,10 @@ FORCE ensures it happens."
   "Mark the thing at POINT for deletion, then advance to the next line."
   (interactive "d")
   (pcase (get-text-property point 'kubernetes-nav)
-    (`(:pod ,pod)
-     (let ((name (kubernetes--pod-name pod)))
-       (unless (member name kubernetes--pods-pending-deletion)
-         (add-to-list 'kubernetes--marked-pod-names name)
-         (kubernetes--redraw-main-buffer))))
+    (`(:pod-name ,pod-name)
+     (unless (member pod-name kubernetes--pods-pending-deletion)
+       (add-to-list 'kubernetes--marked-pod-names pod-name)
+       (kubernetes--redraw-main-buffer)))
     (_
      (user-error "Nothing here can be marked")))
   (goto-char point)
@@ -812,10 +810,9 @@ FORCE ensures it happens."
   "Unmark the thing at POINT, then advance to the next line."
   (interactive "d")
   (pcase (get-text-property point 'kubernetes-nav)
-    (`(:pod ,pod)
-     (let ((name (kubernetes--pod-name pod)))
-       (setq kubernetes--marked-pod-names (delete name kubernetes--marked-pod-names))
-       (kubernetes--redraw-main-buffer))))
+    (`(:pod-name ,pod-name)
+     (setq kubernetes--marked-pod-names (delete pod-name kubernetes--marked-pod-names))
+     (kubernetes--redraw-main-buffer)))
   (goto-char point)
   (forward-line 1))
 
@@ -864,8 +861,8 @@ taken."
   (pcase (get-text-property point 'kubernetes-nav)
     (`(:config ,config)
      (kubernetes-display-config config))
-    (`(:pod ,pod)
-     (kubernetes-display-pod pod))))
+    (`(:pod-name ,pod-name)
+     (kubernetes-display-pod pod-name))))
 
 (defun kubernetes-copy-thing-at-point (point)
   "Perform a context-sensitive copy action.
@@ -907,7 +904,7 @@ state changes."
       (kubernetes--set-poll-context-process
        (kubernetes--kubectl-config-view
         (lambda (config)
-          (setq kubernetes--view-context-response config)
+          (setq kubernetes--view-config-response config)
           (kubernetes--redraw-main-buffer)
           (when verbose
             (message "Updated contexts.")))
@@ -973,12 +970,6 @@ state changes."
 
 ;; Popups
 
-(defun kubernetes-logs (pod)
-  "Popup console for logging commands for POD."
-  (interactive (list (or (kubernetes--maybe-pod-at-point) (kubernetes--read-pod))))
-  (setq kubernetes--pod-to-log pod)
-  (call-interactively #'kubernetes-logs-popup))
-
 (magit-define-popup kubernetes-logs-popup
   "Popup console for logging commands for POD."
   :group 'kubernetes
@@ -1001,45 +992,34 @@ state changes."
 
   :default-action 'kubernetes-logs)
 
-(defun kubernetes-logs-follow ()
+(defun kubernetes-logs-follow (pod-name args)
   "Open a streaming logs buffer for a pod.
 
-Should be invoked via command `kubernetes-logs-popup'."
-  (interactive)
-  (kubernetes-logs-fetch-all (cons "-f" (kubernetes-logs-arguments))))
+POD-NAME is the name of the pod to log.
 
-(defun kubernetes-logs-fetch-all (args)
-  "Open a streaming logs buffer for a pod.
+ARGS are additional args to pass to kubectl."
+  (interactive (list (or (kubernetes--maybe-pod-name-at-point) (kubernetes--read-pod-name))
+                     (kubernetes-logs-arguments)))
+  (kubernetes-logs-fetch-all pod-name (cons "-f" args)))
 
-ARGS are additional args to pass to kubectl.
+(defun kubernetes-logs-fetch-all (pod-name args)
+  "Open a streaming logs buffer for POD.
 
-Should be invoked via command `kubernetes-logs-popup'."
-  (interactive (list (kubernetes-logs-arguments)))
-  (let* ((name (kubernetes--pod-name kubernetes--pod-to-log))
-         (compilation-buffer-name-function (lambda (_) kubernetes-logs-buffer-name))
-         (command (append (list kubernetes-kubectl-executable "logs")
-                          args
-                          (list name)
-                          (when kubernetes--current-namespace
-                            (list (format "--namespace=%s" kubernetes--current-namespace))))))
-    (setq kubernetes--pod-to-log nil)
+POD-NAME is the name of the pod to log.
+
+ARGS are additional args to pass to kubectl."
+  (interactive (list (or (kubernetes--maybe-pod-name-at-point) (kubernetes--read-pod-name))
+                     (kubernetes-logs-arguments)))
+  (let ((compilation-buffer-name-function (lambda (_) kubernetes-logs-buffer-name))
+        (command (append (list kubernetes-kubectl-executable "logs")
+                         args
+                         (list pod-name)
+                         (when kubernetes--current-namespace
+                           (list (format "--namespace=%s" kubernetes--current-namespace))))))
     (with-current-buffer (compilation-start (string-join command " ") 'kubernetes-logs-mode)
       (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
       (select-window (display-buffer (current-buffer))))))
 
-(defun kubernetes--describable-thing-at-pt ()
-  (save-excursion
-    (back-to-indentation)
-    (get-text-property (point) 'kubernetes-nav)))
-
-(defun kubernetes-describe (&optional thing)
-  "Popup console for describing things.
-
-THING is the thing to be used if the user selects
-`kubernetes-describe-dwim'"
-  (interactive (list (kubernetes--describable-thing-at-pt)))
-  (setq kubernetes--thing-to-describe thing)
-  (call-interactively #'kubernetes-describe-popup))
 
 (magit-define-popup kubernetes-describe-popup
   "Popup console for describe commands."
@@ -1051,23 +1031,28 @@ THING is the thing to be used if the user selects
 
   :default-action 'kubernetes-logs)
 
+(defun kubernetes--describable-thing-at-pt ()
+  (save-excursion
+    (back-to-indentation)
+    (get-text-property (point) 'kubernetes-nav)))
+
 (defun kubernetes-describe-dwim (thing)
   "Describe the thing at point.
 
 THING must be a valid target for `kubectl describe'."
-  (interactive (list (or kubernetes--thing-to-describe (kubernetes--describable-thing-at-pt))))
+  (interactive (list (kubernetes--describable-thing-at-pt)))
   (pcase thing
-    (`(:pod ,pod)
-     (kubernetes-describe-pod pod))
+    (`(:pod-name ,pod-name)
+     (kubernetes-describe-pod pod-name))
     (_
-     (user-error "Nothing at point to describe")))
-  (setq kubernetes--thing-to-describe nil))
+     (user-error "Nothing at point to describe"))))
 
-(defun kubernetes-describe-pod (pod)
-  "Display a buffer for describing POD."
-  (interactive (list (or (kubernetes--maybe-pod-at-point) (kubernetes--read-pod))))
+(defun kubernetes-describe-pod (pod-name)
+  "Display a buffer for describing a pod.
+
+POD-NAME is the name of the pod to describe."
+  (interactive (list (or (kubernetes--maybe-pod-name-at-point) (kubernetes--read-pod-name))))
   (let ((buf (get-buffer-create kubernetes-pod-buffer-name))
-        (pod-name (kubernetes--pod-name pod))
         (marker (make-marker)))
     (with-current-buffer buf
       (kubernetes-display-thing-mode)
@@ -1092,11 +1077,6 @@ THING must be a valid target for `kubectl describe'."
     (select-window (display-buffer buf))
     buf))
 
-(defun kubernetes-exec (pod)
-  "Popup console for exec'ing into POD."
-  (interactive (list (or (kubernetes--maybe-pod-at-point) (kubernetes--read-pod))))
-  (setq kubernetes--pod-to-exec pod)
-  (call-interactively #'kubernetes-exec-popup))
 
 (magit-define-popup kubernetes-exec-popup
   "Popup console for exec commands for POD."
@@ -1113,19 +1093,21 @@ THING must be a valid target for `kubectl describe'."
 
   :default-action 'kubernetes-exec-into)
 
-(defun kubernetes-exec-into (args exec-command)
+(defun kubernetes-exec-into (pod-name args exec-command)
   "Open a terminal for execting into a pod.
+
+POD-NAME is the name of the pod to exec into.
 
 ARGS are additional args to pass to kubectl.
 
 EXEC-COMMAND is the command to run in the container.
 
 Should be invoked via command `kubernetes-logs-popup'."
-  (interactive (list (kubernetes-exec-arguments)
+  (interactive (list (or (kubernetes--maybe-pod-name-at-point) (kubernetes--read-pod-name))
+                     (kubernetes-exec-arguments)
                      (read-string (format "Command (default: %s): " kubernetes-default-exec-command) nil 'kubernetes-exec-history)))
-  (let* ((name (kubernetes--pod-name kubernetes--pod-to-exec))
 
-         (exec-command (cond
+  (let* ((exec-command (cond
                         ((null exec-command)
                          kubernetes-default-exec-command)
                         ((string-empty-p (string-trim exec-command))
@@ -1137,14 +1119,13 @@ Should be invoked via command `kubernetes-logs-popup'."
                           args
                           (when kubernetes--current-namespace
                             (list (format "--namespace=%s" kubernetes--current-namespace)))
-                          (list name exec-command)))
+                          (list pod-name exec-command)))
 
          (interactive-tty (member "-t" args))
          (mode (if interactive-tty
                    t ; Means use compilation-shell-minor-mode
                  #'kubernetes-logs-mode)))
 
-    (setq kubernetes--pod-to-exec nil)
     (with-current-buffer (compilation-start (string-join command " ") mode (lambda (_) kubernetes-pod-buffer-name))
       (when (and interactive-tty kubernetes-clean-up-interactive-exec-buffers)
         (make-local-variable 'compilation-finish-functions)
@@ -1152,10 +1133,6 @@ Should be invoked via command `kubernetes-logs-popup'."
       (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
       (select-window (display-buffer (current-buffer))))))
 
-(defun kubernetes--kill-compilation-buffer (proc-buf &rest _)
-  (if-let (win (get-buffer-window proc-buf))
-      (quit-window t win)
-    (kill-buffer proc-buf)))
 
 (magit-define-popup kubernetes-config-popup
   "Popup console for showing an overview of available config commands."
@@ -1170,11 +1147,11 @@ Should be invoked via command `kubernetes-logs-popup'."
   "Set the namespace to query to NS, overriding the settings for the current context."
   (interactive (list (completing-read "Use namespace: " (kubernetes--namespace-names) nil t)))
   ;; The context is safe to preserve, but everything else should be reset.
-  (let ((context kubernetes--view-context-response))
+  (let ((context kubernetes--view-config-response))
     (kubernetes--kill-polling-processes)
-    (kubernetes--clear-main-state)
+    (kubernetes--state-clear)
     (goto-char (point-min))
-    (setq kubernetes--view-context-response context)
+    (setq kubernetes--view-config-response context)
     (setq kubernetes--current-namespace ns)
     (kubernetes--redraw-main-buffer t)))
 
@@ -1189,16 +1166,17 @@ Should be invoked via command `kubernetes-logs-popup'."
 CONTEXT is the name of a context as a string."
   (interactive (list (completing-read "Context: " (kubernetes--context-names) nil t)))
   (kubernetes--kill-polling-processes)
-  (kubernetes--clear-main-state)
+  (kubernetes--state-clear)
   (kubernetes--redraw-main-buffer t)
   (goto-char (point-min))
   (kubernetes--kubectl-config-use-context context (lambda (_)
                                           (kubernetes-refresh))))
 
 (defun kubernetes--context-names ()
-  (-let* ((config (or kubernetes--view-context-response (kubernetes--await-on-async #'kubernetes--kubectl-config-view)))
+  (-let* ((config (or kubernetes--view-config-response (kubernetes--await-on-async #'kubernetes--kubectl-config-view)))
           ((&alist 'contexts contexts) config))
     (--map (alist-get 'name it) contexts)))
+
 
 (magit-define-popup kubernetes-overview-popup
   "Popup console for showing an overview of available popup commands."
@@ -1261,14 +1239,14 @@ CONTEXT is the name of a context as a string."
     (define-key keymap (kbd "?") #'kubernetes-overview-popup)
     (define-key keymap (kbd "TAB") #'magit-section-toggle)
     (define-key keymap (kbd "c") #'kubernetes-config-popup)
-    (define-key keymap (kbd "d") #'kubernetes-describe)
+    (define-key keymap (kbd "d") #'kubernetes-describe-popup)
     (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
-    (define-key keymap (kbd "e") #'kubernetes-exec)
+    (define-key keymap (kbd "e") #'kubernetes-exec-popup)
     (define-key keymap (kbd "g") #'kubernetes-refresh)
     (define-key keymap (kbd "u") #'kubernetes-unmark)
     (define-key keymap (kbd "U") #'kubernetes-unmark-all)
     (define-key keymap (kbd "x") #'kubernetes-execute-marks)
-    (define-key keymap (kbd "l") #'kubernetes-logs)
+    (define-key keymap (kbd "l") #'kubernetes-logs-popup)
     (define-key keymap (kbd "h") #'describe-mode)
     keymap)
   "Keymap for `kubernetes-display-pods-mode'.")
@@ -1281,8 +1259,7 @@ CONTEXT is the name of a context as a string."
 Type \\[kubernetes-mark-for-delete] to mark a pod for deletion, and \\[kubernetes-execute-marks] to execute.
 Type \\[kubernetes-unmark] to unmark the pod at point, or \\[kubernetes-unmark-all] to unmark all pods.
 
-Type \\[kubernetes-navigate] to inspect the object on the current line, and \\[kubernetes-describe-pod] to
-specifically describe a pod.
+Type \\[kubernetes-navigate] to inspect the object on the current line.
 
 Type \\[kubernetes-exec] to exec into a pod.
 
