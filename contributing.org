@@ -24,14 +24,11 @@ Rendering the main pods list is divided into two stages:
 The AST is represented as a list with the following simple grammar:
 
 #+BEGIN_EXAMPLE
-section-spec = symbol SYMBOL hide
-             | eval SEXP hide
-
-hide = t | nil
+hiddenp = t | nil
 
 ast = ( line . STRING )
     | ( heading . STRING )
-    | ( section ( section-spec ) ast )
+    | ( section ( SYMBOL hiddenp ) ast )
     | ( padding )
     | ( ast* )
 #+END_EXAMPLE

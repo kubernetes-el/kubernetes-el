@@ -57,23 +57,14 @@
     (with-temp-buffer
       (should-error (kubernetes--eval-ast ast)))))
 
-(ert-deftest eval-ast--inserting-sections-with-symbol-type ()
-  (let ((ast '(section (symbol test nil)
+(ert-deftest eval-ast--inserting-sections ()
+  (let ((ast '(section (test nil)
                        (line . "foo"))))
     (with-temp-buffer
       (save-excursion (kubernetes--eval-ast ast))
       (should (equal "foo\n" (substring-no-properties (buffer-string))))
       (should (magit-current-section))
       (should (equal 'test (magit-section-type (magit-current-section))))
-      (should (not (magit-section-hidden (magit-current-section)))))))
-
-(ert-deftest eval-ast--inserting-sections-with-eval-type ()
-  (let ((ast '(section (eval (intern "hello") nil)
-                       (line . "foo"))))
-    (with-temp-buffer
-      (save-excursion (kubernetes--eval-ast ast))
-      (should (equal "foo\n" (substring-no-properties (buffer-string))))
-      (should (equal 'hello (magit-section-type (magit-current-section))))
       (should (not (magit-section-hidden (magit-current-section)))))))
 
 ;;; eval-ast-test.el ends here

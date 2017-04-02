@@ -587,12 +587,8 @@ Warning: This could blow the stack if the AST gets too deep."
        (error "Inserting a heading, but not in a section"))
      (magit-insert-heading str))
 
-    (`(section (symbol ,sym ,hide) ,inner-ast)
+    (`(section (,sym ,hide) ,inner-ast)
      (eval `(magit-insert-section (,sym nil ,hide)
-              (kubernetes--eval-ast ',inner-ast))))
-
-    (`(section (eval ,expr ,hide) ,inner-ast)
-     (eval `(magit-insert-section ((eval ,expr) nil ,hide)
               (kubernetes--eval-ast ',inner-ast))))
 
     (`(padding)
@@ -609,12 +605,13 @@ Warning: This could blow the stack if the AST gets too deep."
 ;; Context section rendering.
 
 (defun kubernetes--render-context-section (state)
-  `(section (symbol 'context-container nil)
-            (section (symbol context nil)
+  `(section (context-container nil)
+            (section (context nil)
                      (,(-let* (((&alist 'config config 'current-namespace current-namespace) state)
                                (current-context (-when-let ((&alist 'current-context current 'contexts contexts) config)
                                                   (--find (equal current (alist-get 'name it)) (append contexts nil)))))
                          (cond
+
                           ;; If a context is selected, draw that.
                           ((and config current-context)
                            (-let [(&alist 'name name 'context (&alist 'cluster cluster-name 'namespace ns)) current-context]
@@ -627,8 +624,7 @@ Warning: This could blow the stack if the AST gets too deep."
                            `((heading . ,(concat (format "%-12s" "Context: ") (propertize "<none>" 'face 'magit-dimmed)))
                              (line . ,(propertize (format "%-12s%s" "Namespace: " current-namespace) 'kubernetes-copy current-namespace))))
 
-                          ;; If there's no namespace or context set, assume state is empty and
-                          ;; requests are in progress.
+                          ;; If state is empty, assume requests are in progress.
                           (t
                            `((line . ,(concat (format "%-12s" "Context: ") (propertize "Fetching..." 'face 'kubernetes-progress-indicator)))))))
 
@@ -645,28 +641,25 @@ Warning: This could blow the stack if the AST gets too deep."
 (defvar-local kubernetes--pods-pending-deletion nil)
 
 (defun kubernetes--format-pod-details (pod)
-  (with-temp-buffer
-    (-let ((insert-detail
-            (lambda (key value)
-              (let ((str (concat (propertize (format "    %-12s" key) 'face 'magit-header-line)
-                                 value)))
-                (insert (concat (propertize str 'kubernetes-copy value)))
-                (newline))))
+  (-let ((insert-detail
+          (lambda (key value)
+            (let ((str (concat (propertize (format "    %-12s" key) 'face 'magit-header-line)
+                               value)))
+              (cons 'line (concat (propertize str 'kubernetes-copy value))))))
 
-           ((&alist 'metadata (&alist 'namespace ns 'labels (&alist 'name label-name))
-                    'status (&alist 'containerStatuses [(&alist 'image image 'name name)]
-                                    'hostIP host-ip
-                                    'podIP pod-ip
-                                    'startTime start-time))
-            pod))
-      (funcall insert-detail "Name:" name)
-      (funcall insert-detail "Labels:" label-name)
-      (funcall insert-detail "Namespace:" ns)
-      (funcall insert-detail "Image:" image)
-      (funcall insert-detail "Host IP:" host-ip)
-      (funcall insert-detail "Pod IP:" pod-ip)
-      (funcall insert-detail "Started:" start-time)
-      (buffer-string))))
+         ((&alist 'metadata (&alist 'namespace ns 'labels (&alist 'name label-name))
+                  'status (&alist 'containerStatuses [(&alist 'image image 'name name)]
+                                  'hostIP host-ip
+                                  'podIP pod-ip
+                                  'startTime start-time))
+          pod))
+    (list (funcall insert-detail "Name:" name)
+          (funcall insert-detail "Labels:" label-name)
+          (funcall insert-detail "Namespace:" ns)
+          (funcall insert-detail "Image:" image)
+          (funcall insert-detail "Host IP:" host-ip)
+          (funcall insert-detail "Pod IP:" pod-ip)
+          (funcall insert-detail "Started:" start-time))))
 
 (defun kubernetes--format-pod-line (pod)
   (-let* (((&alist 'metadata (&alist 'name name)
@@ -738,34 +731,40 @@ Warning: This could blow the stack if the AST gets too deep."
     (setq kubernetes--marked-pod-names
           (-intersection kubernetes--marked-pod-names pod-names))))
 
-(defun kubernetes--draw-pods-section (state)
-  (-let* (((&alist 'pods pods-state) state)
-          ((pods-response &as &alist 'items pods) pods-state)
-          (column-heading (propertize (format "  %-45s %-10s %-5s   %6s %6s\n" "Name" "Status" "Ready" "Restarts" "Age")
+(defun kubernetes--render-pods-section (state)
+  (-let* (((&alist 'pods (pods-response &as &alist 'items pods)) state)
+          (pods (append pods nil))
+          (column-heading (propertize (format "  %-45s %-10s %-5s   %6s %6s" "Name" "Status" "Ready" "Restarts" "Age")
                                       'face 'magit-section-heading)))
-    (kubernetes--update-pod-marks-state pods)
-    (magit-insert-section (pods-container)
-      (cond
-       ((and pods-response (null (append pods nil)))
-        (magit-insert-heading "Pods")
-        (magit-insert-section (pods-list)
-          (insert (propertize "  None." 'face 'magit-dimmed))
-          (newline)))
-       (pods
-        (magit-insert-heading (concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods))))
-        (insert column-heading)
-        (dolist (pod (append pods nil))
-          (magit-insert-section ((eval (intern (kubernetes--pod-name pod))) nil t)
-            (magit-insert-heading (kubernetes--format-pod-line pod))
-            (magit-insert-section (details)
-              (insert (kubernetes--format-pod-details pod))
-              (insert ?\n)))))
-       (t
-        (magit-insert-heading "Pods")
-        (magit-insert-section (pods-list)
-          (insert column-heading)
-          (insert (propertize "  Fetching..." 'face 'kubernetes-progress-indicator))
-          (newline)))))))
+    `(section (pods-container nil)
+              ,(cond
+                ;; If the state is set and there are no pods, write "None".
+                ((and pods-response (null pods))
+                 `((heading . "Pods")
+                   (section (pods-list nil)
+                            (line . ,(propertize "  None." 'face 'magit-dimmed)))))
+
+                ;; If there are pods, write sections for each pods.
+                (pods
+                 `((heading . ,(concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods))))
+                   (line . ,column-heading)
+                   ,@(--map `(section (,(intern (kubernetes--pod-name it)) t)
+                                      ((heading . ,(kubernetes--format-pod-line it))
+                                       (section (details nil)
+                                                (,@(kubernetes--format-pod-details it)
+                                                 (padding)))))
+                            pods)))
+                ;; If there's no state, assume requests are in progress.
+                (t
+                 `((heading . "Pods")
+                   (section (pods-list nil)
+                            ((line . ,column-heading)
+                             (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator))))))))))
+
+(defun kubernetes--draw-pods-section (state)
+  (-let [(&alist 'pods (pods-response &as &alist 'items pods)) state]
+    (kubernetes--update-pod-marks-state (append pods nil)))
+  (kubernetes--eval-ast (kubernetes--render-pods-section state)))
 
 
 ;; Root rendering routines.
