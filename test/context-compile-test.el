@@ -18,6 +18,9 @@
          (sample-response (f-read-text path)))
     (json-read-from-string sample-response)))
 
+(defun draw-context-section (state)
+  (kubernetes--eval-ast (kubernetes--render-context-section state)))
+
 
 ;; Shows "Fetching..." when state isn't initialized yet.
 
@@ -30,7 +33,7 @@ Context:    Fetching...
 (ert-deftest drawing-context-section--empty-state ()
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
-                      (kubernetes--draw-context-section nil)))
+                      (draw-context-section nil)))
     (should (equal drawing-context-section-loading-result
                    (substring-no-properties (buffer-string))))
     (search-forward-regexp (rx "Context:" (+ space)))
@@ -51,7 +54,7 @@ Namespace:  example-ns
 (ert-deftest drawing-context-section--empty-state ()
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
-                      (kubernetes--draw-context-section '((current-namespace . "example-ns")))))
+                      (draw-context-section '((current-namespace . "example-ns")))))
     (should (equal drawing-context-section-just-namespace
                    (substring-no-properties (buffer-string))))
     (search-forward-regexp (rx "Context:" (+ space)))
@@ -74,7 +77,7 @@ Namespace:  example-ns
                        (config . ,sample-config-view-response))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
-                        (kubernetes--draw-context-section input-state)))
+                        (draw-context-section input-state)))
       (should (equal drawing-context-section-expected-result
                      (substring-no-properties (buffer-string)))))))
 
@@ -83,7 +86,7 @@ Namespace:  example-ns
                        (config . ,sample-config-view-response))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
-                        (kubernetes--draw-context-section input-state)))
+                        (draw-context-section input-state)))
       (search-forward "Context:")
       (should (equal "example-prod" (get-text-property (point) 'kubernetes-copy)))
       (skip-chars-forward " ")
@@ -94,7 +97,7 @@ Namespace:  example-ns
                        (config . ,sample-config-view-response))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
-                        (kubernetes--draw-context-section input-state)))
+                        (draw-context-section input-state)))
       (search-forward "Namespace:")
       (should (equal "example-ns" (get-text-property (point) 'kubernetes-copy))))))
 
@@ -103,7 +106,7 @@ Namespace:  example-ns
                        (config . ,sample-config-view-response))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
-                        (kubernetes--draw-context-section input-state)))
+                        (draw-context-section input-state)))
       (search-forward "Cluster:")
       (should (equal "example-prod-cluster" (get-text-property (point) 'kubernetes-copy))))))
 

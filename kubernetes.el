@@ -630,9 +630,6 @@ Warning: This could blow the stack if the AST gets too deep."
 
                       (padding)))))
 
-(defun kubernetes--draw-context-section (state)
-  (kubernetes--eval-ast (kubernetes--render-context-section state)))
-
 
 ;; Pod section rendering.
 
@@ -761,12 +758,6 @@ Warning: This could blow the stack if the AST gets too deep."
                             ((line . ,column-heading)
                              (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator))))))))))
 
-(defun kubernetes--draw-pods-section (state)
-  (-let [(&alist 'pods (pods-response &as &alist 'items pods)) state]
-    (kubernetes--update-pod-marks-state (append pods nil)))
-  (kubernetes--eval-ast (kubernetes--render-pods-section state)))
-
-
 ;; Root rendering routines.
 
 (defun kubernetes--display-pods-initialize-buffer ()
@@ -807,11 +798,14 @@ FORCE ensures it happens."
               (inhibit-read-only t)
               (inhibit-redisplay t)
               (state (kubernetes--state)))
-          (erase-buffer)
-          (magit-insert-section (root)
-            (kubernetes--draw-context-section state)
-            (kubernetes--draw-pods-section state))
 
+          (-when-let ((&alist 'pods (&alist 'items pods)) state)
+            (kubernetes--update-pod-marks-state (append pods nil)))
+
+          (erase-buffer)
+          (kubernetes--eval-ast `(section (root nil)
+                                (,(kubernetes--render-context-section state)
+                                 ,(kubernetes--render-pods-section state))))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.

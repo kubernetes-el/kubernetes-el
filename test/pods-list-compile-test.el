@@ -18,6 +18,9 @@
          (sample-response (f-read-text path)))
     (json-read-from-string sample-response)))
 
+(defun draw-pods-section (state)
+  (kubernetes--eval-ast (kubernetes--render-pods-section state)))
+
 
 ;; Shows "Fetching..." when state isn't initialized yet.
 
@@ -32,7 +35,7 @@ Pods
 (ert-deftest drawing-pods-section--empty-state ()
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
-                      (kubernetes--draw-pods-section nil)))
+                      (draw-pods-section nil)))
     (should (equal drawing-pods-section-loading-result
                    (substring-no-properties (buffer-string))))
     (forward-line 1)
@@ -53,7 +56,7 @@ Pods
   (let ((empty-state `((pods . ((items . ,(vector)))))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
-                        (kubernetes--draw-pods-section empty-state)))
+                        (draw-pods-section empty-state)))
       (should (equal drawing-pods-section-empty-result
                      (substring-no-properties (buffer-string))))
       (search-forward "None")
@@ -91,7 +94,7 @@ Pods (2)
   (let ((state `((pods . ,sample-get-pods-response))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
-                        (kubernetes--draw-pods-section state)))
+                        (draw-pods-section state)))
       (should (equal drawing-pods-section-sample-result
                      (substring-no-properties (buffer-string)))))))
 
@@ -99,7 +102,7 @@ Pods (2)
   (let ((state `((pods . ,sample-get-pods-response))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
-                        (kubernetes--draw-pods-section state)))
+                        (draw-pods-section state)))
       ;; Skip past header.
       (forward-line 2)
 
