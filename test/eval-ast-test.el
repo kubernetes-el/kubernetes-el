@@ -14,9 +14,15 @@
 (require 'kubernetes (f-join project-root "kubernetes.el"))
 
 (ert-deftest eval-ast--rejects-invalid-ast ()
-  (let ((ast '(foo . "bar")))
+  (let ((ast '(foo "bar")))
     (with-temp-buffer
       (should-error (kubernetes--eval-ast ast)))))
+
+(ert-deftest eval-ast--inserts-2-newlines-for-padding ()
+  (let ((ast '(padding)))
+    (with-temp-buffer
+      (kubernetes--eval-ast ast)
+      (should (equal "\n\n" (buffer-string))))))
 
 (ert-deftest eval-ast--inserts-newlines-for-empty-strings ()
   (let ((ast '(line . "")))
@@ -31,8 +37,8 @@
       (should (equal "foo\n" (buffer-string))))))
 
 (ert-deftest eval-ast--sequencing-actions ()
-  (let ((ast '(seq . ((line . "foo")
-                      (line . "bar")))))
+  (let ((ast '((line . "foo")
+               (line . "bar"))))
     (with-temp-buffer
       (save-excursion (kubernetes--eval-ast ast))
       (should (equal "foo\nbar\n" (buffer-string))))))
@@ -52,7 +58,8 @@
       (should-error (kubernetes--eval-ast ast)))))
 
 (ert-deftest eval-ast--inserting-sections-with-symbol-type ()
-  (let ((ast '(section (symbol test nil) . (line . "foo"))))
+  (let ((ast '(section (symbol test nil)
+                       (line . "foo"))))
     (with-temp-buffer
       (save-excursion (kubernetes--eval-ast ast))
       (should (equal "foo\n" (substring-no-properties (buffer-string))))
@@ -61,7 +68,8 @@
       (should (not (magit-section-hidden (magit-current-section)))))))
 
 (ert-deftest eval-ast--inserting-sections-with-eval-type ()
-  (let ((ast '(section (eval (intern "hello") nil) . (line . "foo"))))
+  (let ((ast '(section (eval (intern "hello") nil)
+                       (line . "foo"))))
     (with-temp-buffer
       (save-excursion (kubernetes--eval-ast ast))
       (should (equal "foo\n" (substring-no-properties (buffer-string))))

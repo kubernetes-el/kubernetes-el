@@ -21,7 +21,7 @@ Rendering the main pods list is divided into two stages:
 1. Take the current state and compile an AST of the desired changes
 2. Erase the buffer and interpret the AST to execute the changes ([[file:kubernetes.el::;;%20Render%20AST%20Interpreter][here]]).
 
-The AST is represented as an alist with the following simple grammar:
+The AST is represented as a list with the following simple grammar:
 
 #+BEGIN_EXAMPLE
 section-spec = symbol SYMBOL hide
@@ -29,8 +29,9 @@ section-spec = symbol SYMBOL hide
 
 hide = t | nil
 
-ast = seq     ast+
-    | line    STRING
-    | heading STRING
-    | section (section-spec) ast
+ast = ( line . STRING )
+    | ( heading . STRING )
+    | ( section ( section-spec ) ast )
+    | ( padding )
+    | ( ast* )
 #+END_EXAMPLE

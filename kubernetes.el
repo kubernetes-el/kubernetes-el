@@ -576,25 +576,27 @@ POD-NAME is the name of the pod to display."
 
 WARN: This could blow the stack if the AST gets too deep."
   (pcase render-ast
-    (`(seq . ,actions)
-     (dolist (action actions)
-       (kubernetes--eval-ast action)))
-
     (`(line . ,str)
      (insert str)
      (newline))
 
     (`(heading . ,str)
-     (unless magit-insert-section--current (error "Not in a section"))
      (magit-insert-heading str))
 
-    (`(section (symbol ,sym ,hide) . ,inner-ast)
+    (`(section (symbol ,sym ,hide) ,inner-ast)
      (eval `(magit-insert-section (,sym nil ,hide)
               ,(kubernetes--eval-ast inner-ast))))
 
-    (`(section (eval ,expr ,hide) . ,inner-ast)
+    (`(section (eval ,expr ,hide) ,inner-ast)
      (eval `(magit-insert-section ((eval ,expr) nil ,hide)
               ,(kubernetes--eval-ast inner-ast))))
+
+    (`(padding)
+     (newline 2))
+
+    ((and actions (pred listp))
+     (dolist (action actions)
+       (kubernetes--eval-ast action)))
 
     (x
      (error "Unknown AST form: %s" x))))
@@ -626,21 +628,21 @@ WARN: This could blow the stack if the AST gets too deep."
       (--map (propertize it 'kubernetes-nav (list :config config))
              (-non-nil (-flatten lines))))))
 
-(defun kubernetes--draw-context-section (namespace-state config)
-  (magit-insert-section (context-container)
-    (magit-insert-section (context)
-      (cond
-       (config
-        (-let [(context . lines) (kubernetes--context-section-lines namespace-state config)]
-          (magit-insert-heading (concat context "\n"))
-          (insert (string-join lines "\n"))))
-       (namespace-state
-        (magit-insert-heading (concat (format "%-12s" "Context: ") (propertize "<none>" 'face 'magit-dimmed)))
-        (insert (propertize (format "%-12s%s" "Namespace: " namespace-state) 'kubernetes-copy namespace-state))
-        (newline))
-       (t
-        (insert (concat (format "%-12s" "Context: ") (propertize "Fetching..." 'face 'magit-dimmed)))))
-      (newline 2))))
+(defun kubernetes--draw-context-section (state)
+  (-let [(&alist 'config config 'current-namespace namespace-state) state]
+    (magit-insert-section (context-container)
+      (magit-insert-section (context)
+        (cond
+         (config
+          (-let [(context . lines) (kubernetes--context-section-lines namespace-state config)]
+            (magit-insert-heading (concat context "\n"))
+            (insert (string-join lines "\n"))))
+         (namespace-state
+          (magit-insert-heading (concat (format "%-12s" "Context: ") (propertize "<none>" 'face 'magit-dimmed)))
+          (insert (propertize (format "%-12s%s" "Namespace: " namespace-state) 'kubernetes-copy namespace-state)))
+         (t
+          (insert (concat (format "%-12s" "Context: ") (propertize "Fetching..." 'face 'magit-dimmed)))))
+        (newline 2)))))
 
 
 ;; Pod section rendering.
@@ -813,7 +815,7 @@ FORCE ensures it happens."
               (inhibit-redisplay t))
           (erase-buffer)
           (magit-insert-section (root)
-            (kubernetes--draw-context-section kubernetes--current-namespace kubernetes--view-config-response)
+            (kubernetes--draw-context-section (kubernetes--state))
             (kubernetes--draw-pods-section kubernetes--get-pods-response))
 
           (goto-char pos)))
