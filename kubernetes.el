@@ -570,17 +570,21 @@ POD-NAME is the name of the pod to display."
 
 
 ;; Render AST Interpreter
+;;
+;; Implements an interpreter for a simple layout DSL for magit sections.
 
 (defun kubernetes--eval-ast (render-ast)
   "Evaluate RENDER-AST in the context of the current buffer.
 
-WARN: This could blow the stack if the AST gets too deep."
+Warning: This could blow the stack if the AST gets too deep."
   (pcase render-ast
     (`(line . ,str)
      (insert str)
      (newline))
 
     (`(heading . ,str)
+     (unless magit-insert-section--current
+       (error "Inserting a heading, but not in a section"))
      (magit-insert-heading str))
 
     (`(section (symbol ,sym ,hide) ,inner-ast)
