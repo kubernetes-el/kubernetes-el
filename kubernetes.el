@@ -738,14 +738,15 @@ Warning: This could blow the stack if the AST gets too deep."
     (setq kubernetes--marked-pod-names
           (-intersection kubernetes--marked-pod-names pod-names))))
 
-(defun kubernetes--draw-pods-section (get-pods-response)
-  (-let (((&alist 'items pods) get-pods-response)
-         (column-heading (propertize (format "  %-45s %-10s %-5s   %6s %6s\n" "Name" "Status" "Ready" "Restarts" "Age")
-                                     'face 'magit-section-heading)))
+(defun kubernetes--draw-pods-section (state)
+  (-let* (((&alist 'pods pods-state) state)
+          ((pods-response &as &alist 'items pods) pods-state)
+          (column-heading (propertize (format "  %-45s %-10s %-5s   %6s %6s\n" "Name" "Status" "Ready" "Restarts" "Age")
+                                      'face 'magit-section-heading)))
     (kubernetes--update-pod-marks-state pods)
     (magit-insert-section (pods-container)
       (cond
-       ((and get-pods-response (null (append pods nil)))
+       ((and pods-response (null (append pods nil)))
         (magit-insert-heading "Pods")
         (magit-insert-section (pods-list)
           (insert (propertize "  None." 'face 'magit-dimmed))
@@ -805,11 +806,12 @@ FORCE ensures it happens."
 
         (let ((pos (point))
               (inhibit-read-only t)
-              (inhibit-redisplay t))
+              (inhibit-redisplay t)
+              (state (kubernetes--state)))
           (erase-buffer)
           (magit-insert-section (root)
-            (kubernetes--draw-context-section (kubernetes--state))
-            (kubernetes--draw-pods-section kubernetes--get-pods-response))
+            (kubernetes--draw-context-section state)
+            (kubernetes--draw-pods-section state))
 
           (goto-char pos)))
 
