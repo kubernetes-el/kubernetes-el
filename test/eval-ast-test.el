@@ -18,11 +18,11 @@
     (with-temp-buffer
       (should-error (kubernetes--eval-ast ast)))))
 
-(ert-deftest eval-ast--inserts-2-newlines-for-padding ()
+(ert-deftest eval-ast--inserts-newline-for-padding ()
   (let ((ast '(padding)))
     (with-temp-buffer
       (kubernetes--eval-ast ast)
-      (should (equal "\n\n" (buffer-string))))))
+      (should (equal "\n" (buffer-string))))))
 
 (ert-deftest eval-ast--inserts-newlines-for-empty-strings ()
   (let ((ast '(line . "")))
