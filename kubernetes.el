@@ -569,6 +569,37 @@ POD-NAME is the name of the pod to display."
     (select-window (display-buffer (current-buffer)))))
 
 
+;; Render AST Interpreter
+
+(defun kubernetes--eval-ast (render-ast)
+  "Evaluate RENDER-AST in the context of the current buffer.
+
+WARN: This could blow the stack if the AST gets too deep."
+  (pcase render-ast
+    (`(seq . ,actions)
+     (dolist (action actions)
+       (kubernetes--eval-ast action)))
+
+    (`(line . ,str)
+     (insert str)
+     (newline))
+
+    (`(heading . ,str)
+     (unless magit-insert-section--current (error "Not in a section"))
+     (magit-insert-heading str))
+
+    (`(section (symbol ,sym ,hide) . ,inner-ast)
+     (eval `(magit-insert-section (,sym nil ,hide)
+              ,(kubernetes--eval-ast inner-ast))))
+
+    (`(section (eval ,expr ,hide) . ,inner-ast)
+     (eval `(magit-insert-section ((eval ,expr) nil ,hide)
+              ,(kubernetes--eval-ast inner-ast))))
+
+    (x
+     (error "Unknown AST form: %s" x))))
+
+
 ;; Context section rendering.
 
 (defun kubernetes--context-section-lines (namespace-state config)
