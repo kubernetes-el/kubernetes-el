@@ -46,9 +46,9 @@
     {
       "name": "example-prod",
       "context": {
-        "cluster": "",
-        "user": "",
-        "namespace": "example.com"
+        "cluster": "example-prod-cluster",
+        "user": "example-user",
+        "namespace": "example-ns"
       }
     }
   ],

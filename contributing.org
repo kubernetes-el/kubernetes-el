@@ -1,0 +1,34 @@
+#+TITLE: Contributing
+#+DESCRIPTION: Documentation on internals for contributors.
+
+* State
+
+The package stores its state in several variables ([[file:kubernetes.el::;;%20Main%20state][here]]), which are set by background
+polling timers ([[file:kubernetes.el::;;%20Background%20polling%20processes][here]]). These variables are cleared whenever:
+
+1. The user closes the display-pods buffer, or
+2. The user switches their Kubernetes context.
+
+Certain operations can update these state variables, such as attempting to read
+a list of pods or contexts from the user before the timers have completed, or
+updating the current namespace, which invalidates most cache variables but
+retains the current context.
+
+* Rendering
+
+Rendering the main pods list is divided into two stages:
+
+1. Take the current state and compile an AST of the desired changes
+2. Erase the buffer and interpret the AST to execute the changes ([[file:kubernetes.el::;;%20Render%20AST%20Interpreter][here]]).
+
+The AST is represented as a list with the following simple grammar:
+
+#+BEGIN_EXAMPLE
+hiddenp = t | nil
+
+ast = ( line . STRING )
+    | ( heading . STRING )
+    | ( section ( SYMBOL hiddenp ) ast )
+    | ( padding )
+    | ( ast* )
+#+END_EXAMPLE
