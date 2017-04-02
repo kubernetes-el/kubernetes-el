@@ -11,6 +11,8 @@
 (eval-when-compile
   (require 'evil nil t))
 
+(require 'kubernetes)
+
 (autoload 'evil-delay "evil-common")
 (autoload 'evil-set-initial-state "evil-core")
 (autoload 'magit-section-toggle "magit-section")
