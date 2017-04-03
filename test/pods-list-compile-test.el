@@ -91,7 +91,8 @@ Pods (2)
 "))
 
 (ert-deftest drawing-pods-section--sample-response ()
-  (let ((state `((pods . ,sample-get-pods-response))))
+  (let ((state `((pods . ,sample-get-pods-response)
+                 (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-pods-section state)))
