@@ -486,7 +486,7 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
                                                 (string-join
                                                  (--map (concat next-indentation it) (split-string v "\n"))
                                                  "\n")))
-                                          (concat "|\n" indented)))
+                                          (concat "|-\n" indented)))
 
                                        ((and (stringp v) (< (length v) kubernetes-yaml-string-drop-threshold))
                                         v)
