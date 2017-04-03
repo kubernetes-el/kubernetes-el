@@ -864,20 +864,24 @@ FORCE ensures it happens."
 
 ;; Displaying configmaps.
 
-(defun kubernetes-display-configmap-refresh (configmap)
-  (let ((buf (get-buffer-create kubernetes-display-configmap-buffer-name)))
-    (with-current-buffer buf
-      (kubernetes-display-thing-mode)
-      (let ((inhibit-read-only t))
-        (erase-buffer)
-        (insert (kubernetes--json-to-yaml configmap))))
-    buf))
+(defun kubernetes-display-configmap-refresh (configmap-name)
+  (if-let (configmap (kubernetes--state-lookup-configmap configmap-name))
+      (let ((buf (get-buffer-create kubernetes-display-configmap-buffer-name)))
+        (with-current-buffer buf
+          (kubernetes-display-thing-mode)
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert (kubernetes--json-to-yaml configmap))))
+        buf)
+    (error "Unknown configmap: %s" configmap-name)))
 
 ;;;###autoload
-(defun kubernetes-display-configmap (configmap)
-  "Display information for CONFIGMAP in a new window."
-  (interactive (list (kubernetes--state-lookup-configmap (kubernetes--read-configmap-name))))
-  (with-current-buffer (kubernetes-display-configmap-refresh configmap)
+(defun kubernetes-display-configmap (configmap-name)
+  "Display information for a configmap in a new window.
+
+CONFIGMAP-NAME is the name of the configmap to display."
+  (interactive (list (kubernetes--read-configmap-name)))
+  (with-current-buffer (kubernetes-display-configmap-refresh configmap-name)
     (goto-char (point-min))
     (select-window (display-buffer (current-buffer)))))
 
