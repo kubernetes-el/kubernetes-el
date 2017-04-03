@@ -622,7 +622,8 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
 This is used to regularly synchronise local state with Kubernetes.")
 
 (defun kubernetes--initialize-timers ()
-  (setq kubernetes--poll-timer (run-with-timer kubernetes-poll-frequency kubernetes-poll-frequency #'kubernetes-refresh)))
+  (unless kubernetes--poll-timer
+    (setq kubernetes--poll-timer (run-with-timer kubernetes-poll-frequency kubernetes-poll-frequency #'kubernetes-refresh))))
 
 (defun kubernetes--kill-timers ()
   (when-let (timer kubernetes--poll-timer)
@@ -839,9 +840,21 @@ Warning: This could blow the stack if the AST gets too deep."
     (list (funcall insert-detail "Namespace:" ns)
           (funcall insert-detail "Created:" created-time))))
 
-(defun kubernetes--format-configmap-line (configmap)
-  (-let* (((&alist 'metadata (&alist 'name name)) configmap)
-          (str (format "%-45s " (kubernetes--ellipsize name 45)))
+(defun kubernetes--format-configmap-line (configmap current-time)
+  (-let* (((&alist 'data data
+                   'metadata (&alist 'name name 'creationTimestamp created-time))
+           configmap)
+          (str (concat
+                ;; Name
+                (format "%-30s " (kubernetes--ellipsize name 30))
+
+                ;; Data
+                (propertize (format "%6s " (seq-length data)) 'face 'magit-dimmed)
+
+                ;; Age
+                (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
+                  (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
+                              'face 'magit-dimmed))))
           (str
            (if (member name kubernetes--configmaps-pending-deletion)
                (concat (propertize str 'face 'kubernetes-pending-deletion))
@@ -855,8 +868,10 @@ Warning: This could blow the stack if the AST gets too deep."
                 'kubernetes-copy name)))
 
 (defun kubernetes--render-configmaps-section (state)
-  (-let* (((&alist 'configmaps (configmaps-response &as &alist 'items configmaps)) state)
-          (configmaps (append configmaps nil)))
+  (-let* (((&alist 'current-time current-time
+                   'configmaps (configmaps-response &as &alist 'items configmaps)) state)
+          (configmaps (append configmaps nil))
+          (column-heading (propertize (format "  %-30s %6s %6s" "Name" "Data" "Age") 'face 'magit-section-heading)))
     `(section (configmaps-container nil)
               ,(cond
                 ;; If the state is set and there are no configmaps, write "None".
@@ -868,8 +883,9 @@ Warning: This could blow the stack if the AST gets too deep."
                 ;; If there are configmaps, write sections for each configmaps.
                 (configmaps
                  `((heading . ,(concat (propertize "Configmaps" 'face 'magit-header-line) " " (format "(%s)" (length configmaps))))
+                   (line . ,column-heading)
                    ,@(--map `(section (,(intern (kubernetes--configmap-name it)) t)
-                                      ((heading . ,(kubernetes--format-configmap-line it))
+                                      ((heading . ,(kubernetes--format-configmap-line it current-time))
                                        (section (details nil)
                                                 (,@(kubernetes--format-configmap-details it)
                                                  (padding)))))
@@ -877,6 +893,7 @@ Warning: This could blow the stack if the AST gets too deep."
                 ;; If there's no state, assume requests are in progress.
                 (t
                  `((heading . "Configmaps")
+                   (line . ,column-heading)
                    (section (configmaps-list nil)
                             (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator)))))))))
 
