@@ -758,6 +758,7 @@ Warning: This could blow the stack if the AST gets too deep."
                             ((line . ,column-heading)
                              (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator))))))))))
 
+
 ;; Root rendering routines.
 
 (defun kubernetes--display-pods-initialize-buffer ()
