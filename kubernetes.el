@@ -455,6 +455,23 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
       (quit-window t win)
     (kill-buffer proc-buf)))
 
+(defun kubernetes-display-buffer-fullframe (buffer)
+  (let ((display-fn
+         (lambda (buffer alist)
+           (when-let (window (or (display-buffer-reuse-window buffer alist)
+                                 (display-buffer-same-window buffer alist)
+                                 (display-buffer-pop-up-window buffer alist)
+                                 (display-buffer-use-some-window buffer alist)))
+             (delete-other-windows window)
+             window))))
+    (display-buffer buffer (list display-fn))))
+
+(defun kubernetes-display-buffer (buffer)
+  (let ((window (funcall kubernetes-display-buffer-function buffer)))
+    (when kubernetes-display-buffer-select
+      (select-frame-set-input-focus
+       (window-frame (select-window window))))))
+
 
 ;; Background polling processes
 
@@ -529,64 +546,6 @@ This is used to regularly synchronise local state with Kubernetes.")
   (when-let (timer kubernetes--poll-timer)
     (cancel-timer timer))
   (setq kubernetes--poll-timer nil))
-
-
-;; View management
-
-(defun kubernetes-display-buffer-fullframe (buffer)
-  (let ((display-fn
-         (lambda (buffer alist)
-           (when-let (window (or (display-buffer-reuse-window buffer alist)
-                                 (display-buffer-same-window buffer alist)
-                                 (display-buffer-pop-up-window buffer alist)
-                                 (display-buffer-use-some-window buffer alist)))
-             (delete-other-windows window)
-             window))))
-    (display-buffer buffer (list display-fn))))
-
-(defun kubernetes-display-buffer (buffer)
-  (let ((window (funcall kubernetes-display-buffer-function buffer)))
-    (when kubernetes-display-buffer-select
-      (select-frame-set-input-focus
-       (window-frame (select-window window))))))
-
-(defun kubernetes-display-config-refresh (config)
-  (let ((buf (get-buffer-create kubernetes-display-config-buffer-name)))
-    (with-current-buffer buf
-      (kubernetes-display-thing-mode)
-      (let ((inhibit-read-only t))
-        (erase-buffer)
-        (insert (kubernetes--json-to-yaml config))))
-    buf))
-
-;;;###autoload
-(defun kubernetes-display-config (config)
-  "Display information for CONFIG in a new window."
-  (interactive (list (kubernetes--await-on-async #'kubernetes--kubectl-config-view)))
-  (with-current-buffer (kubernetes-display-config-refresh config)
-    (goto-char (point-min))
-    (select-window (display-buffer (current-buffer)))))
-
-(defun kubernetes-display-pod-refresh (pod-name)
-  (if-let (pod (kubernetes--state-lookup-pod pod-name))
-      (let ((buf (get-buffer-create kubernetes-pod-buffer-name)))
-        (with-current-buffer buf
-          (kubernetes-display-thing-mode)
-          (let ((inhibit-read-only t))
-            (erase-buffer)
-            (insert (kubernetes--json-to-yaml pod))))
-        buf)
-    (error "Unknown pod: %s" pod-name)))
-
-;;;###autoload
-(defun kubernetes-display-pod (pod-name)
-  "Display information for a pod in a new window.
-
-POD-NAME is the name of the pod to display."
-  (interactive (list (kubernetes--read-pod-name)))
-  (with-current-buffer (kubernetes-display-pod-refresh pod-name)
-    (goto-char (point-min))
-    (select-window (display-buffer (current-buffer)))))
 
 
 ;; Render AST Interpreter
@@ -831,6 +790,50 @@ FORCE ensures it happens."
 
       ;; Force the section at point to highlight.
       (magit-section-update-highlight))))
+
+
+;; Displaying config.
+
+(defun kubernetes-display-config-refresh (config)
+  (let ((buf (get-buffer-create kubernetes-display-config-buffer-name)))
+    (with-current-buffer buf
+      (kubernetes-display-thing-mode)
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert (kubernetes--json-to-yaml config))))
+    buf))
+
+;;;###autoload
+(defun kubernetes-display-config (config)
+  "Display information for CONFIG in a new window."
+  (interactive (list (kubernetes--await-on-async #'kubernetes--kubectl-config-view)))
+  (with-current-buffer (kubernetes-display-config-refresh config)
+    (goto-char (point-min))
+    (select-window (display-buffer (current-buffer)))))
+
+
+;; Displaying pods.
+
+(defun kubernetes-display-pod-refresh (pod-name)
+  (if-let (pod (kubernetes--state-lookup-pod pod-name))
+      (let ((buf (get-buffer-create kubernetes-pod-buffer-name)))
+        (with-current-buffer buf
+          (kubernetes-display-thing-mode)
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert (kubernetes--json-to-yaml pod))))
+        buf)
+    (error "Unknown pod: %s" pod-name)))
+
+;;;###autoload
+(defun kubernetes-display-pod (pod-name)
+  "Display information for a pod in a new window.
+
+POD-NAME is the name of the pod to display."
+  (interactive (list (kubernetes--read-pod-name)))
+  (with-current-buffer (kubernetes-display-pod-refresh pod-name)
+    (goto-char (point-min))
+    (select-window (display-buffer (current-buffer)))))
 
 
 ;; Marking pods for deletion
