@@ -65,7 +65,7 @@ will be mocked."
                      (funcall cleanup-cb)))))))
      ,form))
 
-;; Test cases
+;; Subprocess calls
 
 (ert-deftest running-kubectl-works ()
   (if (executable-find kubernetes-kubectl-executable)
@@ -77,7 +77,10 @@ will be mocked."
 
     (warn "kubectl is not installed. Skipping test.")))
 
-(ert-deftest listing-pods-returns-parsed-json ()
+
+;; Get pods
+
+(ert-deftest get-pods-returns-parsed-json ()
   (let* ((sample-response (f-read-text (f-join this-directory "get-pods-output.json")))
          (parsed-response (json-read-from-string sample-response))
          (cleanup-callback-called))
@@ -118,6 +121,9 @@ will be mocked."
          (setq cleanup-callback-called t))))
     (should cleanup-callback-called)))
 
+
+;; Delete pod
+
 (ert-deftest deleting-pod-succeeds ()
   (let ((pod-name "example-v3-4120544588-55kmw"))
     (with-successful-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
@@ -144,6 +150,9 @@ will be mocked."
         "pod/example-v3-4120544588-55kmw"
       (kubernetes--kubectl-delete-pod pod-name #'ignore))))
 
+
+;; Describe pod
+
 (ert-deftest describing-pods ()
   (let ((pod-name "example-v3-4120544588-55kmw")
         (sample-response "foo bar baz")
@@ -162,6 +171,9 @@ will be mocked."
         ""
       (kubernetes--kubectl-describe-pod pod-name #'ignore))))
 
+
+;; Use context
+
 (ert-deftest changing-current-context ()
   (let* ((context-name "context-name")
          (sample-response (format "Switched to context \"%s\".\n" context-name))
@@ -172,6 +184,9 @@ will be mocked."
                                                 (setq on-success-called t)
                                                 (should (equal context-name str)))))
     (should on-success-called)))
+
+
+;; Get namespaces
 
 (ert-deftest getting-namespaces ()
   (let* ((sample-response (f-read-text (f-join this-directory "get-namespaces-output.json")))
@@ -186,5 +201,35 @@ will be mocked."
                                             (setq cleanup-callback-called t))))
     (should on-success-called)
     (should cleanup-callback-called)))
+
+
+;; Get configmaps
+
+(ert-deftest get-configmaps-returns-parsed-json ()
+  (let* ((sample-response (f-read-text (f-join this-directory "get-configmaps-output.json")))
+         (parsed-response (json-read-from-string sample-response))
+         (cleanup-callback-called))
+
+    (with-successful-response-at '("get" "configmaps" "-o" "json") sample-response
+      (kubernetes--kubectl-get-configmaps
+       (lambda (response)
+         (should (equal parsed-response response)))
+       (lambda ()
+         (setq cleanup-callback-called t))))
+    (should cleanup-callback-called)))
+
+(ert-deftest get-configmaps-returning-no-response ()
+  (let* ((empty-response (f-read-text (f-join this-directory "get-configmaps-no-resources-response.json")))
+         (parsed-response (json-read-from-string empty-response)))
+    (with-successful-response-at '("get" "configmaps" "-o" "json") empty-response
+      (kubernetes--kubectl-get-configmaps
+       (lambda (response)
+         (should (equal parsed-response response)))))))
+
+(ert-deftest get-configmaps-applies-current-namespace ()
+  (let ((kubernetes--current-namespace "foo"))
+    (with-successful-response-at `("get" "configmaps" "-o" "json" "--namespace=foo")
+        "{}"
+      (kubernetes--kubectl-get-configmaps #'ignore))))
 
 ;;; kubectl-integration-test.el ends here

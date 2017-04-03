@@ -124,6 +124,8 @@ The function must take a single argument, which is the buffer to display."
 
 (defconst kubernetes-display-config-buffer-name "*kubernetes config*")
 
+(defconst kubernetes-display-configmap-buffer-name "*kubernetes configmap*")
+
 (defconst kubernetes-log-line-buffer-name "*log line*")
 
 (defconst kubernetes-logs-buffer-name "*kubernetes logs*")
@@ -141,6 +143,9 @@ The function must take a single argument, which is the buffer to display."
 
 Used to draw the pods list of the main buffer.")
 
+(defvar kubernetes--get-configmaps-response nil
+  "State representing the get configmaps response from the API.")
+
 (defvar kubernetes--view-config-response nil
   "State representing the view config response from the API.
 
@@ -156,6 +161,7 @@ Used for namespace selection within a cluster.")
 
 (defun kubernetes--state-clear ()
   (setq kubernetes--get-pods-response nil)
+  (setq kubernetes--get-configmaps-response nil)
   (setq kubernetes--view-config-response nil)
   (setq kubernetes--get-namespaces-response nil)
   (setq kubernetes--current-namespace nil))
@@ -163,6 +169,7 @@ Used for namespace selection within a cluster.")
 (defun kubernetes--state ()
   "Return the current state as an alist."
   `((pods . ,kubernetes--get-pods-response)
+    (configmaps . ,kubernetes--get-configmaps-response)
     (config . ,kubernetes--view-config-response)
     (namespaces . ,kubernetes--get-namespaces-response)
     (current-namespace . ,kubernetes--current-namespace)))
@@ -177,6 +184,17 @@ If lookup fails, return nil."
   (-let [(&alist 'pods (&alist 'items pods)) (kubernetes--state)]
     (--find (equal (kubernetes--pod-name it) pod-name)
             (append pods nil))))
+
+(defun kubernetes--state-lookup-configmap (configmap-name)
+  "Look up a configmap by name in the current state.
+
+CONFIGMAP-NAME is the name of the configmap to search for.
+
+If lookup succeeds, return the alist representation of the configmap.
+If lookup fails, return nil."
+  (-let [(&alist 'configmaps (&alist 'items configmaps)) (kubernetes--state)]
+    (--find (equal (kubernetes--configmap-name it) configmap-name)
+            (append configmaps nil))))
 
 
 ;; Main Kubernetes query routines
@@ -228,6 +246,26 @@ Returns the process object for this execution of kubectl."
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (let ((args (append '("get" "pods" "-o" "json")
+                      (when kubernetes--current-namespace
+                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+    (kubernetes--kubectl args
+               (lambda (buf)
+                 (let ((json (with-current-buffer buf
+                               ;; Skip past stderr written to this buffer.
+                               (goto-char (point-min))
+                               (search-forward "No resources found." (line-end-position) t)
+
+                               (json-read-from-string
+                                (buffer-substring (point) (point-max))))))
+                   (funcall cb json)))
+               nil
+               cleanup-cb)))
+
+(defun kubernetes--kubectl-get-configmaps (cb &optional cleanup-cb)
+  "Get all configmaps and execute callback CB with the parsed JSON.
+
+CLEANUP-CB is a function taking no arguments used to release any resources."
+  (let ((args (append '("get" "configmaps" "-o" "json")
                       (when kubernetes--current-namespace
                         (list (format "--namespace=%s" kubernetes--current-namespace))))))
     (kubernetes--kubectl args
@@ -329,6 +367,10 @@ to a function of the type:
   (-let [(&alist 'metadata (&alist 'name name)) pod]
     name))
 
+(defun kubernetes--configmap-name (configmap)
+  (-let [(&alist 'metadata (&alist 'name name)) configmap]
+    name))
+
 (defun kubernetes--read-pod-name ()
   "Read a pod name from the user.
 
@@ -343,6 +385,21 @@ Update the pod state if it not set yet."
           (pods (append pods nil))
           (names (-map #'kubernetes--pod-name pods)))
     (completing-read "Pod: " names nil t)))
+
+(defun kubernetes--read-configmap-name ()
+  "Read a configmap name from the user.
+
+Update the configmap state if it not set yet."
+  (-let* (((&alist 'items configmaps)
+           (or kubernetes--get-configmaps-response
+               (progn
+                 (message "Getting configmaps...")
+                 (let ((response (kubernetes--await-on-async #'kubernetes--kubectl-get-configmaps)))
+                   (setq kubernetes--get-configmaps-response response)
+                   response))))
+          (configmaps (append configmaps nil))
+          (names (-map #'kubernetes--configmap-name configmaps)))
+    (completing-read "Configmap: " names nil t)))
 
 (defun kubernetes--read-iso-datetime (&rest _)
   (let* ((date (org-read-date nil t))
@@ -402,8 +459,21 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
                                       (cond
                                        ((equal t v) "true")
                                        ((equal :json-false v) "false")
-                                       ((numberp v) (number-to-string v))
-                                       ((and (stringp v) (< (length v) kubernetes-yaml-string-drop-threshold)) v)
+
+                                       ((numberp v)
+                                        (number-to-string v))
+
+                                       ((and (stringp v) (string-match-p "\n" v))
+                                        (let* ((next-indentation (make-string (* (1+ level) kubernetes-yaml-indentation-width) space))
+                                               (indented
+                                                (string-join
+                                                 (--map (concat next-indentation it) (split-string v "\n"))
+                                                 "\n")))
+                                          (concat "|\n" indented)))
+
+                                       ((and (stringp v) (< (length v) kubernetes-yaml-string-drop-threshold))
+                                        v)
+
                                        (t
                                         (concat "\n" (kubernetes--json-to-yaml v (1+ level)))))))
                             json)))
@@ -434,6 +504,23 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
   (if-let (win (get-buffer-window proc-buf))
       (quit-window t win)
     (kill-buffer proc-buf)))
+
+(defun kubernetes-display-buffer-fullframe (buffer)
+  (let ((display-fn
+         (lambda (buffer alist)
+           (when-let (window (or (display-buffer-reuse-window buffer alist)
+                                 (display-buffer-same-window buffer alist)
+                                 (display-buffer-pop-up-window buffer alist)
+                                 (display-buffer-use-some-window buffer alist)))
+             (delete-other-windows window)
+             window))))
+    (display-buffer buffer (list display-fn))))
+
+(defun kubernetes-display-buffer (buffer)
+  (let ((window (funcall kubernetes-display-buffer-function buffer)))
+    (when kubernetes-display-buffer-select
+      (select-frame-set-input-focus
+       (window-frame (select-window window))))))
 
 
 ;; Background polling processes
@@ -509,64 +596,6 @@ This is used to regularly synchronise local state with Kubernetes.")
   (when-let (timer kubernetes--poll-timer)
     (cancel-timer timer))
   (setq kubernetes--poll-timer nil))
-
-
-;; View management
-
-(defun kubernetes-display-buffer-fullframe (buffer)
-  (let ((display-fn
-         (lambda (buffer alist)
-           (when-let (window (or (display-buffer-reuse-window buffer alist)
-                                 (display-buffer-same-window buffer alist)
-                                 (display-buffer-pop-up-window buffer alist)
-                                 (display-buffer-use-some-window buffer alist)))
-             (delete-other-windows window)
-             window))))
-    (display-buffer buffer (list display-fn))))
-
-(defun kubernetes-display-buffer (buffer)
-  (let ((window (funcall kubernetes-display-buffer-function buffer)))
-    (when kubernetes-display-buffer-select
-      (select-frame-set-input-focus
-       (window-frame (select-window window))))))
-
-(defun kubernetes-display-config-refresh (config)
-  (let ((buf (get-buffer-create kubernetes-display-config-buffer-name)))
-    (with-current-buffer buf
-      (kubernetes-display-thing-mode)
-      (let ((inhibit-read-only t))
-        (erase-buffer)
-        (insert (kubernetes--json-to-yaml config))))
-    buf))
-
-;;;###autoload
-(defun kubernetes-display-config (config)
-  "Display information for CONFIG in a new window."
-  (interactive (list (kubernetes--await-on-async #'kubernetes--kubectl-config-view)))
-  (with-current-buffer (kubernetes-display-config-refresh config)
-    (goto-char (point-min))
-    (select-window (display-buffer (current-buffer)))))
-
-(defun kubernetes-display-pod-refresh (pod-name)
-  (if-let (pod (kubernetes--state-lookup-pod pod-name))
-      (let ((buf (get-buffer-create kubernetes-pod-buffer-name)))
-        (with-current-buffer buf
-          (kubernetes-display-thing-mode)
-          (let ((inhibit-read-only t))
-            (erase-buffer)
-            (insert (kubernetes--json-to-yaml pod))))
-        buf)
-    (error "Unknown pod: %s" pod-name)))
-
-;;;###autoload
-(defun kubernetes-display-pod (pod-name)
-  "Display information for a pod in a new window.
-
-POD-NAME is the name of the pod to display."
-  (interactive (list (kubernetes--read-pod-name)))
-  (with-current-buffer (kubernetes-display-pod-refresh pod-name)
-    (goto-char (point-min))
-    (select-window (display-buffer (current-buffer)))))
 
 
 ;; Render AST Interpreter
@@ -759,7 +788,7 @@ Warning: This could blow the stack if the AST gets too deep."
                              (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator))))))))))
 
 
-;; Root rendering routines.
+;; Display pod view rendering routines.
 
 (defun kubernetes--display-pods-initialize-buffer ()
   "Called the first time the pods buffer is opened to set up the buffer."
@@ -813,6 +842,70 @@ FORCE ensures it happens."
       (magit-section-update-highlight))))
 
 
+;; Displaying config.
+
+(defun kubernetes-display-config-refresh (config)
+  (let ((buf (get-buffer-create kubernetes-display-config-buffer-name)))
+    (with-current-buffer buf
+      (kubernetes-display-thing-mode)
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert (kubernetes--json-to-yaml config))))
+    buf))
+
+;;;###autoload
+(defun kubernetes-display-config (config)
+  "Display information for CONFIG in a new window."
+  (interactive (list (kubernetes--await-on-async #'kubernetes--kubectl-config-view)))
+  (with-current-buffer (kubernetes-display-config-refresh config)
+    (goto-char (point-min))
+    (select-window (display-buffer (current-buffer)))))
+
+
+;; Displaying configmaps.
+
+(defun kubernetes-display-configmap-refresh (configmap)
+  (let ((buf (get-buffer-create kubernetes-display-configmap-buffer-name)))
+    (with-current-buffer buf
+      (kubernetes-display-thing-mode)
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert (kubernetes--json-to-yaml configmap))))
+    buf))
+
+;;;###autoload
+(defun kubernetes-display-configmap (configmap)
+  "Display information for CONFIGMAP in a new window."
+  (interactive (list (kubernetes--state-lookup-configmap (kubernetes--read-configmap-name))))
+  (with-current-buffer (kubernetes-display-configmap-refresh configmap)
+    (goto-char (point-min))
+    (select-window (display-buffer (current-buffer)))))
+
+
+;; Displaying pods.
+
+(defun kubernetes-display-pod-refresh (pod-name)
+  (if-let (pod (kubernetes--state-lookup-pod pod-name))
+      (let ((buf (get-buffer-create kubernetes-pod-buffer-name)))
+        (with-current-buffer buf
+          (kubernetes-display-thing-mode)
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert (kubernetes--json-to-yaml pod))))
+        buf)
+    (error "Unknown pod: %s" pod-name)))
+
+;;;###autoload
+(defun kubernetes-display-pod (pod-name)
+  "Display information for a pod in a new window.
+
+POD-NAME is the name of the pod to display."
+  (interactive (list (kubernetes--read-pod-name)))
+  (with-current-buffer (kubernetes-display-pod-refresh pod-name)
+    (goto-char (point-min))
+    (select-window (display-buffer (current-buffer)))))
+
+
 ;; Marking pods for deletion
 
 (defun kubernetes-mark-for-delete (point)
@@ -860,13 +953,12 @@ FORCE ensures it happens."
             (add-to-list 'kubernetes--pods-pending-deletion pod)
 
             (kubernetes--kubectl-delete-pod pod
-                                            (lambda (_)
-                                              (message "Deleting pod %s succeeded." pod)
-                                              (kubernetes-refresh))
-                                            (lambda (_)
-                                              (message "Deleting pod %s failed" pod)
-                                              (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))
-
+                                  (lambda (_)
+                                    (message "Deleting pod %s succeeded." pod)
+                                    (kubernetes-refresh))
+                                  (lambda (_)
+                                    (message "Deleting pod %s failed" pod)
+                                    (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))
           (kubernetes-unmark-all))
       (message "Cancelled."))))
 
