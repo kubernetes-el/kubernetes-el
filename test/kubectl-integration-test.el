@@ -232,4 +232,34 @@ will be mocked."
         "{}"
       (kubernetes--kubectl-get-configmaps #'ignore))))
 
+
+
+;; Delete configmap
+
+(ert-deftest deleting-configmap-succeeds ()
+  (let ((configmap-name "example-config"))
+    (with-successful-response-at '("delete" "configmap" "example-configmap" "-o" "name") "configmap/example-config"
+      (kubernetes--kubectl-delete-configmap "example-configmap"
+                                            (lambda (result)
+                                              (should (equal configmap-name result)))))))
+
+(ert-deftest deleting-configmap-fails ()
+  (let ((configmap-name "example-config")
+        (on-error-called))
+    (with-error-response-at '("delete" "configmap" "example-configmap" "-o" "name") "configmap/example-config"
+      (kubernetes--kubectl-delete-configmap "example-configmap"
+                                            (lambda (_)
+                                              (error "Unexpected success response"))
+                                            (lambda (result)
+                                              (setq on-error-called t))))
+    (should on-error-called)))
+
+(ert-deftest deleting-configmap-applies-current-namespace ()
+  (let* ((configmap-name "example-config")
+         (kubernetes--current-namespace "foo"))
+    (with-successful-response-at `("delete" "configmap" ,configmap-name "-o" "name"
+                                   "--namespace=foo")
+        "configmap/example-config"
+      (kubernetes--kubectl-delete-configmap configmap-name #'ignore))))
+
 ;;; kubectl-integration-test.el ends here

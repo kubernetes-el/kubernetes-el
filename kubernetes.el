@@ -126,6 +126,8 @@ The function must take a single argument, which is the buffer to display."
 
 (defconst kubernetes-display-configmap-buffer-name "*kubernetes configmap*")
 
+(defconst kubernetes-display-configmaps-buffer-name "*kubernetes configmaps*")
+
 (defconst kubernetes-log-line-buffer-name "*log line*")
 
 (defconst kubernetes-logs-buffer-name "*kubernetes logs*")
@@ -287,35 +289,35 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (kubernetes--kubectl '("config" "view" "-o" "json")
-             (lambda (buf)
-               (let ((json (with-current-buffer buf
-                             (json-read-from-string (buffer-string)))))
-                 (funcall cb json)))
-             nil
-             cleanup-cb))
+                       (lambda (buf)
+                         (let ((json (with-current-buffer buf
+                                       (json-read-from-string (buffer-string)))))
+                           (funcall cb json)))
+                       nil
+                       cleanup-cb))
 
 (defun kubernetes--kubectl-config-use-context (context-name cb)
   "Change the current kubernetes context to CONTEXT-NAME, a string.
 
 CB is a function taking the name of the context that was switched to."
   (kubernetes--kubectl (list "config" "use-context" context-name)
-             (lambda (buf)
-               (with-current-buffer buf
-                 (string-match (rx bol "Switched to context \"" (group (+? nonl)) "\"." (* space) eol)
-                               (buffer-string))
-                 (funcall cb (match-string 1 (buffer-string)))))))
+                       (lambda (buf)
+                         (with-current-buffer buf
+                           (string-match (rx bol "Switched to context \"" (group (+? nonl)) "\"." (* space) eol)
+                                         (buffer-string))
+                           (funcall cb (match-string 1 (buffer-string)))))))
 
 (defun kubernetes--kubectl-get-namespaces (cb &optional cleanup-cb)
   "Get namespaces for the current cluster and pass the parsed response to CB.
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (kubernetes--kubectl '("get" "namespaces" "-o" "json")
-             (lambda (buf)
-               (let ((json (with-current-buffer buf
-                             (json-read-from-string (buffer-string)))))
-                 (funcall cb json)))
-             nil
-             cleanup-cb))
+                       (lambda (buf)
+                         (let ((json (with-current-buffer buf
+                                       (json-read-from-string (buffer-string)))))
+                           (funcall cb json)))
+                       nil
+                       cleanup-cb))
 
 (defun kubernetes--kubectl-delete-pod (pod-name cb &optional error-cb)
   "Delete pod with POD-NAME, then execute CB with the response buffer.
@@ -328,6 +330,20 @@ ERROR-CB is called if an error occurred."
                (lambda (buf)
                  (with-current-buffer buf
                    (string-match (rx bol "pod/" (group (+ nonl))) (buffer-string))
+                   (funcall cb (match-string 1 (buffer-string)))))
+               error-cb)))
+
+(defun kubernetes--kubectl-delete-configmap (configmap-name cb &optional error-cb)
+  "Delete CONFIGMAP-NAME, then execute CB with the response buffer.
+
+ERROR-CB is called if an error occurred."
+  (let ((args (append (list "delete" "configmap" configmap-name "-o" "name")
+                      (when kubernetes--current-namespace
+                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+    (kubernetes--kubectl args
+               (lambda (buf)
+                 (with-current-buffer buf
+                   (string-match (rx bol "configmap/" (group (+ nonl))) (buffer-string))
                    (funcall cb (match-string 1 (buffer-string)))))
                error-cb)))
 
@@ -565,6 +581,19 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
       (kill-process proc)))
   (setq kubernetes--poll-pods-process nil))
 
+(defvar kubernetes--poll-configmaps-process nil
+  "Single process used to prevent concurrent configmap refreshes.")
+
+(defun kubernetes--set-poll-configmaps-process (proc)
+  (kubernetes--release-poll-configmaps-process)
+  (setq kubernetes--poll-configmaps-process proc))
+
+(defun kubernetes--release-poll-configmaps-process ()
+  (when-let (proc kubernetes--poll-configmaps-process)
+    (when (process-live-p proc)
+      (kill-process proc)))
+  (setq kubernetes--poll-configmaps-process nil))
+
 (defun kubernetes--kill-process-quietly (proc)
   (when (and proc (process-live-p proc))
     (set-process-query-on-exit-flag proc nil)
@@ -575,8 +604,10 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
 (defun kubernetes--kill-polling-processes ()
   (mapc #'kubernetes--kill-process-quietly (list kubernetes--poll-pods-process
                                        kubernetes--poll-context-process
+                                       kubernetes--poll-configmaps-process
                                        kubernetes--poll-namespaces-process))
   (setq kubernetes--poll-namespaces-process nil)
+  (setq kubernetes--poll-configmaps-process nil)
   (setq kubernetes--poll-pods-process nil)
   (setq kubernetes--poll-context-process nil))
 
@@ -789,6 +820,67 @@ Warning: This could blow the stack if the AST gets too deep."
                              (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator))))))))))
 
 
+;; Configmap section rendering.
+
+(defvar-local kubernetes--marked-configmap-names nil)
+
+(defvar-local kubernetes--configmaps-pending-deletion nil)
+
+(defun kubernetes--format-configmap-details (configmap)
+  (-let ((insert-detail
+          (lambda (key value)
+            (let ((str (concat (propertize (format "    %-12s" key) 'face 'magit-header-line)
+                               value)))
+              (cons 'line (concat (propertize str 'kubernetes-copy value))))))
+
+         ((&alist 'metadata (&alist 'namespace ns
+                                    'creationTimestamp created-time))
+          configmap))
+    (list (funcall insert-detail "Namespace:" ns)
+          (funcall insert-detail "Created:" created-time))))
+
+(defun kubernetes--format-configmap-line (configmap)
+  (-let* (((&alist 'metadata (&alist 'name name)) configmap)
+          (str (format "%-45s " (kubernetes--ellipsize name 45)))
+          (str
+           (if (member name kubernetes--configmaps-pending-deletion)
+               (concat (propertize str 'face 'kubernetes-pending-deletion))
+             str))
+          (str
+           (if (member name kubernetes--marked-configmap-names)
+               (concat (propertize "D" 'face 'kubernetes-delete-mark) " " str)
+             (concat "  " str))))
+    (propertize str
+                'kubernetes-nav (list :configmap-name name)
+                'kubernetes-copy name)))
+
+(defun kubernetes--render-configmaps-section (state)
+  (-let* (((&alist 'configmaps (configmaps-response &as &alist 'items configmaps)) state)
+          (configmaps (append configmaps nil)))
+    `(section (configmaps-container nil)
+              ,(cond
+                ;; If the state is set and there are no configmaps, write "None".
+                ((and configmaps-response (null configmaps))
+                 `((heading . "Configmaps")
+                   (section (configmaps-list nil)
+                            (line . ,(propertize "  None." 'face 'magit-dimmed)))))
+
+                ;; If there are configmaps, write sections for each configmaps.
+                (configmaps
+                 `((heading . ,(concat (propertize "Configmaps" 'face 'magit-header-line) " " (format "(%s)" (length configmaps))))
+                   ,@(--map `(section (,(intern (kubernetes--configmap-name it)) t)
+                                      ((heading . ,(kubernetes--format-configmap-line it))
+                                       (section (details nil)
+                                                (,@(kubernetes--format-configmap-details it)
+                                                 (padding)))))
+                            configmaps)))
+                ;; If there's no state, assume requests are in progress.
+                (t
+                 `((heading . "Configmaps")
+                   (section (configmaps-list nil)
+                            (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator)))))))))
+
+
 ;; Display pod view rendering routines.
 
 (defun kubernetes--display-pods-initialize-buffer ()
@@ -798,7 +890,7 @@ Warning: This could blow the stack if the AST gets too deep."
       (kubernetes-display-pods-mode)
 
       ;; Render buffer.
-      (kubernetes--redraw-main-buffer t)
+      (kubernetes--redraw-pods-buffer t)
       (goto-char (point-min))
 
       (kubernetes--initialize-timers)
@@ -812,7 +904,7 @@ Warning: This could blow the stack if the AST gets too deep."
                 nil t))
     buf))
 
-(defun kubernetes--redraw-main-buffer (&optional force)
+(defun kubernetes--redraw-pods-buffer (&optional force)
   "Redraws the main buffer using the current state.
 
 FORCE ensures it happens."
@@ -837,6 +929,57 @@ FORCE ensures it happens."
           (kubernetes--eval-ast `(section (root nil)
                                 (,(kubernetes--render-context-section state)
                                  ,(kubernetes--render-pods-section state))))
+          (goto-char pos)))
+
+      ;; Force the section at point to highlight.
+      (magit-section-update-highlight))))
+
+
+;; Display configmap view rendering routines.
+
+(defun kubernetes--display-configmaps-initialize-buffer ()
+  "Called the first time the configmaps buffer is opened to set up the buffer."
+  (let ((buf (get-buffer-create kubernetes-display-configmaps-buffer-name)))
+    (with-current-buffer buf
+      (kubernetes-display-configmaps-mode)
+
+      ;; Render buffer.
+      (kubernetes--redraw-configmaps-buffer t)
+      (goto-char (point-min))
+
+      (kubernetes--initialize-timers)
+
+      (add-hook 'kill-buffer-hook
+                (lambda ()
+                  (with-current-buffer buf
+                    (kubernetes--state-clear)
+                    (kubernetes--kill-polling-processes)
+                    (kubernetes--kill-timers)))
+                nil t))
+    buf))
+
+(defun kubernetes--redraw-configmaps-buffer (&optional force)
+  "Redraws the main buffer using the current state.
+
+FORCE ensures it happens."
+  (when-let (buf (get-buffer kubernetes-display-configmaps-buffer-name))
+    (with-current-buffer buf
+      (when (or force
+                ;; HACK: Only redraw the buffer if it is in the selected window.
+                ;;
+                ;; The cursor moves unpredictably in a redraw, which ruins the current
+                ;; position in the buffer if a popup window is open.
+                (equal (window-buffer) buf))
+
+        (let ((pos (point))
+              (inhibit-read-only t)
+              (inhibit-redisplay t)
+              (state (kubernetes--state)))
+
+          (erase-buffer)
+          (kubernetes--eval-ast `(section (root nil)
+                                (,(kubernetes--render-context-section state)
+                                 ,(kubernetes--render-configmaps-section state))))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.
@@ -920,7 +1063,11 @@ POD-NAME is the name of the pod to display."
     (`(:pod-name ,pod-name)
      (unless (member pod-name kubernetes--pods-pending-deletion)
        (add-to-list 'kubernetes--marked-pod-names pod-name)
-       (kubernetes--redraw-main-buffer)))
+       (kubernetes--redraw-pods-buffer)))
+    (`(:configmap-name ,configmap-name)
+     (unless (member configmap-name kubernetes--configmaps-pending-deletion)
+       (add-to-list 'kubernetes--marked-configmap-names configmap-name)
+       (kubernetes--redraw-configmaps-buffer)))
     (_
      (user-error "Nothing here can be marked")))
   (goto-char point)
@@ -932,7 +1079,10 @@ POD-NAME is the name of the pod to display."
   (pcase (get-text-property point 'kubernetes-nav)
     (`(:pod-name ,pod-name)
      (setq kubernetes--marked-pod-names (delete pod-name kubernetes--marked-pod-names))
-     (kubernetes--redraw-main-buffer)))
+     (kubernetes--redraw-pods-buffer))
+    (`(:configmap-name ,configmap-name)
+     (setq kubernetes--marked-configmap-names (delete configmap-name kubernetes--marked-configmap-names))
+     (kubernetes--redraw-configmaps-buffer)))
   (goto-char point)
   (forward-line 1))
 
@@ -940,33 +1090,57 @@ POD-NAME is the name of the pod to display."
   "Unmark everything in the buffer."
   (interactive)
   (setq kubernetes--marked-pod-names nil)
+  (setq kubernetes--marked-configmap-names nil)
   (let ((pt (point)))
-    (kubernetes--redraw-main-buffer)
+    (kubernetes--redraw-pods-buffer)
+    (kubernetes--redraw-configmaps-buffer)
     (goto-char pt)))
 
 (defun kubernetes-execute-marks ()
   "Action all marked items in the buffer."
   (interactive)
-  (unless kubernetes--marked-pod-names
+  (unless (or kubernetes--marked-pod-names kubernetes--marked-configmap-names)
     (user-error "Nothing is marked"))
 
   (let ((n (length kubernetes--marked-pod-names)))
-    (if (y-or-n-p (format "Execute %s mark%s? " n (if (equal 1 n) "" "s")))
-        (progn
-          (message "Deleting %s pod%s..." n (if (equal 1 n) "" "s"))
-          (dolist (pod kubernetes--marked-pod-names)
-            (add-to-list 'kubernetes--pods-pending-deletion pod)
+    (when (and (not (zerop n))
+               (y-or-n-p (format "Delete %s pod%s? " n (if (equal 1 n) "" "s"))))
+      (kubernetes--delete-marked-pods)
+      (kubernetes-unmark-all)))
 
-            (kubernetes--kubectl-delete-pod pod
+  (let ((n (length kubernetes--marked-configmap-names)))
+    (when (and (not (zerop n))
+               (y-or-n-p (format "Delete %s configmap%s? " n (if (equal 1 n) "" "s"))))
+      (kubernetes--delete-marked-configmaps)
+      (kubernetes-unmark-all))))
+
+(defun kubernetes--delete-marked-pods ()
+  (let ((n (length kubernetes--marked-pod-names)))
+    (message "Deleting %s pod%s..." n (if (equal 1 n) "" "s"))
+    (dolist (pod kubernetes--marked-pod-names)
+      (add-to-list 'kubernetes--pods-pending-deletion pod)
+
+      (kubernetes--kubectl-delete-pod pod
+                            (lambda (_)
+                              (message "Deleting pod %s succeeded." pod)
+                              (kubernetes-refresh))
+                            (lambda (_)
+                              (message "Deleting pod %s failed" pod)
+                              (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))))
+
+(defun kubernetes--delete-marked-configmaps ()
+  (let ((n (length kubernetes--marked-configmap-names)))
+    (message "Deleting %s configmap%s..." n (if (equal 1 n) "" "s"))
+    (dolist (configmap kubernetes--marked-configmap-names)
+      (add-to-list 'kubernetes--configmaps-pending-deletion configmap)
+
+      (kubernetes--kubectl-delete-configmap configmap
                                   (lambda (_)
-                                    (message "Deleting pod %s succeeded." pod)
+                                    (message "Deleting configmap %s succeeded." configmap)
                                     (kubernetes-refresh))
                                   (lambda (_)
-                                    (message "Deleting pod %s failed" pod)
-                                    (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))
-          (kubernetes-unmark-all))
-      (message "Cancelled."))))
-
+                                    (message "Deleting configmap %s failed" configmap)
+                                    (setq kubernetes--configmaps-pending-deletion (delete configmap kubernetes--configmaps-pending-deletion)))))))
 
 ;;; Misc commands
 
@@ -980,6 +1154,8 @@ taken."
   (pcase (get-text-property point 'kubernetes-nav)
     (:display-config
      (kubernetes-display-config (alist-get 'config (kubernetes--state))))
+    (`(:configmap-name ,configmap-name)
+     (kubernetes-display-configmap configmap-name))
     (`(:pod-name ,pod-name)
      (kubernetes-display-pod pod-name))))
 
@@ -1007,7 +1183,7 @@ state changes."
     (when verbose
       (message "Refreshing..."))
 
-    (kubernetes--redraw-main-buffer)
+    (kubernetes--redraw-pods-buffer)
 
     (unless kubernetes--poll-namespaces-process
       (kubernetes--set-poll-namespaces-process
@@ -1024,18 +1200,29 @@ state changes."
        (kubernetes--kubectl-config-view
         (lambda (config)
           (setq kubernetes--view-config-response config)
-          (kubernetes--redraw-main-buffer)
+          (kubernetes--redraw-pods-buffer)
           (when verbose
             (message "Updated contexts.")))
         (lambda ()
           (kubernetes--release-poll-context-process)))))
+
+    (unless kubernetes--poll-configmaps-process
+      (kubernetes--set-poll-configmaps-process
+       (kubernetes--kubectl-get-configmaps
+        (lambda (response)
+          (setq kubernetes--get-configmaps-response response)
+          (kubernetes--redraw-configmaps-buffer)
+          (when verbose
+            (message "Updated configmaps.")))
+        (lambda ()
+          (kubernetes--release-poll-configmaps-process)))))
 
     (unless kubernetes--poll-pods-process
       (kubernetes--set-poll-pods-process
        (kubernetes--kubectl-get-pods
         (lambda (response)
           (setq kubernetes--get-pods-response response)
-          (kubernetes--redraw-main-buffer)
+          (kubernetes--redraw-pods-buffer)
           (when verbose
             (message "Updated pods.")))
         (lambda ()
@@ -1272,7 +1459,7 @@ Should be invoked via command `kubernetes-logs-popup'."
     (goto-char (point-min))
     (setq kubernetes--view-config-response context)
     (setq kubernetes--current-namespace ns)
-    (kubernetes--redraw-main-buffer t)))
+    (kubernetes--redraw-pods-buffer t)))
 
 (defun kubernetes--namespace-names ()
   (-let* ((config (or kubernetes--get-namespaces-response (kubernetes--await-on-async #'kubernetes--kubectl-get-namespaces)))
@@ -1286,7 +1473,7 @@ CONTEXT is the name of a context as a string."
   (interactive (list (completing-read "Context: " (kubernetes--context-names) nil t)))
   (kubernetes--kill-polling-processes)
   (kubernetes--state-clear)
-  (kubernetes--redraw-main-buffer t)
+  (kubernetes--redraw-pods-buffer t)
   (goto-char (point-min))
   (kubernetes--kubectl-config-use-context context (lambda (_)
                                           (kubernetes-refresh))))
@@ -1392,6 +1579,39 @@ Type \\[kubernetes-refresh] to refresh the buffer.
   :group 'kubernetes)
 
 ;;;###autoload
+(defvar kubernetes-display-configmaps-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "?") #'kubernetes-overview-popup)
+    (define-key keymap (kbd "TAB") #'magit-section-toggle)
+    (define-key keymap (kbd "c") #'kubernetes-config-popup)
+    (define-key keymap (kbd "d") #'kubernetes-describe-popup)
+    (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
+    (define-key keymap (kbd "g") #'kubernetes-refresh)
+    (define-key keymap (kbd "u") #'kubernetes-unmark)
+    (define-key keymap (kbd "U") #'kubernetes-unmark-all)
+    (define-key keymap (kbd "x") #'kubernetes-execute-marks)
+    (define-key keymap (kbd "h") #'describe-mode)
+    keymap)
+  "Keymap for `kubernetes-display-configmaps-mode'.")
+
+;;;###autoload
+(define-derived-mode kubernetes-display-configmaps-mode kubernetes-mode "Kubernetes Configmaps"
+  "Mode for working with Kubernetes configmaps.
+
+\\<kubernetes-display-configmaps-mode-map>\
+Type \\[kubernetes-mark-for-delete] to mark a configmap for deletion, and \\[kubernetes-execute-marks] to execute.
+Type \\[kubernetes-unmark] to unmark the configmap at point, or \\[kubernetes-unmark-all] to unmark all configmaps.
+
+Type \\[kubernetes-navigate] to inspect the object on the current line.
+
+Type \\[kubernetes-copy-thing-at-point] to copy the configmap name at point.
+
+Type \\[kubernetes-refresh] to refresh the buffer.
+
+\\{kubernetes-display-configmaps-mode-map}"
+  :group 'kubernetes)
+
+;;;###autoload
 (defvar kubernetes-logs-mode-map
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "n") #'kubernetes-logs-forward-line)
@@ -1433,12 +1653,22 @@ Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
 \\{kubernetes-display-thing-mode-map}"
   :group 'kubernetes)
 
+
+;; Main entrypoints.
+
 ;;;###autoload
 (defun kubernetes-display-pods ()
   "Display a list of pods in the current Kubernetes context."
   (interactive)
   (kubernetes-display-buffer (kubernetes--display-pods-initialize-buffer))
   (message (substitute-command-keys "\\<kubernetes-display-pods-mode-map>Type \\[kubernetes-overview-popup] for usage.")))
+
+;;;###autoload
+(defun kubernetes-display-configmaps ()
+  "Display a list of configmaps in the current Kubernetes context."
+  (interactive)
+  (kubernetes-display-buffer (kubernetes--display-configmaps-initialize-buffer))
+  (message (substitute-command-keys "\\<kubernetes-display-configmaps-mode-map>Type \\[kubernetes-overview-popup] for usage.")))
 
 (provide 'kubernetes)
 
