@@ -202,4 +202,34 @@ will be mocked."
     (should on-success-called)
     (should cleanup-callback-called)))
 
+
+;; Get configmaps
+
+(ert-deftest get-configmaps-returns-parsed-json ()
+  (let* ((sample-response (f-read-text (f-join this-directory "get-configmaps-output.json")))
+         (parsed-response (json-read-from-string sample-response))
+         (cleanup-callback-called))
+
+    (with-successful-response-at '("get" "configmaps" "-o" "json") sample-response
+      (kubernetes--kubectl-get-configmaps
+       (lambda (response)
+         (should (equal parsed-response response)))
+       (lambda ()
+         (setq cleanup-callback-called t))))
+    (should cleanup-callback-called)))
+
+(ert-deftest get-configmaps-returning-no-response ()
+  (let* ((empty-response (f-read-text (f-join this-directory "get-configmaps-no-resources-response.json")))
+         (parsed-response (json-read-from-string empty-response)))
+    (with-successful-response-at '("get" "configmaps" "-o" "json") empty-response
+      (kubernetes--kubectl-get-configmaps
+       (lambda (response)
+         (should (equal parsed-response response)))))))
+
+(ert-deftest get-configmaps-applies-current-namespace ()
+  (let ((kubernetes--current-namespace "foo"))
+    (with-successful-response-at `("get" "configmaps" "-o" "json" "--namespace=foo")
+        "{}"
+      (kubernetes--kubectl-get-configmaps #'ignore))))
+
 ;;; kubectl-integration-test.el ends here
