@@ -26,15 +26,26 @@
   (evil-set-initial-state 'kubernetes-logs-mode 'motion)
 
   (evil-define-key 'motion kubernetes-mode-map
-    (kbd "RET") #'kubernetes-navigate
+    (kbd "p")   #'magit-section-backward
+    (kbd "n")   #'magit-section-forward
+    (kbd "M-p") #'magit-section-backward-sibling
+    (kbd "M-n") #'magit-section-forward-sibling
+    (kbd "C-i") #'magit-section-toggle
+    (kbd "^")   #'magit-section-up
+    [tab]       #'magit-section-toggle
+    [C-tab]     #'magit-section-cycle
+    [M-tab]     #'magit-section-cycle-diffs
+    [S-tab]     #'magit-section-cycle-global
+
     (kbd "j") #'next-line
     (kbd "k") #'previous-line
+
     (kbd "q") #'quit-window
+    (kbd "RET") #'kubernetes-navigate
     (kbd "M-w") #'kubernetes-copy-thing-at-point)
 
   (evil-define-key 'motion kubernetes-display-pods-mode-map
     (kbd "?") #'kubernetes-overview-popup
-    (kbd "TAB") #'magit-section-toggle
     (kbd "c") #'kubernetes-config-popup
     (kbd "g r") #'kubernetes-refresh
     (kbd "h") #'describe-mode
@@ -48,7 +59,6 @@
 
   (evil-define-key 'motion kubernetes-display-configmaps-mode-map
     (kbd "?") #'kubernetes-overview-popup
-    (kbd "TAB") #'magit-section-toggle
     (kbd "c") #'kubernetes-config-popup
     (kbd "g r") #'kubernetes-refresh
     (kbd "h") #'describe-mode

@@ -1507,9 +1507,22 @@ CONTEXT is the name of a context as a string."
 ;;;###autoload
 (defvar kubernetes-mode-map
   (let ((keymap (make-sparse-keymap)))
+    ;; Section controls
+    (define-key keymap (kbd "p")   #'magit-section-backward)
+    (define-key keymap (kbd "n")   #'magit-section-forward)
+    (define-key keymap (kbd "M-p") #'magit-section-backward-sibling)
+    (define-key keymap (kbd "M-n") #'magit-section-forward-sibling)
+    (define-key keymap (kbd "C-i") #'magit-section-toggle)
+    (define-key keymap (kbd "^")   #'magit-section-up)
+    (define-key keymap [tab]       #'magit-section-toggle)
+    (define-key keymap [C-tab]     #'magit-section-cycle)
+    (define-key keymap [M-tab]     #'magit-section-cycle-diffs)
+    (define-key keymap [S-tab]     #'magit-section-cycle-global)
+    ;; Misc
     (define-key keymap (kbd "q") #'quit-window)
     (define-key keymap (kbd "RET") #'kubernetes-navigate)
     (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
+
     keymap)
   "Keymap for `kubernetes-mode'.  This is the base keymap for all derived modes.")
 
@@ -1543,7 +1556,6 @@ CONTEXT is the name of a context as a string."
 (defvar kubernetes-display-pods-mode-map
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "?") #'kubernetes-overview-popup)
-    (define-key keymap (kbd "TAB") #'magit-section-toggle)
     (define-key keymap (kbd "c") #'kubernetes-config-popup)
     (define-key keymap (kbd "d") #'kubernetes-describe-popup)
     (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
@@ -1582,7 +1594,6 @@ Type \\[kubernetes-refresh] to refresh the buffer.
 (defvar kubernetes-display-configmaps-mode-map
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "?") #'kubernetes-overview-popup)
-    (define-key keymap (kbd "TAB") #'magit-section-toggle)
     (define-key keymap (kbd "c") #'kubernetes-config-popup)
     (define-key keymap (kbd "d") #'kubernetes-describe-popup)
     (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
