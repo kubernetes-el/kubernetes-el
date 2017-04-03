@@ -883,13 +883,12 @@ POD-NAME is the name of the pod to display."
             (add-to-list 'kubernetes--pods-pending-deletion pod)
 
             (kubernetes--kubectl-delete-pod pod
-                                            (lambda (_)
-                                              (message "Deleting pod %s succeeded." pod)
-                                              (kubernetes-refresh))
-                                            (lambda (_)
-                                              (message "Deleting pod %s failed" pod)
-                                              (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))
-
+                                  (lambda (_)
+                                    (message "Deleting pod %s succeeded." pod)
+                                    (kubernetes-refresh))
+                                  (lambda (_)
+                                    (message "Deleting pod %s failed" pod)
+                                    (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))
           (kubernetes-unmark-all))
       (message "Cancelled."))))
 
