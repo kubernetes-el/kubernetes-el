@@ -124,6 +124,8 @@ The function must take a single argument, which is the buffer to display."
 
 (defconst kubernetes-display-config-buffer-name "*kubernetes config*")
 
+(defconst kubernetes-display-configmap-buffer-name "*kubernetes configmap*")
+
 (defconst kubernetes-log-line-buffer-name "*log line*")
 
 (defconst kubernetes-logs-buffer-name "*kubernetes logs*")
@@ -141,6 +143,9 @@ The function must take a single argument, which is the buffer to display."
 
 Used to draw the pods list of the main buffer.")
 
+(defvar kubernetes--get-configmaps-response nil
+  "State representing the get configmaps response from the API.")
+
 (defvar kubernetes--view-config-response nil
   "State representing the view config response from the API.
 
@@ -156,6 +161,7 @@ Used for namespace selection within a cluster.")
 
 (defun kubernetes--state-clear ()
   (setq kubernetes--get-pods-response nil)
+  (setq kubernetes--get-configmaps-response nil)
   (setq kubernetes--view-config-response nil)
   (setq kubernetes--get-namespaces-response nil)
   (setq kubernetes--current-namespace nil))
@@ -163,6 +169,7 @@ Used for namespace selection within a cluster.")
 (defun kubernetes--state ()
   "Return the current state as an alist."
   `((pods . ,kubernetes--get-pods-response)
+    (configmaps . ,kubernetes--get-configmaps-response)
     (config . ,kubernetes--view-config-response)
     (namespaces . ,kubernetes--get-namespaces-response)
     (current-namespace . ,kubernetes--current-namespace)))
@@ -177,6 +184,17 @@ If lookup fails, return nil."
   (-let [(&alist 'pods (&alist 'items pods)) (kubernetes--state)]
     (--find (equal (kubernetes--pod-name it) pod-name)
             (append pods nil))))
+
+(defun kubernetes--state-lookup-configmap (configmap-name)
+  "Look up a configmap by name in the current state.
+
+CONFIGMAP-NAME is the name of the configmap to search for.
+
+If lookup succeeds, return the alist representation of the configmap.
+If lookup fails, return nil."
+  (-let [(&alist 'configmaps (&alist 'items configmaps)) (kubernetes--state)]
+    (--find (equal (kubernetes--configmap-name it) configmap-name)
+            (append configmaps nil))))
 
 
 ;; Main Kubernetes query routines
@@ -349,6 +367,10 @@ to a function of the type:
   (-let [(&alist 'metadata (&alist 'name name)) pod]
     name))
 
+(defun kubernetes--configmap-name (configmap)
+  (-let [(&alist 'metadata (&alist 'name name)) configmap]
+    name))
+
 (defun kubernetes--read-pod-name ()
   "Read a pod name from the user.
 
@@ -363,6 +385,21 @@ Update the pod state if it not set yet."
           (pods (append pods nil))
           (names (-map #'kubernetes--pod-name pods)))
     (completing-read "Pod: " names nil t)))
+
+(defun kubernetes--read-configmap-name ()
+  "Read a configmap name from the user.
+
+Update the configmap state if it not set yet."
+  (-let* (((&alist 'items configmaps)
+           (or kubernetes--get-configmaps-response
+               (progn
+                 (message "Getting configmaps...")
+                 (let ((response (kubernetes--await-on-async #'kubernetes--kubectl-get-configmaps)))
+                   (setq kubernetes--get-configmaps-response response)
+                   response))))
+          (configmaps (append configmaps nil))
+          (names (-map #'kubernetes--configmap-name configmaps)))
+    (completing-read "Configmap: " names nil t)))
 
 (defun kubernetes--read-iso-datetime (&rest _)
   (let* ((date (org-read-date nil t))
@@ -808,6 +845,26 @@ FORCE ensures it happens."
   "Display information for CONFIG in a new window."
   (interactive (list (kubernetes--await-on-async #'kubernetes--kubectl-config-view)))
   (with-current-buffer (kubernetes-display-config-refresh config)
+    (goto-char (point-min))
+    (select-window (display-buffer (current-buffer)))))
+
+
+;; Displaying configmaps.
+
+(defun kubernetes-display-configmap-refresh (configmap)
+  (let ((buf (get-buffer-create kubernetes-display-configmap-buffer-name)))
+    (with-current-buffer buf
+      (kubernetes-display-thing-mode)
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert (kubernetes--json-to-yaml configmap))))
+    buf))
+
+;;;###autoload
+(defun kubernetes-display-configmap (configmap)
+  "Display information for CONFIGMAP in a new window."
+  (interactive (list (kubernetes--state-lookup-configmap (kubernetes--read-configmap-name))))
+  (with-current-buffer (kubernetes-display-configmap-refresh configmap)
     (goto-char (point-min))
     (select-window (display-buffer (current-buffer)))))
 
