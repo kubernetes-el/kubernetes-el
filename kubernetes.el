@@ -846,7 +846,7 @@ Warning: This could blow the stack if the AST gets too deep."
            configmap)
           (str (concat
                 ;; Name
-                (format "%-30s " (kubernetes--ellipsize name 30))
+                (format "%-45s " (kubernetes--ellipsize name 45))
 
                 ;; Data
                 (propertize (format "%6s " (seq-length data)) 'face 'magit-dimmed)
@@ -871,7 +871,7 @@ Warning: This could blow the stack if the AST gets too deep."
   (-let* (((&alist 'current-time current-time
                    'configmaps (configmaps-response &as &alist 'items configmaps)) state)
           (configmaps (append configmaps nil))
-          (column-heading (propertize (format "  %-30s %6s %6s" "Name" "Data" "Age") 'face 'magit-section-heading)))
+          (column-heading (propertize (format "  %-45s %6s %6s" "Name" "Data" "Age") 'face 'magit-section-heading)))
     `(section (configmaps-container nil)
               ,(cond
                 ;; If the state is set and there are no configmaps, write "None".
