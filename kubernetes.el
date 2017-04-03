@@ -779,7 +779,7 @@ Warning: This could blow the stack if the AST gets too deep."
                              (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator))))))))))
 
 
-;; Root rendering routines.
+;; Display pod view rendering routines.
 
 (defun kubernetes--display-pods-initialize-buffer ()
   "Called the first time the pods buffer is opened to set up the buffer."
