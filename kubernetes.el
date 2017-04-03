@@ -172,7 +172,8 @@ Used for namespace selection within a cluster.")
     (configmaps . ,kubernetes--get-configmaps-response)
     (config . ,kubernetes--view-config-response)
     (namespaces . ,kubernetes--get-namespaces-response)
-    (current-namespace . ,kubernetes--current-namespace)))
+    (current-namespace . ,kubernetes--current-namespace)
+    (current-time . ,(current-time))))
 
 (defun kubernetes--state-lookup-pod (pod-name)
   "Look up a pod by name in the current state.
@@ -687,7 +688,7 @@ Warning: This could blow the stack if the AST gets too deep."
           (funcall insert-detail "Pod IP:" pod-ip)
           (funcall insert-detail "Started:" start-time))))
 
-(defun kubernetes--format-pod-line (pod)
+(defun kubernetes--format-pod-line (pod current-time)
   (-let* (((&alist 'metadata (&alist 'name name)
                    'status (&alist 'containerStatuses containers
                                    'startTime start-time
@@ -726,9 +727,8 @@ Warning: This could blow the stack if the AST gets too deep."
                 s)))
 
             ;; Age
-            (let* ((start (apply #'encode-time (kubernetes--parse-utc-timestamp start-time)))
-                   (now (current-time)))
-              (propertize (format "%8s" (kubernetes--time-diff-string start now))
+            (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp start-time))))
+              (propertize (format "%8s" (kubernetes--time-diff-string start current-time))
                           'face 'magit-dimmed))))
 
           (str (cond
@@ -758,7 +758,8 @@ Warning: This could blow the stack if the AST gets too deep."
           (-intersection kubernetes--marked-pod-names pod-names))))
 
 (defun kubernetes--render-pods-section (state)
-  (-let* (((&alist 'pods (pods-response &as &alist 'items pods)) state)
+  (-let* (((&alist 'current-time current-time
+                   'pods (pods-response &as &alist 'items pods)) state)
           (pods (append pods nil))
           (column-heading (propertize (format "  %-45s %-10s %-5s   %6s %6s" "Name" "Status" "Ready" "Restarts" "Age")
                                       'face 'magit-section-heading)))
@@ -775,7 +776,7 @@ Warning: This could blow the stack if the AST gets too deep."
                  `((heading . ,(concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods))))
                    (line . ,column-heading)
                    ,@(--map `(section (,(intern (kubernetes--pod-name it)) t)
-                                      ((heading . ,(kubernetes--format-pod-line it))
+                                      ((heading . ,(kubernetes--format-pod-line it current-time))
                                        (section (details nil)
                                                 (,@(kubernetes--format-pod-details it)
                                                  (padding)))))
@@ -864,20 +865,24 @@ FORCE ensures it happens."
 
 ;; Displaying configmaps.
 
-(defun kubernetes-display-configmap-refresh (configmap)
-  (let ((buf (get-buffer-create kubernetes-display-configmap-buffer-name)))
-    (with-current-buffer buf
-      (kubernetes-display-thing-mode)
-      (let ((inhibit-read-only t))
-        (erase-buffer)
-        (insert (kubernetes--json-to-yaml configmap))))
-    buf))
+(defun kubernetes-display-configmap-refresh (configmap-name)
+  (if-let (configmap (kubernetes--state-lookup-configmap configmap-name))
+      (let ((buf (get-buffer-create kubernetes-display-configmap-buffer-name)))
+        (with-current-buffer buf
+          (kubernetes-display-thing-mode)
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert (kubernetes--json-to-yaml configmap))))
+        buf)
+    (error "Unknown configmap: %s" configmap-name)))
 
 ;;;###autoload
-(defun kubernetes-display-configmap (configmap)
-  "Display information for CONFIGMAP in a new window."
-  (interactive (list (kubernetes--state-lookup-configmap (kubernetes--read-configmap-name))))
-  (with-current-buffer (kubernetes-display-configmap-refresh configmap)
+(defun kubernetes-display-configmap (configmap-name)
+  "Display information for a configmap in a new window.
+
+CONFIGMAP-NAME is the name of the configmap to display."
+  (interactive (list (kubernetes--read-configmap-name)))
+  (with-current-buffer (kubernetes-display-configmap-refresh configmap-name)
     (goto-char (point-min))
     (select-window (display-buffer (current-buffer)))))
 
