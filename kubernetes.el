@@ -459,8 +459,21 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
                                       (cond
                                        ((equal t v) "true")
                                        ((equal :json-false v) "false")
-                                       ((numberp v) (number-to-string v))
-                                       ((and (stringp v) (< (length v) kubernetes-yaml-string-drop-threshold)) v)
+
+                                       ((numberp v)
+                                        (number-to-string v))
+
+                                       ((and (stringp v) (string-match-p "\n" v))
+                                        (let* ((next-indentation (make-string (* (1+ level) kubernetes-yaml-indentation-width) space))
+                                               (indented
+                                                (string-join
+                                                 (--map (concat next-indentation it) (split-string v "\n"))
+                                                 "\n")))
+                                          (concat "|\n" indented)))
+
+                                       ((and (stringp v) (< (length v) kubernetes-yaml-string-drop-threshold))
+                                        v)
+
                                        (t
                                         (concat "\n" (kubernetes--json-to-yaml v (1+ level)))))))
                             json)))
