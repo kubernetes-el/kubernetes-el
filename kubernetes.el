@@ -911,14 +911,7 @@ Warning: This could blow the stack if the AST gets too deep."
       (goto-char (point-min))
 
       (kubernetes--initialize-timers)
-
-      (add-hook 'kill-buffer-hook
-                (lambda ()
-                  (with-current-buffer buf
-                    (kubernetes--state-clear)
-                    (kubernetes--kill-polling-processes)
-                    (kubernetes--kill-timers)))
-                nil t))
+      (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
     buf))
 
 (defun kubernetes--redraw-pods-buffer (&optional force)
@@ -965,15 +958,20 @@ FORCE ensures it happens."
       (goto-char (point-min))
 
       (kubernetes--initialize-timers)
-
-      (add-hook 'kill-buffer-hook
-                (lambda ()
-                  (with-current-buffer buf
-                    (kubernetes--state-clear)
-                    (kubernetes--kill-polling-processes)
-                    (kubernetes--kill-timers)))
-                nil t))
+      (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
     buf))
+
+(defun kubernetes--make-cleanup-fn (buf)
+  (lambda ()
+    (let* ((bufs (-keep #'get-buffer (list kubernetes-display-pods-buffer-name
+                                           kubernetes-display-configmaps-buffer-name)))
+           (more-buffers (remove buf bufs)))
+      (unless more-buffers
+        (dolist (b bufs)
+          (with-current-buffer b
+            (kubernetes--state-clear)))
+        (kubernetes--kill-polling-processes)
+        (kubernetes--kill-timers)))))
 
 (defun kubernetes--redraw-configmaps-buffer (&optional force)
   "Redraws the main buffer using the current state.
@@ -1079,14 +1077,13 @@ POD-NAME is the name of the pod to display."
   (pcase (get-text-property point 'kubernetes-nav)
     (`(:pod-name ,pod-name)
      (unless (member pod-name kubernetes--pods-pending-deletion)
-       (add-to-list 'kubernetes--marked-pod-names pod-name)
-       (kubernetes--redraw-pods-buffer)))
+       (add-to-list 'kubernetes--marked-pod-names pod-name)))
     (`(:configmap-name ,configmap-name)
      (unless (member configmap-name kubernetes--configmaps-pending-deletion)
-       (add-to-list 'kubernetes--marked-configmap-names configmap-name)
-       (kubernetes--redraw-configmaps-buffer)))
+       (add-to-list 'kubernetes--marked-configmap-names configmap-name)))
     (_
      (user-error "Nothing here can be marked")))
+  (kubernetes--redraw-buffers)
   (goto-char point)
   (forward-line 1))
 
@@ -1095,11 +1092,10 @@ POD-NAME is the name of the pod to display."
   (interactive "d")
   (pcase (get-text-property point 'kubernetes-nav)
     (`(:pod-name ,pod-name)
-     (setq kubernetes--marked-pod-names (delete pod-name kubernetes--marked-pod-names))
-     (kubernetes--redraw-pods-buffer))
+     (setq kubernetes--marked-pod-names (delete pod-name kubernetes--marked-pod-names)))
     (`(:configmap-name ,configmap-name)
-     (setq kubernetes--marked-configmap-names (delete configmap-name kubernetes--marked-configmap-names))
-     (kubernetes--redraw-configmaps-buffer)))
+     (setq kubernetes--marked-configmap-names (delete configmap-name kubernetes--marked-configmap-names))))
+  (kubernetes--redraw-buffers)
   (goto-char point)
   (forward-line 1))
 
@@ -1109,8 +1105,7 @@ POD-NAME is the name of the pod to display."
   (setq kubernetes--marked-pod-names nil)
   (setq kubernetes--marked-configmap-names nil)
   (let ((pt (point)))
-    (kubernetes--redraw-pods-buffer)
-    (kubernetes--redraw-configmaps-buffer)
+    (kubernetes--redraw-buffers)
     (goto-char pt)))
 
 (defun kubernetes-execute-marks ()
@@ -1186,21 +1181,26 @@ what to copy."
     (kill-new s)
     (message "Copied: %s" s)))
 
-(defun kubernetes-refresh (&optional verbose)
-  "Trigger a manual refresh the Kubernetes pods buffer.
+(defun kubernetes--redraw-buffers (&optional force)
+  (kubernetes--redraw-pods-buffer force)
+  (kubernetes--redraw-configmaps-buffer force))
 
-Requests the data needed to build the buffer, and updates the UI
+(defun kubernetes-refresh (&optional verbose)
+  "Trigger a manual refresh Kubernetes pods buffers.
+
+Requests the data needed to build the buffers, and updates the UI
 state as responses arrive.
 
 With optional argument VERBOSE, log additional information of
 state changes."
   (interactive (list t))
   ;; Make sure not to trigger a refresh if the buffer closes.
-  (when (get-buffer kubernetes-display-pods-buffer-name)
+  (when (or (get-buffer kubernetes-display-configmaps-buffer-name)
+            (get-buffer kubernetes-display-pods-buffer-name))
     (when verbose
       (message "Refreshing..."))
 
-    (kubernetes--redraw-pods-buffer)
+    (kubernetes--redraw-buffers)
 
     (unless kubernetes--poll-namespaces-process
       (kubernetes--set-poll-namespaces-process
@@ -1217,7 +1217,7 @@ state changes."
        (kubernetes--kubectl-config-view
         (lambda (config)
           (setq kubernetes--view-config-response config)
-          (kubernetes--redraw-pods-buffer)
+          (kubernetes--redraw-buffers)
           (when verbose
             (message "Updated contexts.")))
         (lambda ()
@@ -1228,7 +1228,7 @@ state changes."
        (kubernetes--kubectl-get-configmaps
         (lambda (response)
           (setq kubernetes--get-configmaps-response response)
-          (kubernetes--redraw-configmaps-buffer)
+          (kubernetes--redraw-buffers)
           (when verbose
             (message "Updated configmaps.")))
         (lambda ()
@@ -1239,7 +1239,7 @@ state changes."
        (kubernetes--kubectl-get-pods
         (lambda (response)
           (setq kubernetes--get-pods-response response)
-          (kubernetes--redraw-pods-buffer)
+          (kubernetes--redraw-buffers)
           (when verbose
             (message "Updated pods.")))
         (lambda ()
@@ -1476,7 +1476,7 @@ Should be invoked via command `kubernetes-logs-popup'."
     (goto-char (point-min))
     (setq kubernetes--view-config-response context)
     (setq kubernetes--current-namespace ns)
-    (kubernetes--redraw-pods-buffer t)))
+    (kubernetes--redraw-buffers t)))
 
 (defun kubernetes--namespace-names ()
   (-let* ((config (or kubernetes--get-namespaces-response (kubernetes--await-on-async #'kubernetes--kubectl-get-namespaces)))
@@ -1490,7 +1490,7 @@ CONTEXT is the name of a context as a string."
   (interactive (list (completing-read "Context: " (kubernetes--context-names) nil t)))
   (kubernetes--kill-polling-processes)
   (kubernetes--state-clear)
-  (kubernetes--redraw-pods-buffer t)
+  (kubernetes--redraw-buffers t)
   (goto-char (point-min))
   (kubernetes--kubectl-config-use-context context (lambda (_)
                                           (kubernetes-refresh))))
