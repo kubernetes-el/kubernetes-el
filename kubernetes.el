@@ -289,35 +289,35 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (kubernetes--kubectl '("config" "view" "-o" "json")
-                       (lambda (buf)
-                         (let ((json (with-current-buffer buf
-                                       (json-read-from-string (buffer-string)))))
-                           (funcall cb json)))
-                       nil
-                       cleanup-cb))
+             (lambda (buf)
+               (let ((json (with-current-buffer buf
+                             (json-read-from-string (buffer-string)))))
+                 (funcall cb json)))
+             nil
+             cleanup-cb))
 
 (defun kubernetes--kubectl-config-use-context (context-name cb)
   "Change the current kubernetes context to CONTEXT-NAME, a string.
 
 CB is a function taking the name of the context that was switched to."
   (kubernetes--kubectl (list "config" "use-context" context-name)
-                       (lambda (buf)
-                         (with-current-buffer buf
-                           (string-match (rx bol "Switched to context \"" (group (+? nonl)) "\"." (* space) eol)
-                                         (buffer-string))
-                           (funcall cb (match-string 1 (buffer-string)))))))
+             (lambda (buf)
+               (with-current-buffer buf
+                 (string-match (rx bol "Switched to context \"" (group (+? nonl)) "\"." (* space) eol)
+                               (buffer-string))
+                 (funcall cb (match-string 1 (buffer-string)))))))
 
 (defun kubernetes--kubectl-get-namespaces (cb &optional cleanup-cb)
   "Get namespaces for the current cluster and pass the parsed response to CB.
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (kubernetes--kubectl '("get" "namespaces" "-o" "json")
-                       (lambda (buf)
-                         (let ((json (with-current-buffer buf
-                                       (json-read-from-string (buffer-string)))))
-                           (funcall cb json)))
-                       nil
-                       cleanup-cb))
+             (lambda (buf)
+               (let ((json (with-current-buffer buf
+                             (json-read-from-string (buffer-string)))))
+                 (funcall cb json)))
+             nil
+             cleanup-cb))
 
 (defun kubernetes--kubectl-delete-pod (pod-name cb &optional error-cb)
   "Delete pod with POD-NAME, then execute CB with the response buffer.

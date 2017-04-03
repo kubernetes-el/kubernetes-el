@@ -28,7 +28,7 @@
   (s-trim-left "
 
 Configmaps
-  Name                             Data    Age
+  Name                                            Data    Age
   Fetching...
 "))
 
@@ -69,12 +69,12 @@ Configmaps
   (s-trim-left "
 
 Configmaps (2)
-  Name                             Data    Age
-  example-configmap-1                 2    79d
+  Name                                            Data    Age
+  example-configmap-1                                2    79d
     Namespace:  example-ns
     Created:    2017-01-13T00:24:47Z
 
-  example-configmap-2                 1   331d
+  example-configmap-2                                1   331d
     Namespace:  example-ns
     Created:    2016-05-06T02:54:41Z
 
