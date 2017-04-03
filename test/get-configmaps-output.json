@@ -4,12 +4,13 @@
     {
       "apiVersion": "v1",
       "data": {
-        "test.key1": "value"
+        "test.key1": "value",
+        "test.key2": "value"
       },
       "kind": "ConfigMap",
       "metadata": {
         "creationTimestamp": "2017-01-13T00:24:47Z",
-        "name": "example-configmap2",
+        "name": "example-configmap-1",
         "namespace": "example-ns",
         "resourceVersion": "49827883",
         "selfLink": "/api/v1/namespaces/example-ns/configmaps/example-configmap1",
@@ -27,7 +28,7 @@
           "kubectl.kubernetes.io/last-applied-configuration": "{}"
         },
         "creationTimestamp": "2016-05-06T02:54:41Z",
-        "name": "example-configmap2",
+        "name": "example-configmap-2",
         "namespace": "example-ns",
         "resourceVersion": "72937022",
         "selfLink": "/api/v1/namespaces/example-ns/configmaps/example-configmap2",
