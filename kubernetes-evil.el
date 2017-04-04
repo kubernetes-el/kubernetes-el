@@ -23,6 +23,7 @@
   (evil-set-initial-state 'kubernetes-display-configmaps-mode 'motion)
   (evil-set-initial-state 'kubernetes-display-secrets-mode 'motion)
   (evil-set-initial-state 'kubernetes-display-thing-mode 'motion)
+  (evil-set-initial-state 'kubernetes-overview-mode 'motion)
   (evil-set-initial-state 'kubernetes-log-line-mode 'motion)
   (evil-set-initial-state 'kubernetes-logs-mode 'motion)
 

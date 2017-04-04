@@ -132,6 +132,8 @@ The function must take a single argument, which is the buffer to display."
 
 (defconst kubernetes-display-secrets-buffer-name "*kubernetes secrets*")
 
+(defconst kubernetes-overview-buffer-name "*kubernetes overview*")
+
 (defconst kubernetes-log-line-buffer-name "*log line*")
 
 (defconst kubernetes-logs-buffer-name "*kubernetes logs*")
@@ -606,7 +608,8 @@ buffer is killed."
   (lambda ()
     (let* ((bufs (-keep #'get-buffer (list kubernetes-display-pods-buffer-name
                                            kubernetes-display-configmaps-buffer-name
-                                           kubernetes-display-secrets-buffer-name)))
+                                           kubernetes-display-secrets-buffer-name
+                                           kubernetes-overview-buffer-name)))
            (more-buffers (remove buf bufs)))
       (unless more-buffers
         (dolist (b bufs)
@@ -902,13 +905,13 @@ Warning: This could blow the stack if the AST gets too deep."
     (setq kubernetes--marked-pod-names
           (-intersection kubernetes--marked-pod-names pod-names))))
 
-(defun kubernetes--render-pods-section (state)
+(defun kubernetes--render-pods-section (state &optional hidden)
   (-let* (((&alist 'current-time current-time
                    'pods (pods-response &as &alist 'items pods)) state)
           (pods (append pods nil))
           (column-heading (propertize (format "  %-45s %-10s %-5s   %6s %6s" "Name" "Status" "Ready" "Restarts" "Age")
                                       'face 'magit-section-heading)))
-    `(section (pods-container nil)
+    `(section (pods-container ,hidden)
               ,(cond
                 ;; If the state is set and there are no pods, write "None".
                 ((and pods-response (null pods))
@@ -980,12 +983,12 @@ Warning: This could blow the stack if the AST gets too deep."
                 'kubernetes-nav (list :configmap-name name)
                 'kubernetes-copy name)))
 
-(defun kubernetes--render-configmaps-section (state)
+(defun kubernetes--render-configmaps-section (state &optional hidden)
   (-let* (((&alist 'current-time current-time
                    'configmaps (configmaps-response &as &alist 'items configmaps)) state)
           (configmaps (append configmaps nil))
           (column-heading (propertize (format "  %-45s %6s %6s" "Name" "Data" "Age") 'face 'magit-section-heading)))
-    `(section (configmaps-container nil)
+    `(section (configmaps-container ,hidden)
               ,(cond
                 ;; If the state is set and there are no configmaps, write "None".
                 ((and configmaps-response (null configmaps))
@@ -1057,12 +1060,12 @@ Warning: This could blow the stack if the AST gets too deep."
                 'kubernetes-nav (list :secret-name name)
                 'kubernetes-copy name)))
 
-(defun kubernetes--render-secrets-section (state)
+(defun kubernetes--render-secrets-section (state &optional hidden)
   (-let* (((&alist 'current-time current-time
                    'secrets (secrets-response &as &alist 'items secrets)) state)
           (secrets (append secrets nil))
           (column-heading (propertize (format "  %-45s %6s %6s" "Name" "Data" "Age") 'face 'magit-section-heading)))
-    `(section (secrets-container nil)
+    `(section (secrets-container ,hidden)
               ,(cond
                 ;; If the state is set and there are no secrets, write "None".
                 ((and secrets-response (null secrets))
@@ -1217,6 +1220,52 @@ FORCE ensures it happens."
           (kubernetes--eval-ast `(section (root nil)
                                 (,(kubernetes--render-context-section state)
                                  ,(kubernetes--render-secrets-section state))))
+          (goto-char pos)))
+
+      ;; Force the section at point to highlight.
+      (magit-section-update-highlight))))
+
+
+;; Overview rendering routines.
+
+(defun kubernetes--overview-initialize-buffer ()
+  "Called the first time the overview buffer is opened to set up the buffer."
+  (let ((buf (get-buffer-create kubernetes-overview-buffer-name)))
+    (with-current-buffer buf
+      (kubernetes-overview-mode)
+
+      ;; Render buffer.
+      (kubernetes--redraw-overview-buffer t)
+      (goto-char (point-min))
+
+      (kubernetes--initialize-timers)
+      (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
+    buf))
+
+(defun kubernetes--redraw-overview-buffer (&optional force)
+  "Redraws the main buffer using the current state.
+
+FORCE ensures it happens."
+  (when-let (buf (get-buffer kubernetes-overview-buffer-name))
+    (with-current-buffer buf
+      (when (or force
+                ;; HACK: Only redraw the buffer if it is in the selected window.
+                ;;
+                ;; The cursor moves unpredictably in a redraw, which ruins the current
+                ;; position in the buffer if a popup window is open.
+                (equal (window-buffer) buf))
+
+        (let ((pos (point))
+              (inhibit-read-only t)
+              (inhibit-redisplay t)
+              (state (kubernetes--state)))
+
+          (erase-buffer)
+          (kubernetes--eval-ast `(section (root nil)
+                                (,(kubernetes--render-context-section state)
+                                 (propertize (map kubernetes-display-configmaps-mode-map) ,(kubernetes--render-configmaps-section state t))
+                                 (propertize (map kubernetes-display-pods-mode-map) ,(kubernetes--render-pods-section state t))
+                                 (propertize (map kubernetes-display-secrets-mode-map) ,(kubernetes--render-secrets-section state t)))))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.
@@ -2000,6 +2049,37 @@ Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
 \\{kubernetes-display-thing-mode-map}"
   :group 'kubernetes)
 
+;;;###autoload
+(defvar kubernetes-overview-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "?") #'kubernetes-overview-popup)
+    (define-key keymap (kbd "c") #'kubernetes-config-popup)
+    (define-key keymap (kbd "d") #'kubernetes-describe-popup)
+    (define-key keymap (kbd "g") #'kubernetes-refresh)
+    (define-key keymap (kbd "u") #'kubernetes-unmark)
+    (define-key keymap (kbd "U") #'kubernetes-unmark-all)
+    (define-key keymap (kbd "x") #'kubernetes-execute-marks)
+    (define-key keymap (kbd "h") #'describe-mode)
+    keymap)
+  "Keymap for `kubernetes-overview-mode'.")
+
+;;;###autoload
+(define-derived-mode kubernetes-overview-mode kubernetes-mode "Kubernetes Overview"
+  "Mode for working with Kubernetes overview.
+
+\\<kubernetes-overview-mode-map>\
+Type \\[kubernetes-mark-for-delete] to mark an object for deletion, and \\[kubernetes-execute-marks] to execute.
+Type \\[kubernetes-unmark] to unmark the object at point, or \\[kubernetes-unmark-all] to unmark all objects.
+
+Type \\[kubernetes-navigate] to inspect the object on the current line.
+
+Type \\[kubernetes-copy-thing-at-point] to copy the thing at point.
+
+Type \\[kubernetes-refresh] to refresh the buffer.
+
+\\{kubernetes-overview-mode-map}"
+  :group 'kubernetes)
+
 
 ;; Main entrypoints.
 
@@ -2023,6 +2103,13 @@ Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
   (interactive)
   (kubernetes-display-buffer (kubernetes--display-secrets-initialize-buffer))
   (message (substitute-command-keys "\\<kubernetes-display-secrets-mode-map>Type \\[kubernetes-overview-popup] for usage.")))
+
+;;;###autoload
+(defun kubernetes-overview ()
+  "Display an overview buffer for Kubernetes."
+  (interactive)
+  (kubernetes-display-buffer (kubernetes--overview-initialize-buffer))
+  (message (substitute-command-keys "\\<kubernetes-overview-mode-map>Type \\[kubernetes-overview-popup] for usage.")))
 
 (provide 'kubernetes)
 
