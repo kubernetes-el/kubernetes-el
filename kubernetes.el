@@ -764,6 +764,11 @@ Warning: This could blow the stack if the AST gets too deep."
     (`(padding)
      (newline))
 
+    (`(propertize ,spec ,inner-ast)
+     (let ((start (point)))
+       (kubernetes--eval-ast inner-ast)
+       (add-text-properties start (point) spec)))
+
     ((and actions (pred listp))
      (dolist (action actions)
        (kubernetes--eval-ast action)))

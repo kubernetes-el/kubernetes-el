@@ -36,6 +36,12 @@
       (kubernetes--eval-ast ast)
       (should (equal "foo\n" (buffer-string))))))
 
+(ert-deftest eval-ast--propertizes-regions ()
+  (let ((ast '(propertize (face error) (line . "foo"))))
+    (with-temp-buffer
+      (kubernetes--eval-ast ast)
+      (should (equal (propertize "foo\n" 'face 'error) (buffer-string))))))
+
 (ert-deftest eval-ast--sequencing-actions ()
   (let ((ast '((line . "foo")
                (line . "bar"))))
