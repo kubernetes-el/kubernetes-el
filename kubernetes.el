@@ -581,6 +581,26 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
       (quit-window t win)
     (kill-buffer proc-buf)))
 
+(defun kubernetes--make-cleanup-fn (buf)
+  "Make a function to add to `kill-buffer-hook' for a Kubernetes buffer.
+
+BUF is the buffer used to display a Kubernetes feature.  A
+reference to it is needed to determine which buffers remain.
+
+The function will terminate polling when the last Kubernetes
+buffer is killed."
+  (lambda ()
+    (let* ((bufs (-keep #'get-buffer (list kubernetes-display-pods-buffer-name
+                                           kubernetes-display-configmaps-buffer-name
+                                           kubernetes-display-secrets-buffer-name)))
+           (more-buffers (remove buf bufs)))
+      (unless more-buffers
+        (dolist (b bufs)
+          (with-current-buffer b
+            (kubernetes--state-clear)))
+        (kubernetes--kill-polling-processes)
+        (kubernetes--kill-timers)))))
+
 (defun kubernetes-display-buffer-fullframe (buffer)
   (let ((display-fn
          (lambda (buffer alist)
@@ -972,6 +992,83 @@ Warning: This could blow the stack if the AST gets too deep."
                             (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator)))))))))
 
 
+;; Secret section rendering.
+
+(defvar-local kubernetes--marked-secret-names nil)
+
+(defvar-local kubernetes--secrets-pending-deletion nil)
+
+(defun kubernetes--format-secret-details (secret)
+  (-let ((insert-detail
+          (lambda (key value)
+            (let ((str (concat (propertize (format "    %-12s" key) 'face 'magit-header-line)
+                               value)))
+              (cons 'line (concat (propertize str 'kubernetes-copy value))))))
+
+         ((&alist 'metadata (&alist 'namespace ns
+                                    'creationTimestamp created-time))
+          secret))
+    (list (funcall insert-detail "Namespace:" ns)
+          (funcall insert-detail "Created:" created-time))))
+
+(defun kubernetes--format-secret-line (secret current-time)
+  (-let* (((&alist 'data data
+                   'metadata (&alist 'name name 'creationTimestamp created-time))
+           secret)
+          (str (concat
+                ;; Name
+                (format "%-45s " (kubernetes--ellipsize name 45))
+
+                ;; Data
+                (propertize (format "%6s " (seq-length data)) 'face 'magit-dimmed)
+
+                ;; Age
+                (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
+                  (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
+                              'face 'magit-dimmed))))
+          (str
+           (if (member name kubernetes--secrets-pending-deletion)
+               (concat (propertize str 'face 'kubernetes-pending-deletion))
+             str))
+          (str
+           (if (member name kubernetes--marked-secret-names)
+               (concat (propertize "D" 'face 'kubernetes-delete-mark) " " str)
+             (concat "  " str))))
+    (propertize str
+                'kubernetes-nav (list :secret-name name)
+                'kubernetes-copy name)))
+
+(defun kubernetes--render-secrets-section (state)
+  (-let* (((&alist 'current-time current-time
+                   'secrets (secrets-response &as &alist 'items secrets)) state)
+          (secrets (append secrets nil))
+          (column-heading (propertize (format "  %-45s %6s %6s" "Name" "Data" "Age") 'face 'magit-section-heading)))
+    `(section (secrets-container nil)
+              ,(cond
+                ;; If the state is set and there are no secrets, write "None".
+                ((and secrets-response (null secrets))
+                 `((heading . "Secrets")
+                   (section (secrets-list nil)
+                            (line . ,(propertize "  None." 'face 'magit-dimmed)))))
+
+                ;; If there are secrets, write sections for each secrets.
+                (secrets
+                 `((heading . ,(concat (propertize "Secrets" 'face 'magit-header-line) " " (format "(%s)" (length secrets))))
+                   (line . ,column-heading)
+                   ,@(--map `(section (,(intern (kubernetes--secret-name it)) t)
+                                      ((heading . ,(kubernetes--format-secret-line it current-time))
+                                       (section (details nil)
+                                                (,@(kubernetes--format-secret-details it)
+                                                 (padding)))))
+                            secrets)))
+                ;; If there's no state, assume requests are in progress.
+                (t
+                 `((heading . "Secrets")
+                   (line . ,column-heading)
+                   (section (secrets-list nil)
+                            (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator)))))))))
+
+
 ;; Display pod view rendering routines.
 
 (defun kubernetes--display-pods-initialize-buffer ()
@@ -1035,18 +1132,6 @@ FORCE ensures it happens."
       (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
     buf))
 
-(defun kubernetes--make-cleanup-fn (buf)
-  (lambda ()
-    (let* ((bufs (-keep #'get-buffer (list kubernetes-display-pods-buffer-name
-                                           kubernetes-display-configmaps-buffer-name)))
-           (more-buffers (remove buf bufs)))
-      (unless more-buffers
-        (dolist (b bufs)
-          (with-current-buffer b
-            (kubernetes--state-clear)))
-        (kubernetes--kill-polling-processes)
-        (kubernetes--kill-timers)))))
-
 (defun kubernetes--redraw-configmaps-buffer (&optional force)
   "Redraws the main buffer using the current state.
 
@@ -1069,6 +1154,50 @@ FORCE ensures it happens."
           (kubernetes--eval-ast `(section (root nil)
                                 (,(kubernetes--render-context-section state)
                                  ,(kubernetes--render-configmaps-section state))))
+          (goto-char pos)))
+
+      ;; Force the section at point to highlight.
+      (magit-section-update-highlight))))
+
+
+;; Display secret view rendering routines.
+
+(defun kubernetes--display-secrets-initialize-buffer ()
+  "Called the first time the secrets buffer is opened to set up the buffer."
+  (let ((buf (get-buffer-create kubernetes-display-secrets-buffer-name)))
+    (with-current-buffer buf
+      (kubernetes-display-secrets-mode)
+
+      ;; Render buffer.
+      (kubernetes--redraw-secrets-buffer t)
+      (goto-char (point-min))
+
+      (kubernetes--initialize-timers)
+      (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
+    buf))
+
+(defun kubernetes--redraw-secrets-buffer (&optional force)
+  "Redraws the main buffer using the current state.
+
+FORCE ensures it happens."
+  (when-let (buf (get-buffer kubernetes-display-secrets-buffer-name))
+    (with-current-buffer buf
+      (when (or force
+                ;; HACK: Only redraw the buffer if it is in the selected window.
+                ;;
+                ;; The cursor moves unpredictably in a redraw, which ruins the current
+                ;; position in the buffer if a popup window is open.
+                (equal (window-buffer) buf))
+
+        (let ((pos (point))
+              (inhibit-read-only t)
+              (inhibit-redisplay t)
+              (state (kubernetes--state)))
+
+          (erase-buffer)
+          (kubernetes--eval-ast `(section (root nil)
+                                (,(kubernetes--render-context-section state)
+                                 ,(kubernetes--render-secrets-section state))))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.
@@ -1179,6 +1308,9 @@ POD-NAME is the name of the pod to display."
     (`(:configmap-name ,configmap-name)
      (unless (member configmap-name kubernetes--configmaps-pending-deletion)
        (add-to-list 'kubernetes--marked-configmap-names configmap-name)))
+    (`(:secret-name ,secret-name)
+     (unless (member secret-name kubernetes--secrets-pending-deletion)
+       (add-to-list 'kubernetes--marked-secret-names secret-name)))
     (_
      (user-error "Nothing here can be marked")))
   (kubernetes--redraw-buffers)
@@ -1209,7 +1341,9 @@ POD-NAME is the name of the pod to display."
 (defun kubernetes-execute-marks ()
   "Action all marked items in the buffer."
   (interactive)
-  (unless (or kubernetes--marked-pod-names kubernetes--marked-configmap-names)
+  (unless (or kubernetes--marked-pod-names
+              kubernetes--marked-configmap-names
+              kubernetes--marked-secret-names)
     (user-error "Nothing is marked"))
 
   (let ((n (length kubernetes--marked-pod-names)))
@@ -1222,6 +1356,12 @@ POD-NAME is the name of the pod to display."
     (when (and (not (zerop n))
                (y-or-n-p (format "Delete %s configmap%s? " n (if (equal 1 n) "" "s"))))
       (kubernetes--delete-marked-configmaps)
+      (kubernetes-unmark-all)))
+
+  (let ((n (length kubernetes--marked-secret-names)))
+    (when (and (not (zerop n))
+               (y-or-n-p (format "Delete %s secret%s? " n (if (equal 1 n) "" "s"))))
+      (kubernetes--delete-marked-secrets)
       (kubernetes-unmark-all))))
 
 (defun kubernetes--delete-marked-pods ()
@@ -1251,6 +1391,21 @@ POD-NAME is the name of the pod to display."
                                   (lambda (_)
                                     (message "Deleting configmap %s failed" configmap)
                                     (setq kubernetes--configmaps-pending-deletion (delete configmap kubernetes--configmaps-pending-deletion)))))))
+
+(defun kubernetes--delete-marked-secrets ()
+  (let ((n (length kubernetes--marked-secret-names)))
+    (message "Deleting %s secret%s..." n (if (equal 1 n) "" "s"))
+    (dolist (secret kubernetes--marked-secret-names)
+      (add-to-list 'kubernetes--secrets-pending-deletion secret)
+
+      (kubernetes--kubectl-delete-secret secret
+                               (lambda (_)
+                                 (message "Deleting secret %s succeeded." secret)
+                                 (kubernetes-refresh))
+                               (lambda (_)
+                                 (message "Deleting secret %s failed" secret)
+                                 (setq kubernetes--secrets-pending-deletion (delete secret kubernetes--secrets-pending-deletion)))))))
+
 
 ;;; Misc commands
 
@@ -1283,7 +1438,8 @@ what to copy."
 
 (defun kubernetes--redraw-buffers (&optional force)
   (kubernetes--redraw-pods-buffer force)
-  (kubernetes--redraw-configmaps-buffer force))
+  (kubernetes--redraw-configmaps-buffer force)
+  (kubernetes--redraw-secrets-buffer force))
 
 (defun kubernetes-refresh (&optional verbose)
   "Trigger a manual refresh Kubernetes pods buffers.
@@ -1296,6 +1452,7 @@ state changes."
   (interactive (list t))
   ;; Make sure not to trigger a refresh if the buffer closes.
   (when (or (get-buffer kubernetes-display-configmaps-buffer-name)
+            (get-buffer kubernetes-display-secrets-buffer-name)
             (get-buffer kubernetes-display-pods-buffer-name))
     (when verbose
       (message "Refreshing..."))
@@ -1751,6 +1908,38 @@ Type \\[kubernetes-refresh] to refresh the buffer.
   :group 'kubernetes)
 
 ;;;###autoload
+(defvar kubernetes-display-secrets-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "?") #'kubernetes-overview-popup)
+    (define-key keymap (kbd "c") #'kubernetes-config-popup)
+    (define-key keymap (kbd "d") #'kubernetes-describe-popup)
+    (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
+    (define-key keymap (kbd "g") #'kubernetes-refresh)
+    (define-key keymap (kbd "u") #'kubernetes-unmark)
+    (define-key keymap (kbd "U") #'kubernetes-unmark-all)
+    (define-key keymap (kbd "x") #'kubernetes-execute-marks)
+    (define-key keymap (kbd "h") #'describe-mode)
+    keymap)
+  "Keymap for `kubernetes-display-secrets-mode'.")
+
+;;;###autoload
+(define-derived-mode kubernetes-display-secrets-mode kubernetes-mode "Kubernetes Secrets"
+  "Mode for working with Kubernetes secrets.
+
+\\<kubernetes-display-secrets-mode-map>\
+Type \\[kubernetes-mark-for-delete] to mark a secret for deletion, and \\[kubernetes-execute-marks] to execute.
+Type \\[kubernetes-unmark] to unmark the secret at point, or \\[kubernetes-unmark-all] to unmark all secrets.
+
+Type \\[kubernetes-navigate] to inspect the object on the current line.
+
+Type \\[kubernetes-copy-thing-at-point] to copy the secret name at point.
+
+Type \\[kubernetes-refresh] to refresh the buffer.
+
+\\{kubernetes-display-secrets-mode-map}"
+  :group 'kubernetes)
+
+;;;###autoload
 (defvar kubernetes-logs-mode-map
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "n") #'kubernetes-logs-forward-line)
@@ -1808,6 +1997,13 @@ Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
   (interactive)
   (kubernetes-display-buffer (kubernetes--display-configmaps-initialize-buffer))
   (message (substitute-command-keys "\\<kubernetes-display-configmaps-mode-map>Type \\[kubernetes-overview-popup] for usage.")))
+
+;;;###autoload
+(defun kubernetes-display-secrets ()
+  "Display a list of secrets in the current Kubernetes context."
+  (interactive)
+  (kubernetes-display-buffer (kubernetes--display-secrets-initialize-buffer))
+  (message (substitute-command-keys "\\<kubernetes-display-secrets-mode-map>Type \\[kubernetes-overview-popup] for usage.")))
 
 (provide 'kubernetes)
 

@@ -9,7 +9,7 @@ This project is in early stages, but the following are implemented:
 - Live-updating lists of pods and configmaps
 - Showing logs for pods
 - Exec'ing into a pod's docker container
-- Getting configmaps
+- Getting configmaps and secrets
 - Describing pods
 - Deleting pods and configmaps
 - Switching contexts and namespaces.
@@ -33,8 +33,10 @@ you use [use-package][], the form below will get you started.
 
 ```elisp
 (use-package kubernetes
-  :commands (kubernetes-display-pods 
-             kubernetes-display-configmaps)
+  :commands (kubernetes-display-pods
+             kubernetes-display-configmaps
+             kubernetes-display-secrets)
+
   :config
   (use-package kubernetes-evil :after evil))
 ```
