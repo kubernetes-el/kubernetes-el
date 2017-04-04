@@ -233,7 +233,6 @@ will be mocked."
       (kubernetes--kubectl-get-configmaps #'ignore))))
 
 
-
 ;; Delete configmap
 
 (ert-deftest deleting-configmap-succeeds ()
