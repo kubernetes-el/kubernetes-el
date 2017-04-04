@@ -387,6 +387,20 @@ ERROR-CB is called if an error occurred."
                    (funcall cb (match-string 1 (buffer-string)))))
                error-cb)))
 
+(defun kubernetes--kubectl-delete-secret (secret-name cb &optional error-cb)
+  "Delete SECRET-NAME, then execute CB with the response buffer.
+
+ERROR-CB is called if an error occurred."
+  (let ((args (append (list "delete" "secret" secret-name "-o" "name")
+                      (when kubernetes--current-namespace
+                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+    (kubernetes--kubectl args
+               (lambda (buf)
+                 (with-current-buffer buf
+                   (string-match (rx bol "secret/" (group (+ nonl))) (buffer-string))
+                   (funcall cb (match-string 1 (buffer-string)))))
+               error-cb)))
+
 (defun kubernetes--kubectl-describe-pod (pod-name cb)
   "Describe pod with POD-NAME, then execute CB with the string response."
   (let ((args (append (list "describe" "pod" pod-name)

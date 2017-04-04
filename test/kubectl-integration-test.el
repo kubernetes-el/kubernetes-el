@@ -292,4 +292,33 @@ will be mocked."
       (kubernetes--kubectl-get-secrets #'ignore))))
 
 
+;; Delete configmap
+
+(ert-deftest deleting-secret-succeeds ()
+  (let ((secret-name "example-config"))
+    (with-successful-response-at '("delete" "secret" "example-secret" "-o" "name") "secret/example-config"
+      (kubernetes--kubectl-delete-secret "example-secret"
+                                            (lambda (result)
+                                              (should (equal secret-name result)))))))
+
+(ert-deftest deleting-secret-fails ()
+  (let ((secret-name "example-config")
+        (on-error-called))
+    (with-error-response-at '("delete" "secret" "example-secret" "-o" "name") "secret/example-config"
+      (kubernetes--kubectl-delete-secret "example-secret"
+                                         (lambda (_)
+                                           (error "Unexpected success response"))
+                                         (lambda (result)
+                                           (setq on-error-called t))))
+    (should on-error-called)))
+
+(ert-deftest deleting-secret-applies-current-namespace ()
+  (let* ((secret-name "example-config")
+         (kubernetes--current-namespace "foo"))
+    (with-successful-response-at `("delete" "secret" ,secret-name "-o" "name"
+                                   "--namespace=foo")
+        "secret/example-config"
+      (kubernetes--kubectl-delete-secret secret-name #'ignore))))
+
+
 ;;; kubectl-integration-test.el ends here
