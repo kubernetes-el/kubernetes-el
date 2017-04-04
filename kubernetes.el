@@ -128,6 +128,10 @@ The function must take a single argument, which is the buffer to display."
 
 (defconst kubernetes-display-configmaps-buffer-name "*kubernetes configmaps*")
 
+(defconst kubernetes-display-secret-buffer-name "*kubernetes secret*")
+
+(defconst kubernetes-display-secrets-buffer-name "*kubernetes secrets*")
+
 (defconst kubernetes-log-line-buffer-name "*log line*")
 
 (defconst kubernetes-logs-buffer-name "*kubernetes logs*")
@@ -148,6 +152,9 @@ Used to draw the pods list of the main buffer.")
 (defvar kubernetes--get-configmaps-response nil
   "State representing the get configmaps response from the API.")
 
+(defvar kubernetes--get-secrets-response nil
+  "State representing the get secrets response from the API.")
+
 (defvar kubernetes--view-config-response nil
   "State representing the view config response from the API.
 
@@ -164,6 +171,7 @@ Used for namespace selection within a cluster.")
 (defun kubernetes--state-clear ()
   (setq kubernetes--get-pods-response nil)
   (setq kubernetes--get-configmaps-response nil)
+  (setq kubernetes--get-secrets-response nil)
   (setq kubernetes--view-config-response nil)
   (setq kubernetes--get-namespaces-response nil)
   (setq kubernetes--current-namespace nil))
@@ -172,6 +180,7 @@ Used for namespace selection within a cluster.")
   "Return the current state as an alist."
   `((pods . ,kubernetes--get-pods-response)
     (configmaps . ,kubernetes--get-configmaps-response)
+    (secrets . ,kubernetes--get-secrets-response)
     (config . ,kubernetes--view-config-response)
     (namespaces . ,kubernetes--get-namespaces-response)
     (current-namespace . ,kubernetes--current-namespace)
@@ -198,6 +207,17 @@ If lookup fails, return nil."
   (-let [(&alist 'configmaps (&alist 'items configmaps)) (kubernetes--state)]
     (--find (equal (kubernetes--configmap-name it) configmap-name)
             (append configmaps nil))))
+
+(defun kubernetes--state-lookup-secret (secret-name)
+  "Look up a secret by name in the current state.
+
+SECRET-NAME is the name of the secret to search for.
+
+If lookup succeeds, return the alist representation of the secret.
+If lookup fails, return nil."
+  (-let [(&alist 'secrets (&alist 'items secrets)) (kubernetes--state)]
+    (--find (equal (kubernetes--secret-name it) secret-name)
+            (append secrets nil))))
 
 
 ;; Main Kubernetes query routines
@@ -408,6 +428,10 @@ to a function of the type:
   (-let [(&alist 'metadata (&alist 'name name)) configmap]
     name))
 
+(defun kubernetes--secret-name (secret)
+  (-let [(&alist 'metadata (&alist 'name name)) secret]
+    name))
+
 (defun kubernetes--read-pod-name ()
   "Read a pod name from the user.
 
@@ -437,6 +461,21 @@ Update the configmap state if it not set yet."
           (configmaps (append configmaps nil))
           (names (-map #'kubernetes--configmap-name configmaps)))
     (completing-read "Configmap: " names nil t)))
+
+(defun kubernetes--read-secret-name ()
+  "Read a secret name from the user.
+
+Update the secret state if it not set yet."
+  (-let* (((&alist 'items secrets)
+           (or kubernetes--get-secrets-response
+               (progn
+                 (message "Getting secrets...")
+                 (let ((response (kubernetes--await-on-async #'kubernetes--kubectl-get-secrets)))
+                   (setq kubernetes--get-secrets-response response)
+                   response))))
+          (secrets (append secrets nil))
+          (names (-map #'kubernetes--secret-name secrets)))
+    (completing-read "Secret: " names nil t)))
 
 (defun kubernetes--read-iso-datetime (&rest _)
   (let* ((date (org-read-date nil t))
@@ -614,6 +653,19 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
       (kill-process proc)))
   (setq kubernetes--poll-configmaps-process nil))
 
+(defvar kubernetes--poll-secrets-process nil
+  "Single process used to prevent concurrent secret refreshes.")
+
+(defun kubernetes--set-poll-secrets-process (proc)
+  (kubernetes--release-poll-secrets-process)
+  (setq kubernetes--poll-secrets-process proc))
+
+(defun kubernetes--release-poll-secrets-process ()
+  (when-let (proc kubernetes--poll-secrets-process)
+    (when (process-live-p proc)
+      (kill-process proc)))
+  (setq kubernetes--poll-secrets-process nil))
+
 (defun kubernetes--kill-process-quietly (proc)
   (when (and proc (process-live-p proc))
     (set-process-query-on-exit-flag proc nil)
@@ -625,9 +677,11 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
   (mapc #'kubernetes--kill-process-quietly (list kubernetes--poll-pods-process
                                        kubernetes--poll-context-process
                                        kubernetes--poll-configmaps-process
+                                       kubernetes--poll-secrets-process
                                        kubernetes--poll-namespaces-process))
   (setq kubernetes--poll-namespaces-process nil)
   (setq kubernetes--poll-configmaps-process nil)
+  (setq kubernetes--poll-secrets-process nil)
   (setq kubernetes--poll-pods-process nil)
   (setq kubernetes--poll-context-process nil))
 
@@ -1065,6 +1119,30 @@ CONFIGMAP-NAME is the name of the configmap to display."
     (select-window (display-buffer (current-buffer)))))
 
 
+;; Displaying secrets
+
+(defun kubernetes-display-secret-refresh (secret-name)
+  (if-let (secret (kubernetes--state-lookup-secret secret-name))
+      (let ((buf (get-buffer-create kubernetes-display-secret-buffer-name)))
+        (with-current-buffer buf
+          (kubernetes-display-thing-mode)
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert (kubernetes--json-to-yaml secret))))
+        buf)
+    (error "Unknown secret: %s" secret-name)))
+
+;;;###autoload
+(defun kubernetes-display-secret (secret-name)
+  "Display information for a secret in a new window.
+
+SECRET-NAME is the name of the secret to display."
+  (interactive (list (kubernetes--read-secret-name)))
+  (with-current-buffer (kubernetes-display-secret-refresh secret-name)
+    (goto-char (point-min))
+    (select-window (display-buffer (current-buffer)))))
+
+
 ;; Displaying pods.
 
 (defun kubernetes-display-pod-refresh (pod-name)
@@ -1188,6 +1266,8 @@ taken."
      (kubernetes-display-config (alist-get 'config (kubernetes--state))))
     (`(:configmap-name ,configmap-name)
      (kubernetes-display-configmap configmap-name))
+    (`(:secret-name ,secret-name)
+     (kubernetes-display-secret secret-name))
     (`(:pod-name ,pod-name)
      (kubernetes-display-pod pod-name))))
 
@@ -1253,6 +1333,17 @@ state changes."
             (message "Updated configmaps.")))
         (lambda ()
           (kubernetes--release-poll-configmaps-process)))))
+
+    (unless kubernetes--poll-secrets-process
+      (kubernetes--set-poll-secrets-process
+       (kubernetes--kubectl-get-secrets
+        (lambda (response)
+          (setq kubernetes--get-secrets-response response)
+          (kubernetes--redraw-buffers)
+          (when verbose
+            (message "Updated secrets.")))
+        (lambda ()
+          (kubernetes--release-poll-secrets-process)))))
 
     (unless kubernetes--poll-pods-process
       (kubernetes--set-poll-pods-process
