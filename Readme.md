@@ -6,17 +6,15 @@ A magit-style interface to the Kubernetes command-line client.
 
 This project is in early stages, but the following are implemented:
 
-- Live-updating lists of pods and configmaps
-- Showing logs for pods
-- Exec'ing into a pod's docker container
-- Getting configmaps and secrets
-- Describing pods
-- Deleting pods and configmaps
+- Live-updating lists of kubernetes resources
+- Viewing and deleting pods, configmaps and secrets
 - Switching contexts and namespaces.
+- Showing logs and exec'ing into containers
+- Describing pods
 
 ## Usage
 
-Run `M-x kubernetes-display-pods` or `M-x kubernetes-display-configmaps` to get started.
+Run `M-x kubernetes-overview` to get started.
 
 ## Installation
 
@@ -33,7 +31,8 @@ you use [use-package][], the form below will get you started.
 
 ```elisp
 (use-package kubernetes
-  :commands (kubernetes-display-pods
+  :commands (kubernetes-overview
+             kubernetes-display-pods
              kubernetes-display-configmaps
              kubernetes-display-secrets)
 
