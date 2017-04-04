@@ -1464,7 +1464,8 @@ what to copy."
 (defun kubernetes--redraw-buffers (&optional force)
   (kubernetes--redraw-pods-buffer force)
   (kubernetes--redraw-configmaps-buffer force)
-  (kubernetes--redraw-secrets-buffer force))
+  (kubernetes--redraw-secrets-buffer force)
+  (kubernetes--redraw-overview-buffer force))
 
 (defun kubernetes-refresh (&optional verbose)
   "Trigger a manual refresh Kubernetes pods buffers.
@@ -1478,7 +1479,8 @@ state changes."
   ;; Make sure not to trigger a refresh if the buffer closes.
   (when (or (get-buffer kubernetes-display-configmaps-buffer-name)
             (get-buffer kubernetes-display-secrets-buffer-name)
-            (get-buffer kubernetes-display-pods-buffer-name))
+            (get-buffer kubernetes-display-pods-buffer-name)
+            (get-buffer kubernetes-overview-buffer-name))
     (when verbose
       (message "Refreshing..."))
 
