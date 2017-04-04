@@ -48,7 +48,7 @@ Pods
 (defconst drawing-pods-section-empty-result
   (s-trim-left "
 
-Pods
+Pods (0)
   None.
 "))
 

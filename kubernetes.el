@@ -907,7 +907,7 @@ Warning: This could blow the stack if the AST gets too deep."
               ,(cond
                 ;; If the state is set and there are no pods, write "None".
                 ((and pods-response (null pods))
-                 `((heading . "Pods")
+                 `((heading . ,(concat (propertize "Pods" 'face 'magit-header-line) " (0)"))
                    (section (pods-list nil)
                             (line . ,(propertize "  None." 'face 'magit-dimmed)))))
 
@@ -984,7 +984,7 @@ Warning: This could blow the stack if the AST gets too deep."
               ,(cond
                 ;; If the state is set and there are no configmaps, write "None".
                 ((and configmaps-response (null configmaps))
-                 `((heading . "Configmaps")
+                 `((heading . ,(concat (propertize "Configmaps" 'face 'magit-header-line) " (0)"))
                    (section (configmaps-list nil)
                             (line . ,(propertize "  None." 'face 'magit-dimmed)))))
 
@@ -1061,7 +1061,7 @@ Warning: This could blow the stack if the AST gets too deep."
               ,(cond
                 ;; If the state is set and there are no secrets, write "None".
                 ((and secrets-response (null secrets))
-                 `((heading . "Secrets")
+                 `((heading . ,(concat (propertize "Secrets" 'face 'magit-header-line) " (0)"))
                    (section (secrets-list nil)
                             (line . ,(propertize "  None." 'face 'magit-dimmed)))))
 

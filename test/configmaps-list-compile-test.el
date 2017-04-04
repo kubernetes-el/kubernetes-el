@@ -48,7 +48,7 @@ Configmaps
 (defconst drawing-configmaps-section-empty-result
   (s-trim-left "
 
-Configmaps
+Configmaps (0)
   None.
 "))
 

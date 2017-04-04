@@ -48,7 +48,7 @@ Secrets
 (defconst drawing-secrets-section-empty-result
   (s-trim-left "
 
-Secrets
+Secrets (0)
   None.
 "))
 
