@@ -261,4 +261,35 @@ will be mocked."
         "configmap/example-config"
       (kubernetes--kubectl-delete-configmap configmap-name #'ignore))))
 
+
+;; Get secrets
+
+(ert-deftest get-secrets-returns-parsed-json ()
+  (let* ((sample-response (f-read-text (f-join this-directory "get-secrets-response.json")))
+         (parsed-response (json-read-from-string sample-response))
+         (cleanup-callback-called))
+
+    (with-successful-response-at '("get" "secrets" "-o" "json") sample-response
+      (kubernetes--kubectl-get-secrets
+       (lambda (response)
+         (should (equal parsed-response response)))
+       (lambda ()
+         (setq cleanup-callback-called t))))
+    (should cleanup-callback-called)))
+
+(ert-deftest get-secrets-returning-no-response ()
+  (let* ((empty-response (f-read-text (f-join this-directory "get-secrets-no-resources-response.json")))
+         (parsed-response (json-read-from-string empty-response)))
+    (with-successful-response-at '("get" "secrets" "-o" "json") empty-response
+      (kubernetes--kubectl-get-secrets
+       (lambda (response)
+         (should (equal parsed-response response)))))))
+
+(ert-deftest get-secrets-applies-current-namespace ()
+  (let ((kubernetes--current-namespace "foo"))
+    (with-successful-response-at `("get" "secrets" "-o" "json" "--namespace=foo")
+        "{}"
+      (kubernetes--kubectl-get-secrets #'ignore))))
+
+
 ;;; kubectl-integration-test.el ends here
