@@ -59,6 +59,19 @@
     (kbd "x") #'kubernetes-execute-marks
     (kbd "l") #'kubernetes-logs-popup)
 
+  (evil-define-key 'motion kubernetes-overview-mode-map
+    (kbd "?") #'kubernetes-overview-popup
+    (kbd "c") #'kubernetes-config-popup
+    (kbd "g r") #'kubernetes-refresh
+    (kbd "h") #'describe-mode
+    (kbd "d") #'kubernetes-describe-popup
+    (kbd "D") #'kubernetes-mark-for-delete
+    (kbd "e") #'kubernetes-exec-popup
+    (kbd "u") #'kubernetes-unmark
+    (kbd "U") #'kubernetes-unmark-all
+    (kbd "x") #'kubernetes-execute-marks
+    (kbd "l") #'kubernetes-logs-popup)
+
   (evil-define-key 'motion kubernetes-display-configmaps-mode-map
     (kbd "?") #'kubernetes-overview-popup
     (kbd "c") #'kubernetes-config-popup
