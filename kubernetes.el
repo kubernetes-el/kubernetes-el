@@ -1226,52 +1226,6 @@ FORCE ensures it happens."
       (magit-section-update-highlight))))
 
 
-;; Overview rendering routines.
-
-(defun kubernetes--overview-initialize-buffer ()
-  "Called the first time the overview buffer is opened to set up the buffer."
-  (let ((buf (get-buffer-create kubernetes-overview-buffer-name)))
-    (with-current-buffer buf
-      (kubernetes-overview-mode)
-
-      ;; Render buffer.
-      (kubernetes--redraw-overview-buffer t)
-      (goto-char (point-min))
-
-      (kubernetes--initialize-timers)
-      (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
-    buf))
-
-(defun kubernetes--redraw-overview-buffer (&optional force)
-  "Redraws the main buffer using the current state.
-
-FORCE ensures it happens."
-  (when-let (buf (get-buffer kubernetes-overview-buffer-name))
-    (with-current-buffer buf
-      (when (or force
-                ;; HACK: Only redraw the buffer if it is in the selected window.
-                ;;
-                ;; The cursor moves unpredictably in a redraw, which ruins the current
-                ;; position in the buffer if a popup window is open.
-                (equal (window-buffer) buf))
-
-        (let ((pos (point))
-              (inhibit-read-only t)
-              (inhibit-redisplay t)
-              (state (kubernetes--state)))
-
-          (erase-buffer)
-          (kubernetes--eval-ast `(section (root nil)
-                                (,(kubernetes--render-context-section state)
-                                 (propertize (map kubernetes-display-configmaps-mode-map) ,(kubernetes--render-configmaps-section state t))
-                                 (propertize (map kubernetes-display-pods-mode-map) ,(kubernetes--render-pods-section state t))
-                                 (propertize (map kubernetes-display-secrets-mode-map) ,(kubernetes--render-secrets-section state t)))))
-          (goto-char pos)))
-
-      ;; Force the section at point to highlight.
-      (magit-section-update-highlight))))
-
-
 ;; Displaying config.
 
 (defun kubernetes-display-config-refresh (config)
@@ -2103,6 +2057,53 @@ Type \\[kubernetes-refresh] to refresh the buffer.
   (interactive)
   (kubernetes-display-buffer (kubernetes--display-secrets-initialize-buffer))
   (message (substitute-command-keys "\\<kubernetes-display-secrets-mode-map>Type \\[kubernetes-overview-popup] for usage.")))
+
+
+;; Overview
+
+(defun kubernetes--overview-initialize-buffer ()
+  "Called the first time the overview buffer is opened to set up the buffer."
+  (let ((buf (get-buffer-create kubernetes-overview-buffer-name)))
+    (with-current-buffer buf
+      (kubernetes-overview-mode)
+
+      ;; Render buffer.
+      (kubernetes--redraw-overview-buffer t)
+      (goto-char (point-min))
+
+      (kubernetes--initialize-timers)
+      (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
+    buf))
+
+(defun kubernetes--redraw-overview-buffer (&optional force)
+  "Redraws the main buffer using the current state.
+
+FORCE ensures it happens."
+  (when-let (buf (get-buffer kubernetes-overview-buffer-name))
+    (with-current-buffer buf
+      (when (or force
+                ;; HACK: Only redraw the buffer if it is in the selected window.
+                ;;
+                ;; The cursor moves unpredictably in a redraw, which ruins the current
+                ;; position in the buffer if a popup window is open.
+                (equal (window-buffer) buf))
+
+        (let ((pos (point))
+              (inhibit-read-only t)
+              (inhibit-redisplay t)
+              (state (kubernetes--state)))
+
+          (erase-buffer)
+          (kubernetes--eval-ast `(section (root nil)
+                                (,(kubernetes--render-context-section state)
+                                 ,(kubernetes--render-configmaps-section state t)
+                                 ,(kubernetes--render-pods-section state t)
+                                 ,(kubernetes--render-secrets-section state t))))
+          (goto-char pos)))
+
+      ;; Force the section at point to highlight.
+      (magit-section-update-highlight))))
+
 
 ;;;###autoload
 (defun kubernetes-overview ()
