@@ -912,29 +912,30 @@ Warning: This could blow the stack if the AST gets too deep."
           (column-heading (propertize (format "  %-45s %-10s %-5s   %6s %6s" "Name" "Status" "Ready" "Restarts" "Age")
                                       'face 'magit-section-heading)))
     `(section (pods-container ,hidden)
-              ,(cond
-                ;; If the state is set and there are no pods, write "None".
-                ((and pods-response (null pods))
-                 `((heading . ,(concat (propertize "Pods" 'face 'magit-header-line) " (0)"))
-                   (section (pods-list nil)
-                            (line . ,(propertize "  None." 'face 'magit-dimmed)))))
+              (,(cond
+                 ;; If the state is set and there are no pods, write "None".
+                 ((and pods-response (null pods))
+                  `((heading . ,(concat (propertize "Pods" 'face 'magit-header-line) " (0)"))
+                    (section (pods-list nil)
+                             (line . ,(propertize "  None." 'face 'magit-dimmed)))))
 
-                ;; If there are pods, write sections for each pods.
-                (pods
-                 `((heading . ,(concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods))))
-                   (line . ,column-heading)
-                   ,@(--map `(section (,(intern (kubernetes--pod-name it)) t)
-                                      ((heading . ,(kubernetes--format-pod-line it current-time))
-                                       (section (details nil)
-                                                (,@(kubernetes--format-pod-details it)
-                                                 (padding)))))
-                            pods)))
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 `((heading . "Pods")
-                   (section (pods-list nil)
-                            ((line . ,column-heading)
-                             (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator))))))))))
+                 ;; If there are pods, write sections for each pods.
+                 (pods
+                  `((heading . ,(concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods))))
+                    (line . ,column-heading)
+                    ,@(--map `(section (,(intern (kubernetes--pod-name it)) t)
+                                       ((heading . ,(kubernetes--format-pod-line it current-time))
+                                        (section (details nil)
+                                                 (,@(kubernetes--format-pod-details it)
+                                                  (padding)))))
+                             pods)))
+                 ;; If there's no state, assume requests are in progress.
+                 (t
+                  `((heading . "Pods")
+                    (section (pods-list nil)
+                             ((line . ,column-heading)
+                              (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator)))))))
+               (padding)))))
 
 
 ;; Configmap section rendering.
@@ -989,29 +990,30 @@ Warning: This could blow the stack if the AST gets too deep."
           (configmaps (append configmaps nil))
           (column-heading (propertize (format "  %-45s %6s %6s" "Name" "Data" "Age") 'face 'magit-section-heading)))
     `(section (configmaps-container ,hidden)
-              ,(cond
-                ;; If the state is set and there are no configmaps, write "None".
-                ((and configmaps-response (null configmaps))
-                 `((heading . ,(concat (propertize "Configmaps" 'face 'magit-header-line) " (0)"))
-                   (section (configmaps-list nil)
-                            (line . ,(propertize "  None." 'face 'magit-dimmed)))))
+              (,(cond
+                 ;; If the state is set and there are no configmaps, write "None".
+                 ((and configmaps-response (null configmaps))
+                  `((heading . ,(concat (propertize "Configmaps" 'face 'magit-header-line) " (0)"))
+                    (section (configmaps-list nil)
+                             (line . ,(propertize "  None." 'face 'magit-dimmed)))))
 
-                ;; If there are configmaps, write sections for each configmaps.
-                (configmaps
-                 `((heading . ,(concat (propertize "Configmaps" 'face 'magit-header-line) " " (format "(%s)" (length configmaps))))
-                   (line . ,column-heading)
-                   ,@(--map `(section (,(intern (kubernetes--configmap-name it)) t)
-                                      ((heading . ,(kubernetes--format-configmap-line it current-time))
-                                       (section (details nil)
-                                                (,@(kubernetes--format-configmap-details it)
-                                                 (padding)))))
-                            configmaps)))
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 `((heading . "Configmaps")
-                   (line . ,column-heading)
-                   (section (configmaps-list nil)
-                            (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator)))))))))
+                 ;; If there are configmaps, write sections for each configmaps.
+                 (configmaps
+                  `((heading . ,(concat (propertize "Configmaps" 'face 'magit-header-line) " " (format "(%s)" (length configmaps))))
+                    (line . ,column-heading)
+                    ,@(--map `(section (,(intern (kubernetes--configmap-name it)) t)
+                                       ((heading . ,(kubernetes--format-configmap-line it current-time))
+                                        (section (details nil)
+                                                 (,@(kubernetes--format-configmap-details it)
+                                                  (padding)))))
+                             configmaps)))
+                 ;; If there's no state, assume requests are in progress.
+                 (t
+                  `((heading . "Configmaps")
+                    (line . ,column-heading)
+                    (section (configmaps-list nil)
+                             (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator))))))
+               (padding)))))
 
 
 ;; Secret section rendering.
@@ -1066,29 +1068,30 @@ Warning: This could blow the stack if the AST gets too deep."
           (secrets (append secrets nil))
           (column-heading (propertize (format "  %-45s %6s %6s" "Name" "Data" "Age") 'face 'magit-section-heading)))
     `(section (secrets-container ,hidden)
-              ,(cond
-                ;; If the state is set and there are no secrets, write "None".
-                ((and secrets-response (null secrets))
-                 `((heading . ,(concat (propertize "Secrets" 'face 'magit-header-line) " (0)"))
-                   (section (secrets-list nil)
-                            (line . ,(propertize "  None." 'face 'magit-dimmed)))))
+              (,(cond
+                 ;; If the state is set and there are no secrets, write "None".
+                 ((and secrets-response (null secrets))
+                  `((heading . ,(concat (propertize "Secrets" 'face 'magit-header-line) " (0)"))
+                    (section (secrets-list nil)
+                             (line . ,(propertize "  None." 'face 'magit-dimmed)))))
 
-                ;; If there are secrets, write sections for each secrets.
-                (secrets
-                 `((heading . ,(concat (propertize "Secrets" 'face 'magit-header-line) " " (format "(%s)" (length secrets))))
-                   (line . ,column-heading)
-                   ,@(--map `(section (,(intern (kubernetes--secret-name it)) t)
-                                      ((heading . ,(kubernetes--format-secret-line it current-time))
-                                       (section (details nil)
-                                                (,@(kubernetes--format-secret-details it)
-                                                 (padding)))))
-                            secrets)))
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 `((heading . "Secrets")
-                   (line . ,column-heading)
-                   (section (secrets-list nil)
-                            (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator)))))))))
+                 ;; If there are secrets, write sections for each secrets.
+                 (secrets
+                  `((heading . ,(concat (propertize "Secrets" 'face 'magit-header-line) " " (format "(%s)" (length secrets))))
+                    (line . ,column-heading)
+                    ,@(--map `(section (,(intern (kubernetes--secret-name it)) t)
+                                       ((heading . ,(kubernetes--format-secret-line it current-time))
+                                        (section (details nil)
+                                                 (,@(kubernetes--format-secret-details it)
+                                                  (padding)))))
+                             secrets)))
+                 ;; If there's no state, assume requests are in progress.
+                 (t
+                  `((heading . "Secrets")
+                    (line . ,column-heading)
+                    (section (secrets-list nil)
+                             (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator))))))
+               (padding)))))
 
 
 ;; Display pod view rendering routines.

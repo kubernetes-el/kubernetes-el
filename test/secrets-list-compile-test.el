@@ -30,6 +30,7 @@
 Secrets
   Name                                            Data    Age
   Fetching...
+
 "))
 
 (ert-deftest drawing-secrets-section--empty-state ()
@@ -50,6 +51,7 @@ Secrets
 
 Secrets (0)
   None.
+
 "))
 
 (ert-deftest drawing-secrets-section--no-secrets ()
@@ -77,6 +79,7 @@ Secrets (2)
   example-secret-2                                   1   331d
     Namespace:  example-ns
     Created:    2016-05-06T02:54:41Z
+
 
 "))
 

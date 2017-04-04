@@ -30,6 +30,7 @@
 Pods
   Name                                          Status     Ready   Restarts    Age
   Fetching...
+
 "))
 
 (ert-deftest drawing-pods-section--empty-state ()
@@ -50,6 +51,7 @@ Pods
 
 Pods (0)
   None.
+
 "))
 
 (ert-deftest drawing-pods-section--no-pods ()
@@ -87,6 +89,7 @@ Pods (2)
     Host IP:    10.0.0.0
     Pod IP:     172.0.0.1
     Started:    2017-02-25T08:12:14Z
+
 
 "))
 

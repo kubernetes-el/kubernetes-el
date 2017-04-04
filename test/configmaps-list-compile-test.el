@@ -30,6 +30,7 @@
 Configmaps
   Name                                            Data    Age
   Fetching...
+
 "))
 
 (ert-deftest drawing-configmaps-section--empty-state ()
@@ -50,6 +51,7 @@ Configmaps
 
 Configmaps (0)
   None.
+
 "))
 
 (ert-deftest drawing-configmaps-section--no-configmaps ()
@@ -77,6 +79,7 @@ Configmaps (2)
   example-configmap-2                                1   331d
     Namespace:  example-ns
     Created:    2016-05-06T02:54:41Z
+
 
 "))
 
