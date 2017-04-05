@@ -126,6 +126,8 @@ The function must take a single argument, which is the buffer to display."
 
 (defconst kubernetes-display-configmap-buffer-name "*kubernetes configmap*")
 
+(defconst kubernetes-display-service-buffer-name "*kubernetes service*")
+
 (defconst kubernetes-display-configmaps-buffer-name "*kubernetes configmaps*")
 
 (defconst kubernetes-display-secret-buffer-name "*kubernetes secret*")
@@ -157,6 +159,9 @@ Used to draw the pods list of the main buffer.")
 (defvar kubernetes--get-secrets-response nil
   "State representing the get secrets response from the API.")
 
+(defvar kubernetes--get-services-response nil
+  "State representing the get services response from the API.")
+
 (defvar kubernetes--view-config-response nil
   "State representing the view config response from the API.
 
@@ -174,6 +179,7 @@ Used for namespace selection within a cluster.")
   (setq kubernetes--get-pods-response nil)
   (setq kubernetes--get-configmaps-response nil)
   (setq kubernetes--get-secrets-response nil)
+  (setq kubernetes--get-services-response nil)
   (setq kubernetes--view-config-response nil)
   (setq kubernetes--get-namespaces-response nil)
   (setq kubernetes--current-namespace nil))
@@ -183,6 +189,7 @@ Used for namespace selection within a cluster.")
   `((pods . ,kubernetes--get-pods-response)
     (configmaps . ,kubernetes--get-configmaps-response)
     (secrets . ,kubernetes--get-secrets-response)
+    (services . ,kubernetes--get-services-response)
     (config . ,kubernetes--view-config-response)
     (namespaces . ,kubernetes--get-namespaces-response)
     (current-namespace . ,kubernetes--current-namespace)
@@ -196,7 +203,7 @@ POD-NAME is the name of the pod to search for.
 If lookup succeeds, return the alist representation of the pod.
 If lookup fails, return nil."
   (-let [(&alist 'pods (&alist 'items pods)) (kubernetes--state)]
-    (--find (equal (kubernetes--pod-name it) pod-name)
+    (--find (equal (kubernetes--resource-name it) pod-name)
             (append pods nil))))
 
 (defun kubernetes--state-lookup-configmap (configmap-name)
@@ -207,7 +214,7 @@ CONFIGMAP-NAME is the name of the configmap to search for.
 If lookup succeeds, return the alist representation of the configmap.
 If lookup fails, return nil."
   (-let [(&alist 'configmaps (&alist 'items configmaps)) (kubernetes--state)]
-    (--find (equal (kubernetes--configmap-name it) configmap-name)
+    (--find (equal (kubernetes--resource-name it) configmap-name)
             (append configmaps nil))))
 
 (defun kubernetes--state-lookup-secret (secret-name)
@@ -218,8 +225,19 @@ SECRET-NAME is the name of the secret to search for.
 If lookup succeeds, return the alist representation of the secret.
 If lookup fails, return nil."
   (-let [(&alist 'secrets (&alist 'items secrets)) (kubernetes--state)]
-    (--find (equal (kubernetes--secret-name it) secret-name)
+    (--find (equal (kubernetes--resource-name it) secret-name)
             (append secrets nil))))
+
+(defun kubernetes--state-lookup-service (service-name)
+  "Look up a service by name in the current state.
+
+SERVICE-NAME is the name of the service to search for.
+
+If lookup succeeds, return the alist representation of the service.
+If lookup fails, return nil."
+  (-let [(&alist 'services (&alist 'items services)) (kubernetes--state)]
+    (--find (equal (kubernetes--resource-name it) service-name)
+            (append services nil))))
 
 
 ;; Main Kubernetes query routines
@@ -311,6 +329,26 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (let ((args (append '("get" "secrets" "-o" "json")
+                      (when kubernetes--current-namespace
+                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+    (kubernetes--kubectl args
+               (lambda (buf)
+                 (let ((json (with-current-buffer buf
+                               ;; Skip past stderr written to this buffer.
+                               (goto-char (point-min))
+                               (search-forward "No resources found." (line-end-position) t)
+
+                               (json-read-from-string
+                                (buffer-substring (point) (point-max))))))
+                   (funcall cb json)))
+               nil
+               cleanup-cb)))
+
+(defun kubernetes--kubectl-get-services (cb &optional cleanup-cb)
+  "Get all services and execute callback CB with the parsed JSON.
+
+CLEANUP-CB is a function taking no arguments used to release any resources."
+  (let ((args (append '("get" "services" "-o" "json")
                       (when kubernetes--current-namespace
                         (list (format "--namespace=%s" kubernetes--current-namespace))))))
     (kubernetes--kubectl args
@@ -436,16 +474,12 @@ to a function of the type:
 
 ;; Utilities
 
-(defun kubernetes--pod-name (pod)
-  (-let [(&alist 'metadata (&alist 'name name)) pod]
-    name))
+(defun kubernetes--resource-name (resource)
+  "Get the name of RESOURCE from its metadata.
 
-(defun kubernetes--configmap-name (configmap)
-  (-let [(&alist 'metadata (&alist 'name name)) configmap]
-    name))
-
-(defun kubernetes--secret-name (secret)
-  (-let [(&alist 'metadata (&alist 'name name)) secret]
+RESOURCE is the parsed representation an API resource, such a
+pod, secret, configmap, etc."
+  (-let [(&alist 'metadata (&alist 'name name)) resource]
     name))
 
 (defun kubernetes--read-pod-name ()
@@ -460,7 +494,7 @@ Update the pod state if it not set yet."
                    (setq kubernetes--get-pods-response response)
                    response))))
           (pods (append pods nil))
-          (names (-map #'kubernetes--pod-name pods)))
+          (names (-map #'kubernetes--resource-name pods)))
     (completing-read "Pod: " names nil t)))
 
 (defun kubernetes--read-configmap-name ()
@@ -475,7 +509,7 @@ Update the configmap state if it not set yet."
                    (setq kubernetes--get-configmaps-response response)
                    response))))
           (configmaps (append configmaps nil))
-          (names (-map #'kubernetes--configmap-name configmaps)))
+          (names (-map #'kubernetes--resource-name configmaps)))
     (completing-read "Configmap: " names nil t)))
 
 (defun kubernetes--read-secret-name ()
@@ -490,8 +524,23 @@ Update the secret state if it not set yet."
                    (setq kubernetes--get-secrets-response response)
                    response))))
           (secrets (append secrets nil))
-          (names (-map #'kubernetes--secret-name secrets)))
+          (names (-map #'kubernetes--resource-name secrets)))
     (completing-read "Secret: " names nil t)))
+
+(defun kubernetes--read-service-name ()
+  "Read a service name from the user.
+
+Update the service state if it not set yet."
+  (-let* (((&alist 'items services)
+           (or kubernetes--get-services-response
+               (progn
+                 (message "Getting services...")
+                 (let ((response (kubernetes--await-on-async #'kubernetes--kubectl-get-services)))
+                   (setq kubernetes--get-services-response response)
+                   response))))
+          (services (append services nil))
+          (names (-map #'kubernetes--resource-name services)))
+    (completing-read "Service: " names nil t)))
 
 (defun kubernetes--read-iso-datetime (&rest _)
   (let* ((date (org-read-date nil t))
@@ -690,6 +739,19 @@ buffer is killed."
       (kill-process proc)))
   (setq kubernetes--poll-configmaps-process nil))
 
+(defvar kubernetes--poll-services-process nil
+  "Single process used to prevent concurrent service refreshes.")
+
+(defun kubernetes--set-poll-services-process (proc)
+  (kubernetes--release-poll-services-process)
+  (setq kubernetes--poll-services-process proc))
+
+(defun kubernetes--release-poll-services-process ()
+  (when-let (proc kubernetes--poll-services-process)
+    (when (process-live-p proc)
+      (kill-process proc)))
+  (setq kubernetes--poll-services-process nil))
+
 (defvar kubernetes--poll-secrets-process nil
   "Single process used to prevent concurrent secret refreshes.")
 
@@ -715,9 +777,11 @@ buffer is killed."
                                        kubernetes--poll-context-process
                                        kubernetes--poll-configmaps-process
                                        kubernetes--poll-secrets-process
+                                       kubernetes--poll-services-process
                                        kubernetes--poll-namespaces-process))
   (setq kubernetes--poll-namespaces-process nil)
   (setq kubernetes--poll-configmaps-process nil)
+  (setq kubernetes--poll-services-process nil)
   (setq kubernetes--poll-secrets-process nil)
   (setq kubernetes--poll-pods-process nil)
   (setq kubernetes--poll-context-process nil))
@@ -899,7 +963,7 @@ Warning: This could blow the stack if the AST gets too deep."
                 'kubernetes-copy name)))
 
 (defun kubernetes--update-pod-marks-state (pods)
-  (let ((pod-names (-map #'kubernetes--pod-name pods)))
+  (let ((pod-names (-map #'kubernetes--resource-name pods)))
     (setq kubernetes--pods-pending-deletion
           (-intersection kubernetes--pods-pending-deletion pod-names))
     (setq kubernetes--marked-pod-names
@@ -923,7 +987,7 @@ Warning: This could blow the stack if the AST gets too deep."
                  (pods
                   `((heading . ,(concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods))))
                     (line . ,column-heading)
-                    ,@(--map `(section (,(intern (kubernetes--pod-name it)) t)
+                    ,@(--map `(section (,(intern (kubernetes--resource-name it)) t)
                                        ((heading . ,(kubernetes--format-pod-line it current-time))
                                         (section (details nil)
                                                  (,@(kubernetes--format-pod-details it)
@@ -1001,7 +1065,7 @@ Warning: This could blow the stack if the AST gets too deep."
                  (configmaps
                   `((heading . ,(concat (propertize "Configmaps" 'face 'magit-header-line) " " (format "(%s)" (length configmaps))))
                     (line . ,column-heading)
-                    ,@(--map `(section (,(intern (kubernetes--configmap-name it)) t)
+                    ,@(--map `(section (,(intern (kubernetes--resource-name it)) t)
                                        ((heading . ,(kubernetes--format-configmap-line it current-time))
                                         (section (details nil)
                                                  (,@(kubernetes--format-configmap-details it)
@@ -1079,7 +1143,7 @@ Warning: This could blow the stack if the AST gets too deep."
                  (secrets
                   `((heading . ,(concat (propertize "Secrets" 'face 'magit-header-line) " " (format "(%s)" (length secrets))))
                     (line . ,column-heading)
-                    ,@(--map `(section (,(intern (kubernetes--secret-name it)) t)
+                    ,@(--map `(section (,(intern (kubernetes--resource-name it)) t)
                                        ((heading . ,(kubernetes--format-secret-line it current-time))
                                         (section (details nil)
                                                  (,@(kubernetes--format-secret-details it)
@@ -1090,6 +1154,103 @@ Warning: This could blow the stack if the AST gets too deep."
                   `((heading . "Secrets")
                     (line . ,column-heading)
                     (section (secrets-list nil)
+                             (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator))))))
+               (padding)))))
+
+
+;; Service section rendering.
+
+(defvar-local kubernetes--marked-service-names nil)
+
+(defvar-local kubernetes--services-pending-deletion nil)
+
+(defun kubernetes--format-service-details (service)
+  (-let ((insert-detail
+          (lambda (key value)
+            (when value
+              (let ((str (concat (propertize (format "    %-15s" key) 'face 'magit-header-line)
+                                 value)))
+                (cons 'line (concat (propertize str 'kubernetes-copy value)))))))
+
+         (format-ports
+          (-lambda ((&alist 'name name 'port port 'protocol prot))
+            (concat (when name (format "%s:" name))
+                    (number-to-string port) "/" prot)))
+
+         ((&alist 'metadata (&alist 'namespace ns
+                                    'creationTimestamp created-time)
+                  'spec (&alist 'clusterIP internal-ip
+                                'externalIPs ips
+                                'ports ports))
+          service))
+    (-non-nil (list (funcall insert-detail "Namespace:" ns)
+                    (funcall insert-detail "Created:" created-time)
+                    (funcall insert-detail "Internal IP:" internal-ip)
+                    (when-let (ips (append ips nil))
+                      (funcall insert-detail "External IPs:" (string-join ips ", ")))
+                    (when-let (ports (append ports nil))
+                      (funcall insert-detail "Ports:" (string-join (-map format-ports ports) ", ")))))))
+
+(defun kubernetes--format-service-line (service current-time)
+  (-let* (((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
+                   'spec (&alist 'clusterIP internal-ip
+                                 'externalIPs external-ips))
+           service)
+          (str (concat
+                ;; Name
+                (format "%-30s " (kubernetes--ellipsize name 30))
+
+                ;; Internal IP
+                (propertize (format "%15s " internal-ip) 'face 'magit-dimmed)
+
+                ;; External IP
+                (let ((ips (append external-ips nil)))
+                  (propertize (format "%15s " (or (car ips) "")) 'face 'magit-dimmed))
+
+                ;; Age
+                (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
+                  (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
+                              'face 'magit-dimmed))))
+          (str
+           (if (member name kubernetes--services-pending-deletion)
+               (concat (propertize str 'face 'kubernetes-pending-deletion))
+             str))
+          (str
+           (if (member name kubernetes--marked-service-names)
+               (concat (propertize "D" 'face 'kubernetes-delete-mark) " " str)
+             (concat "  " str))))
+    (propertize str
+                'kubernetes-nav (list :service-name name)
+                'kubernetes-copy name)))
+
+(defun kubernetes--render-services-section (state &optional hidden)
+  (-let* (((&alist 'current-time current-time
+                   'services (services-response &as &alist 'items services)) state)
+          (services (append services nil))
+          (column-heading (propertize (format "  %-30s %15s %15s %6s" "Name" "InternalIP" "ExternalIP" "Age") 'face 'magit-section-heading)))
+    `(section (services-container ,hidden)
+              (,(cond
+                 ;; If the state is set and there are no services, write "None".
+                 ((and services-response (null services))
+                  `((heading . ,(concat (propertize "Services" 'face 'magit-header-line) " (0)"))
+                    (section (services-list nil)
+                             (line . ,(propertize "  None." 'face 'magit-dimmed)))))
+
+                 ;; If there are services, write sections for each services.
+                 (services
+                  `((heading . ,(concat (propertize "Services" 'face 'magit-header-line) " " (format "(%s)" (length services))))
+                    (line . ,column-heading)
+                    ,@(--map `(section (,(intern (kubernetes--resource-name it)) t)
+                                       ((heading . ,(kubernetes--format-service-line it current-time))
+                                        (section (details nil)
+                                                 (,@(kubernetes--format-service-details it)
+                                                  (padding)))))
+                             services)))
+                 ;; If there's no state, assume requests are in progress.
+                 (t
+                  `((heading . "Services")
+                    (line . ,column-heading)
+                    (section (services-list nil)
                              (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator))))))
                (padding)))))
 
@@ -1297,6 +1458,30 @@ SECRET-NAME is the name of the secret to display."
     (select-window (display-buffer (current-buffer)))))
 
 
+;; Displaying services
+
+(defun kubernetes-display-service-refresh (service-name)
+  (if-let (service (kubernetes--state-lookup-service service-name))
+      (let ((buf (get-buffer-create kubernetes-display-service-buffer-name)))
+        (with-current-buffer buf
+          (kubernetes-display-thing-mode)
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert (kubernetes--json-to-yaml service))))
+        buf)
+    (error "Unknown service: %s" service-name)))
+
+;;;###autoload
+(defun kubernetes-display-service (service-name)
+  "Display information for a service in a new window.
+
+SERVICE-NAME is the name of the service to display."
+  (interactive (list (kubernetes--read-service-name)))
+  (with-current-buffer (kubernetes-display-service-refresh service-name)
+    (goto-char (point-min))
+    (select-window (display-buffer (current-buffer)))))
+
+
 ;; Displaying pods.
 
 (defun kubernetes-display-pod-refresh (pod-name)
@@ -1449,6 +1634,8 @@ taken."
      (kubernetes-display-config (alist-get 'config (kubernetes--state))))
     (`(:configmap-name ,configmap-name)
      (kubernetes-display-configmap configmap-name))
+    (`(:service-name ,service-name)
+     (kubernetes-display-service service-name))
     (`(:secret-name ,secret-name)
      (kubernetes-display-secret secret-name))
     (`(:pod-name ,pod-name)
@@ -1520,6 +1707,17 @@ state changes."
             (message "Updated configmaps.")))
         (lambda ()
           (kubernetes--release-poll-configmaps-process)))))
+
+    (unless kubernetes--poll-services-process
+      (kubernetes--set-poll-services-process
+       (kubernetes--kubectl-get-services
+        (lambda (response)
+          (setq kubernetes--get-services-response response)
+          (kubernetes--redraw-buffers)
+          (when verbose
+            (message "Updated services.")))
+        (lambda ()
+          (kubernetes--release-poll-services-process)))))
 
     (unless kubernetes--poll-secrets-process
       (kubernetes--set-poll-secrets-process
@@ -2106,7 +2304,8 @@ FORCE ensures it happens."
                                 (,(kubernetes--render-context-section state)
                                  ,(kubernetes--render-configmaps-section state t)
                                  ,(kubernetes--render-pods-section state t)
-                                 ,(kubernetes--render-secrets-section state t))))
+                                 ,(kubernetes--render-secrets-section state t)
+                                 ,(kubernetes--render-services-section state t))))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.
