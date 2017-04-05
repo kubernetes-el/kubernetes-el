@@ -179,6 +179,7 @@ Used for namespace selection within a cluster.")
   (setq kubernetes--get-pods-response nil)
   (setq kubernetes--get-configmaps-response nil)
   (setq kubernetes--get-secrets-response nil)
+  (setq kubernetes--get-services-response nil)
   (setq kubernetes--view-config-response nil)
   (setq kubernetes--get-namespaces-response nil)
   (setq kubernetes--current-namespace nil))
@@ -1157,6 +1158,103 @@ Warning: This could blow the stack if the AST gets too deep."
                (padding)))))
 
 
+;; Service section rendering.
+
+(defvar-local kubernetes--marked-service-names nil)
+
+(defvar-local kubernetes--services-pending-deletion nil)
+
+(defun kubernetes--format-service-details (service)
+  (-let ((insert-detail
+          (lambda (key value)
+            (when value
+              (let ((str (concat (propertize (format "    %-15s" key) 'face 'magit-header-line)
+                                 value)))
+                (cons 'line (concat (propertize str 'kubernetes-copy value)))))))
+
+         (format-ports
+          (-lambda ((&alist 'name name 'port port 'protocol prot))
+            (concat (when name (format "%s:" name))
+                    (number-to-string port) "/" prot)))
+
+         ((&alist 'metadata (&alist 'namespace ns
+                                    'creationTimestamp created-time)
+                  'spec (&alist 'clusterIP internal-ip
+                                'externalIPs ips
+                                'ports ports))
+          service))
+    (-non-nil (list (funcall insert-detail "Namespace:" ns)
+                    (funcall insert-detail "Created:" created-time)
+                    (funcall insert-detail "Internal IP:" internal-ip)
+                    (when-let (ips (append ips nil))
+                      (funcall insert-detail "External IPs:" (string-join ips ", ")))
+                    (when-let (ports (append ports nil))
+                      (funcall insert-detail "Ports:" (string-join (-map format-ports ports) ", ")))))))
+
+(defun kubernetes--format-service-line (service current-time)
+  (-let* (((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
+                   'spec (&alist 'clusterIP internal-ip
+                                 'externalIPs external-ips))
+           service)
+          (str (concat
+                ;; Name
+                (format "%-30s " (kubernetes--ellipsize name 30))
+
+                ;; Internal IP
+                (propertize (format "%15s " internal-ip) 'face 'magit-dimmed)
+
+                ;; External IP
+                (let ((ips (append external-ips nil)))
+                  (propertize (format "%15s " (or (car ips) "")) 'face 'magit-dimmed))
+
+                ;; Age
+                (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
+                  (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
+                              'face 'magit-dimmed))))
+          (str
+           (if (member name kubernetes--services-pending-deletion)
+               (concat (propertize str 'face 'kubernetes-pending-deletion))
+             str))
+          (str
+           (if (member name kubernetes--marked-service-names)
+               (concat (propertize "D" 'face 'kubernetes-delete-mark) " " str)
+             (concat "  " str))))
+    (propertize str
+                'kubernetes-nav (list :service-name name)
+                'kubernetes-copy name)))
+
+(defun kubernetes--render-services-section (state &optional hidden)
+  (-let* (((&alist 'current-time current-time
+                   'services (services-response &as &alist 'items services)) state)
+          (services (append services nil))
+          (column-heading (propertize (format "  %-30s %15s %15s %6s" "Name" "InternalIP" "ExternalIP" "Age") 'face 'magit-section-heading)))
+    `(section (services-container ,hidden)
+              (,(cond
+                 ;; If the state is set and there are no services, write "None".
+                 ((and services-response (null services))
+                  `((heading . ,(concat (propertize "Services" 'face 'magit-header-line) " (0)"))
+                    (section (services-list nil)
+                             (line . ,(propertize "  None." 'face 'magit-dimmed)))))
+
+                 ;; If there are services, write sections for each services.
+                 (services
+                  `((heading . ,(concat (propertize "Services" 'face 'magit-header-line) " " (format "(%s)" (length services))))
+                    (line . ,column-heading)
+                    ,@(--map `(section (,(intern (kubernetes--resource-name it)) t)
+                                       ((heading . ,(kubernetes--format-service-line it current-time))
+                                        (section (details nil)
+                                                 (,@(kubernetes--format-service-details it)
+                                                  (padding)))))
+                             services)))
+                 ;; If there's no state, assume requests are in progress.
+                 (t
+                  `((heading . "Services")
+                    (line . ,column-heading)
+                    (section (services-list nil)
+                             (line . ,(propertize "  Fetching..." 'face 'kubernetes-progress-indicator))))))
+               (padding)))))
+
+
 ;; Display pod view rendering routines.
 
 (defun kubernetes--display-pods-initialize-buffer ()
@@ -1536,6 +1634,8 @@ taken."
      (kubernetes-display-config (alist-get 'config (kubernetes--state))))
     (`(:configmap-name ,configmap-name)
      (kubernetes-display-configmap configmap-name))
+    (`(:service-name ,service-name)
+     (kubernetes-display-service service-name))
     (`(:secret-name ,secret-name)
      (kubernetes-display-secret secret-name))
     (`(:pod-name ,pod-name)
@@ -2204,7 +2304,8 @@ FORCE ensures it happens."
                                 (,(kubernetes--render-context-section state)
                                  ,(kubernetes--render-configmaps-section state t)
                                  ,(kubernetes--render-pods-section state t)
-                                 ,(kubernetes--render-secrets-section state t))))
+                                 ,(kubernetes--render-secrets-section state t)
+                                 ,(kubernetes--render-services-section state t))))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.
