@@ -74,7 +74,16 @@ The function must take a single argument, which is the buffer to display."
   :type 'integer)
 
 (defcustom kubernetes-poll-frequency 5
-  "The background refresh frequency in seconds."
+  "The frequency at which to poll Kubernetes for changes."
+  :group 'kubernetes
+  :type 'integer)
+
+(defcustom kubernetes-redraw-frequency 5
+  "The buffer redraw frequency in seconds.
+
+This is the frequency at which Kubernetes buffers will be redrawn
+to match the current state.  This variable should be tuned to
+balance interface stuttering with update frequency."
   :group 'kubernetes
   :type 'integer)
 
@@ -796,13 +805,23 @@ buffer is killed."
 
 This is used to regularly synchronise local state with Kubernetes.")
 
+(defvar kubernetes--redraw-timer nil
+  "Background timer used to trigger buffer redrawing.
+
+This is used to display the current state.")
+
 (defun kubernetes--initialize-timers ()
+  (unless kubernetes--redraw-timer
+    (setq kubernetes--redraw-timer (run-with-timer kubernetes-redraw-frequency kubernetes-redraw-frequency #'kubernetes--redraw-buffers)))
   (unless kubernetes--poll-timer
     (setq kubernetes--poll-timer (run-with-timer kubernetes-poll-frequency kubernetes-poll-frequency #'kubernetes-refresh))))
 
 (defun kubernetes--kill-timers ()
+  (when-let (timer kubernetes--redraw-timer)
+    (cancel-timer timer))
   (when-let (timer kubernetes--poll-timer)
     (cancel-timer timer))
+  (setq kubernetes--redraw-timer nil)
   (setq kubernetes--poll-timer nil))
 
 
@@ -1657,31 +1676,29 @@ what to copy."
   (kubernetes--redraw-secrets-buffer force)
   (kubernetes--redraw-overview-buffer force))
 
-(defun kubernetes-refresh (&optional verbose)
+(defun kubernetes-refresh (&optional interactive)
   "Trigger a manual refresh Kubernetes pods buffers.
 
-Requests the data needed to build the buffers, and updates the UI
-state as responses arrive.
+Requests the data needed to build the buffers.
 
-With optional argument VERBOSE, log additional information of
-state changes."
+With optional argument INTERACTIVE, redraw the buffer and log
+additional information of state changes."
   (interactive (list t))
   ;; Make sure not to trigger a refresh if the buffer closes.
   (when (or (get-buffer kubernetes-display-configmaps-buffer-name)
             (get-buffer kubernetes-display-secrets-buffer-name)
             (get-buffer kubernetes-display-pods-buffer-name)
             (get-buffer kubernetes-overview-buffer-name))
-    (when verbose
+    (when interactive
+      (kubernetes--redraw-buffers)
       (message "Refreshing..."))
-
-    (kubernetes--redraw-buffers)
 
     (unless kubernetes--poll-namespaces-process
       (kubernetes--set-poll-namespaces-process
        (kubernetes--kubectl-get-namespaces
         (lambda (config)
           (setq kubernetes--get-namespaces-response config)
-          (when verbose
+          (when interactive
             (message "Updated namespaces.")))
         (lambda ()
           (kubernetes--release-poll-namespaces-process)))))
@@ -1691,8 +1708,7 @@ state changes."
        (kubernetes--kubectl-config-view
         (lambda (config)
           (setq kubernetes--view-config-response config)
-          (kubernetes--redraw-buffers)
-          (when verbose
+          (when interactive
             (message "Updated contexts.")))
         (lambda ()
           (kubernetes--release-poll-context-process)))))
@@ -1702,8 +1718,7 @@ state changes."
        (kubernetes--kubectl-get-configmaps
         (lambda (response)
           (setq kubernetes--get-configmaps-response response)
-          (kubernetes--redraw-buffers)
-          (when verbose
+          (when interactive
             (message "Updated configmaps.")))
         (lambda ()
           (kubernetes--release-poll-configmaps-process)))))
@@ -1713,8 +1728,7 @@ state changes."
        (kubernetes--kubectl-get-services
         (lambda (response)
           (setq kubernetes--get-services-response response)
-          (kubernetes--redraw-buffers)
-          (when verbose
+          (when interactive
             (message "Updated services.")))
         (lambda ()
           (kubernetes--release-poll-services-process)))))
@@ -1724,8 +1738,7 @@ state changes."
        (kubernetes--kubectl-get-secrets
         (lambda (response)
           (setq kubernetes--get-secrets-response response)
-          (kubernetes--redraw-buffers)
-          (when verbose
+          (when interactive
             (message "Updated secrets.")))
         (lambda ()
           (kubernetes--release-poll-secrets-process)))))
@@ -1735,8 +1748,7 @@ state changes."
        (kubernetes--kubectl-get-pods
         (lambda (response)
           (setq kubernetes--get-pods-response response)
-          (kubernetes--redraw-buffers)
-          (when verbose
+          (when interactive
             (message "Updated pods.")))
         (lambda ()
           (kubernetes--release-poll-pods-process)))))))
