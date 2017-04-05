@@ -1246,7 +1246,7 @@ Warning: This could blow the stack if the AST gets too deep."
   (-let* (((&alist 'current-time current-time
                    'services (services-response &as &alist 'items services)) state)
           (services (append services nil))
-          (column-heading (propertize (format "  %-30s %15s %15s %6s" "Name" "InternalIP" "ExternalIP" "Age") 'face 'magit-section-heading)))
+          (column-heading (propertize (format "  %-30s %15s %15s %6s" "Name" "Internal IP" "External IP" "Age") 'face 'magit-section-heading)))
     `(section (services-container ,hidden)
               (,(cond
                  ;; If the state is set and there are no services, write "None".

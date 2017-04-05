@@ -28,7 +28,7 @@
   (s-trim-left "
 
 Services
-  Name                                InternalIP      ExternalIP    Age
+  Name                               Internal IP     External IP    Age
   Fetching...
 
 "))
@@ -71,7 +71,7 @@ Services (0)
   (s-trim-left "
 
 Services (2)
-  Name                                InternalIP      ExternalIP    Age
+  Name                               Internal IP     External IP    Age
   example-svc-1                      192.168.0.0     192.168.0.0     4d
     Namespace:     example
     Created:       2017-03-29T21:42:56Z
