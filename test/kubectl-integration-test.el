@@ -321,4 +321,35 @@ will be mocked."
       (kubernetes--kubectl-delete-secret secret-name #'ignore))))
 
 
+;; Get services
+
+(ert-deftest get-services-returns-parsed-json ()
+  (let* ((sample-response (f-read-text (f-join this-directory "get-services-response.json")))
+         (parsed-response (json-read-from-string sample-response))
+         (cleanup-callback-called))
+
+    (with-successful-response-at '("get" "services" "-o" "json") sample-response
+      (kubernetes--kubectl-get-services
+       (lambda (response)
+         (should (equal parsed-response response)))
+       (lambda ()
+         (setq cleanup-callback-called t))))
+    (should cleanup-callback-called)))
+
+(ert-deftest get-services-returning-no-response ()
+  (let* ((err-response (f-read-text (f-join this-directory "get-services-no-resources-response.txt")))
+         (sans-first-line (string-join (cdr (split-string err-response (rx (any "\n")))) "\n"))
+         (parsed-response (json-read-from-string sans-first-line)))
+    (with-successful-response-at '("get" "services" "-o" "json") err-response
+      (kubernetes--kubectl-get-services
+       (lambda (response)
+         (should (equal parsed-response response)))))))
+
+(ert-deftest get-services-applies-current-namespace ()
+  (let ((kubernetes--current-namespace "foo"))
+    (with-successful-response-at `("get" "services" "-o" "json" "--namespace=foo")
+        "{}"
+      (kubernetes--kubectl-get-services #'ignore))))
+
+
 ;;; kubectl-integration-test.el ends here

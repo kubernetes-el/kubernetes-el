@@ -326,6 +326,26 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
                nil
                cleanup-cb)))
 
+(defun kubernetes--kubectl-get-services (cb &optional cleanup-cb)
+  "Get all services and execute callback CB with the parsed JSON.
+
+CLEANUP-CB is a function taking no arguments used to release any resources."
+  (let ((args (append '("get" "services" "-o" "json")
+                      (when kubernetes--current-namespace
+                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+    (kubernetes--kubectl args
+               (lambda (buf)
+                 (let ((json (with-current-buffer buf
+                               ;; Skip past stderr written to this buffer.
+                               (goto-char (point-min))
+                               (search-forward "No resources found." (line-end-position) t)
+
+                               (json-read-from-string
+                                (buffer-substring (point) (point-max))))))
+                   (funcall cb json)))
+               nil
+               cleanup-cb)))
+
 (defun kubernetes--kubectl-config-view (cb &optional cleanup-cb)
   "Get the current configuration and pass it to CB.
 
