@@ -25,10 +25,10 @@
 
 ;;; Code:
 
-(require 'compile)
 (require 'dash)
 (require 'magit)
 (require 'subr-x)
+(require 'term)
 
 (autoload 'json-pretty-print-buffer "json")
 (autoload 'json-read-from-string "json")
@@ -150,6 +150,8 @@ balance interface stuttering with update frequency."
 (defconst kubernetes-logs-buffer-name "*kubernetes logs*")
 
 (defconst kubernetes-pod-buffer-name "*kubernetes pod*")
+
+(defconst kubernetes-exec-buffer-name "*kubernetes exec*")
 
 
 ;; Main state
@@ -655,7 +657,7 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
   (let ((diff (time-to-seconds (time-subtract now start))))
     (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff) ","))))
 
-(defun kubernetes--kill-compilation-buffer (proc-buf &rest _)
+(defun kubernetes--kill-buffer (proc-buf &rest _)
   (if-let (win (get-buffer-window proc-buf))
       (quit-window t win)
     (kill-buffer proc-buf)))
@@ -779,15 +781,12 @@ buffer is killed."
       (kill-process proc)))
   (setq kubernetes--poll-secrets-process nil))
 
-(defun kubernetes--kill-process-quietly (proc)
+(defun kubernetes--kill-process-quietly (proc &optional _signal)
   (when proc
-    (set-process-query-on-exit-flag proc nil)
     (set-process-sentinel proc nil)
     (when-let (buf (process-buffer proc))
-      (set-process-buffer proc nil)
       (ignore-errors (kill-buffer buf)))
-    (when (process-live-p proc)
-      (kill-process proc))))
+    (delete-process proc)))
 
 (defun kubernetes--kill-polling-processes ()
   (mapc #'kubernetes--kill-process-quietly (list kubernetes--poll-pods-process
@@ -1762,6 +1761,62 @@ additional information of state changes."
           (kubernetes--release-poll-pods-process)))))))
 
 
+;; Process buffer creation
+
+(defun kubernetes--term-buffer-start (bufname command args)
+  ;; Kill existing process.
+  (when-let ((existing (get-buffer bufname))
+             (proc (get-buffer-process existing)))
+    (kubernetes--kill-process-quietly proc))
+
+  (let ((buf (get-buffer-create bufname)))
+    (with-current-buffer buf
+      (erase-buffer)
+      (buffer-disable-undo)
+      (term-mode)
+      (goto-char (point-min))
+      (let ((time-str (format "Session started at %s" (substring (current-time-string) 0 19)))
+            (command-str (format "%s %s" command (string-join args " "))))
+        (kubernetes--eval-ast
+         `((line . ,(propertize time-str 'face 'magit-dimmed))
+           (padding)
+           (line . ,(propertize command-str 'face 'magit-dimmed))
+           (padding))))
+
+      (term-exec (current-buffer) "kuberenetes-term" command nil args)
+      (let ((proc (get-buffer-process (current-buffer))))
+        (set-process-query-on-exit-flag proc nil)
+        (term-char-mode)
+        (add-hook 'kill-buffer-hook (lambda ()
+                                      (when-let (win (get-buffer-window buf))
+                                        (quit-window nil win)))
+                  nil t)))
+
+    buf))
+
+(defun kubernetes--process-buffer-start (bufname setup-fn command args &optional process-filter)
+  (let ((buf (get-buffer-create bufname)))
+    (buffer-disable-undo buf)
+
+    (with-current-buffer buf
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (funcall setup-fn)
+        (let ((time-str (format "Process started at %s" (substring (current-time-string) 0 19)))
+              (command-str (format "%s %s" command (string-join args " "))))
+          (kubernetes--eval-ast
+           `((line . ,(propertize time-str 'face 'magit-dimmed))
+             (padding)
+             (line . ,(propertize command-str 'face 'magit-dimmed))
+             (padding))))))
+
+    (let ((proc (apply #'start-process "kubernetes-exec" buf command args)))
+      (when process-filter
+        (set-process-filter proc process-filter))
+      (set-process-query-on-exit-flag proc nil))
+    buf))
+
+
 ;; Logs
 
 (defun kubernetes--log-line-buffer-for-string (s)
@@ -1849,14 +1904,10 @@ POD-NAME is the name of the pod to log.
 ARGS are additional args to pass to kubectl."
   (interactive (list (or (kubernetes--maybe-pod-name-at-point) (kubernetes--read-pod-name))
                      (kubernetes-logs-arguments)))
-  (let ((compilation-buffer-name-function (lambda (_) kubernetes-logs-buffer-name))
-        (command (append (list kubernetes-kubectl-executable "logs")
-                         args
-                         (list pod-name)
-                         (when kubernetes--current-namespace
-                           (list (format "--namespace=%s" kubernetes--current-namespace))))))
-    (with-current-buffer (compilation-start (string-join command " ") 'kubernetes-logs-mode)
-      (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
+  (let ((args (append (list "logs") args (list pod-name)
+                      (when kubernetes--current-namespace
+                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+    (with-current-buffer (kubernetes--process-buffer-start kubernetes-logs-buffer-name #'kubernetes-logs-mode kubernetes-kubectl-executable args)
       (select-window (display-buffer (current-buffer))))))
 
 
@@ -1944,33 +1995,31 @@ EXEC-COMMAND is the command to run in the container.
 Should be invoked via command `kubernetes-logs-popup'."
   (interactive (list (or (kubernetes--maybe-pod-name-at-point) (kubernetes--read-pod-name))
                      (kubernetes-exec-arguments)
-                     (read-string (format "Command (default: %s): " kubernetes-default-exec-command) nil 'kubernetes-exec-history)))
+                     (let ((cmd (string-trim (read-string (format "Command (default: %s): " kubernetes-default-exec-command)
+                                                          nil 'kubernetes-exec-history))))
+                       (if (string-empty-p cmd) kubernetes-default-exec-command cmd))))
 
-  (let* ((exec-command (cond
-                        ((null exec-command)
-                         kubernetes-default-exec-command)
-                        ((string-empty-p (string-trim exec-command))
-                         kubernetes-default-exec-command)
-                        (t
-                         (string-trim exec-command))))
-
-         (command (append (list kubernetes-kubectl-executable "exec")
-                          args
-                          (when kubernetes--current-namespace
-                            (list (format "--namespace=%s" kubernetes--current-namespace)))
-                          (list pod-name exec-command)))
+  (let* ((command-args (append (list "exec")
+                               args
+                               (when kubernetes--current-namespace
+                                 (list (format "--namespace=%s" kubernetes--current-namespace)))
+                               (list pod-name exec-command)))
 
          (interactive-tty (member "-t" args))
-         (mode (if interactive-tty
-                   t ; Means use compilation-shell-minor-mode
-                 #'kubernetes-logs-mode)))
+         (buf
+          (if interactive-tty
+              (kubernetes--term-buffer-start kubernetes-exec-buffer-name
+                                   kubernetes-kubectl-executable
+                                   command-args)
+            (kubernetes--process-buffer-start kubernetes-exec-buffer-name
+                                    #'kubernetes-mode
+                                    kubernetes-kubectl-executable
+                                    command-args))))
 
-    (with-current-buffer (compilation-start (string-join command " ") mode (lambda (_) kubernetes-pod-buffer-name))
-      (when (and interactive-tty kubernetes-clean-up-interactive-exec-buffers)
-        (make-local-variable 'compilation-finish-functions)
-        (add-to-list 'compilation-finish-functions #'kubernetes--kill-compilation-buffer t))
-      (set-process-query-on-exit-flag (get-buffer-process (current-buffer)) nil)
-      (select-window (display-buffer (current-buffer))))))
+    (when (and interactive-tty kubernetes-clean-up-interactive-exec-buffers)
+      (set-process-sentinel (get-buffer-process buf) #'kubernetes--kill-process-quietly))
+
+    (select-window (display-buffer buf))))
 
 
 (magit-define-popup kubernetes-config-popup
@@ -2197,7 +2246,7 @@ Type \\[kubernetes-refresh] to refresh the buffer.
   "Keymap for `kubernetes-logs-mode'.")
 
 ;;;###autoload
-(define-compilation-mode kubernetes-logs-mode "Kubernetes Logs"
+(define-derived-mode kubernetes-logs-mode kubernetes-mode "Kubernetes Logs"
   "Mode for displaying and inspecting Kubernetes logs.
 
 \\<kubernetes-logs-mode-map>\
@@ -2214,13 +2263,10 @@ Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
   "Keymap for `kubernetes-log-line-mode'.")
 
 ;;;###autoload
-(define-compilation-mode kubernetes-log-line-mode "Log Line"
+(define-derived-mode kubernetes-log-line-mode kubernetes-mode "Log Line"
   "Mode for inspecting Kubernetes log lines.
 
-\\{kubernetes-log-line-mode-map}"
-  (read-only-mode)
-  (setq-local compilation-error-regexp-alist nil)
-  (setq-local compilation-error-regexp-alist-alist nil))
+\\{kubernetes-log-line-mode-map}")
 
 ;;;###autoload
 (define-derived-mode kubernetes-display-thing-mode kubernetes-mode "Kubernetes Object"
