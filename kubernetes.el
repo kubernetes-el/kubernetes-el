@@ -270,6 +270,8 @@ Optional CLEANUP-CB is a function of no arguments that is always
 called after the other callbacks.  It can be used for releasing
 resources.
 
+After callbacks are executed, the process and its buffer will be killed.
+
 Returns the process object for this execution of kubectl."
   (let* ((buf (generate-new-buffer " kubectl"))
          (process (apply #'start-process "kubectl" buf kubernetes-kubectl-executable args))
@@ -289,7 +291,10 @@ Returns the process object for this execution of kubectl."
                         (t
                          (kubernetes--kubectl-default-error-handler (process-buffer proc) status)))))
               (when cleanup-cb
-                (funcall cleanup-cb))))))
+                (funcall cleanup-cb))
+              (kubernetes--kill-process-quietly proc)
+              (when-let (buf (process-buffer proc))
+                (ignore-errors (kill-buffer buf)))))))
     (set-process-sentinel process sentinel)
     process))
 
@@ -775,11 +780,14 @@ buffer is killed."
   (setq kubernetes--poll-secrets-process nil))
 
 (defun kubernetes--kill-process-quietly (proc)
-  (when (and proc (process-live-p proc))
+  (when proc
     (set-process-query-on-exit-flag proc nil)
     (set-process-sentinel proc nil)
-    (set-process-buffer proc nil)
-    (kill-process proc)))
+    (when-let (buf (process-buffer proc))
+      (set-process-buffer proc nil)
+      (ignore-errors (kill-buffer buf)))
+    (when (process-live-p proc)
+      (kill-process proc))))
 
 (defun kubernetes--kill-polling-processes ()
   (mapc #'kubernetes--kill-process-quietly (list kubernetes--poll-pods-process
