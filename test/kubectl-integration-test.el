@@ -69,11 +69,13 @@ will be mocked."
 
 (ert-deftest running-kubectl-works ()
   (if (executable-find kubernetes-kubectl-executable)
-      (let ((result-buffer (kubernetes--await-on-async
+      (let ((result-string (kubernetes--await-on-async
                             (lambda (cb)
-                              (kubernetes--kubectl '("version" "--client") cb)))))
-        (with-current-buffer result-buffer
-          (should (string-prefix-p "Client Version:" (buffer-string)))))
+                              (kubernetes--kubectl '("version" "--client")
+                                                   (lambda (buf)
+                                                     (with-current-buffer buf
+                                                       (funcall cb (buffer-string)))))))))
+        (should (string-prefix-p "Client Version:" result-string)))
 
     (warn "kubectl is not installed. Skipping test.")))
 
