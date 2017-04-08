@@ -91,7 +91,7 @@ git-release :
 		read -p "Push to GitHub? [yN]: " CHOICE; \
 		case $$CHOICE in \
 			[Nn]|"") echo "Remember to push the tag with your changes."; exit;; \
-			[Yy]   ) git push --quiet origin "$${TAG}"; break;; \
+			[Yy]   ) git push --quiet origin master "$${TAG}"; break;; \
 		esac \
 	done
 
