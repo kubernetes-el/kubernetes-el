@@ -784,9 +784,11 @@ buffer is killed."
 (defun kubernetes--kill-process-quietly (proc &optional _signal)
   (when proc
     (set-process-sentinel proc nil)
-    (when-let (buf (process-buffer proc))
-      (ignore-errors (kill-buffer buf)))
-    (delete-process proc)))
+    (set-process-query-on-exit-flag proc nil)
+    (let ((buf (process-buffer proc)))
+      (ignore-errors (kill-process proc))
+      (ignore-errors (delete-process proc))
+      (ignore-errors (kill-buffer buf)))))
 
 (defun kubernetes--kill-polling-processes ()
   (mapc #'kubernetes--kill-process-quietly (list kubernetes--poll-pods-process
