@@ -1,5 +1,9 @@
 # kubernetes-el
 
+[![Build Status](https://travis-ci.org/chrisbarrett/kubernetes-el.svg?branch=master)](https://travis-ci.org/chrisbarrett/kubernetes-el)
+[![MELPA](http://melpa.milkbox.net/packages/kubernetes-badge.svg)](http://melpa.milkbox.net/#/kubernetes)
+[![License GPL 3](https://img.shields.io/github/license/chrisbarrett/kubernetes-el.svg)][COPYING]
+
 A magit-style interface to the Kubernetes command-line client.
 
 ![Screenshot of Kubernetes Emacs client](assets/screenshot.png)
@@ -45,7 +49,8 @@ you use [use-package][], the form below will get you started.
 Yes please! 😻 See [contributing.org][]
 
 
-[contributing.org]: ./contributing.org
 [Cask]: https://github.com/cask/cask
+[COPYING]: ./COPYING
 [Evil]: https://github.com/emacs-evil/evil
+[contributing.org]: ./contributing.org
 [use-package]: https://github.com/jwiegley/use-package
