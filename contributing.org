@@ -102,8 +102,9 @@ hiddenp = t | nil
 
 properties = SYMBOL SEXP
 
-ast = ( line . STRING )
-    | ( heading . STRING )
+ast = STRING
+    | ( line . STRING )
+    | ( heading . ast )
     | ( indent ast )
     | ( propertize ( properties* ) ast )
     | ( section ( SYMBOL hiddenp ) ast )

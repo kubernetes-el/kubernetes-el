@@ -890,14 +890,19 @@ Warning: This could blow the stack if the AST gets too deep."
 
       ;; Core forms
 
-      (`(line . ,str)
-       (insert (concat (kubernetes--indentation indent-level) str))
+      ((and x (pred stringp))
+       (insert (concat (kubernetes--indentation indent-level) x)))
+
+      (`(line . ,inner-ast)
+       (kubernetes--eval-ast inner-ast indent-level)
        (newline))
 
-      (`(heading . ,str)
+      (`(heading . ,inner-ast)
        (unless magit-insert-section--current
          (error "Eval AST: Inserting a heading, but not in a section"))
-       (magit-insert-heading (concat (kubernetes--indentation indent-level) str)))
+       (magit-insert-heading (with-temp-buffer
+                               (save-excursion (kubernetes--eval-ast inner-ast indent-level))
+                               (buffer-substring (line-beginning-position) (line-end-position)))))
 
       (`(section (,sym ,hide) ,inner-ast)
        (eval `(magit-insert-section (,sym nil ,hide)
