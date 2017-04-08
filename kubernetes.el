@@ -893,7 +893,7 @@ Warning: This could blow the stack if the AST gets too deep."
 
       (`(heading . ,str)
        (unless magit-insert-section--current
-         (error "Inserting a heading, but not in a section"))
+         (error "Eval AST: Inserting a heading, but not in a section"))
        (magit-insert-heading (concat (kubernetes--indentation indent-level) str)))
 
       (`(section (,sym ,hide) ,inner-ast)
@@ -910,6 +910,17 @@ Warning: This could blow the stack if the AST gets too deep."
 
       (`(indent ,inner-ast)
        (kubernetes--eval-ast inner-ast (1+ indent-level)))
+
+      (`(key-value ,width ,k ,v)
+       (unless (numberp width) (error "Eval AST: key-value width was not a number"))
+       (when (< width 0) (error "Eval AST: key-value width was negative"))
+       (unless (stringp k) (error "Eval AST: key-value key was not a string"))
+       (unless (stringp v) (error "Eval AST: key-value value was not a string"))
+
+       (let* ((fmt-string (concat "%-" (number-to-string width) "s"))
+              (str (concat (propertize (format fmt-string (concat k ":")) 'face 'magit-header-line)
+                           v)))
+         (kubernetes--eval-ast `(line . ,str) indent-level)))
 
       ((and actions (pred listp))
        (dolist (action actions)

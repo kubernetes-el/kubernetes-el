@@ -100,4 +100,10 @@
                                  (buffer-string))))))
 
 
+(ert-deftest eval-ast--key-value-pairs ()
+  (let ((ast '(key-value 10 "Key" "Value")))
+    (with-temp-buffer
+      (save-excursion (kubernetes--eval-ast ast))
+      (should (equal (format "%-10s%s\n" "Key:" "Value") (substring-no-properties (buffer-string)))))))
+
 ;;; eval-ast-test.el ends here
