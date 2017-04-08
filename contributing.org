@@ -105,9 +105,9 @@ properties = SYMBOL SEXP
 ast = STRING
     | ( line . STRING )
     | ( heading . ast )
-    | ( indent ast )
-    | ( propertize ( properties* ) ast )
-    | ( section ( SYMBOL hiddenp ) ast )
+    | ( indent ast* )
+    | ( propertize ( properties* ) ast* )
+    | ( section ( SYMBOL hiddenp ) ast* )
     | ( padding )
     | ( ast* )
 #+END_EXAMPLE
@@ -125,7 +125,7 @@ keywidth = INTEGER
 
 sugared
     = ast
-    | ( nav-prop ( navtype SEXP+ ) ast )
-    | ( copy-prop STRING ast )
+    | ( nav-prop ( navtype SEXP+ ) ast* )
+    | ( copy-prop STRING ast* )
     | ( key-value keywidth STRING STRING )
 #+END_EXAMPLE
