@@ -13,16 +13,25 @@
 
 (require 'kubernetes (f-join project-root "kubernetes.el"))
 
+
+;; rejection
+
 (ert-deftest eval-ast--rejects-invalid-ast ()
   (let ((ast '(foo "bar")))
     (with-temp-buffer
       (should-error (kubernetes--eval-ast ast)))))
+
+
+;; padding
 
 (ert-deftest eval-ast--inserts-newline-for-padding ()
   (let ((ast '(padding)))
     (with-temp-buffer
       (kubernetes--eval-ast ast)
       (should (equal "\n" (buffer-string))))))
+
+
+;; line
 
 (ert-deftest eval-ast--inserts-newlines-for-empty-strings ()
   (let ((ast '(line . "")))
@@ -36,11 +45,17 @@
       (kubernetes--eval-ast ast)
       (should (equal "foo\n" (buffer-string))))))
 
+
+;; propertize
+
 (ert-deftest eval-ast--propertizes-regions ()
   (let ((ast '(propertize (face error) (line . "foo"))))
     (with-temp-buffer
       (kubernetes--eval-ast ast)
       (should (equal (propertize "foo\n" 'face 'error) (buffer-string))))))
+
+
+;; sequence
 
 (ert-deftest eval-ast--sequencing-actions ()
   (let ((ast '((line . "foo")
@@ -48,6 +63,9 @@
     (with-temp-buffer
       (save-excursion (kubernetes--eval-ast ast))
       (should (equal "foo\nbar\n" (buffer-string))))))
+
+
+;; heading
 
 (ert-deftest eval-ast--inserts-headings ()
   (let ((ast '(heading . "hello")))
@@ -63,6 +81,9 @@
     (with-temp-buffer
       (should-error (kubernetes--eval-ast ast)))))
 
+
+;; section
+
 (ert-deftest eval-ast--inserting-sections ()
   (let ((ast '(section (test nil)
                        (line . "foo"))))
@@ -72,6 +93,9 @@
       (should (magit-current-section))
       (should (equal 'test (magit-section-type (magit-current-section))))
       (should (not (magit-section-hidden (magit-current-section)))))))
+
+
+;; indent
 
 (ert-deftest eval-ast--indents-ast ()
   (let ((ast '(indent (line . "hello"))))
@@ -100,10 +124,13 @@
                                  (buffer-string))))))
 
 
+;; key-value
+
 (ert-deftest eval-ast--key-value-pairs ()
   (let ((ast '(key-value 10 "Key" "Value")))
     (with-temp-buffer
       (save-excursion (kubernetes--eval-ast ast))
       (should (equal (format "%-10s%s\n" "Key:" "Value") (substring-no-properties (buffer-string)))))))
+
 
 ;;; eval-ast-test.el ends here
