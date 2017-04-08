@@ -1,20 +1,93 @@
 #+TITLE: Contributing
 #+DESCRIPTION: Documentation on internals for contributors.
 
-* State
+Hello there, intrepid contributor! Please see the [[file:Readme.md][Readme]] for basic information
+about this project.
+
+If you would like to submit a bug report or contribute code or documentation,
+read over the guidelines for the expectations. Then follow the development setup
+steps to get started.
+
+* Contribution Guidlines
+
+The first thing you should do is browse open tickets for discussion relating to
+the bug or feature you want to work on. Do your best here!
+
+** Bug reports
+
+Make sure you're using the latest release of the package, and are using
+Emacs 25.
+
+If no ticket exists, you can write a new issue. If you are reporting a bug,
+provide reproduction steps, as well as your Emacs version and basic OS info.
+
+If the issue relates to integration with =kubectl=, make sure to supply your
+=kubectl= version.
+
+** Code changes
+
+For code changes, please follow the following guidelines.
+
+- Create a GitHub issue to track your work
+- For code changes, fork the repository
+- Create a feature branch for your PR
+- Try to group commits into logical units, and take the time to write good
+  commit messages
+- Run tests and make sure they all pass before submitting your PR.
+
+* Development setup
+
+You will need some third-party tools to build this project. Emacs 25+, GNU Make
+and [[https://github.com/cask/cask][Cask]] are the most important, but don't worry too much about that yet.
+
+You do not need =kubectl= installed in order to run tests, but you do need it to
+run the package inside Emacs.
+
+If you want to contribute code changes, use github's UI to create a fork of the
+main repository. Then, clone your forked repo:
+
+#+BEGIN_SRC shell
+USERNAME='your github username here'
+
+git clone "git@github.com:$USERNAME/kubernetes-el.git"
+#+END_SRC
+
+If you don't need to contribute changes upstream, you can just clone the main
+repository without forking.
+
+Running make will tell you if you need to install anything to hack on the
+project:
+
+#+BEGIN_SRC
+cd kubernetes-el
+make
+#+END_SRC
+
+As a final check, run tests to make sure everything works. All tests should
+pass.
+
+#+BEGIN_SRC
+make test
+#+END_SRC
+
+* Implementation Notes
+
+Below are some general notes to help make sense of this beast.
+
+** State
 
 The package stores its state in several variables ([[file:kubernetes.el::;;%20Main%20state][here]]), which are set by background
 polling timers ([[file:kubernetes.el::;;%20Background%20polling%20processes][here]]). These variables are cleared whenever:
 
-1. The user closes the display-pods buffer, or
-2. The user switches their Kubernetes context.
+1. The user closes all the main Kubernetes buffers, or
+2. The user changes their Kubernetes context via the porcelain.
 
 Certain operations can update these state variables, such as attempting to read
 a list of pods or contexts from the user before the timers have completed, or
 updating the current namespace, which invalidates most cache variables but
 retains the current context.
 
-* Rendering
+** Rendering
 
 Rendering the main pods list is divided into two stages:
 
@@ -32,3 +105,6 @@ ast = ( line . STRING )
     | ( padding )
     | ( ast* )
 #+END_EXAMPLE
+
+Future optimizations could include dirty checking to only update certain parts
+of the buffer.
