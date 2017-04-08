@@ -40,6 +40,12 @@ you use [use-package][], the form below will get you started.
   (use-package kubernetes-evil :after evil))
 ```
 
+## Contributing
+
+Yes please! 😻 See [contributing.org][]
+
+
+[contributing.org]: ./contributing.org
 [Cask]: https://github.com/cask/cask
 [Evil]: https://github.com/emacs-evil/evil
 [use-package]: https://github.com/jwiegley/use-package
