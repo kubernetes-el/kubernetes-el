@@ -3,9 +3,7 @@
 ;;; Code:
 
 (when (require 'undercover nil t)
-  (undercover "*.el"
-              (:exclude "kubernetes-evil.el")
-              (:send-report nil)))
+  (undercover "*.el" (:exclude "kubernetes-evil.el")))
 
 (require 'kubernetes)
 
