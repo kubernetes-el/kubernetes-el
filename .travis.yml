@@ -24,7 +24,6 @@ before_install:
   - make -f emacs-travis.mk install_emacs
   - make -f emacs-travis.mk install_cask
 install:
-  # Install dependencies
-  - make
+  - cask install
 script:
   - make test
