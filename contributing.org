@@ -18,8 +18,8 @@ the bug or feature you want to work on. Do your best here!
 Make sure you're using the latest release of the package, and are using
 Emacs 25.
 
-If no ticket exists, you can write a new issue. If you are reporting a bug,
-provide reproduction steps, as well as your Emacs version and basic OS info.
+If no ticket exists, you can write a new issue. Provide reproduction steps if
+you can, as well as your Emacs version and basic OS info.
 
 If the issue relates to integration with =kubectl=, make sure to supply your
 =kubectl= version.
@@ -28,32 +28,31 @@ If the issue relates to integration with =kubectl=, make sure to supply your
 
 For code changes, please follow the following guidelines.
 
+
 - Create a GitHub issue to track your work
-- For code changes, fork the repository
+- Fork the repository on GitHub
 - Create a feature branch for your PR
-- Try to group commits into logical units, and take the time to write good
-  commit messages
+- Take the time to write good commit messages
 - Run tests and make sure they all pass before submitting your PR.
 
 * Development setup
 
 You will need some third-party tools to build this project. Emacs 25+, GNU Make
-and [[https://github.com/cask/cask][Cask]] are the most important, but don't worry too much about that yet.
+and [[https://github.com/cask/cask][Cask]] are the most important.
 
 You do not need =kubectl= installed in order to run tests, but you do need it to
 run the package inside Emacs.
 
-If you want to contribute code changes, use github's UI to create a fork of the
-main repository. Then, clone your forked repo:
+If you want to contribute code changes, you should fork the repository.
+Otherwise clone the main repo.
 
 #+BEGIN_SRC shell
-USERNAME='your github username here'
+# If forked
+git clone "git@github.com:<username>/kubernetes-el.git"
 
-git clone "git@github.com:$USERNAME/kubernetes-el.git"
+# Otherwise
+git clone "git@github.com:chrisbarrett/kubernetes-el.git"
 #+END_SRC
-
-If you don't need to contribute changes upstream, you can just clone the main
-repository without forking.
 
 Running make will tell you if you need to install anything to hack on the
 project:
@@ -82,10 +81,7 @@ polling timers ([[file:kubernetes.el::;;%20Background%20polling%20processes][her
 1. The user closes all the main Kubernetes buffers, or
 2. The user changes their Kubernetes context via the porcelain.
 
-Certain operations can update these state variables, such as attempting to read
-a list of pods or contexts from the user before the timers have completed, or
-updating the current namespace, which invalidates most cache variables but
-retains the current context.
+Certain user operations can update these state variables, e.g. updating the current namespace.
 
 ** Rendering
 
