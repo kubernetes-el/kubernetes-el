@@ -133,4 +133,49 @@
       (should (equal (format "%-10s%s\n" "Key:" "Value") (substring-no-properties (buffer-string)))))))
 
 
+;; nav-prop
+
+(ert-deftest eval-ast--nav-prop ()
+  (let ((ast '(nav-prop (:test "nav")
+                        (line . "Test"))))
+    (with-temp-buffer
+      (save-excursion (kubernetes--eval-ast ast))
+      (should (equal "Test\n" (buffer-string)))
+      (should (equal (list 'kubernetes-nav '(:test "nav"))
+                     (text-properties-at (point-min) (buffer-string)))))))
+
+(ert-deftest eval-ast--nav-prop-finishes-at-end-of-line ()
+  (let ((ast '(nav-prop (:test "nav")
+                        (line . "Test"))))
+    (with-temp-buffer
+      (save-excursion (kubernetes--eval-ast ast))
+      (let ((end (1- (line-end-position))))
+        (should (equal (list 'kubernetes-nav '(:test "nav"))
+                       (text-properties-at end (buffer-string))))))))
+
+
+;; copy-prop
+
+(ert-deftest eval-ast--copy-prop ()
+  (let ((ast '(copy-prop "foo" (line . "Test"))))
+    (with-temp-buffer
+      (save-excursion (kubernetes--eval-ast ast))
+      (should (equal "Test\n" (buffer-string)))
+      (should (equal (list 'kubernetes-copy "foo")
+                     (text-properties-at (point-min) (buffer-string)))))))
+
+(ert-deftest eval-ast--copy-prop-finishes-at-end-of-line ()
+  (let ((ast '(copy-prop "foo" (line . "Test"))))
+    (with-temp-buffer
+      (save-excursion (kubernetes--eval-ast ast))
+      (let ((end (1- (line-end-position))))
+        (should (equal (list 'kubernetes-copy "foo")
+                       (text-properties-at end (buffer-string))))))))
+
+(ert-deftest eval-ast--copy-prop-error-if-copy-value-not-a-string ()
+  (let ((ast '(copy-prop 1 (line . "Test"))))
+    (with-temp-buffer
+      (should-error (kubernetes--eval-ast ast)))))
+
+
 ;;; eval-ast-test.el ends here

@@ -887,6 +887,9 @@ INDENT-LEVEL is the current indentation level at which to render.
 Warning: This could blow the stack if the AST gets too deep."
   (let ((indent-level (or indent-level 0)))
     (pcase render-ast
+
+      ;; Core forms
+
       (`(line . ,str)
        (insert (concat (kubernetes--indentation indent-level) str))
        (newline))
@@ -911,6 +914,9 @@ Warning: This could blow the stack if the AST gets too deep."
       (`(indent ,inner-ast)
        (kubernetes--eval-ast inner-ast (1+ indent-level)))
 
+
+      ;; Sugar forms
+
       (`(key-value ,width ,k ,v)
        (unless (numberp width) (error "Eval AST: key-value width was not a number"))
        (when (< width 0) (error "Eval AST: key-value width was negative"))
@@ -922,9 +928,22 @@ Warning: This could blow the stack if the AST gets too deep."
                            v)))
          (kubernetes--eval-ast `(line . ,str) indent-level)))
 
+      (`(nav-prop ,spec ,inner-ast)
+       (kubernetes--eval-ast `(propertize (kubernetes-nav ,spec)
+                                ,inner-ast)
+                   indent-level))
+
+      (`(copy-prop ,copy-str ,inner-ast)
+       (unless (stringp copy-str)
+         (error "Eval AST: nav-prop copy-str was not a string"))
+       (kubernetes--eval-ast `(propertize (kubernetes-copy ,copy-str)
+                                ,inner-ast)
+                   indent-level))
+
       ((and actions (pred listp))
        (dolist (action actions)
          (kubernetes--eval-ast action indent-level)))
+
 
       (x
        (error "Unknown AST form: %s" x)))))
