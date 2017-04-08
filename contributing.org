@@ -90,17 +90,41 @@ Rendering the main pods list is divided into two stages:
 1. Take the current state and compile an AST of the desired changes
 2. Erase the buffer and interpret the AST to execute the changes ([[file:kubernetes.el::;;%20Render%20AST%20Interpreter][here]]).
 
-The AST is represented as a list with the following simple grammar:
+Future optimizations could include dirty checking to only update certain parts
+of the buffer.
+
+*** Core AST
+
+The core AST is represented as a list with the following simple grammar:
 
 #+BEGIN_EXAMPLE
 hiddenp = t | nil
 
+properties = SYMBOL SEXP
+
 ast = ( line . STRING )
     | ( heading . STRING )
+    | ( indent ast )
+    | ( propertize ( properties* ) ast )
     | ( section ( SYMBOL hiddenp ) ast )
     | ( padding )
     | ( ast* )
 #+END_EXAMPLE
 
-Future optimizations could include dirty checking to only update certain parts
-of the buffer.
+*** Sugar AST
+
+For convenience, the AST provides extra forms that desugar into the core
+forms above.
+
+#+BEGIN_EXAMPLE
+
+navtype = KEYWORD
+
+keywidth = INTEGER
+
+sugared
+    = ast
+    | ( nav-prop ( navtype SEXP+ ) ast )
+    | ( copy-prop STRING ast )
+    | ( key-value keywidth STRING STRING )
+#+END_EXAMPLE
