@@ -873,38 +873,50 @@ This is used to display the current state.")
 ;;
 ;; Implements an interpreter for a simple layout DSL for magit sections.
 
-(defun kubernetes--eval-ast (render-ast)
+(defvar kubernetes--render-indentation-width 2)
+
+(defsubst kubernetes--indentation (indent-level)
+  (let ((space ?\ ))
+    (make-string (* indent-level kubernetes--render-indentation-width) space)))
+
+(defun kubernetes--eval-ast (render-ast &optional indent-level)
   "Evaluate RENDER-AST in the context of the current buffer.
 
+INDENT-LEVEL is the current indentation level at which to render.
+
 Warning: This could blow the stack if the AST gets too deep."
-  (pcase render-ast
-    (`(line . ,str)
-     (insert str)
-     (newline))
+  (let ((indent-level (or indent-level 0)))
+    (pcase render-ast
+      (`(line . ,str)
+       (insert (concat (kubernetes--indentation indent-level) str))
+       (newline))
 
-    (`(heading . ,str)
-     (unless magit-insert-section--current
-       (error "Inserting a heading, but not in a section"))
-     (magit-insert-heading str))
+      (`(heading . ,str)
+       (unless magit-insert-section--current
+         (error "Inserting a heading, but not in a section"))
+       (magit-insert-heading (concat (kubernetes--indentation indent-level) str)))
 
-    (`(section (,sym ,hide) ,inner-ast)
-     (eval `(magit-insert-section (,sym nil ,hide)
-              (kubernetes--eval-ast ',inner-ast))))
+      (`(section (,sym ,hide) ,inner-ast)
+       (eval `(magit-insert-section (,sym nil ,hide)
+                (kubernetes--eval-ast ',inner-ast ,indent-level))))
 
-    (`(padding)
-     (newline))
+      (`(padding)
+       (newline))
 
-    (`(propertize ,spec ,inner-ast)
-     (let ((start (point)))
-       (kubernetes--eval-ast inner-ast)
-       (add-text-properties start (point) spec)))
+      (`(propertize ,spec ,inner-ast)
+       (let ((start (point)))
+         (kubernetes--eval-ast inner-ast indent-level)
+         (add-text-properties start (point) spec)))
 
-    ((and actions (pred listp))
-     (dolist (action actions)
-       (kubernetes--eval-ast action)))
+      (`(indent ,inner-ast)
+       (kubernetes--eval-ast inner-ast (1+ indent-level)))
 
-    (x
-     (error "Unknown AST form: %s" x))))
+      ((and actions (pred listp))
+       (dolist (action actions)
+         (kubernetes--eval-ast action indent-level)))
+
+      (x
+       (error "Unknown AST form: %s" x)))))
 
 
 ;; Context section rendering.

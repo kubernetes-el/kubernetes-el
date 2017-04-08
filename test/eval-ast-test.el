@@ -73,4 +73,31 @@
       (should (equal 'test (magit-section-type (magit-current-section))))
       (should (not (magit-section-hidden (magit-current-section)))))))
 
+(ert-deftest eval-ast--indents-ast ()
+  (let ((ast '(indent (line . "hello"))))
+    (with-temp-buffer
+      (save-excursion (kubernetes--eval-ast ast))
+      (should (equal "  hello\n" (substring-no-properties (buffer-string)))))))
+
+(ert-deftest eval-ast--indentation-padding-lacks-properties-directly-set-on-string ()
+  (let ((ast `(indent (line . ,(propertize "hello" 'face 'font-lock-warning-face)))))
+    (with-temp-buffer
+      (save-excursion (kubernetes--eval-ast ast))
+      (should (equal "  " (substring-no-properties (buffer-string) 0 2)))
+      (should (not (text-property-any 0 kubernetes--render-indentation-width
+                                      'face 'font-lock-warning-face
+                                      (buffer-string)))))))
+
+(ert-deftest eval-ast--indentation-padding-has-ast-declared-properties ()
+  (let ((ast '(indent
+               (propertize (face font-lock-warning-face)
+                           (line . "hello")))))
+    (with-temp-buffer
+      (save-excursion (kubernetes--eval-ast ast))
+      (should (equal "  " (substring-no-properties (buffer-string) 0 2)))
+      (should (text-property-any 0 kubernetes--render-indentation-width
+                                 'face 'font-lock-warning-face
+                                 (buffer-string))))))
+
+
 ;;; eval-ast-test.el ends here
