@@ -102,6 +102,11 @@ balance interface stuttering with update frequency."
   :group 'kubernetes
   :type 'boolean)
 
+(defcustom kubernetes-minimum-error-display-time 10
+  "Minimum time in seconds for which errors will be displayed in overview buffer."
+  :group 'kubernetes
+  :type 'integer)
+
 (defface kubernetes-context-name
   '((((class color) (background light)) :foreground "SkyBlue4")
     (((class color) (background  dark)) :foreground "LightSkyBlue1"))
@@ -159,6 +164,16 @@ balance interface stuttering with update frequency."
 ;; This state is cleared whenever the buffer is deleted or the context is
 ;; switched.
 
+(defvar kubernetes--last-error nil
+  "The last error response from kubectl.
+
+It is an alist with the following keys:
+  - message : the stderr from the process
+  - time : the time at which the error was set
+  - command : the executable command that failed.
+
+Used to provide error feedback in the overview.")
+
 (defvar kubernetes--get-pods-response nil
   "State representing the get pods response from the API.
 
@@ -187,6 +202,7 @@ Used for namespace selection within a cluster.")
   "The namespace to use in queries.  Overrides the context settings.")
 
 (defun kubernetes--state-clear ()
+  (setq kubernetes--last-error nil)
   (setq kubernetes--get-pods-response nil)
   (setq kubernetes--get-configmaps-response nil)
   (setq kubernetes--get-secrets-response nil)
@@ -195,9 +211,21 @@ Used for namespace selection within a cluster.")
   (setq kubernetes--get-namespaces-response nil)
   (setq kubernetes--current-namespace nil))
 
+(defun kubernetes--state-clear-error-if-stale ()
+  (-when-let ((&alist 'error (&alist 'time err-time)) (kubernetes--state))
+    (when (< kubernetes-minimum-error-display-time
+             (- (time-to-seconds) (time-to-seconds err-time)))
+      (setq kubernetes--last-error nil))))
+
+(defun kubernetes--state-set-error (message command)
+  (setq kubernetes--last-error `((message . ,message)
+                       (time . ,(current-time))
+                       (command . ,command))))
+
 (defun kubernetes--state ()
   "Return the current state as an alist."
   `((pods . ,kubernetes--get-pods-response)
+    (error . ,kubernetes--last-error)
     (configmaps . ,kubernetes--get-configmaps-response)
     (secrets . ,kubernetes--get-secrets-response)
     (services . ,kubernetes--get-services-response)
@@ -254,18 +282,19 @@ If lookup fails, return nil."
 ;; Main Kubernetes query routines
 
 (defun kubernetes--kubectl-default-error-handler (buf status)
-  (with-current-buffer buf
-    (unless (string-match-p (rx bol (* space) "killed:" (* space) "9" (* space) eol) status)
-      (error "Kubectl failed.  Reason: %s" (buffer-string)))))
+  (unless (equal (current-buffer) (get-buffer kubernetes-overview-buffer-name))
+    (with-current-buffer buf
+      (unless (string-match-p (rx bol (* space) "killed:" (* space) "9" (* space) eol) status)
+        (message "kubernetes command failed.  See the overview buffer for details.")))))
 
 (defun kubernetes--kubectl (args on-success &optional on-error cleanup-cb)
   "Run kubectl with ARGS.
 
 ON-SUCCESS is a function of one argument, called with the process' buffer.
 
-Optional ON-ERROR is a function of two argument, called with the
+Optional ON-ERROR is a function of two arguments, called with the
 process' buffer.  If omitted, it defaults to
-`kubernetes--kubectl-default-error-handler', which raises an
+`kubernetes--kubectl-default-error-handler', which logs an
 error if the process exited unexpectedly.
 
 Optional CLEANUP-CB is a function of no arguments that is always
@@ -275,30 +304,36 @@ resources.
 After callbacks are executed, the process and its buffer will be killed.
 
 Returns the process object for this execution of kubectl."
-  (let* ((buf (generate-new-buffer " kubectl"))
-         (process (apply #'start-process "kubectl" buf kubernetes-kubectl-executable args))
-         (sentinel
-          (lambda (proc status)
-            (unwind-protect
-                (cond
-                 ((zerop (process-exit-status proc))
-                  (funcall on-success buf))
-                 (t
-                  (cond (on-error
-                         (message "Kubectl failed.  Reason: %s"
-                                  (with-current-buffer buf
-                                    (buffer-string)))
-                         (funcall on-error buf))
-
-                        (t
-                         (kubernetes--kubectl-default-error-handler (process-buffer proc) status)))))
-              (when cleanup-cb
-                (funcall cleanup-cb))
-              (kubernetes--kill-process-quietly proc)
-              (when-let (buf (process-buffer proc))
-                (ignore-errors (kill-buffer buf)))))))
-    (set-process-sentinel process sentinel)
-    process))
+  (let ((buf (generate-new-buffer " kubectl"))
+        (err-buf (generate-new-buffer " kubectl-err"))
+        (command (cons kubernetes-kubectl-executable args)))
+    (make-process
+     :name "kubectl"
+     :buffer buf
+     :stderr err-buf
+     :command command
+     :noquery t
+     :sentinel
+     (lambda (proc status)
+       (unwind-protect
+           (let ((exit-code (process-exit-status proc)))
+             (cond
+              ((zerop exit-code)
+               (funcall on-success buf))
+              (t
+               (let ((err-message (with-current-buffer err-buf (buffer-string))))
+                 (unless (= 9 exit-code)
+                   (kubernetes--state-set-error err-message command))
+                 (cond (on-error
+                        (funcall on-error err-buf))
+                       (t
+                        (kubernetes--kubectl-default-error-handler err-buf status)))))))
+         (when cleanup-cb
+           (funcall cleanup-cb))
+         (let ((kill-buffer-query-functions nil))
+           (kubernetes--kill-process-quietly proc)
+           (ignore-errors (kill-buffer buf))
+           (ignore-errors (kill-buffer err-buf))))))))
 
 (defun kubernetes--kubectl-get-pods (cb &optional cleanup-cb)
   "Get all pods and execute callback CB with the parsed JSON.
@@ -1283,6 +1318,33 @@ Warning: This could blow the stack if the AST gets too deep."
                (padding)))))
 
 
+;; Error header rendering
+
+(defun kubernetes--render-error-header (state)
+  (-when-let* (((&alist 'error (&alist 'message message 'command command)) state)
+               (header (concat (propertize "kubectl command failed" 'face 'font-lock-warning-face)))
+               (message-paragraph
+                (propertize (concat (with-temp-buffer
+                                      (insert message)
+                                      (fill-region (point-min) (point-max))
+                                      (indent-region (point-min) (point-max) 2)
+                                      (string-trim-right (buffer-string))))
+                            'kubernetes-copy message))
+               (command-line
+                (let ((str (string-join command " ")))
+                  (propertize (format "  %-10s%s" "Command:" str) 'kubernetes-copy str))))
+
+    `(section (error nil)
+              ((heading . ,header)
+               (padding)
+               (section (message nil)
+                        ((line . ,message-paragraph)
+                         (padding)))
+               (section (command nil)
+                        ((line . ,command-line)
+                         (padding)))))))
+
+
 ;; Display pod view rendering routines.
 
 (defun kubernetes--display-pods-initialize-buffer ()
@@ -1322,7 +1384,8 @@ FORCE ensures it happens."
 
           (erase-buffer)
           (kubernetes--eval-ast `(section (root nil)
-                                (,(kubernetes--render-context-section state)
+                                (,(kubernetes--render-error-header state)
+                                 ,(kubernetes--render-context-section state)
                                  ,(kubernetes--render-pods-section state))))
           (goto-char pos)))
 
@@ -1366,7 +1429,8 @@ FORCE ensures it happens."
 
           (erase-buffer)
           (kubernetes--eval-ast `(section (root nil)
-                                (,(kubernetes--render-context-section state)
+                                (,(kubernetes--render-error-header state)
+                                 ,(kubernetes--render-context-section state)
                                  ,(kubernetes--render-configmaps-section state))))
           (goto-char pos)))
 
@@ -1410,7 +1474,8 @@ FORCE ensures it happens."
 
           (erase-buffer)
           (kubernetes--eval-ast `(section (root nil)
-                                (,(kubernetes--render-context-section state)
+                                (,(kubernetes--render-error-header state)
+                                 ,(kubernetes--render-context-section state)
                                  ,(kubernetes--render-secrets-section state))))
           (goto-char pos)))
 
@@ -2362,6 +2427,8 @@ FORCE ensures it happens."
                 ;; position in the buffer if a popup window is open.
                 (equal (window-buffer) buf))
 
+        (kubernetes--state-clear-error-if-stale)
+
         (let ((pos (point))
               (inhibit-read-only t)
               (inhibit-redisplay t)
@@ -2369,7 +2436,8 @@ FORCE ensures it happens."
 
           (erase-buffer)
           (kubernetes--eval-ast `(section (root nil)
-                                (,(kubernetes--render-context-section state)
+                                (,(kubernetes--render-error-header state)
+                                 ,(kubernetes--render-context-section state)
                                  ,(kubernetes--render-configmaps-section state t)
                                  ,(kubernetes--render-pods-section state t)
                                  ,(kubernetes--render-secrets-section state t)
