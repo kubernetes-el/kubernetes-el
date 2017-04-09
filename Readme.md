@@ -23,8 +23,8 @@ Run `M-x kubernetes-overview` to get started.
 
 ## Installation
 
-This package is available on [MELPA][] package repository. See the instructions
-there for how to configure Emacs to pull packages from MELPA.
+This package is available on the [MELPA][] package repository. See the
+instructions there for how to configure Emacs to pull packages from MELPA.
 
 Once you've set that up, use your preferred method of configuring and installing
 packages. If you use [use-package][], the forms below will get you started.
@@ -37,7 +37,7 @@ packages. If you use [use-package][], the forms below will get you started.
              kubernetes-display-configmaps
              kubernetes-display-secrets))
 
-;; If you want to pull in the Evil compatability package.
+;; If you want to pull in the Evil compatibility package.
 (use-package kubernetes-evil
   :ensure t
   :after kubernetes)
