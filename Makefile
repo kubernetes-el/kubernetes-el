@@ -1,6 +1,8 @@
 CASK ?= cask
 EMACS ?= emacs
 
+REPO = github.com/chrisbarrett/kubernetes-el
+
 SRCS = .cask kubernetes.el kubernetes-evil.el
 PACKAGE_FILE = kubernetes.el
 
@@ -9,7 +11,8 @@ TAR     := dist/kubernetes-$(VERSION).tar
 
 
 .PHONY: build dist install help test clean clean-all release \
-	set-package-version git-release assert-on-master assert-clean-worktree
+	set-package-version assert-on-master assert-clean-worktree \
+	git-release github-browse-release
 
 
 build : $(SRCS)
@@ -58,7 +61,7 @@ clean-all: clean
 	rm -rf .cask "~/.emacs.d/elpa/kubernetes-$(VERSION)"
 
 
-release : assert-clean-worktree assert-on-master clean set-package-version dist git-release
+release : assert-clean-worktree assert-on-master clean set-package-version dist git-release github-browse-release
 	@echo 'Release successful.'
 
 
@@ -94,6 +97,12 @@ git-release :
 			[Yy]   ) git push --quiet origin master "$${TAG}"; break;; \
 		esac \
 	done
+
+
+github-browse-release :
+	@export TAG="$$(git describe --abbrev=0 --tags)"; \
+	python -mwebbrowser "https://$(REPO)/releases/tag/$$TAG"
+
 
 .cask :
 	${CASK} install
