@@ -23,26 +23,36 @@ Run `M-x kubernetes-overview` to get started.
 
 ## Installation
 
+This package is available on [MELPA][] package repository. See the instructions
+there for how to configure Emacs to pull packages from MELPA.
+
+Once you've set that up, use your preferred method of configuring and installing
+packages. If you use [use-package][], the forms below will get you started.
+
+```elisp
+(use-package kubernetes
+  :ensure t
+  :commands (kubernetes-overview
+             kubernetes-display-pods
+             kubernetes-display-configmaps
+             kubernetes-display-secrets))
+
+;; If you want to pull in the Evil compatability package.
+(use-package kubernetes-evil
+  :ensure t
+  :after kubernetes)
+```
+
+Otherwise, you can install the packages with `M-x package-install`.
+
+## Manual Installation
+
 Requires Emacs 25 and [Cask][].
 
 ```sh
 git clone git@github.com:chrisbarrett/kubernetes-el.git
 cd kubernetes-el
 make && make install
-```
-
-Once you've set that up, use your preferred method of configuring packages. If
-you use [use-package][], the form below will get you started.
-
-```elisp
-(use-package kubernetes
-  :commands (kubernetes-overview
-             kubernetes-display-pods
-             kubernetes-display-configmaps
-             kubernetes-display-secrets)
-
-  :config
-  (use-package kubernetes-evil :after evil))
 ```
 
 ## Contributing
@@ -53,5 +63,6 @@ Yes please! 😻 See [contributing.org][]
 [Cask]: https://github.com/cask/cask
 [COPYING]: ./COPYING
 [Evil]: https://github.com/emacs-evil/evil
+[MELPA]: http://melpa.milkbox.net/#/getting-started
 [contributing.org]: ./contributing.org
 [use-package]: https://github.com/jwiegley/use-package
