@@ -304,36 +304,42 @@ resources.
 After callbacks are executed, the process and its buffer will be killed.
 
 Returns the process object for this execution of kubectl."
-  (let ((buf (generate-new-buffer " kubectl"))
-        (err-buf (generate-new-buffer " kubectl-err"))
-        (command (cons kubernetes-kubectl-executable args)))
-    (make-process
-     :name "kubectl"
-     :buffer buf
-     :stderr err-buf
-     :command command
-     :noquery t
-     :sentinel
-     (lambda (proc status)
-       (unwind-protect
-           (let ((exit-code (process-exit-status proc)))
-             (cond
-              ((zerop exit-code)
-               (funcall on-success buf))
-              (t
-               (let ((err-message (with-current-buffer err-buf (buffer-string))))
-                 (unless (= 9 exit-code)
-                   (kubernetes--state-set-error err-message command))
-                 (cond (on-error
-                        (funcall on-error err-buf))
-                       (t
-                        (kubernetes--kubectl-default-error-handler err-buf status)))))))
-         (when cleanup-cb
-           (funcall cleanup-cb))
-         (let ((kill-buffer-query-functions nil))
-           (kubernetes--kill-process-quietly proc)
-           (ignore-errors (kill-buffer buf))
-           (ignore-errors (kill-buffer err-buf))))))))
+  (let* ((buf (generate-new-buffer " kubectl"))
+         (err-buf (generate-new-buffer " kubectl-err"))
+         (command (cons kubernetes-kubectl-executable args))
+         (proc (make-process
+                :name "kubectl"
+                :buffer buf
+                :stderr err-buf
+                :command command
+                :noquery t
+                :sentinel
+                (lambda (proc status)
+                  (unwind-protect
+                      (let ((exit-code (process-exit-status proc)))
+                        (cond
+                         ((zerop exit-code)
+                          (funcall on-success buf))
+                         (t
+                          (let ((err-message (with-current-buffer err-buf (buffer-string))))
+                            (unless (= 9 exit-code)
+                              (kubernetes--state-set-error err-message command))
+                            (cond (on-error
+                                   (funcall on-error err-buf))
+                                  (t
+                                   (kubernetes--kubectl-default-error-handler err-buf status)))))))
+                    (when cleanup-cb
+                      (funcall cleanup-cb))
+                    (kubernetes--kill-process-quietly proc))))))
+
+    ;; Clean up stderr buffer when stdout buffer is killed.
+    (with-current-buffer buf
+      (add-hook 'kill-buffer-hook (lambda ()
+                                    (let ((kill-buffer-query-functions nil))
+                                      (ignore-errors (kill-buffer err-buf))))
+                nil t))
+
+    proc))
 
 (defun kubernetes--kubectl-get-pods (cb &optional cleanup-cb)
   "Get all pods and execute callback CB with the parsed JSON.
@@ -786,7 +792,8 @@ Do not use this variable directly. Instead, use its corresponding accessors.")
   (when proc
     (set-process-sentinel proc nil)
     (set-process-query-on-exit-flag proc nil)
-    (let ((buf (process-buffer proc)))
+    (let ((kill-buffer-query-functions nil)
+          (buf (process-buffer proc)))
       (ignore-errors (kill-process proc))
       (ignore-errors (delete-process proc))
       (ignore-errors (kill-buffer buf)))))
