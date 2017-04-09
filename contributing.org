@@ -103,11 +103,12 @@ hiddenp = t | nil
 properties = SYMBOL SEXP
 
 ast = STRING
-    | ( line . STRING )
-    | ( heading . ast )
+    | ( line STRING* )
+    | ( heading ast )
     | ( indent ast* )
     | ( propertize ( properties* ) ast* )
     | ( section ( SYMBOL hiddenp ) ast* )
+    | ( mark-for-delete ast* )
     | ( padding )
     | ( ast* )
 #+END_EXAMPLE
@@ -128,5 +129,4 @@ sugared
     | ( nav-prop ( navtype SEXP+ ) ast* )
     | ( copy-prop STRING ast* )
     | ( key-value keywidth STRING STRING )
-    | ( mark-for-delete ast* )
 #+END_EXAMPLE
