@@ -1145,16 +1145,16 @@ Warning: This could blow the stack if the AST gets too deep."
                    'metadata (&alist 'name name 'creationTimestamp created-time))
            configmap)
           (line `(line ,(concat
-                           ;; Name
-                           (format "%-45s " (kubernetes--ellipsize name 45))
+                         ;; Name
+                         (format "%-45s " (kubernetes--ellipsize name 45))
 
-                           ;; Data
-                           (propertize (format "%6s " (seq-length data)) 'face 'magit-dimmed)
+                         ;; Data
+                         (propertize (format "%6s " (seq-length data)) 'face 'magit-dimmed)
 
-                           ;; Age
-                           (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
-                             (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
-                                         'face 'magit-dimmed))))))
+                         ;; Age
+                         (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
+                           (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
+                                       'face 'magit-dimmed))))))
     `(nav-prop (:configmap-name ,name)
                (copy-prop ,name
                           ,(cond
@@ -1220,16 +1220,16 @@ Warning: This could blow the stack if the AST gets too deep."
   (-let* (((&alist 'data data 'metadata (&alist 'name name 'creationTimestamp created-time))
            secret)
           (line `(line ,(concat
-                           ;; Name
-                           (format "%-45s " (kubernetes--ellipsize name 45))
+                         ;; Name
+                         (format "%-45s " (kubernetes--ellipsize name 45))
 
-                           ;; Data
-                           (propertize (format "%6s " (seq-length data)) 'face 'magit-dimmed)
+                         ;; Data
+                         (propertize (format "%6s " (seq-length data)) 'face 'magit-dimmed)
 
-                           ;; Age
-                           (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
-                             (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
-                                         'face 'magit-dimmed))))))
+                         ;; Age
+                         (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
+                           (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
+                                       'face 'magit-dimmed))))))
 
     `(nav-prop (:secret-name ,name)
                (copy-prop ,name
@@ -1317,20 +1317,20 @@ Warning: This could blow the stack if the AST gets too deep."
                                  'externalIPs external-ips))
            service)
           (line `(line ,(concat
-                           ;; Name
-                           (format "%-30s " (kubernetes--ellipsize name 30))
+                         ;; Name
+                         (format "%-30s " (kubernetes--ellipsize name 30))
 
-                           ;; Internal IP
-                           (propertize (format "%15s " internal-ip) 'face 'magit-dimmed)
+                         ;; Internal IP
+                         (propertize (format "%15s " internal-ip) 'face 'magit-dimmed)
 
-                           ;; External IP
-                           (let ((ips (append external-ips nil)))
-                             (propertize (format "%15s " (or (car ips) "")) 'face 'magit-dimmed))
+                         ;; External IP
+                         (let ((ips (append external-ips nil)))
+                           (propertize (format "%15s " (or (car ips) "")) 'face 'magit-dimmed))
 
-                           ;; Age
-                           (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
-                             (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
-                                         'face 'magit-dimmed))))))
+                         ;; Age
+                         (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
+                           (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
+                                       'face 'magit-dimmed))))))
     `(nav-prop (:service-name ,name)
                (copy-prop ,name
                           ,(cond
