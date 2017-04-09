@@ -738,83 +738,49 @@ buffer is killed."
 
 ;; Background polling processes
 
-(defvar kubernetes--poll-namespaces-process nil
-  "Single process used to prevent concurrent namespace refreshes.")
+(defmacro kubernetes-define-polling-process (resource)
+  "Create resource polling-related definitions.
 
-(defun kubernetes--set-poll-namespaces-process (proc)
-  (kubernetes--release-poll-namespaces-process)
-  (setq kubernetes--poll-namespaces-process proc))
+RESOURCE is the name of the resource as a symbol.
 
-(defun kubernetes--release-poll-namespaces-process ()
-  (when-let (proc kubernetes--poll-namespaces-process)
-    (when (process-live-p proc)
-      (kill-process proc)))
-  (setq kubernetes--poll-namespaces-process nil))
+Defines the following functions:
 
-(defvar kubernetes--poll-context-process nil
-  "Single process used to prevent concurrent config refreshes.")
+- `kubernetes--set-poll-RESOURCE-process'
+- `kubernetes--release-poll-RESOURCE-process'
+- `kubernetes--poll-RESOURCE-process'."
+  (unless (symbolp resource) (error "RESOURCE must be a symbol"))
+  (let ((proc-var-name (intern (format "kubernetes--internal-poll-%s-process" resource)))
+        (proc-live-p (intern (format "kubernetes--poll-%s-process-live-p" resource)))
+        (releaser-name (intern (format "kubernetes--release-poll-%s-process" resource)))
+        (setter-name (intern (format "kubernetes--set-poll-%s-process" resource))))
+    `(progn
+       (defvar ,proc-var-name nil
+         "Variable used to coordinate polling access to resources.
 
-(defun kubernetes--set-poll-context-process (proc)
-  (kubernetes--release-poll-context-process)
-  (setq kubernetes--poll-context-process proc))
+Do not use this variable directly. Instead, use its corresponding accessors.")
 
-(defun kubernetes--release-poll-context-process ()
-  (when-let (proc kubernetes--poll-context-process)
-    (when (process-live-p proc)
-      (kill-process proc)))
-  (setq kubernetes--poll-context-process nil))
+       (defun ,proc-live-p ()
+         "Get the polling process for this resource if it is running."
+         (when-let (proc ,proc-var-name)
+           (when (process-live-p proc)
+             proc)))
 
-(defvar kubernetes--poll-pods-process nil
-  "Single process used to prevent concurrent get pods requests.")
+       (defun ,setter-name (proc)
+         "Set the polling process to PROC."
+         (,releaser-name)
+         (setq ,proc-var-name proc))
 
-(defun kubernetes--set-poll-pods-process (proc)
-  (kubernetes--release-poll-pods-process)
-  (setq kubernetes--poll-pods-process proc))
+       (defun ,releaser-name ()
+         "Kill the existing polling process, if any."
+         (kubernetes--kill-process-quietly ,proc-var-name)
+         (setq ,proc-var-name nil)))))
 
-(defun kubernetes--release-poll-pods-process ()
-  (when-let (proc kubernetes--poll-pods-process)
-    (when (process-live-p proc)
-      (kill-process proc)))
-  (setq kubernetes--poll-pods-process nil))
-
-(defvar kubernetes--poll-configmaps-process nil
-  "Single process used to prevent concurrent configmap refreshes.")
-
-(defun kubernetes--set-poll-configmaps-process (proc)
-  (kubernetes--release-poll-configmaps-process)
-  (setq kubernetes--poll-configmaps-process proc))
-
-(defun kubernetes--release-poll-configmaps-process ()
-  (when-let (proc kubernetes--poll-configmaps-process)
-    (when (process-live-p proc)
-      (kill-process proc)))
-  (setq kubernetes--poll-configmaps-process nil))
-
-(defvar kubernetes--poll-services-process nil
-  "Single process used to prevent concurrent service refreshes.")
-
-(defun kubernetes--set-poll-services-process (proc)
-  (kubernetes--release-poll-services-process)
-  (setq kubernetes--poll-services-process proc))
-
-(defun kubernetes--release-poll-services-process ()
-  (when-let (proc kubernetes--poll-services-process)
-    (when (process-live-p proc)
-      (kill-process proc)))
-  (setq kubernetes--poll-services-process nil))
-
-(defvar kubernetes--poll-secrets-process nil
-  "Single process used to prevent concurrent secret refreshes.")
-
-(defun kubernetes--set-poll-secrets-process (proc)
-  (kubernetes--release-poll-secrets-process)
-  (setq kubernetes--poll-secrets-process proc))
-
-(defun kubernetes--release-poll-secrets-process ()
-  (when-let (proc kubernetes--poll-secrets-process)
-    (when (process-live-p proc)
-      (kill-process proc)))
-  (setq kubernetes--poll-secrets-process nil))
+(kubernetes-define-polling-process namespaces)
+(kubernetes-define-polling-process context)
+(kubernetes-define-polling-process pods)
+(kubernetes-define-polling-process configmaps)
+(kubernetes-define-polling-process secrets)
+(kubernetes-define-polling-process services)
 
 (defun kubernetes--kill-process-quietly (proc &optional _signal)
   (when proc
@@ -826,18 +792,12 @@ buffer is killed."
       (ignore-errors (kill-buffer buf)))))
 
 (defun kubernetes--kill-polling-processes ()
-  (mapc #'kubernetes--kill-process-quietly (list kubernetes--poll-pods-process
-                                       kubernetes--poll-context-process
-                                       kubernetes--poll-configmaps-process
-                                       kubernetes--poll-secrets-process
-                                       kubernetes--poll-services-process
-                                       kubernetes--poll-namespaces-process))
-  (setq kubernetes--poll-namespaces-process nil)
-  (setq kubernetes--poll-configmaps-process nil)
-  (setq kubernetes--poll-services-process nil)
-  (setq kubernetes--poll-secrets-process nil)
-  (setq kubernetes--poll-pods-process nil)
-  (setq kubernetes--poll-context-process nil))
+  (kubernetes--release-poll-namespaces-process)
+  (kubernetes--release-poll-services-process)
+  (kubernetes--release-poll-context-process)
+  (kubernetes--release-poll-pods-process)
+  (kubernetes--release-poll-configmaps-process)
+  (kubernetes--release-poll-secrets-process))
 
 
 ;; Timers
@@ -1853,7 +1813,7 @@ additional information of state changes."
       (kubernetes--redraw-buffers)
       (message "Refreshing..."))
 
-    (unless kubernetes--poll-namespaces-process
+    (unless (kubernetes--poll-namespaces-process-live-p)
       (kubernetes--set-poll-namespaces-process
        (kubernetes--kubectl-get-namespaces
         (lambda (config)
@@ -1863,7 +1823,7 @@ additional information of state changes."
         (lambda ()
           (kubernetes--release-poll-namespaces-process)))))
 
-    (unless kubernetes--poll-context-process
+    (unless (kubernetes--poll-context-process-live-p)
       (kubernetes--set-poll-context-process
        (kubernetes--kubectl-config-view
         (lambda (config)
@@ -1873,7 +1833,7 @@ additional information of state changes."
         (lambda ()
           (kubernetes--release-poll-context-process)))))
 
-    (unless kubernetes--poll-configmaps-process
+    (unless (kubernetes--poll-configmaps-process-live-p)
       (kubernetes--set-poll-configmaps-process
        (kubernetes--kubectl-get-configmaps
         (lambda (response)
@@ -1883,7 +1843,7 @@ additional information of state changes."
         (lambda ()
           (kubernetes--release-poll-configmaps-process)))))
 
-    (unless kubernetes--poll-services-process
+    (unless (kubernetes--poll-services-process-live-p)
       (kubernetes--set-poll-services-process
        (kubernetes--kubectl-get-services
         (lambda (response)
@@ -1893,7 +1853,7 @@ additional information of state changes."
         (lambda ()
           (kubernetes--release-poll-services-process)))))
 
-    (unless kubernetes--poll-secrets-process
+    (unless (kubernetes--poll-secrets-process-live-p)
       (kubernetes--set-poll-secrets-process
        (kubernetes--kubectl-get-secrets
         (lambda (response)
@@ -1903,7 +1863,7 @@ additional information of state changes."
         (lambda ()
           (kubernetes--release-poll-secrets-process)))))
 
-    (unless kubernetes--poll-pods-process
+    (unless (kubernetes--poll-pods-process-live-p)
       (kubernetes--set-poll-pods-process
        (kubernetes--kubectl-get-pods
         (lambda (response)
