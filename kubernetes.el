@@ -946,6 +946,15 @@ Warning: This could blow the stack if the AST gets too deep."
                                 ,inner-ast)
                    indent-level))
 
+      (`(mark-for-delete . ,inner-ast)
+       (let ((pt (point)))
+         (kubernetes--eval-ast inner-ast indent-level)
+         (let ((end-line (line-number-at-pos)))
+           (save-excursion
+             (goto-char pt)
+             (while (< (line-number-at-pos) end-line)
+               (kubernetes--insert-delete-mark-for-line-at-pt (point))
+               (forward-line 1))))))
 
       ((and actions (pred listp))
        (dolist (action actions)
@@ -954,6 +963,21 @@ Warning: This could blow the stack if the AST gets too deep."
 
       (x
        (error "Unknown AST form: %s" x)))))
+
+(defun kubernetes--insert-delete-mark-for-line-at-pt (point)
+  (save-excursion
+    (goto-char point)
+    (goto-char (line-beginning-position))
+    (let* ((existing-props (text-properties-at (point)))
+           (props (append existing-props '(face kubernetes-delete-mark)))
+           (mark-str (concat (apply #'propertize "D" props)
+                             (apply #'propertize " " existing-props))))
+      (cond
+       ((looking-at-p (rx bol space space))
+        (delete-char 2)
+        (insert mark-str))
+       (t
+        (insert mark-str))))))
 
 
 ;; Context section rendering.
@@ -1074,7 +1098,7 @@ Warning: This could blow the stack if the AST gets too deep."
                             ((member name kubernetes--pods-pending-deletion)
                              `(propertize (face kubernetes-pending-deletion) ,line))
                             ((member name kubernetes--marked-pod-names)
-                             `(propertize (face kubernetes-delete-mark) ,line))
+                             `(mark-for-delete ,line))
                             (t
                              line))))))
 
@@ -1161,7 +1185,7 @@ Warning: This could blow the stack if the AST gets too deep."
                             ((member name kubernetes--configmaps-pending-deletion)
                              `(propertize (face kubernetes-pending-deletion) ,line))
                             ((member name kubernetes--marked-configmap-names)
-                             `(propertize (face kubernetes-delete-mark) ,line))
+                             `(mark-for-delete ,line))
                             (t
                              line))))))
 
@@ -1237,7 +1261,7 @@ Warning: This could blow the stack if the AST gets too deep."
                             ((member name kubernetes--secrets-pending-deletion)
                              `(propertize (face kubernetes-pending-deletion) ,line))
                             ((member name kubernetes--marked-secret-names)
-                             `(propertize (face kubernetes-delete-mark) ,line))
+                             `(mark-for-delete ,line))
                             (t
                              line))))))
 
@@ -1337,7 +1361,7 @@ Warning: This could blow the stack if the AST gets too deep."
                             ((member name kubernetes--services-pending-deletion)
                              `(propertize (face kubernetes-pending-deletion) ,line))
                             ((member name kubernetes--marked-service-names)
-                             `(propertize (face kubernetes-delete-mark) ,line))
+                             `(mark-for-delete ,line))
                             (t
                              line))))))
 
@@ -1677,9 +1701,10 @@ POD-NAME is the name of the pod to display."
        (add-to-list 'kubernetes--marked-secret-names secret-name)))
     (_
      (user-error "Nothing here can be marked")))
-  (kubernetes--redraw-buffers)
-  (goto-char point)
-  (forward-line 1))
+
+  (let ((inhibit-read-only t))
+    (kubernetes--insert-delete-mark-for-line-at-pt point))
+  (magit-section-forward))
 
 (defun kubernetes-unmark (point)
   "Unmark the thing at POINT, then advance to the next line."
@@ -1693,7 +1718,7 @@ POD-NAME is the name of the pod to display."
      (setq kubernetes--marked-configmap-names (delete configmap-name kubernetes--marked-configmap-names))))
   (kubernetes--redraw-buffers)
   (goto-char point)
-  (forward-line 1))
+  (magit-section-forward))
 
 (defun kubernetes-unmark-all ()
   "Unmark everything in the buffer."

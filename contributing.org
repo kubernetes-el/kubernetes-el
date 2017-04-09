@@ -128,4 +128,5 @@ sugared
     | ( nav-prop ( navtype SEXP+ ) ast* )
     | ( copy-prop STRING ast* )
     | ( key-value keywidth STRING STRING )
+    | ( mark-for-delete ast* )
 #+END_EXAMPLE

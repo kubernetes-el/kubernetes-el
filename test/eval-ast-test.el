@@ -178,4 +178,34 @@
       (should-error (kubernetes--eval-ast ast)))))
 
 
+;; mark-for-delete
+
+(ert-deftest eval-ast--mark-for-delete-no-indentation ()
+  (let ((ast '(mark-for-delete (line "Test"))))
+    (with-temp-buffer
+      (save-excursion (kubernetes--eval-ast ast))
+      (should (equal "D Test\n" (buffer-string)))
+      (should (equal '(face kubernetes-delete-mark)
+                     (text-properties-at 0 (buffer-string))))
+      (should (not (text-properties-at 1 (buffer-string)))))))
+
+(ert-deftest eval-ast--mark-for-delete-with-indentation ()
+  (let ((ast '(mark-for-delete (line "  Test"))))
+    (with-temp-buffer
+      (save-excursion (kubernetes--eval-ast ast))
+      (should (equal "D Test\n" (buffer-string)))
+      (should (equal '(face kubernetes-delete-mark)
+                     (text-properties-at 0 (buffer-string))))
+      (should (not (text-properties-at 1 (buffer-string)))))))
+
+(ert-deftest eval-ast--mark-for-delete-multiple-lines ()
+  (let ((ast '((mark-for-delete (line "foo")
+                                (line "bar")
+                                (line "baz"))
+               (line "frotz"))))
+    (with-temp-buffer
+      (save-excursion (kubernetes--eval-ast ast))
+      (should (equal "D foo\nD bar\nD baz\nfrotz\n" (buffer-string))))))
+
+
 ;;; eval-ast-test.el ends here
