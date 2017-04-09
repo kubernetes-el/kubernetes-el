@@ -4,7 +4,8 @@ EMACS ?= emacs
 REPO = github.com/chrisbarrett/kubernetes-el
 
 SRCS = .cask kubernetes.el kubernetes-evil.el
-PACKAGE_FILE = kubernetes.el
+MAIN_PACKAGE_FILE = kubernetes.el
+EVIL_PACKAGE_FILE = kubernetes-evil.el
 
 VERSION := $(shell EMACS=${EMACS} ${CASK} version)
 TAR     := dist/kubernetes-$(VERSION).tar
@@ -81,12 +82,17 @@ set-package-version :
 	if ! echo "$${NEXT}" | grep -Eq '[0-9]+\.[0-9]+\.[0-9]+'; then \
 		echo 'Must supply a semver tag, e.g. 1.2.3'; exit 1; \
 	fi && \
-	sed -i.bak "s/^;; Version:[^\n]*/;; Version: $${NEXT}/" "$(PACKAGE_FILE)"
-	@rm "$(PACKAGE_FILE).bak"
+	sed -i.bak "s/^;; Version:[^\n]*/;; Version: $${NEXT}/" "$(MAIN_PACKAGE_FILE)" && \
+	sed -i.bak "s/^;; Version:[^\n]*/;; Version: $${NEXT}/" "$(EVIL_PACKAGE_FILE)" && \
+	sed -i.bak "s/^;; Package-Requires:[^)]*)/;; Package-Requires: ((kubernetes \"$${NEXT}\")/" "$(EVIL_PACKAGE_FILE)"
+
+	@rm "$(MAIN_PACKAGE_FILE).bak"
+	@rm "$(EVIL_PACKAGE_FILE).bak"
 
 
 git-release :
-	@git add "$(PACKAGE_FILE)"
+	@git add "$(MAIN_PACKAGE_FILE)"
+	@git add "$(EVIL_PACKAGE_FILE)"
 	@export TAG="$$(EMACS=${EMACS} ${CASK} version)"; \
 	git commit --quiet -m "Release $${TAG}" && \
 	git tag "$${TAG}" && \
