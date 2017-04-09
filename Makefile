@@ -91,10 +91,10 @@ git-release :
 	git commit --quiet -m "Release $${TAG}" && \
 	git tag "$${TAG}" && \
 	while true; do \
-		read -p "Push to GitHub? [yN]: " CHOICE; \
+		read -p "Push to GitHub? [Yn]: " CHOICE; \
 		case $$CHOICE in \
-			[Nn]|"") echo "Remember to push the tag with your changes."; exit;; \
-			[Yy]   ) git push --quiet origin master "$${TAG}"; break;; \
+			[Yy]|"") git push --quiet origin master "$${TAG}"; break;; \
+			[Nn]   ) echo "Remember to push the tag with your changes."; exit;; \
 		esac \
 	done
 
