@@ -55,7 +55,7 @@ Returns the process object for this execution of kubectl."
                                    (kubernetes-kubectl--default-error-handler err-buf status)))))))
                     (when cleanup-cb
                       (funcall cleanup-cb))
-                    (kubernetes--kill-process-quietly proc))))))
+                    (kubernetes-process-kill-quietly proc))))))
 
     ;; Clean up stderr buffer when stdout buffer is killed.
     (with-current-buffer buf

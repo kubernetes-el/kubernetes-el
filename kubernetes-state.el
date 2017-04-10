@@ -170,7 +170,7 @@ Do not use this variable directly. Instead, use its corresponding accessors.")
 
        (defun ,releaser-name ()
          "Kill the existing polling process, if any."
-         (kubernetes--kill-process-quietly ,proc-var-name)
+         (kubernetes-process-kill-quietly ,proc-var-name)
          (setq ,proc-var-name nil)))))
 
 (kubernetes-define-polling-process namespaces)

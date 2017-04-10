@@ -7,11 +7,11 @@
 
 (require 'kubernetes-ast)
 
-(defun kubernetes--term-buffer-start (bufname command args)
+(defun kubernetes-process-term-buffer-start (bufname command args)
   ;; Kill existing process.
   (when-let ((existing (get-buffer bufname))
              (proc (get-buffer-process existing)))
-    (kubernetes--kill-process-quietly proc))
+    (kubernetes-process-kill-quietly proc))
 
   (let ((buf (get-buffer-create bufname)))
     (with-current-buffer buf
@@ -38,7 +38,7 @@
 
     buf))
 
-(defun kubernetes--process-buffer-start (bufname setup-fn command args &optional process-filter)
+(defun kubernetes-process-buffer-start (bufname setup-fn command args &optional process-filter)
   (let ((buf (get-buffer-create bufname)))
     (buffer-disable-undo buf)
 
@@ -60,7 +60,7 @@
       (set-process-query-on-exit-flag proc nil))
     buf))
 
-(defun kubernetes--kill-process-quietly (proc &optional _signal)
+(defun kubernetes-process-kill-quietly (proc &optional _signal)
   (when proc
     (set-process-sentinel proc nil)
     (set-process-query-on-exit-flag proc nil)

@@ -1070,7 +1070,7 @@ ARGS are additional args to pass to kubectl."
   (let ((args (append (list "logs") args (list pod-name)
                       (when kubernetes--current-namespace
                         (list (format "--namespace=%s" kubernetes--current-namespace))))))
-    (with-current-buffer (kubernetes--process-buffer-start kubernetes-logs-buffer-name #'kubernetes-logs-mode kubernetes-kubectl-executable args)
+    (with-current-buffer (kubernetes-process-buffer-start kubernetes-logs-buffer-name #'kubernetes-logs-mode kubernetes-kubectl-executable args)
       (select-window (display-buffer (current-buffer))))))
 
 
@@ -1125,7 +1125,7 @@ POD-NAME is the name of the pod to describe."
                                   (goto-char (point-min))))))
            (proc (kubernetes-kubectl-describe-pod pod-name populate-buffer)))
       (with-current-buffer buf
-        (add-hook 'kill-buffer-hook (lambda () (kubernetes--kill-process-quietly proc)) nil t)))
+        (add-hook 'kill-buffer-hook (lambda () (kubernetes-process-kill-quietly proc)) nil t)))
 
     (select-window (display-buffer buf))
     buf))
@@ -1171,16 +1171,16 @@ Should be invoked via command `kubernetes-logs-popup'."
          (interactive-tty (member "-t" args))
          (buf
           (if interactive-tty
-              (kubernetes--term-buffer-start kubernetes-exec-buffer-name
-                                   kubernetes-kubectl-executable
-                                   command-args)
-            (kubernetes--process-buffer-start kubernetes-exec-buffer-name
-                                    #'kubernetes-mode
-                                    kubernetes-kubectl-executable
-                                    command-args))))
+              (kubernetes-process-term-buffer-start kubernetes-exec-buffer-name
+                                                    kubernetes-kubectl-executable
+                                                    command-args)
+            (kubernetes-process-buffer-start kubernetes-exec-buffer-name
+                                             #'kubernetes-mode
+                                             kubernetes-kubectl-executable
+                                             command-args))))
 
     (when (and interactive-tty kubernetes-clean-up-interactive-exec-buffers)
-      (set-process-sentinel (get-buffer-process buf) #'kubernetes--kill-process-quietly))
+      (set-process-sentinel (get-buffer-process buf) #'kubernetes-process-kill-quietly))
 
     (select-window (display-buffer buf))))
 
