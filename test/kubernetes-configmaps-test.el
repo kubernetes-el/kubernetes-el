@@ -1,22 +1,13 @@
-;;; configmaps-list-compile-test.el --- Test rendering of the configmaps list  -*- lexical-binding: t; -*-
+;;; kubernetes-configmaps-test.el --- Test rendering of the configmaps list  -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
 
-(eval-and-compile
-  (require 'f)
+(require 's)
+(require 'kubernetes)
+(declare-function test-helper-json-resource "test-helper.el")
 
-  (defvar project-root
-    (locate-dominating-file default-directory ".git"))
 
-  (defvar this-directory
-    (f-join project-root "test")))
-
-(require 'kubernetes (f-join project-root "kubernetes.el"))
-
-(defconst sample-get-configmaps-response
-  (let* ((path (f-join this-directory "get-configmaps-output.json"))
-         (sample-response (f-read-text path)))
-    (json-read-from-string sample-response)))
+(defconst sample-get-configmaps-response (test-helper-json-resource "get-configmaps-response.json"))
 
 (defun draw-configmaps-section (state)
   (kubernetes--eval-ast (kubernetes--render-configmaps-section state)))
@@ -24,7 +15,7 @@
 
 ;; Shows "Fetching..." when state isn't initialized yet.
 
-(defconst drawing-configmaps-section-loading-result
+(defconst kubernetes-configmaps-test--loading-result
   (s-trim-left "
 
 Configmaps
@@ -33,11 +24,11 @@ Configmaps
 
 "))
 
-(ert-deftest drawing-configmaps-section--empty-state ()
+(ert-deftest kubernetes-configmaps-test--empty-state ()
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
                       (draw-configmaps-section nil)))
-    (should (equal drawing-configmaps-section-loading-result
+    (should (equal kubernetes-configmaps-test--loading-result
                    (substring-no-properties (buffer-string))))
     (forward-line 1)
     (forward-to-indentation)
@@ -46,7 +37,7 @@ Configmaps
 
 ;; Shows "None" when there are no configmaps.
 
-(defconst drawing-configmaps-section-empty-result
+(defconst kubernetes-configmaps-test--empty-result
   (s-trim-left "
 
 Configmaps (0)
@@ -54,12 +45,12 @@ Configmaps (0)
 
 "))
 
-(ert-deftest drawing-configmaps-section--no-configmaps ()
+(ert-deftest kubernetes-configmaps-test--no-configmaps ()
   (let ((empty-state `((configmaps . ((items . ,(vector)))))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-configmaps-section empty-state)))
-      (should (equal drawing-configmaps-section-empty-result
+      (should (equal kubernetes-configmaps-test--empty-result
                      (substring-no-properties (buffer-string))))
       (search-forward "None")
       (should (equal 'magit-dimmed (get-text-property (point) 'face))))))
@@ -67,7 +58,7 @@ Configmaps (0)
 
 ;; Shows configmap lines when there are configmaps.
 
-(defconst drawing-configmaps-section-sample-result
+(defconst kubernetes-configmaps-test--sample-result
   (s-trim-left "
 
 Configmaps (2)
@@ -83,16 +74,16 @@ Configmaps (2)
 
 "))
 
-(ert-deftest drawing-configmaps-section--sample-response ()
+(ert-deftest kubernetes-configmaps-test--sample-response ()
   (let ((state `((configmaps . ,sample-get-configmaps-response)
                  (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-configmaps-section state)))
-      (should (equal drawing-configmaps-section-sample-result
+      (should (equal kubernetes-configmaps-test--sample-result
                      (substring-no-properties (buffer-string)))))))
 
-(ert-deftest drawing-configmaps-section--sample-response-text-properties ()
+(ert-deftest kubernetes-configmaps-test--sample-response-text-properties ()
   (let ((state `((configmaps . ,sample-get-configmaps-response))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
@@ -106,4 +97,5 @@ Configmaps (2)
           (search-forward key)
           (should (equal 'magit-header-line (get-text-property (point) 'face))))))))
 
-;;; configmaps-list-compile-test.el ends here
+
+;;; kubernetes-configmaps-test.el ends here

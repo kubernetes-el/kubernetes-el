@@ -1,22 +1,13 @@
-;;; services-list-compile-test.el --- Test rendering of the services list  -*- lexical-binding: t; -*-
+;;; kubernetes-services-test.el --- Test rendering of the services list  -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
 
-(eval-and-compile
-  (require 'f)
+(require 's)
+(require 'kubernetes)
+(declare-function test-helper-json-resource "test-helper.el")
 
-  (defvar project-root
-    (locate-dominating-file default-directory ".git"))
 
-  (defvar this-directory
-    (f-join project-root "test")))
-
-(require 'kubernetes (f-join project-root "kubernetes.el"))
-
-(defconst sample-get-services-response
-  (let* ((path (f-join this-directory "get-services-response.json"))
-         (sample-response (f-read-text path)))
-    (json-read-from-string sample-response)))
+(defconst sample-get-services-response (test-helper-json-resource "get-services-response.json"))
 
 (defun draw-services-section (state)
   (kubernetes--eval-ast (kubernetes--render-services-section state)))
@@ -24,7 +15,7 @@
 
 ;; Shows "Fetching..." when state isn't initialized yet.
 
-(defconst drawing-services-section-loading-result
+(defconst kubernetes-services-test--loading-result
   (s-trim-left "
 
 Services
@@ -33,11 +24,11 @@ Services
 
 "))
 
-(ert-deftest drawing-services-section--empty-state ()
+(ert-deftest kubernetes-services-test--empty-state ()
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
                       (draw-services-section nil)))
-    (should (equal drawing-services-section-loading-result
+    (should (equal kubernetes-services-test--loading-result
                    (substring-no-properties (buffer-string))))
     (forward-line 1)
     (forward-to-indentation)
@@ -46,7 +37,7 @@ Services
 
 ;; Shows "None" when there are no services.
 
-(defconst drawing-services-section-empty-result
+(defconst kubernetes-services-test--empty-result
   (s-trim-left "
 
 Services (0)
@@ -54,12 +45,12 @@ Services (0)
 
 "))
 
-(ert-deftest drawing-services-section--no-services ()
+(ert-deftest kubernetes-services-test--no-services ()
   (let ((empty-state `((services . ((items . ,(vector)))))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-services-section empty-state)))
-      (should (equal drawing-services-section-empty-result
+      (should (equal kubernetes-services-test--empty-result
                      (substring-no-properties (buffer-string))))
       (search-forward "None")
       (should (equal 'magit-dimmed (get-text-property (point) 'face))))))
@@ -67,7 +58,7 @@ Services (0)
 
 ;; Shows service lines when there are services.
 
-(defconst drawing-services-section-sample-result
+(defconst kubernetes-services-test--sample-result
   (s-trim-left "
 
 Services (2)
@@ -88,16 +79,16 @@ Services (2)
 
 "))
 
-(ert-deftest drawing-services-section--sample-response ()
+(ert-deftest kubernetes-services-test--sample-response ()
   (let ((state `((services . ,sample-get-services-response)
                  (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-services-section state)))
-      (should (equal drawing-services-section-sample-result
+      (should (equal kubernetes-services-test--sample-result
                      (substring-no-properties (buffer-string)))))))
 
-(ert-deftest drawing-services-section--sample-response-text-properties ()
+(ert-deftest kubernetes-services-test--sample-response-text-properties ()
   (let ((state `((services . ,sample-get-services-response))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
@@ -112,4 +103,4 @@ Services (2)
           (should (equal 'magit-header-line (get-text-property (point) 'face))))))))
 
 
-;;; services-list-compile-test.el ends here
+;;; kubernetes-services-test.el ends here

@@ -1,22 +1,12 @@
-;;; context-compile-test.el --- Tests for compiled representation of contexts.  -*- lexical-binding: t; -*-
+;;; kubernetes-contexts-test.el --- Tests for compiled representation of contexts.  -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
 
-(eval-and-compile
-  (require 'f)
+(require 's)
+(require 'kubernetes)
+(declare-function test-helper-json-resource "test-helper.el")
 
-  (defvar project-root
-    (locate-dominating-file default-directory ".git"))
-
-  (defvar this-directory
-    (f-join project-root "test")))
-
-(require 'kubernetes (f-join project-root "kubernetes.el"))
-
-(defconst sample-config-view-response
-  (let* ((path (f-join this-directory "config-view-output.json"))
-         (sample-response (f-read-text path)))
-    (json-read-from-string sample-response)))
+(defconst sample-config-view-response (test-helper-json-resource "config-view-response.json"))
 
 (defun draw-context-section (state)
   (kubernetes--eval-ast (kubernetes--render-context-section state)))
@@ -24,17 +14,17 @@
 
 ;; Shows "Fetching..." when state isn't initialized yet.
 
-(defconst drawing-context-section-loading-result
+(defconst kubernetes-contexts-test--loading-result
   (s-trim-left "
 
 Context:    Fetching...
 "))
 
-(ert-deftest drawing-context-section--empty-state ()
+(ert-deftest kubernetes-contexts-test--empty-state ()
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
                       (draw-context-section nil)))
-    (should (equal drawing-context-section-loading-result
+    (should (equal kubernetes-contexts-test--loading-result
                    (substring-no-properties (buffer-string))))
     (search-forward-regexp (rx "Context:" (+ space)))
     (should (equal 'magit-dimmed (get-text-property (point) 'face)))))
@@ -43,7 +33,7 @@ Context:    Fetching...
 ;; When there is a namespace set but no context, show the namespace with <none>
 ;; for the context label.
 
-(defconst drawing-context-section-just-namespace
+(defconst kubernetes-contexts-test--just-namespace
   (s-trim-left "
 
 Context:    <none>
@@ -51,11 +41,11 @@ Namespace:  example-ns
 
 "))
 
-(ert-deftest drawing-context-section--empty-state ()
+(ert-deftest kubernetes-contexts-test--empty-state ()
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
                       (draw-context-section '((current-namespace . "example-ns")))))
-    (should (equal drawing-context-section-just-namespace
+    (should (equal kubernetes-contexts-test--just-namespace
                    (substring-no-properties (buffer-string))))
     (search-forward-regexp (rx "Context:" (+ space)))
     (should (equal 'magit-dimmed (get-text-property (point) 'face)))))
@@ -63,7 +53,7 @@ Namespace:  example-ns
 
 ;; When state is initialized, shows current information.
 
-(defconst drawing-context-section-expected-result
+(defconst kubernetes-contexts-test--expected-result
   (s-trim-left "
 
 Context:    example-prod
@@ -72,16 +62,16 @@ Namespace:  example-ns
 
 "))
 
-(ert-deftest drawing-context-section--with-example-response ()
+(ert-deftest kubernetes-contexts-test--with-example-response ()
   (let ((input-state `((current-namespace . "example-ns")
                        (config . ,sample-config-view-response))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-context-section input-state)))
-      (should (equal drawing-context-section-expected-result
+      (should (equal kubernetes-contexts-test--expected-result
                      (substring-no-properties (buffer-string)))))))
 
-(ert-deftest drawing-context-section--context-line ()
+(ert-deftest kubernetes-contexts-test--context-line ()
   (let ((input-state `((current-namespace . "example-ns")
                        (config . ,sample-config-view-response))))
     (with-temp-buffer
@@ -92,7 +82,7 @@ Namespace:  example-ns
       (skip-chars-forward " ")
       (should (equal 'kubernetes-context-name (get-text-property (point) 'face))))))
 
-(ert-deftest drawing-context-section--namespace-line ()
+(ert-deftest kubernetes-contexts-test--namespace-line ()
   (let ((input-state `((current-namespace . "example-ns")
                        (config . ,sample-config-view-response))))
     (with-temp-buffer
@@ -101,7 +91,7 @@ Namespace:  example-ns
       (search-forward "Namespace:")
       (should (equal "example-ns" (get-text-property (point) 'kubernetes-copy))))))
 
-(ert-deftest drawing-context-section--cluster-line ()
+(ert-deftest kubernetes-contexts-test--cluster-line ()
   (let ((input-state `((current-namespace . "example-ns")
                        (config . ,sample-config-view-response))))
     (with-temp-buffer
@@ -111,4 +101,4 @@ Namespace:  example-ns
       (should (equal "example-prod-cluster" (get-text-property (point) 'kubernetes-copy))))))
 
 
-;;; context-compile-test.el ends here
+;;; kubernetes-contexts-test.el ends here

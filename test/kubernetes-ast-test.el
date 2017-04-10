@@ -1,22 +1,13 @@
-;;; eval-ast-test.el --- Tests for rending using an AST.  -*- lexical-binding: t; -*-
+;;; kubernetes-ast-test.el --- Tests for kubernetes-ast.el  -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
 
-(eval-and-compile
-  (require 'f)
-
-  (defvar project-root
-    (locate-dominating-file default-directory ".git"))
-
-  (defvar this-directory
-    (f-join project-root "test")))
-
-(require 'kubernetes (f-join project-root "kubernetes.el"))
+(require 'kubernetes-ast)
 
 
 ;; rejection
 
-(ert-deftest eval-ast--rejects-invalid-ast ()
+(ert-deftest kubernetes-ast-test--rejects-invalid-ast ()
   (let ((ast '(foo "bar")))
     (with-temp-buffer
       (should-error (kubernetes--eval-ast ast)))))
@@ -24,7 +15,7 @@
 
 ;; padding
 
-(ert-deftest eval-ast--inserts-newline-for-padding ()
+(ert-deftest kubernetes-ast-test--inserts-newline-for-padding ()
   (let ((ast '(padding)))
     (with-temp-buffer
       (kubernetes--eval-ast ast)
@@ -33,13 +24,13 @@
 
 ;; line
 
-(ert-deftest eval-ast--inserts-newlines-for-empty-strings ()
+(ert-deftest kubernetes-ast-test--inserts-newlines-for-empty-strings ()
   (let ((ast '(line "")))
     (with-temp-buffer
       (kubernetes--eval-ast ast)
       (should (equal "\n" (buffer-string))))))
 
-(ert-deftest eval-ast--inserts-strings ()
+(ert-deftest kubernetes-ast-test--inserts-strings ()
   (let ((ast '(line "foo")))
     (with-temp-buffer
       (kubernetes--eval-ast ast)
@@ -48,7 +39,7 @@
 
 ;; propertize
 
-(ert-deftest eval-ast--propertizes-regions ()
+(ert-deftest kubernetes-ast-test--propertizes-regions ()
   (let ((ast '(propertize (face error) (line "foo"))))
     (with-temp-buffer
       (kubernetes--eval-ast ast)
@@ -57,7 +48,7 @@
 
 ;; sequence
 
-(ert-deftest eval-ast--sequencing-actions ()
+(ert-deftest kubernetes-ast-test--sequencing-actions ()
   (let ((ast '((line "foo")
                (line "bar"))))
     (with-temp-buffer
@@ -67,7 +58,7 @@
 
 ;; heading
 
-(ert-deftest eval-ast--inserts-headings ()
+(ert-deftest kubernetes-ast-test--inserts-headings ()
   (let ((ast '(heading "hello")))
     (with-temp-buffer
       (save-excursion
@@ -76,7 +67,7 @@
       (should (equal "hello\n" (substring-no-properties (buffer-string))))
       (should (equal 'magit-section-heading (face-at-point))))))
 
-(ert-deftest eval-ast--inserting-heading-raises-error-outside-section ()
+(ert-deftest kubernetes-ast-test--inserting-heading-raises-error-outside-section ()
   (let ((ast '(heading "hello")))
     (with-temp-buffer
       (should-error (kubernetes--eval-ast ast)))))
@@ -84,7 +75,7 @@
 
 ;; section
 
-(ert-deftest eval-ast--inserting-sections ()
+(ert-deftest kubernetes-ast-test--inserting-sections ()
   (let ((ast '(section (test nil)
                        (line "foo"))))
     (with-temp-buffer
@@ -97,13 +88,13 @@
 
 ;; indent
 
-(ert-deftest eval-ast--indents-ast ()
+(ert-deftest kubernetes-ast-test--indents-ast ()
   (let ((ast '(indent (line "hello"))))
     (with-temp-buffer
       (save-excursion (kubernetes--eval-ast ast))
       (should (equal "  hello\n" (substring-no-properties (buffer-string)))))))
 
-(ert-deftest eval-ast--indentation-padding-lacks-properties-directly-set-on-string ()
+(ert-deftest kubernetes-ast-test--indentation-padding-lacks-properties-directly-set-on-string ()
   (let ((ast `(indent (line ,(propertize "hello" 'face 'font-lock-warning-face)))))
     (with-temp-buffer
       (save-excursion (kubernetes--eval-ast ast))
@@ -112,7 +103,7 @@
                                       'face 'font-lock-warning-face
                                       (buffer-string)))))))
 
-(ert-deftest eval-ast--indentation-padding-has-ast-declared-properties ()
+(ert-deftest kubernetes-ast-test--indentation-padding-has-ast-declared-properties ()
   (let ((ast '(indent
                (propertize (face font-lock-warning-face)
                            (line "hello")))))
@@ -126,7 +117,7 @@
 
 ;; key-value
 
-(ert-deftest eval-ast--key-value-pairs ()
+(ert-deftest kubernetes-ast-test--key-value-pairs ()
   (let ((ast '(key-value 10 "Key" "Value")))
     (with-temp-buffer
       (save-excursion (kubernetes--eval-ast ast))
@@ -135,7 +126,7 @@
 
 ;; nav-prop
 
-(ert-deftest eval-ast--nav-prop ()
+(ert-deftest kubernetes-ast-test--nav-prop ()
   (let ((ast '(nav-prop (:test "nav")
                         (line "Test"))))
     (with-temp-buffer
@@ -144,7 +135,7 @@
       (should (equal (list 'kubernetes-nav '(:test "nav"))
                      (text-properties-at (point-min) (buffer-string)))))))
 
-(ert-deftest eval-ast--nav-prop-finishes-at-end-of-line ()
+(ert-deftest kubernetes-ast-test--nav-prop-finishes-at-end-of-line ()
   (let ((ast '(nav-prop (:test "nav")
                         (line "Test"))))
     (with-temp-buffer
@@ -156,7 +147,7 @@
 
 ;; copy-prop
 
-(ert-deftest eval-ast--copy-prop ()
+(ert-deftest kubernetes-ast-test--copy-prop ()
   (let ((ast '(copy-prop "foo" (line "Test"))))
     (with-temp-buffer
       (save-excursion (kubernetes--eval-ast ast))
@@ -164,7 +155,7 @@
       (should (equal (list 'kubernetes-copy "foo")
                      (text-properties-at (point-min) (buffer-string)))))))
 
-(ert-deftest eval-ast--copy-prop-finishes-at-end-of-line ()
+(ert-deftest kubernetes-ast-test--copy-prop-finishes-at-end-of-line ()
   (let ((ast '(copy-prop "foo" (line "Test"))))
     (with-temp-buffer
       (save-excursion (kubernetes--eval-ast ast))
@@ -172,7 +163,7 @@
         (should (equal (list 'kubernetes-copy "foo")
                        (text-properties-at end (buffer-string))))))))
 
-(ert-deftest eval-ast--copy-prop-error-if-copy-value-not-a-string ()
+(ert-deftest kubernetes-ast-test--copy-prop-error-if-copy-value-not-a-string ()
   (let ((ast '(copy-prop 1 (line "Test"))))
     (with-temp-buffer
       (should-error (kubernetes--eval-ast ast)))))
@@ -180,7 +171,7 @@
 
 ;; mark-for-delete
 
-(ert-deftest eval-ast--mark-for-delete-no-indentation ()
+(ert-deftest kubernetes-ast-test--mark-for-delete-no-indentation ()
   (let ((ast '(mark-for-delete (line "Test"))))
     (with-temp-buffer
       (save-excursion (kubernetes--eval-ast ast))
@@ -189,7 +180,7 @@
                      (text-properties-at 0 (buffer-string))))
       (should (not (text-properties-at 1 (buffer-string)))))))
 
-(ert-deftest eval-ast--mark-for-delete-with-indentation ()
+(ert-deftest kubernetes-ast-test--mark-for-delete-with-indentation ()
   (let ((ast '(mark-for-delete (line "  Test"))))
     (with-temp-buffer
       (save-excursion (kubernetes--eval-ast ast))
@@ -198,7 +189,7 @@
                      (text-properties-at 0 (buffer-string))))
       (should (not (text-properties-at 1 (buffer-string)))))))
 
-(ert-deftest eval-ast--mark-for-delete-multiple-lines ()
+(ert-deftest kubernetes-ast-test--mark-for-delete-multiple-lines ()
   (let ((ast '((mark-for-delete (line "foo")
                                 (line "bar")
                                 (line "baz"))
@@ -208,4 +199,6 @@
       (should (equal "D foo\nD bar\nD baz\nfrotz\n" (buffer-string))))))
 
 
-;;; eval-ast-test.el ends here
+(provide 'kubernetes-ast-test)
+
+;;; kubernetes-ast-test.el ends here
