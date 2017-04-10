@@ -1,30 +1,21 @@
-;;; pods-list-compile-test.el --- Test rendering of the pods list  -*- lexical-binding: t; -*-
+;;; kubernetes-pods-test.el --- Test rendering of the pods list  -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
 
-(eval-and-compile
-  (require 'f)
+(require 's)
+(require 'kubernetes-pods)
+(declare-function test-helper-json-resource "test-helper.el")
 
-  (defvar project-root
-    (locate-dominating-file default-directory ".git"))
 
-  (defvar this-directory
-    (f-join project-root "test")))
-
-(require 'kubernetes (f-join project-root "kubernetes.el"))
-
-(defconst sample-get-pods-response
-  (let* ((path (f-join this-directory "get-pods-output.json"))
-         (sample-response (f-read-text path)))
-    (json-read-from-string sample-response)))
+(defconst sample-get-pods-response (test-helper-json-resource "get-pods-response.json"))
 
 (defun draw-pods-section (state)
-  (kubernetes--eval-ast (kubernetes--render-pods-section state)))
+  (kubernetes-ast-eval (kubernetes-pods-render state)))
 
 
 ;; Shows "Fetching..." when state isn't initialized yet.
 
-(defconst drawing-pods-section-loading-result
+(defconst kubernetes-pods-test--loading-result
   (s-trim-left "
 
 Pods
@@ -33,11 +24,11 @@ Pods
 
 "))
 
-(ert-deftest drawing-pods-section--empty-state ()
+(ert-deftest kubernetes-pods-test--empty-state ()
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
                       (draw-pods-section nil)))
-    (should (equal drawing-pods-section-loading-result
+    (should (equal kubernetes-pods-test--loading-result
                    (substring-no-properties (buffer-string))))
     (forward-line 1)
     (forward-to-indentation)
@@ -46,7 +37,7 @@ Pods
 
 ;; Shows "None" when there are no pods.
 
-(defconst drawing-pods-section-empty-result
+(defconst kubernetes-pods-test--empty-result
   (s-trim-left "
 
 Pods (0)
@@ -54,12 +45,12 @@ Pods (0)
 
 "))
 
-(ert-deftest drawing-pods-section--no-pods ()
+(ert-deftest kubernetes-pods-test--no-pods ()
   (let ((empty-state `((pods . ((items . ,(vector)))))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-pods-section empty-state)))
-      (should (equal drawing-pods-section-empty-result
+      (should (equal kubernetes-pods-test--empty-result
                      (substring-no-properties (buffer-string))))
       (search-forward "None")
       (should (equal 'magit-dimmed (get-text-property (point) 'face))))))
@@ -67,7 +58,7 @@ Pods (0)
 
 ;; Shows pod lines when there are pods.
 
-(defconst drawing-pods-section-sample-result
+(defconst kubernetes-pods-test--sample-result
   (s-trim-left "
 
 Pods (2)
@@ -93,16 +84,16 @@ Pods (2)
 
 "))
 
-(ert-deftest drawing-pods-section--sample-response ()
+(ert-deftest kubernetes-pods-test--sample-response ()
   (let ((state `((pods . ,sample-get-pods-response)
                  (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-pods-section state)))
-      (should (equal drawing-pods-section-sample-result
+      (should (equal kubernetes-pods-test--sample-result
                      (substring-no-properties (buffer-string)))))))
 
-(ert-deftest drawing-pods-section--sample-response-text-properties ()
+(ert-deftest kubernetes-pods-test--sample-response-text-properties ()
   (let ((state `((pods . ,sample-get-pods-response))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
@@ -121,4 +112,4 @@ Pods (2)
           (search-forward key)
           (should (equal 'magit-header-line (get-text-property (point) 'face))))))))
 
-;;; pods-list-compile-test.el ends here
+;;; kubernetes-pods-test.el ends here

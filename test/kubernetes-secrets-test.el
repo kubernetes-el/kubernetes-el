@@ -1,30 +1,21 @@
-;;; secrets-list-compile-test.el --- Test rendering of the secrets list  -*- lexical-binding: t; -*-
+;;; kubernetes-secrets-test.el --- Test rendering of the secrets list  -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
 
-(eval-and-compile
-  (require 'f)
+(require 'f)
+(require 'kubernetes-secrets)
+(declare-function test-helper-json-resource "test-helper.el")
 
-  (defvar project-root
-    (locate-dominating-file default-directory ".git"))
 
-  (defvar this-directory
-    (f-join project-root "test")))
-
-(require 'kubernetes (f-join project-root "kubernetes.el"))
-
-(defconst sample-get-secrets-response
-  (let* ((path (f-join this-directory "get-secrets-response.json"))
-         (sample-response (f-read-text path)))
-    (json-read-from-string sample-response)))
+(defconst sample-get-secrets-response (test-helper-json-resource "get-secrets-response.json"))
 
 (defun draw-secrets-section (state)
-  (kubernetes--eval-ast (kubernetes--render-secrets-section state)))
+  (kubernetes-ast-eval (kubernetes-secrets-render state)))
 
 
 ;; Shows "Fetching..." when state isn't initialized yet.
 
-(defconst drawing-secrets-section-loading-result
+(defconst kubernetes-secrets-test--loading-result
   (s-trim-left "
 
 Secrets
@@ -33,11 +24,11 @@ Secrets
 
 "))
 
-(ert-deftest drawing-secrets-section--empty-state ()
+(ert-deftest kubernetes-secrets-test---empty-state ()
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
                       (draw-secrets-section nil)))
-    (should (equal drawing-secrets-section-loading-result
+    (should (equal kubernetes-secrets-test--loading-result
                    (substring-no-properties (buffer-string))))
     (forward-line 1)
     (forward-to-indentation)
@@ -46,7 +37,7 @@ Secrets
 
 ;; Shows "None" when there are no secrets.
 
-(defconst drawing-secrets-section-empty-result
+(defconst kubernetes-secrets-test--empty-result
   (s-trim-left "
 
 Secrets (0)
@@ -54,12 +45,12 @@ Secrets (0)
 
 "))
 
-(ert-deftest drawing-secrets-section--no-secrets ()
+(ert-deftest kubernetes-secrets-test---no-secrets ()
   (let ((empty-state `((secrets . ((items . ,(vector)))))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-secrets-section empty-state)))
-      (should (equal drawing-secrets-section-empty-result
+      (should (equal kubernetes-secrets-test--empty-result
                      (substring-no-properties (buffer-string))))
       (search-forward "None")
       (should (equal 'magit-dimmed (get-text-property (point) 'face))))))
@@ -67,7 +58,7 @@ Secrets (0)
 
 ;; Shows secret lines when there are secrets.
 
-(defconst drawing-secrets-section-sample-result
+(defconst kubernetes-secrets-test--sample-result
   (s-trim-left "
 
 Secrets (2)
@@ -83,16 +74,16 @@ Secrets (2)
 
 "))
 
-(ert-deftest drawing-secrets-section--sample-response ()
+(ert-deftest kubernetes-secrets-test---sample-response ()
   (let ((state `((secrets . ,sample-get-secrets-response)
                  (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-secrets-section state)))
-      (should (equal drawing-secrets-section-sample-result
+      (should (equal kubernetes-secrets-test--sample-result
                      (substring-no-properties (buffer-string)))))))
 
-(ert-deftest drawing-secrets-section--sample-response-text-properties ()
+(ert-deftest kubernetes-secrets-test---sample-response-text-properties ()
   (let ((state `((secrets . ,sample-get-secrets-response))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
@@ -106,4 +97,5 @@ Secrets (2)
           (search-forward key)
           (should (equal 'magit-header-line (get-text-property (point) 'face))))))))
 
-;;; secrets-list-compile-test.el ends here
+
+;;; kubernetes-secrets-test.el ends here
