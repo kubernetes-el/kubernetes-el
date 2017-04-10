@@ -7,11 +7,11 @@
 
 (require 'magit)
 
-(defvar kubernetes-ast--indentation-width 2)
+(defconst kubernetes-ast--indentation-width 2)
+(defconst kubernetes-ast--space ?\ )
 
 (defsubst kubernetes-ast--indentation (indent-level)
-  (let ((space ?\ ))
-    (make-string (* indent-level kubernetes-ast--indentation-width) space)))
+  (make-string (* indent-level kubernetes-ast--indentation-width) kubernetes-ast--space))
 
 (defun kubernetes-ast-eval (render-ast &optional indent-level)
   "Evaluate RENDER-AST in the context of the current buffer.
