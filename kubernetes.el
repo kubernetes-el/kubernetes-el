@@ -163,7 +163,7 @@
                              line))))))
 
 (defun kubernetes--update-pod-marks-state (pods)
-  (let ((pod-names (-map #'kubernetes--resource-name pods)))
+  (let ((pod-names (-map #'kubernetes-state-resource-name pods)))
     (setq kubernetes--pods-pending-deletion
           (-intersection kubernetes--pods-pending-deletion pod-names))
     (setq kubernetes--marked-pod-names
@@ -191,7 +191,7 @@
                  (let ((heading (concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods))))
                        (make-pod-entry
                         (lambda (pod)
-                          `(section (,(intern (kubernetes--resource-name pod)) t)
+                          `(section (,(intern (kubernetes-state-resource-name pod)) t)
                                     (heading ,(kubernetes--format-pod-line pod current-time))
                                     (indent
                                      (section (details nil)
@@ -267,7 +267,7 @@
                 (configmaps
                  (let ((make-entry
                         (lambda (it)
-                          `(section (,(intern (kubernetes--resource-name it)) t)
+                          `(section (,(intern (kubernetes-state-resource-name it)) t)
                                     (heading ,(kubernetes--format-configmap-line it current-time))
                                     (section (details nil)
                                              (indent
@@ -343,7 +343,7 @@
                 (secrets
                  (let ((make-entry
                         (lambda (it)
-                          `(section (,(intern (kubernetes--resource-name it)) t)
+                          `(section (,(intern (kubernetes-state-resource-name it)) t)
                                     (heading ,(kubernetes--format-secret-line it current-time))
                                     (section (details nil)
                                              (indent
@@ -444,7 +444,7 @@
                 (services
                  (let ((make-entry
                         (lambda (it)
-                          `(section (,(intern (kubernetes--resource-name it)) t)
+                          `(section (,(intern (kubernetes-state-resource-name it)) t)
                                     (heading ,(kubernetes--format-service-line it current-time))
                                     (indent
                                      (section (details nil)
@@ -502,7 +502,7 @@
       (kubernetes--redraw-pods-buffer t)
       (goto-char (point-min))
 
-      (kubernetes--initialize-timers)
+      (kubernetes-state-initialize-timers)
       (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
     buf))
 
@@ -550,7 +550,7 @@ FORCE ensures it happens."
       (kubernetes--redraw-configmaps-buffer t)
       (goto-char (point-min))
 
-      (kubernetes--initialize-timers)
+      (kubernetes-state-initialize-timers)
       (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
     buf))
 
@@ -595,7 +595,7 @@ FORCE ensures it happens."
       (kubernetes--redraw-secrets-buffer t)
       (goto-char (point-min))
 
-      (kubernetes--initialize-timers)
+      (kubernetes-state-initialize-timers)
       (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
     buf))
 
@@ -651,7 +651,7 @@ FORCE ensures it happens."
 ;; Displaying configmaps.
 
 (defun kubernetes-display-configmap-refresh (configmap-name)
-  (if-let (configmap (kubernetes--state-lookup-configmap configmap-name))
+  (if-let (configmap (kubernetes-state-lookup-configmap configmap-name))
       (let ((buf (get-buffer-create kubernetes-display-configmap-buffer-name)))
         (with-current-buffer buf
           (kubernetes-display-thing-mode)
@@ -675,7 +675,7 @@ CONFIGMAP-NAME is the name of the configmap to display."
 ;; Displaying secrets
 
 (defun kubernetes-display-secret-refresh (secret-name)
-  (if-let (secret (kubernetes--state-lookup-secret secret-name))
+  (if-let (secret (kubernetes-state-lookup-secret secret-name))
       (let ((buf (get-buffer-create kubernetes-display-secret-buffer-name)))
         (with-current-buffer buf
           (kubernetes-display-thing-mode)
@@ -699,7 +699,7 @@ SECRET-NAME is the name of the secret to display."
 ;; Displaying services
 
 (defun kubernetes-display-service-refresh (service-name)
-  (if-let (service (kubernetes--state-lookup-service service-name))
+  (if-let (service (kubernetes-state-lookup-service service-name))
       (let ((buf (get-buffer-create kubernetes-display-service-buffer-name)))
         (with-current-buffer buf
           (kubernetes-display-thing-mode)
@@ -723,7 +723,7 @@ SERVICE-NAME is the name of the service to display."
 ;; Displaying pods.
 
 (defun kubernetes-display-pod-refresh (pod-name)
-  (if-let (pod (kubernetes--state-lookup-pod pod-name))
+  (if-let (pod (kubernetes-state-lookup-pod pod-name))
       (let ((buf (get-buffer-create kubernetes-pod-buffer-name)))
         (with-current-buffer buf
           (kubernetes-display-thing-mode)
@@ -913,65 +913,65 @@ additional information of state changes."
       (kubernetes--redraw-buffers)
       (message "Refreshing..."))
 
-    (unless (kubernetes--poll-namespaces-process-live-p)
-      (kubernetes--set-poll-namespaces-process
+    (unless (kubernetes-state-poll-namespaces-process-live-p)
+      (kubernetes-state-set-poll-namespaces-process
        (kubernetes-kubectl-get-namespaces
         (lambda (config)
-          (setq kubernetes--get-namespaces-response config)
+          (setq kubernetes-state--get-namespaces-response config)
           (when interactive
             (message "Updated namespaces.")))
         (lambda ()
-          (kubernetes--release-poll-namespaces-process)))))
+          (kubernetes-state-release-poll-namespaces-process)))))
 
-    (unless (kubernetes--poll-context-process-live-p)
-      (kubernetes--set-poll-context-process
+    (unless (kubernetes-state-poll-context-process-live-p)
+      (kubernetes-state-set-poll-context-process
        (kubernetes-kubectl-config-view
         (lambda (config)
-          (setq kubernetes--view-config-response config)
+          (setq kubernetes-state--view-config-response config)
           (when interactive
             (message "Updated contexts.")))
         (lambda ()
-          (kubernetes--release-poll-context-process)))))
+          (kubernetes-state-release-poll-context-process)))))
 
-    (unless (kubernetes--poll-configmaps-process-live-p)
-      (kubernetes--set-poll-configmaps-process
+    (unless (kubernetes-state-poll-configmaps-process-live-p)
+      (kubernetes-state-set-poll-configmaps-process
        (kubernetes-kubectl-get-configmaps
         (lambda (response)
-          (setq kubernetes--get-configmaps-response response)
+          (setq kubernetes-state--get-configmaps-response response)
           (when interactive
             (message "Updated configmaps.")))
         (lambda ()
-          (kubernetes--release-poll-configmaps-process)))))
+          (kubernetes-state-release-poll-configmaps-process)))))
 
-    (unless (kubernetes--poll-services-process-live-p)
-      (kubernetes--set-poll-services-process
+    (unless (kubernetes-state-poll-services-process-live-p)
+      (kubernetes-state-set-poll-services-process
        (kubernetes-kubectl-get-services
         (lambda (response)
-          (setq kubernetes--get-services-response response)
+          (setq kubernetes-state--get-services-response response)
           (when interactive
             (message "Updated services.")))
         (lambda ()
-          (kubernetes--release-poll-services-process)))))
+          (kubernetes-state-release-poll-services-process)))))
 
-    (unless (kubernetes--poll-secrets-process-live-p)
-      (kubernetes--set-poll-secrets-process
+    (unless (kubernetes-state-poll-secrets-process-live-p)
+      (kubernetes-state-set-poll-secrets-process
        (kubernetes-kubectl-get-secrets
         (lambda (response)
-          (setq kubernetes--get-secrets-response response)
+          (setq kubernetes-state--get-secrets-response response)
           (when interactive
             (message "Updated secrets.")))
         (lambda ()
-          (kubernetes--release-poll-secrets-process)))))
+          (kubernetes-state-release-poll-secrets-process)))))
 
-    (unless (kubernetes--poll-pods-process-live-p)
-      (kubernetes--set-poll-pods-process
+    (unless (kubernetes-state-poll-pods-process-live-p)
+      (kubernetes-state-set-poll-pods-process
        (kubernetes-kubectl-get-pods
         (lambda (response)
-          (setq kubernetes--get-pods-response response)
+          (setq kubernetes-state--get-pods-response response)
           (when interactive
             (message "Updated pods.")))
         (lambda ()
-          (kubernetes--release-poll-pods-process)))))))
+          (kubernetes-state-release-poll-pods-process)))))))
 
 
 ;; Logs
@@ -1068,8 +1068,8 @@ ARGS are additional args to pass to kubectl."
   (interactive (list (or (kubernetes--maybe-pod-name-at-point) (kubernetes--read-pod-name))
                      (kubernetes-logs-arguments)))
   (let ((args (append (list "logs") args (list pod-name)
-                      (when kubernetes--current-namespace
-                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+                      (when kubernetes-state--current-namespace
+                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
     (with-current-buffer (kubernetes-process-buffer-start kubernetes-logs-buffer-name #'kubernetes-logs-mode kubernetes-kubectl-executable args)
       (select-window (display-buffer (current-buffer))))))
 
@@ -1164,8 +1164,8 @@ Should be invoked via command `kubernetes-logs-popup'."
 
   (let* ((command-args (append (list "exec")
                                args
-                               (when kubernetes--current-namespace
-                                 (list (format "--namespace=%s" kubernetes--current-namespace)))
+                               (when kubernetes-state--current-namespace
+                                 (list (format "--namespace=%s" kubernetes-state--current-namespace)))
                                (list pod-name exec-command)))
 
          (interactive-tty (member "-t" args))
@@ -1198,16 +1198,16 @@ Should be invoked via command `kubernetes-logs-popup'."
   "Set the namespace to query to NS, overriding the settings for the current context."
   (interactive (list (completing-read "Use namespace: " (kubernetes--namespace-names) nil t)))
   ;; The context is safe to preserve, but everything else should be reset.
-  (let ((context kubernetes--view-config-response))
-    (kubernetes--kill-polling-processes)
-    (kubernetes--state-clear)
+  (let ((context kubernetes-state--view-config-response))
+    (kubernetes-state-kill-polling-processes)
+    (kubernetes-state-clear)
     (goto-char (point-min))
-    (setq kubernetes--view-config-response context)
-    (setq kubernetes--current-namespace ns)
+    (setq kubernetes-state--view-config-response context)
+    (setq kubernetes-state--current-namespace ns)
     (kubernetes--redraw-buffers t)))
 
 (defun kubernetes--namespace-names ()
-  (-let* ((config (or kubernetes--get-namespaces-response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-namespaces)))
+  (-let* ((config (or kubernetes-state--get-namespaces-response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-namespaces)))
           ((&alist 'items items) config))
     (-map (-lambda ((&alist 'metadata (&alist 'name name))) name) items)))
 
@@ -1216,15 +1216,15 @@ Should be invoked via command `kubernetes-logs-popup'."
 
 CONTEXT is the name of a context as a string."
   (interactive (list (completing-read "Context: " (kubernetes--context-names) nil t)))
-  (kubernetes--kill-polling-processes)
-  (kubernetes--state-clear)
+  (kubernetes-state-kill-polling-processes)
+  (kubernetes-state-clear)
   (kubernetes--redraw-buffers t)
   (goto-char (point-min))
   (kubernetes-kubectl-config-use-context context (lambda (_)
                                                    (kubernetes-refresh))))
 
 (defun kubernetes--context-names ()
-  (-let* ((config (or kubernetes--view-config-response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-config-view)))
+  (-let* ((config (or kubernetes-state--view-config-response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-config-view)))
           ((&alist 'contexts contexts) config))
     (--map (alist-get 'name it) contexts)))
 
@@ -1509,7 +1509,7 @@ Type \\[kubernetes-refresh] to refresh the buffer.
       (kubernetes--redraw-overview-buffer t)
       (goto-char (point-min))
 
-      (kubernetes--initialize-timers)
+      (kubernetes-state-initialize-timers)
       (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
     buf))
 
@@ -1526,7 +1526,7 @@ FORCE ensures it happens."
                 ;; position in the buffer if a popup window is open.
                 (equal (window-buffer) buf))
 
-        (kubernetes--state-clear-error-if-stale)
+        (kubernetes-state-clear-error-if-stale)
 
         (let ((pos (point))
               (inhibit-read-only t)

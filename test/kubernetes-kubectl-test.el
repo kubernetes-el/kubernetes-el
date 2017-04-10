@@ -102,7 +102,7 @@ will be mocked."
     (should cleanup-callback-called)))
 
 (ert-deftest kubernetes-kubectl-test--get-pods-applies-current-namespace ()
-  (let ((kubernetes--current-namespace "foo"))
+  (let ((kubernetes-state--current-namespace "foo"))
     (with-successful-response-at `("get" "pods" "-o" "json" "--namespace=foo")
         "{}"
       (kubernetes-kubectl-get-pods #'ignore))))
@@ -141,7 +141,7 @@ will be mocked."
 
 (ert-deftest kubernetes-kubectl-test--deleting-pod-applies-current-namespace ()
   (let* ((pod-name "example-v3-4120544588-55kmw")
-         (kubernetes--current-namespace "foo"))
+         (kubernetes-state--current-namespace "foo"))
     (with-successful-response-at `("delete" "pod" ,pod-name "-o" "name"
                                    "--namespace=foo")
         "pod/example-v3-4120544588-55kmw"
@@ -163,7 +163,7 @@ will be mocked."
 
 (ert-deftest kubernetes-kubectl-test--describing-pod-applies-current-namespace ()
   (let* ((pod-name "example-v3-4120544588-55kmw")
-         (kubernetes--current-namespace "foo"))
+         (kubernetes-state--current-namespace "foo"))
     (with-successful-response-at `("describe" "pod" ,pod-name "--namespace=foo")
         ""
       (kubernetes-kubectl-describe-pod pod-name #'ignore))))
@@ -216,7 +216,7 @@ will be mocked."
     (should cleanup-callback-called)))
 
 (ert-deftest kubernetes-kubectl-test--get-configmaps-applies-current-namespace ()
-  (let ((kubernetes--current-namespace "foo"))
+  (let ((kubernetes-state--current-namespace "foo"))
     (with-successful-response-at `("get" "configmaps" "-o" "json" "--namespace=foo")
         "{}"
       (kubernetes-kubectl-get-configmaps #'ignore))))
@@ -243,7 +243,7 @@ will be mocked."
 
 (ert-deftest kubernetes-kubectl-test--deleting-configmap-applies-current-namespace ()
   (let* ((configmap-name "example-config")
-         (kubernetes--current-namespace "foo"))
+         (kubernetes-state--current-namespace "foo"))
     (with-successful-response-at `("delete" "configmap" ,configmap-name "-o" "name"
                                    "--namespace=foo")
         "configmap/example-config"
@@ -266,7 +266,7 @@ will be mocked."
     (should cleanup-callback-called)))
 
 (ert-deftest kubernetes-kubectl-test--get-secrets-applies-current-namespace ()
-  (let ((kubernetes--current-namespace "foo"))
+  (let ((kubernetes-state--current-namespace "foo"))
     (with-successful-response-at `("get" "secrets" "-o" "json" "--namespace=foo")
         "{}"
       (kubernetes-kubectl-get-secrets #'ignore))))
@@ -293,7 +293,7 @@ will be mocked."
 
 (ert-deftest kubernetes-kubectl-test--deleting-secret-applies-current-namespace ()
   (let* ((secret-name "example-config")
-         (kubernetes--current-namespace "foo"))
+         (kubernetes-state--current-namespace "foo"))
     (with-successful-response-at `("delete" "secret" ,secret-name "-o" "name"
                                    "--namespace=foo")
         "secret/example-config"
@@ -316,7 +316,7 @@ will be mocked."
     (should cleanup-callback-called)))
 
 (ert-deftest kubernetes-kubectl-test--get-services-applies-current-namespace ()
-  (let ((kubernetes--current-namespace "foo"))
+  (let ((kubernetes-state--current-namespace "foo"))
     (with-successful-response-at `("get" "services" "-o" "json" "--namespace=foo")
         "{}"
       (kubernetes-kubectl-get-services #'ignore))))

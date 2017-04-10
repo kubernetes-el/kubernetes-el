@@ -48,7 +48,7 @@ Returns the process object for this execution of kubectl."
                          (t
                           (let ((err-message (with-current-buffer err-buf (buffer-string))))
                             (unless (= 9 exit-code)
-                              (kubernetes--state-set-error err-message command))
+                              (kubernetes-state-set-error err-message command))
                             (cond (on-error
                                    (funcall on-error err-buf))
                                   (t
@@ -71,8 +71,8 @@ Returns the process object for this execution of kubectl."
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (let ((args (append '("get" "pods" "-o" "json")
-                      (when kubernetes--current-namespace
-                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+                      (when kubernetes-state--current-namespace
+                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
     (kubernetes-kubectl args
                         (lambda (buf)
                           (let ((json (with-current-buffer buf
@@ -86,8 +86,8 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (let ((args (append '("get" "configmaps" "-o" "json")
-                      (when kubernetes--current-namespace
-                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+                      (when kubernetes-state--current-namespace
+                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
     (kubernetes-kubectl args
                         (lambda (buf)
                           (let ((json (with-current-buffer buf
@@ -101,8 +101,8 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (let ((args (append '("get" "secrets" "-o" "json")
-                      (when kubernetes--current-namespace
-                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+                      (when kubernetes-state--current-namespace
+                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
     (kubernetes-kubectl args
                         (lambda (buf)
                           (let ((json (with-current-buffer buf
@@ -116,8 +116,8 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (let ((args (append '("get" "services" "-o" "json")
-                      (when kubernetes--current-namespace
-                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+                      (when kubernetes-state--current-namespace
+                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
     (kubernetes-kubectl args
                         (lambda (buf)
                           (let ((json (with-current-buffer buf
@@ -166,8 +166,8 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
 
 ERROR-CB is called if an error occurred."
   (let ((args (append (list "delete" "pod" pod-name "-o" "name")
-                      (when kubernetes--current-namespace
-                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+                      (when kubernetes-state--current-namespace
+                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
     (kubernetes-kubectl args
                         (lambda (buf)
                           (with-current-buffer buf
@@ -180,8 +180,8 @@ ERROR-CB is called if an error occurred."
 
 ERROR-CB is called if an error occurred."
   (let ((args (append (list "delete" "configmap" configmap-name "-o" "name")
-                      (when kubernetes--current-namespace
-                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+                      (when kubernetes-state--current-namespace
+                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
     (kubernetes-kubectl args
                         (lambda (buf)
                           (with-current-buffer buf
@@ -194,8 +194,8 @@ ERROR-CB is called if an error occurred."
 
 ERROR-CB is called if an error occurred."
   (let ((args (append (list "delete" "secret" secret-name "-o" "name")
-                      (when kubernetes--current-namespace
-                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+                      (when kubernetes-state--current-namespace
+                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
     (kubernetes-kubectl args
                         (lambda (buf)
                           (with-current-buffer buf
@@ -206,8 +206,8 @@ ERROR-CB is called if an error occurred."
 (defun kubernetes-kubectl-describe-pod (pod-name cb)
   "Describe pod with POD-NAME, then execute CB with the string response."
   (let ((args (append (list "describe" "pod" pod-name)
-                      (when kubernetes--current-namespace
-                        (list (format "--namespace=%s" kubernetes--current-namespace))))))
+                      (when kubernetes-state--current-namespace
+                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
     (kubernetes-kubectl args
                         (lambda (buf)
                           (let ((s (with-current-buffer buf (buffer-string))))

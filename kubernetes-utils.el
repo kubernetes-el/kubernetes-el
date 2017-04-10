@@ -14,14 +14,14 @@
 
 Update the pod state if it not set yet."
   (-let* (((&alist 'items pods)
-           (or kubernetes--get-pods-response
+           (or kubernetes-state--get-pods-response
                (progn
                  (message "Getting pods...")
                  (let ((response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-pods)))
-                   (setq kubernetes--get-pods-response response)
+                   (setq kubernetes-state--get-pods-response response)
                    response))))
           (pods (append pods nil))
-          (names (-map #'kubernetes--resource-name pods)))
+          (names (-map #'kubernetes-state-resource-name pods)))
     (completing-read "Pod: " names nil t)))
 
 (defun kubernetes--read-configmap-name ()
@@ -29,14 +29,14 @@ Update the pod state if it not set yet."
 
 Update the configmap state if it not set yet."
   (-let* (((&alist 'items configmaps)
-           (or kubernetes--get-configmaps-response
+           (or kubernetes-state--get-configmaps-response
                (progn
                  (message "Getting configmaps...")
                  (let ((response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-configmaps)))
-                   (setq kubernetes--get-configmaps-response response)
+                   (setq kubernetes-state--get-configmaps-response response)
                    response))))
           (configmaps (append configmaps nil))
-          (names (-map #'kubernetes--resource-name configmaps)))
+          (names (-map #'kubernetes-state-resource-name configmaps)))
     (completing-read "Configmap: " names nil t)))
 
 (defun kubernetes--read-secret-name ()
@@ -44,14 +44,14 @@ Update the configmap state if it not set yet."
 
 Update the secret state if it not set yet."
   (-let* (((&alist 'items secrets)
-           (or kubernetes--get-secrets-response
+           (or kubernetes-state--get-secrets-response
                (progn
                  (message "Getting secrets...")
                  (let ((response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-secrets)))
-                   (setq kubernetes--get-secrets-response response)
+                   (setq kubernetes-state--get-secrets-response response)
                    response))))
           (secrets (append secrets nil))
-          (names (-map #'kubernetes--resource-name secrets)))
+          (names (-map #'kubernetes-state-resource-name secrets)))
     (completing-read "Secret: " names nil t)))
 
 (defun kubernetes--read-service-name ()
@@ -59,14 +59,14 @@ Update the secret state if it not set yet."
 
 Update the service state if it not set yet."
   (-let* (((&alist 'items services)
-           (or kubernetes--get-services-response
+           (or kubernetes-state--get-services-response
                (progn
                  (message "Getting services...")
                  (let ((response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-services)))
-                   (setq kubernetes--get-services-response response)
+                   (setq kubernetes-state--get-services-response response)
                    response))))
           (services (append services nil))
-          (names (-map #'kubernetes--resource-name services)))
+          (names (-map #'kubernetes-state-resource-name services)))
     (completing-read "Service: " names nil t)))
 
 (defun kubernetes--read-iso-datetime (&rest _)
@@ -190,9 +190,9 @@ buffer is killed."
       (unless more-buffers
         (dolist (b bufs)
           (with-current-buffer b
-            (kubernetes--state-clear)))
-        (kubernetes--kill-polling-processes)
-        (kubernetes--kill-timers)))))
+            (kubernetes-state-clear)))
+        (kubernetes-state-kill-polling-processes)
+        (kubernetes-state-kill-timers)))))
 
 (defun kubernetes-display-buffer-fullframe (buffer)
   (let ((display-fn
