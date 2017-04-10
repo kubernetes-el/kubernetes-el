@@ -17,7 +17,7 @@ Update the pod state if it not set yet."
            (or kubernetes--get-pods-response
                (progn
                  (message "Getting pods...")
-                 (let ((response (kubernetes--await-on-async #'kubernetes--kubectl-get-pods)))
+                 (let ((response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-pods)))
                    (setq kubernetes--get-pods-response response)
                    response))))
           (pods (append pods nil))
@@ -32,7 +32,7 @@ Update the configmap state if it not set yet."
            (or kubernetes--get-configmaps-response
                (progn
                  (message "Getting configmaps...")
-                 (let ((response (kubernetes--await-on-async #'kubernetes--kubectl-get-configmaps)))
+                 (let ((response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-configmaps)))
                    (setq kubernetes--get-configmaps-response response)
                    response))))
           (configmaps (append configmaps nil))
@@ -47,7 +47,7 @@ Update the secret state if it not set yet."
            (or kubernetes--get-secrets-response
                (progn
                  (message "Getting secrets...")
-                 (let ((response (kubernetes--await-on-async #'kubernetes--kubectl-get-secrets)))
+                 (let ((response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-secrets)))
                    (setq kubernetes--get-secrets-response response)
                    response))))
           (secrets (append secrets nil))
@@ -62,7 +62,7 @@ Update the service state if it not set yet."
            (or kubernetes--get-services-response
                (progn
                  (message "Getting services...")
-                 (let ((response (kubernetes--await-on-async #'kubernetes--kubectl-get-services)))
+                 (let ((response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-services)))
                    (setq kubernetes--get-services-response response)
                    response))))
           (services (append services nil))

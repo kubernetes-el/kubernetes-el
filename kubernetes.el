@@ -642,7 +642,7 @@ FORCE ensures it happens."
 ;;;###autoload
 (defun kubernetes-display-config (config)
   "Display information for CONFIG in a new window."
-  (interactive (list (kubernetes--await-on-async #'kubernetes--kubectl-config-view)))
+  (interactive (list (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-config-view)))
   (with-current-buffer (kubernetes-display-config-refresh config)
     (goto-char (point-min))
     (select-window (display-buffer (current-buffer)))))
@@ -822,13 +822,13 @@ POD-NAME is the name of the pod to display."
     (dolist (pod kubernetes--marked-pod-names)
       (add-to-list 'kubernetes--pods-pending-deletion pod)
 
-      (kubernetes--kubectl-delete-pod pod
-                            (lambda (_)
-                              (message "Deleting pod %s succeeded." pod)
-                              (kubernetes-refresh))
-                            (lambda (_)
-                              (message "Deleting pod %s failed" pod)
-                              (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))))
+      (kubernetes-kubectl-delete-pod pod
+                                     (lambda (_)
+                                       (message "Deleting pod %s succeeded." pod)
+                                       (kubernetes-refresh))
+                                     (lambda (_)
+                                       (message "Deleting pod %s failed" pod)
+                                       (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))))
 
 (defun kubernetes--delete-marked-configmaps ()
   (let ((n (length kubernetes--marked-configmap-names)))
@@ -836,13 +836,13 @@ POD-NAME is the name of the pod to display."
     (dolist (configmap kubernetes--marked-configmap-names)
       (add-to-list 'kubernetes--configmaps-pending-deletion configmap)
 
-      (kubernetes--kubectl-delete-configmap configmap
-                                  (lambda (_)
-                                    (message "Deleting configmap %s succeeded." configmap)
-                                    (kubernetes-refresh))
-                                  (lambda (_)
-                                    (message "Deleting configmap %s failed" configmap)
-                                    (setq kubernetes--configmaps-pending-deletion (delete configmap kubernetes--configmaps-pending-deletion)))))))
+      (kubernetes-kubectl-delete-configmap configmap
+                                           (lambda (_)
+                                             (message "Deleting configmap %s succeeded." configmap)
+                                             (kubernetes-refresh))
+                                           (lambda (_)
+                                             (message "Deleting configmap %s failed" configmap)
+                                             (setq kubernetes--configmaps-pending-deletion (delete configmap kubernetes--configmaps-pending-deletion)))))))
 
 (defun kubernetes--delete-marked-secrets ()
   (let ((n (length kubernetes--marked-secret-names)))
@@ -850,13 +850,13 @@ POD-NAME is the name of the pod to display."
     (dolist (secret kubernetes--marked-secret-names)
       (add-to-list 'kubernetes--secrets-pending-deletion secret)
 
-      (kubernetes--kubectl-delete-secret secret
-                               (lambda (_)
-                                 (message "Deleting secret %s succeeded." secret)
-                                 (kubernetes-refresh))
-                               (lambda (_)
-                                 (message "Deleting secret %s failed" secret)
-                                 (setq kubernetes--secrets-pending-deletion (delete secret kubernetes--secrets-pending-deletion)))))))
+      (kubernetes-kubectl-delete-secret secret
+                                        (lambda (_)
+                                          (message "Deleting secret %s succeeded." secret)
+                                          (kubernetes-refresh))
+                                        (lambda (_)
+                                          (message "Deleting secret %s failed" secret)
+                                          (setq kubernetes--secrets-pending-deletion (delete secret kubernetes--secrets-pending-deletion)))))))
 
 
 ;;; Misc interactive commands
@@ -915,7 +915,7 @@ additional information of state changes."
 
     (unless (kubernetes--poll-namespaces-process-live-p)
       (kubernetes--set-poll-namespaces-process
-       (kubernetes--kubectl-get-namespaces
+       (kubernetes-kubectl-get-namespaces
         (lambda (config)
           (setq kubernetes--get-namespaces-response config)
           (when interactive
@@ -925,7 +925,7 @@ additional information of state changes."
 
     (unless (kubernetes--poll-context-process-live-p)
       (kubernetes--set-poll-context-process
-       (kubernetes--kubectl-config-view
+       (kubernetes-kubectl-config-view
         (lambda (config)
           (setq kubernetes--view-config-response config)
           (when interactive
@@ -935,7 +935,7 @@ additional information of state changes."
 
     (unless (kubernetes--poll-configmaps-process-live-p)
       (kubernetes--set-poll-configmaps-process
-       (kubernetes--kubectl-get-configmaps
+       (kubernetes-kubectl-get-configmaps
         (lambda (response)
           (setq kubernetes--get-configmaps-response response)
           (when interactive
@@ -945,7 +945,7 @@ additional information of state changes."
 
     (unless (kubernetes--poll-services-process-live-p)
       (kubernetes--set-poll-services-process
-       (kubernetes--kubectl-get-services
+       (kubernetes-kubectl-get-services
         (lambda (response)
           (setq kubernetes--get-services-response response)
           (when interactive
@@ -955,7 +955,7 @@ additional information of state changes."
 
     (unless (kubernetes--poll-secrets-process-live-p)
       (kubernetes--set-poll-secrets-process
-       (kubernetes--kubectl-get-secrets
+       (kubernetes-kubectl-get-secrets
         (lambda (response)
           (setq kubernetes--get-secrets-response response)
           (when interactive
@@ -965,7 +965,7 @@ additional information of state changes."
 
     (unless (kubernetes--poll-pods-process-live-p)
       (kubernetes--set-poll-pods-process
-       (kubernetes--kubectl-get-pods
+       (kubernetes-kubectl-get-pods
         (lambda (response)
           (setq kubernetes--get-pods-response response)
           (when interactive
@@ -1123,7 +1123,7 @@ POD-NAME is the name of the pod to describe."
                                   (insert s)
                                   (untabify (point-min) (point-max))
                                   (goto-char (point-min))))))
-           (proc (kubernetes--kubectl-describe-pod pod-name populate-buffer)))
+           (proc (kubernetes-kubectl-describe-pod pod-name populate-buffer)))
       (with-current-buffer buf
         (add-hook 'kill-buffer-hook (lambda () (kubernetes--kill-process-quietly proc)) nil t)))
 
@@ -1207,7 +1207,7 @@ Should be invoked via command `kubernetes-logs-popup'."
     (kubernetes--redraw-buffers t)))
 
 (defun kubernetes--namespace-names ()
-  (-let* ((config (or kubernetes--get-namespaces-response (kubernetes--await-on-async #'kubernetes--kubectl-get-namespaces)))
+  (-let* ((config (or kubernetes--get-namespaces-response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-namespaces)))
           ((&alist 'items items) config))
     (-map (-lambda ((&alist 'metadata (&alist 'name name))) name) items)))
 
@@ -1220,11 +1220,11 @@ CONTEXT is the name of a context as a string."
   (kubernetes--state-clear)
   (kubernetes--redraw-buffers t)
   (goto-char (point-min))
-  (kubernetes--kubectl-config-use-context context (lambda (_)
-                                          (kubernetes-refresh))))
+  (kubernetes-kubectl-config-use-context context (lambda (_)
+                                                   (kubernetes-refresh))))
 
 (defun kubernetes--context-names ()
-  (-let* ((config (or kubernetes--view-config-response (kubernetes--await-on-async #'kubernetes--kubectl-config-view)))
+  (-let* ((config (or kubernetes--view-config-response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-config-view)))
           ((&alist 'contexts contexts) config))
     (--map (alist-get 'name it) contexts)))
 
@@ -1535,12 +1535,12 @@ FORCE ensures it happens."
 
           (erase-buffer)
           (kubernetes-ast-eval `(section (root nil)
-                                         ,(kubernetes--render-error-header state)
-                                         ,(kubernetes--render-context-section state)
-                                         ,(kubernetes--render-configmaps-section state t)
-                                         ,(kubernetes--render-pods-section state t)
-                                         ,(kubernetes--render-secrets-section state t)
-                                         ,(kubernetes--render-services-section state t)))
+                               ,(kubernetes--render-error-header state)
+                               ,(kubernetes--render-context-section state)
+                               ,(kubernetes--render-configmaps-section state t)
+                               ,(kubernetes--render-pods-section state t)
+                               ,(kubernetes--render-secrets-section state t)
+                               ,(kubernetes--render-services-section state t)))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.
