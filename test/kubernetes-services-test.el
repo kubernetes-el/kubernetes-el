@@ -10,7 +10,7 @@
 (defconst sample-get-services-response (test-helper-json-resource "get-services-response.json"))
 
 (defun draw-services-section (state)
-  (kubernetes--eval-ast (kubernetes--render-services-section state)))
+  (kubernetes-ast-eval (kubernetes--render-services-section state)))
 
 
 ;; Shows "Fetching..." when state isn't initialized yet.

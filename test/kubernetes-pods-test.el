@@ -10,7 +10,7 @@
 (defconst sample-get-pods-response (test-helper-json-resource "get-pods-response.json"))
 
 (defun draw-pods-section (state)
-  (kubernetes--eval-ast (kubernetes--render-pods-section state)))
+  (kubernetes-ast-eval (kubernetes--render-pods-section state)))
 
 
 ;; Shows "Fetching..." when state isn't initialized yet.

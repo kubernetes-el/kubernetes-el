@@ -9,7 +9,7 @@
 (defconst sample-config-view-response (test-helper-json-resource "config-view-response.json"))
 
 (defun draw-context-section (state)
-  (kubernetes--eval-ast (kubernetes--render-context-section state)))
+  (kubernetes-ast-eval (kubernetes--render-context-section state)))
 
 
 ;; Shows "Fetching..." when state isn't initialized yet.

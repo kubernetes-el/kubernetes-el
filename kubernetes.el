@@ -528,10 +528,10 @@ FORCE ensures it happens."
             (kubernetes--update-pod-marks-state (append pods nil)))
 
           (erase-buffer)
-          (kubernetes--eval-ast `(section (root nil)
-                                ,(kubernetes--render-error-header state)
-                                ,(kubernetes--render-context-section state)
-                                ,(kubernetes--render-pods-section state)))
+          (kubernetes-ast-eval `(section (root nil)
+                                         ,(kubernetes--render-error-header state)
+                                         ,(kubernetes--render-context-section state)
+                                         ,(kubernetes--render-pods-section state)))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.
@@ -573,10 +573,10 @@ FORCE ensures it happens."
               (state (kubernetes--state)))
 
           (erase-buffer)
-          (kubernetes--eval-ast `(section (root nil)
-                                ,(kubernetes--render-error-header state)
-                                ,(kubernetes--render-context-section state)
-                                ,(kubernetes--render-configmaps-section state)))
+          (kubernetes-ast-eval `(section (root nil)
+                                         ,(kubernetes--render-error-header state)
+                                         ,(kubernetes--render-context-section state)
+                                         ,(kubernetes--render-configmaps-section state)))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.
@@ -618,10 +618,10 @@ FORCE ensures it happens."
               (state (kubernetes--state)))
 
           (erase-buffer)
-          (kubernetes--eval-ast `(section (root nil)
-                                ,(kubernetes--render-error-header state)
-                                ,(kubernetes--render-context-section state)
-                                ,(kubernetes--render-secrets-section state)))
+          (kubernetes-ast-eval `(section (root nil)
+                                         ,(kubernetes--render-error-header state)
+                                         ,(kubernetes--render-context-section state)
+                                         ,(kubernetes--render-secrets-section state)))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.
@@ -763,7 +763,7 @@ POD-NAME is the name of the pod to display."
      (user-error "Nothing here can be marked")))
 
   (let ((inhibit-read-only t))
-    (kubernetes--insert-delete-mark-for-line-at-pt point))
+    (kubernetes-ast-put-delete-mark-on-line-at-pt point))
   (magit-section-forward))
 
 (defun kubernetes-unmark (point)
@@ -1534,13 +1534,13 @@ FORCE ensures it happens."
               (state (kubernetes--state)))
 
           (erase-buffer)
-          (kubernetes--eval-ast `(section (root nil)
-                                ,(kubernetes--render-error-header state)
-                                ,(kubernetes--render-context-section state)
-                                ,(kubernetes--render-configmaps-section state t)
-                                ,(kubernetes--render-pods-section state t)
-                                ,(kubernetes--render-secrets-section state t)
-                                ,(kubernetes--render-services-section state t)))
+          (kubernetes-ast-eval `(section (root nil)
+                                         ,(kubernetes--render-error-header state)
+                                         ,(kubernetes--render-context-section state)
+                                         ,(kubernetes--render-configmaps-section state t)
+                                         ,(kubernetes--render-pods-section state t)
+                                         ,(kubernetes--render-secrets-section state t)
+                                         ,(kubernetes--render-services-section state t)))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.

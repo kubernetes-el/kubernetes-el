@@ -21,7 +21,7 @@
       (goto-char (point-min))
       (let ((time-str (format "Session started at %s" (substring (current-time-string) 0 19)))
             (command-str (format "%s %s" command (string-join args " "))))
-        (kubernetes--eval-ast
+        (kubernetes-ast-eval
          `((line ,(propertize time-str 'face 'magit-dimmed))
            (padding)
            (line ,(propertize command-str 'face 'magit-dimmed))
@@ -48,7 +48,7 @@
         (funcall setup-fn)
         (let ((time-str (format "Process started at %s" (substring (current-time-string) 0 19)))
               (command-str (format "%s %s" command (string-join args " "))))
-          (kubernetes--eval-ast
+          (kubernetes-ast-eval
            `((line ,(propertize time-str 'face 'magit-dimmed))
              (padding)
              (line ,(propertize command-str 'face 'magit-dimmed))
