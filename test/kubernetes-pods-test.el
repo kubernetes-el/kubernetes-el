@@ -3,14 +3,14 @@
 ;;; Code:
 
 (require 's)
-(require 'kubernetes)
+(require 'kubernetes-pods)
 (declare-function test-helper-json-resource "test-helper.el")
 
 
 (defconst sample-get-pods-response (test-helper-json-resource "get-pods-response.json"))
 
 (defun draw-pods-section (state)
-  (kubernetes-ast-eval (kubernetes--render-pods-section state)))
+  (kubernetes-ast-eval (kubernetes-pods-render state)))
 
 
 ;; Shows "Fetching..." when state isn't initialized yet.

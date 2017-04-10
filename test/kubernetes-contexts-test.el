@@ -3,13 +3,13 @@
 ;;; Code:
 
 (require 's)
-(require 'kubernetes)
+(require 'kubernetes-contexts)
 (declare-function test-helper-json-resource "test-helper.el")
 
 (defconst sample-config-view-response (test-helper-json-resource "config-view-response.json"))
 
 (defun draw-context-section (state)
-  (kubernetes-ast-eval (kubernetes--render-context-section state)))
+  (kubernetes-ast-eval (kubernetes-contexts-render state)))
 
 
 ;; Shows "Fetching..." when state isn't initialized yet.

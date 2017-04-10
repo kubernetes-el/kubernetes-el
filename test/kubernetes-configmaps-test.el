@@ -3,14 +3,14 @@
 ;;; Code:
 
 (require 's)
-(require 'kubernetes)
+(require 'kubernetes-configmaps)
 (declare-function test-helper-json-resource "test-helper.el")
 
 
 (defconst sample-get-configmaps-response (test-helper-json-resource "get-configmaps-response.json"))
 
 (defun draw-configmaps-section (state)
-  (kubernetes-ast-eval (kubernetes--render-configmaps-section state)))
+  (kubernetes-ast-eval (kubernetes-configmaps-render state)))
 
 
 ;; Shows "Fetching..." when state isn't initialized yet.

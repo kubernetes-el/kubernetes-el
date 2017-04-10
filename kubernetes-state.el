@@ -216,6 +216,30 @@ This is used to display the current state.")
   (setq kubernetes-state--poll-timer nil))
 
 
+;; Marked objects
+
+(defvar kubernetes-state--marked-pod-names nil)
+(defvar kubernetes-state--pods-pending-deletion nil)
+
+(defvar kubernetes-state--marked-configmap-names nil)
+(defvar kubernetes-state--configmaps-pending-deletion nil)
+
+(defvar kubernetes-state--marked-secret-names nil)
+(defvar kubernetes-state--secrets-pending-deletion nil)
+
+(defvar kubernetes-state--marked-service-names nil)
+(defvar kubernetes-state--services-pending-deletion nil)
+
+(defun kubernetes-state-update-marked-pods (pods)
+  (let ((pod-names (-map #'kubernetes-state-resource-name pods)))
+    (setq kubernetes-state--pods-pending-deletion
+          (-intersection kubernetes-state--pods-pending-deletion pod-names))
+    (setq kubernetes-state--marked-pod-names
+          (-intersection kubernetes-state--marked-pod-names pod-names))))
+
+
+
+
 (provide 'kubernetes-state)
 
 ;;; kubernetes-state.el ends here

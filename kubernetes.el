@@ -27,467 +27,21 @@
 
 (require 'dash)
 (require 'magit-popup)
-(require 'seq)
 (require 'subr-x)
-(require 'term)
 
 (require 'kubernetes-ast)
+(require 'kubernetes-configmaps)
+(require 'kubernetes-contexts)
 (require 'kubernetes-custom)
+(require 'kubernetes-errors)
 (require 'kubernetes-kubectl)
+(require 'kubernetes-pods)
+(require 'kubernetes-secrets)
+(require 'kubernetes-services)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 
 (autoload 'json-pretty-print-buffer "json")
-
-
-;; Context section rendering.
-
-(defun kubernetes--render-context-section (state)
-  `(section (context-container nil)
-            (section (context nil)
-                     (,(-let* (((&alist 'config config 'current-namespace current-namespace) state)
-                               (current-context (-when-let ((&alist 'current-context current 'contexts contexts) config)
-                                                  (--find (equal current (alist-get 'name it)) (append contexts nil)))))
-                         (cond
-
-                          ;; If a context is selected, draw that.
-                          ((and config current-context)
-                           (-let* (((&alist 'name name 'context (&alist 'cluster cluster-name 'namespace ns)) current-context)
-                                   (context-name (propertize name 'face 'kubernetes-context-name)))
-                             `(nav-prop :display-config
-                                        ((heading (copy-prop ,name (key-value 12 "Context" ,context-name)))
-                                         (copy-prop ,cluster-name (key-value 12 "Cluster" ,cluster-name))
-                                         (copy-prop ,(or current-namespace ns)
-                                                    (key-value 12 "Namespace" ,(or current-namespace ns)))))))
-
-                          ;; If there is no context, draw the namespace.
-                          (current-namespace
-                           (let ((none (propertize "<none>" 'face 'magit-dimmed)))
-                             `(nav-prop :display-config
-                                        ((heading (key-value 12 "Context" ,none))
-                                         (copy-prop ,current-namespace (key-value 12 "Namespace" ,current-namespace))))))
-
-                          ;; If state is empty, assume requests are in progress.
-                          (t
-                           (let ((fetching (propertize "Fetching..." 'face 'kubernetes-progress-indicator)))
-                             `(heading (key-value 12 "Context" ,fetching))))))
-
-                      (padding)))))
-
-
-;; Pod section rendering.
-
-(defvar-local kubernetes--marked-pod-names nil)
-
-(defvar-local kubernetes--pods-pending-deletion nil)
-
-(defun kubernetes--format-pod-details (pod)
-  (-let ((detail (lambda (k v)
-                   (when v
-                     `(copy-prop ,v (key-value 12 ,k ,v)))))
-
-         ((&alist 'metadata (&alist 'namespace ns 'labels (&alist 'name label-name))
-                  'status (&alist 'containerStatuses [(&alist 'image image 'name name)]
-                                  'hostIP host-ip
-                                  'podIP pod-ip
-                                  'startTime start-time))
-          pod))
-    (-non-nil (list (funcall detail "Name" name)
-                    (funcall detail "Labels" label-name)
-                    (funcall detail "Namespace" ns)
-                    (funcall detail "Image" image)
-                    (funcall detail "Host IP" host-ip)
-                    (funcall detail "Pod IP" pod-ip)
-                    (funcall detail "Started" start-time)))))
-
-(defun kubernetes--format-pod-line (pod current-time)
-  (-let* (((&alist 'metadata (&alist 'name name)
-                   'status (&alist 'containerStatuses containers
-                                   'startTime start-time
-                                   'phase phase))
-           pod)
-          ([(&alist 'restartCount restarts 'state state)] containers)
-          (state (or (alist-get 'reason (alist-get 'waiting state))
-                     phase))
-          (str
-           (concat
-            ;; Name
-            (format "%-45s " (kubernetes--ellipsize name 45))
-
-            ;; State
-            (let ((s (format "%-10s " (kubernetes--ellipsize state 10))))
-              (if (equal state "Running") (propertize s 'face 'magit-dimmed) s))
-
-            ;; Count
-            (format "%5s "
-                    (let* ((n-ready (seq-count (-lambda ((it &as &alist 'ready r))
-                                                 (eq r t))
-                                               containers))
-                           (count-str (format "%s/%s" n-ready (seq-length containers))))
-                      (if (zerop n-ready)
-                          count-str
-                        (propertize count-str 'face 'magit-dimmed))))
-
-            ;; Restarts
-            (let ((s (format "%8s " restarts)))
-              (cond
-               ((equal 0 restarts)
-                (propertize s 'face 'magit-dimmed))
-               ((<= kubernetes-pod-restart-warning-threshold restarts)
-                (propertize s 'face 'warning))
-               (t
-                s)))
-
-            ;; Age
-            (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp start-time))))
-              (propertize (format "%8s" (kubernetes--time-diff-string start current-time))
-                          'face 'magit-dimmed))))
-
-          (str (cond
-                ((member (downcase state) '("running" "containercreating" "terminated"))
-                 str)
-                ((member (downcase state) '("runcontainererror" "crashloopbackoff"))
-                 (propertize str 'face 'error))
-                (t
-                 (propertize str 'face 'warning))))
-          (line `(line ,str)))
-
-    `(nav-prop (:pod-name ,name)
-               (copy-prop ,name
-                          ,(cond
-                            ((member name kubernetes--pods-pending-deletion)
-                             `(propertize (face kubernetes-pending-deletion) ,line))
-                            ((member name kubernetes--marked-pod-names)
-                             `(mark-for-delete ,line))
-                            (t
-                             line))))))
-
-(defun kubernetes--update-pod-marks-state (pods)
-  (let ((pod-names (-map #'kubernetes-state-resource-name pods)))
-    (setq kubernetes--pods-pending-deletion
-          (-intersection kubernetes--pods-pending-deletion pod-names))
-    (setq kubernetes--marked-pod-names
-          (-intersection kubernetes--marked-pod-names pod-names))))
-
-(defun kubernetes--render-pods-section (state &optional hidden)
-  (-let* (((&alist 'current-time current-time
-                   'pods (pods-response &as &alist 'items pods)) state)
-          (pods (append pods nil))
-          (column-heading (propertize (format "%-45s %-10s %-5s   %6s %6s" "Name" "Status" "Ready" "Restarts" "Age")
-                                      'face 'magit-section-heading)))
-    `(section (pods-container ,hidden)
-              ,(cond
-                ;; If the state is set and there are no pods, write "None".
-                ((and pods-response (null pods))
-                 (let ((none (propertize "None." 'face 'magit-dimmed))
-                       (heading (concat (propertize "Pods" 'face 'magit-header-line) " (0)")))
-                   `((heading ,heading)
-                     (section (pods-list nil)
-                              (indent
-                               (line ,none))))))
-
-                ;; If there are pods, write sections for each pods.
-                (pods
-                 (let ((heading (concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods))))
-                       (make-pod-entry
-                        (lambda (pod)
-                          `(section (,(intern (kubernetes-state-resource-name pod)) t)
-                                    (heading ,(kubernetes--format-pod-line pod current-time))
-                                    (indent
-                                     (section (details nil)
-                                              ,@(kubernetes--format-pod-details pod)
-                                              (padding)))))))
-                   `((heading ,heading)
-                     (indent
-                      (line ,column-heading)
-                      ,@(-map make-pod-entry pods)))))
-
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 (let ((fetching (propertize "Fetching..." 'face 'kubernetes-progress-indicator)))
-                   `((heading "Pods")
-                     (section (pods-list nil)
-                              (indent
-                               (line ,column-heading)
-                               (line ,fetching)))))))
-              (padding))))
-
-
-;; Configmap section rendering.
-
-(defvar-local kubernetes--marked-configmap-names nil)
-
-(defvar-local kubernetes--configmaps-pending-deletion nil)
-
-(defun kubernetes--format-configmap-details (configmap)
-  (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) configmap]
-    `((copy-prop ,ns (key-value 12 "Namespace" ,ns))
-      (copy-prop ,time (key-value 12 "Created" ,time)))))
-
-(defun kubernetes--format-configmap-line (configmap current-time)
-  (-let* (((&alist 'data data
-                   'metadata (&alist 'name name 'creationTimestamp created-time))
-           configmap)
-          (line `(line ,(concat
-                         ;; Name
-                         (format "%-45s " (kubernetes--ellipsize name 45))
-
-                         ;; Data
-                         (propertize (format "%6s " (seq-length data)) 'face 'magit-dimmed)
-
-                         ;; Age
-                         (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
-                           (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
-                                       'face 'magit-dimmed))))))
-    `(nav-prop (:configmap-name ,name)
-               (copy-prop ,name
-                          ,(cond
-                            ((member name kubernetes--configmaps-pending-deletion)
-                             `(propertize (face kubernetes-pending-deletion) ,line))
-                            ((member name kubernetes--marked-configmap-names)
-                             `(mark-for-delete ,line))
-                            (t
-                             line))))))
-
-(defun kubernetes--render-configmaps-section (state &optional hidden)
-  (-let* (((&alist 'current-time current-time
-                   'configmaps (configmaps-response &as &alist 'items configmaps)) state)
-          (configmaps (append configmaps nil))
-          (column-heading (propertize (format "%-45s %6s %6s" "Name" "Data" "Age") 'face 'magit-section-heading)))
-    `(section (configmaps-container ,hidden)
-              ,(cond
-                ;; If the state is set and there are no configmaps, write "None".
-                ((and configmaps-response (null configmaps))
-                 `((heading ,(concat (propertize "Configmaps" 'face 'magit-header-line) " (0)"))
-                   (section (configmaps-list nil)
-                            (indent
-                             (propertize (face magit-dimmed) (line "None."))))))
-
-                ;; If there are configmaps, write sections for each configmaps.
-                (configmaps
-                 (let ((make-entry
-                        (lambda (it)
-                          `(section (,(intern (kubernetes-state-resource-name it)) t)
-                                    (heading ,(kubernetes--format-configmap-line it current-time))
-                                    (section (details nil)
-                                             (indent
-                                              ,@(kubernetes--format-configmap-details it)
-                                              (padding)))))))
-
-                   `((heading ,(concat (propertize "Configmaps" 'face 'magit-header-line) " " (format "(%s)" (length configmaps))))
-                     (indent
-                      (line ,column-heading)
-                      ,@(-map make-entry configmaps)))))
-
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 `((heading "Configmaps")
-                   (indent
-                    (line ,column-heading)
-                    (section (configmaps-list nil)
-                             (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
-              (padding))))
-
-
-;; Secret section rendering.
-
-(defvar-local kubernetes--marked-secret-names nil)
-
-(defvar-local kubernetes--secrets-pending-deletion nil)
-
-(defun kubernetes--format-secret-details (secret)
-  (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) secret]
-    `((copy-prop ,ns (key-value 12 "Namespace" ,ns))
-      (copy-prop ,time (key-value 12 "Created" ,time)))))
-
-(defun kubernetes--format-secret-line (secret current-time)
-  (-let* (((&alist 'data data 'metadata (&alist 'name name 'creationTimestamp created-time))
-           secret)
-          (line `(line ,(concat
-                         ;; Name
-                         (format "%-45s " (kubernetes--ellipsize name 45))
-
-                         ;; Data
-                         (propertize (format "%6s " (seq-length data)) 'face 'magit-dimmed)
-
-                         ;; Age
-                         (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
-                           (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
-                                       'face 'magit-dimmed))))))
-
-    `(nav-prop (:secret-name ,name)
-               (copy-prop ,name
-                          ,(cond
-                            ((member name kubernetes--secrets-pending-deletion)
-                             `(propertize (face kubernetes-pending-deletion) ,line))
-                            ((member name kubernetes--marked-secret-names)
-                             `(mark-for-delete ,line))
-                            (t
-                             line))))))
-
-(defun kubernetes--render-secrets-section (state &optional hidden)
-  (-let* (((&alist 'current-time current-time
-                   'secrets (secrets-response &as &alist 'items secrets)) state)
-          (secrets (append secrets nil))
-          (column-heading (propertize (format "%-45s %6s %6s" "Name" "Data" "Age") 'face 'magit-section-heading)))
-    `(section (secrets-container ,hidden)
-              ,(cond
-                ;; If the state is set and there are no secrets, write "None".
-                ((and secrets-response (null secrets))
-                 `((heading ,(concat (propertize "Secrets" 'face 'magit-header-line) " (0)"))
-                   (indent
-                    (section (secrets-list nil)
-                             (propertize (face magit-dimmed) (line "None."))))))
-
-                ;; If there are secrets, write sections for each secret.
-                (secrets
-                 (let ((make-entry
-                        (lambda (it)
-                          `(section (,(intern (kubernetes-state-resource-name it)) t)
-                                    (heading ,(kubernetes--format-secret-line it current-time))
-                                    (section (details nil)
-                                             (indent
-                                              ,@(kubernetes--format-secret-details it)
-                                              (padding)))))))
-                   `((heading ,(concat (propertize "Secrets" 'face 'magit-header-line) " " (format "(%s)" (length secrets))))
-                     (indent
-                      (line ,column-heading)
-                      ,@(-map make-entry secrets)))))
-
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 `((heading "Secrets")
-                   (indent
-                    (line ,column-heading)
-                    (section (secrets-list nil)
-                             (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
-              (padding))))
-
-
-;; Service section rendering.
-
-(defvar-local kubernetes--marked-service-names nil)
-
-(defvar-local kubernetes--services-pending-deletion nil)
-
-(defun kubernetes--format-service-details (service)
-  (-let ((detail
-          (lambda (key value)
-            (when value
-              `(copy-prop ,value (key-value 15 ,key ,value)))))
-
-         (format-ports
-          (-lambda ((&alist 'name name 'port port 'protocol prot))
-            (concat (when name (format "%s:" name))
-                    (number-to-string port) "/" prot)))
-
-         ((&alist 'metadata (&alist 'namespace ns
-                                    'creationTimestamp created-time)
-                  'spec (&alist 'clusterIP internal-ip
-                                'externalIPs ips
-                                'ports ports))
-          service))
-    (-non-nil (list (funcall detail "Namespace" ns)
-                    (funcall detail "Created" created-time)
-                    (funcall detail "Internal IP" internal-ip)
-                    (when-let (ips (append ips nil))
-                      (funcall detail "External IPs" (string-join ips ", ")))
-                    (when-let (ports (append ports nil))
-                      (funcall detail "Ports" (string-join (-map format-ports ports) ", ")))))))
-
-(defun kubernetes--format-service-line (service current-time)
-  (-let* (((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
-                   'spec (&alist 'clusterIP internal-ip
-                                 'externalIPs external-ips))
-           service)
-          (line `(line ,(concat
-                         ;; Name
-                         (format "%-30s " (kubernetes--ellipsize name 30))
-
-                         ;; Internal IP
-                         (propertize (format "%15s " internal-ip) 'face 'magit-dimmed)
-
-                         ;; External IP
-                         (let ((ips (append external-ips nil)))
-                           (propertize (format "%15s " (or (car ips) "")) 'face 'magit-dimmed))
-
-                         ;; Age
-                         (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
-                           (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
-                                       'face 'magit-dimmed))))))
-    `(nav-prop (:service-name ,name)
-               (copy-prop ,name
-                          ,(cond
-                            ((member name kubernetes--services-pending-deletion)
-                             `(propertize (face kubernetes-pending-deletion) ,line))
-                            ((member name kubernetes--marked-service-names)
-                             `(mark-for-delete ,line))
-                            (t
-                             line))))))
-
-(defun kubernetes--render-services-section (state &optional hidden)
-  (-let* (((&alist 'current-time current-time
-                   'services (services-response &as &alist 'items services)) state)
-          (services (append services nil))
-          (column-heading (propertize (format "%-30s %15s %15s %6s" "Name" "Internal IP" "External IP" "Age") 'face 'magit-section-heading)))
-    `(section (services-container ,hidden)
-              ,(cond
-
-                ;; If the state is set and there are no services, write "None".
-                ((and services-response (null services))
-                 `((heading ,(concat (propertize "Services" 'face 'magit-header-line) " (0)"))
-                   (indent
-                    (section (services-list nil)
-                             (propertize (face magit-dimmed) (line "None."))))))
-
-                ;; If there are services, write sections for each service.
-                (services
-                 (let ((make-entry
-                        (lambda (it)
-                          `(section (,(intern (kubernetes-state-resource-name it)) t)
-                                    (heading ,(kubernetes--format-service-line it current-time))
-                                    (indent
-                                     (section (details nil)
-                                              ,@(kubernetes--format-service-details it)
-                                              (padding)))))))
-                   `((heading ,(concat (propertize "Services" 'face 'magit-header-line) " " (format "(%s)" (length services))))
-                     (indent
-                      (line ,column-heading)
-                      ,@(-map make-entry services)))))
-
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 `((heading "Services")
-                   (indent
-                    (line ,column-heading)
-                    (section (services-list nil)
-                             (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
-              (padding))))
-
-
-;; Error header rendering
-
-(defun kubernetes--render-error-header (state)
-  (-when-let* (((&alist 'error (&alist 'message message 'command command)) state)
-               (header (concat (propertize "kubectl command failed" 'face 'font-lock-warning-face)))
-               (message-paragraph
-                (propertize (concat (with-temp-buffer
-                                      (insert message)
-                                      (fill-region (point-min) (point-max))
-                                      (indent-region (point-min) (point-max) 2)
-                                      (string-trim-right (buffer-string))))
-                            'kubernetes-copy message))
-               (command-str (string-join command " ")))
-
-    `(section (error nil)
-              (heading ,header)
-              (padding)
-              (section (message nil)
-                       (line ,message-paragraph)
-                       (padding))
-              (section (command nil)
-                       (copy-prop ,command-str (key-value 10 "Command" ,command-str))
-                       (padding)))))
 
 
 ;; Display pod view rendering routines.
@@ -525,13 +79,13 @@ FORCE ensures it happens."
               (state (kubernetes--state)))
 
           (-when-let ((&alist 'pods (&alist 'items pods)) state)
-            (kubernetes--update-pod-marks-state (append pods nil)))
+            (kubernetes-state-update-marked-pods (append pods nil)))
 
           (erase-buffer)
           (kubernetes-ast-eval `(section (root nil)
-                                         ,(kubernetes--render-error-header state)
-                                         ,(kubernetes--render-context-section state)
-                                         ,(kubernetes--render-pods-section state)))
+                               ,(kubernetes-errors-render state)
+                               ,(kubernetes-contexts-render state)
+                               ,(kubernetes-pods-render state)))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.
@@ -574,9 +128,9 @@ FORCE ensures it happens."
 
           (erase-buffer)
           (kubernetes-ast-eval `(section (root nil)
-                                         ,(kubernetes--render-error-header state)
-                                         ,(kubernetes--render-context-section state)
-                                         ,(kubernetes--render-configmaps-section state)))
+                               ,(kubernetes-errors-render state)
+                               ,(kubernetes-contexts-render state)
+                               ,(kubernetes-configmaps-render state)))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.
@@ -619,9 +173,9 @@ FORCE ensures it happens."
 
           (erase-buffer)
           (kubernetes-ast-eval `(section (root nil)
-                                         ,(kubernetes--render-error-header state)
-                                         ,(kubernetes--render-context-section state)
-                                         ,(kubernetes--render-secrets-section state)))
+                               ,(kubernetes-errors-render state)
+                               ,(kubernetes-contexts-render state)
+                               ,(kubernetes-secrets-render state)))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.
@@ -751,14 +305,14 @@ POD-NAME is the name of the pod to display."
   (interactive "d")
   (pcase (get-text-property point 'kubernetes-nav)
     (`(:pod-name ,pod-name)
-     (unless (member pod-name kubernetes--pods-pending-deletion)
-       (add-to-list 'kubernetes--marked-pod-names pod-name)))
+     (unless (member pod-name kubernetes-state--pods-pending-deletion)
+       (add-to-list 'kubernetes-state--marked-pod-names pod-name)))
     (`(:configmap-name ,configmap-name)
-     (unless (member configmap-name kubernetes--configmaps-pending-deletion)
-       (add-to-list 'kubernetes--marked-configmap-names configmap-name)))
+     (unless (member configmap-name kubernetes-state--configmaps-pending-deletion)
+       (add-to-list 'kubernetes-state--marked-configmap-names configmap-name)))
     (`(:secret-name ,secret-name)
-     (unless (member secret-name kubernetes--secrets-pending-deletion)
-       (add-to-list 'kubernetes--marked-secret-names secret-name)))
+     (unless (member secret-name kubernetes-state--secrets-pending-deletion)
+       (add-to-list 'kubernetes-state--marked-secret-names secret-name)))
     (_
      (user-error "Nothing here can be marked")))
 
@@ -771,11 +325,11 @@ POD-NAME is the name of the pod to display."
   (interactive "d")
   (pcase (get-text-property point 'kubernetes-nav)
     (`(:pod-name ,pod-name)
-     (setq kubernetes--marked-pod-names (delete pod-name kubernetes--marked-pod-names)))
+     (setq kubernetes-state--marked-pod-names (delete pod-name kubernetes-state--marked-pod-names)))
     (`(:secret-name ,secret-name)
-     (setq kubernetes--marked-secret-names (delete secret-name kubernetes--marked-secret-names)))
+     (setq kubernetes-state--marked-secret-names (delete secret-name kubernetes-state--marked-secret-names)))
     (`(:configmap-name ,configmap-name)
-     (setq kubernetes--marked-configmap-names (delete configmap-name kubernetes--marked-configmap-names))))
+     (setq kubernetes-state--marked-configmap-names (delete configmap-name kubernetes-state--marked-configmap-names))))
   (kubernetes--redraw-buffers)
   (goto-char point)
   (magit-section-forward))
@@ -783,9 +337,9 @@ POD-NAME is the name of the pod to display."
 (defun kubernetes-unmark-all ()
   "Unmark everything in the buffer."
   (interactive)
-  (setq kubernetes--marked-pod-names nil)
-  (setq kubernetes--marked-configmap-names nil)
-  (setq kubernetes--marked-secret-names nil)
+  (setq kubernetes-state--marked-pod-names nil)
+  (setq kubernetes-state--marked-configmap-names nil)
+  (setq kubernetes-state--marked-secret-names nil)
   (let ((pt (point)))
     (kubernetes--redraw-buffers)
     (goto-char pt)))
@@ -793,70 +347,70 @@ POD-NAME is the name of the pod to display."
 (defun kubernetes-execute-marks ()
   "Action all marked items in the buffer."
   (interactive)
-  (unless (or kubernetes--marked-pod-names
-              kubernetes--marked-configmap-names
-              kubernetes--marked-secret-names)
+  (unless (or kubernetes-state--marked-pod-names
+              kubernetes-state--marked-configmap-names
+              kubernetes-state--marked-secret-names)
     (user-error "Nothing is marked"))
 
-  (let ((n (length kubernetes--marked-pod-names)))
+  (let ((n (length kubernetes-state--marked-pod-names)))
     (when (and (not (zerop n))
                (y-or-n-p (format "Delete %s pod%s? " n (if (equal 1 n) "" "s"))))
       (kubernetes--delete-marked-pods)
       (kubernetes-unmark-all)))
 
-  (let ((n (length kubernetes--marked-configmap-names)))
+  (let ((n (length kubernetes-state--marked-configmap-names)))
     (when (and (not (zerop n))
                (y-or-n-p (format "Delete %s configmap%s? " n (if (equal 1 n) "" "s"))))
       (kubernetes--delete-marked-configmaps)
       (kubernetes-unmark-all)))
 
-  (let ((n (length kubernetes--marked-secret-names)))
+  (let ((n (length kubernetes-state--marked-secret-names)))
     (when (and (not (zerop n))
                (y-or-n-p (format "Delete %s secret%s? " n (if (equal 1 n) "" "s"))))
       (kubernetes--delete-marked-secrets)
       (kubernetes-unmark-all))))
 
 (defun kubernetes--delete-marked-pods ()
-  (let ((n (length kubernetes--marked-pod-names)))
+  (let ((n (length kubernetes-state--marked-pod-names)))
     (message "Deleting %s pod%s..." n (if (equal 1 n) "" "s"))
-    (dolist (pod kubernetes--marked-pod-names)
-      (add-to-list 'kubernetes--pods-pending-deletion pod)
+    (dolist (pod kubernetes-state--marked-pod-names)
+      (add-to-list 'kubernetes-state--pods-pending-deletion pod)
 
       (kubernetes-kubectl-delete-pod pod
-                                     (lambda (_)
-                                       (message "Deleting pod %s succeeded." pod)
-                                       (kubernetes-refresh))
-                                     (lambda (_)
-                                       (message "Deleting pod %s failed" pod)
-                                       (setq kubernetes--pods-pending-deletion (delete pod kubernetes--pods-pending-deletion)))))))
+                           (lambda (_)
+                             (message "Deleting pod %s succeeded." pod)
+                             (kubernetes-refresh))
+                           (lambda (_)
+                             (message "Deleting pod %s failed" pod)
+                             (setq kubernetes-state--pods-pending-deletion (delete pod kubernetes-state--pods-pending-deletion)))))))
 
 (defun kubernetes--delete-marked-configmaps ()
-  (let ((n (length kubernetes--marked-configmap-names)))
+  (let ((n (length kubernetes-state--marked-configmap-names)))
     (message "Deleting %s configmap%s..." n (if (equal 1 n) "" "s"))
-    (dolist (configmap kubernetes--marked-configmap-names)
-      (add-to-list 'kubernetes--configmaps-pending-deletion configmap)
+    (dolist (configmap kubernetes-state--marked-configmap-names)
+      (add-to-list 'kubernetes-state--configmaps-pending-deletion configmap)
 
       (kubernetes-kubectl-delete-configmap configmap
-                                           (lambda (_)
-                                             (message "Deleting configmap %s succeeded." configmap)
-                                             (kubernetes-refresh))
-                                           (lambda (_)
-                                             (message "Deleting configmap %s failed" configmap)
-                                             (setq kubernetes--configmaps-pending-deletion (delete configmap kubernetes--configmaps-pending-deletion)))))))
+                                 (lambda (_)
+                                   (message "Deleting configmap %s succeeded." configmap)
+                                   (kubernetes-refresh))
+                                 (lambda (_)
+                                   (message "Deleting configmap %s failed" configmap)
+                                   (setq kubernetes-state--configmaps-pending-deletion (delete configmap kubernetes-state--configmaps-pending-deletion)))))))
 
 (defun kubernetes--delete-marked-secrets ()
-  (let ((n (length kubernetes--marked-secret-names)))
+  (let ((n (length kubernetes-state--marked-secret-names)))
     (message "Deleting %s secret%s..." n (if (equal 1 n) "" "s"))
-    (dolist (secret kubernetes--marked-secret-names)
-      (add-to-list 'kubernetes--secrets-pending-deletion secret)
+    (dolist (secret kubernetes-state--marked-secret-names)
+      (add-to-list 'kubernetes-state--secrets-pending-deletion secret)
 
       (kubernetes-kubectl-delete-secret secret
-                                        (lambda (_)
-                                          (message "Deleting secret %s succeeded." secret)
-                                          (kubernetes-refresh))
-                                        (lambda (_)
-                                          (message "Deleting secret %s failed" secret)
-                                          (setq kubernetes--secrets-pending-deletion (delete secret kubernetes--secrets-pending-deletion)))))))
+                              (lambda (_)
+                                (message "Deleting secret %s succeeded." secret)
+                                (kubernetes-refresh))
+                              (lambda (_)
+                                (message "Deleting secret %s failed" secret)
+                                (setq kubernetes-state--secrets-pending-deletion (delete secret kubernetes-state--secrets-pending-deletion)))))))
 
 
 ;;; Misc interactive commands
@@ -1535,12 +1089,12 @@ FORCE ensures it happens."
 
           (erase-buffer)
           (kubernetes-ast-eval `(section (root nil)
-                               ,(kubernetes--render-error-header state)
-                               ,(kubernetes--render-context-section state)
-                               ,(kubernetes--render-configmaps-section state t)
-                               ,(kubernetes--render-pods-section state t)
-                               ,(kubernetes--render-secrets-section state t)
-                               ,(kubernetes--render-services-section state t)))
+                               ,(kubernetes-errors-render state)
+                               ,(kubernetes-contexts-render state)
+                               ,(kubernetes-configmaps-render state t)
+                               ,(kubernetes-pods-render state t)
+                               ,(kubernetes-secrets-render state t)
+                               ,(kubernetes-services-render state t)))
           (goto-char pos)))
 
       ;; Force the section at point to highlight.

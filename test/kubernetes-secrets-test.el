@@ -3,14 +3,14 @@
 ;;; Code:
 
 (require 'f)
-(require 'kubernetes)
+(require 'kubernetes-secrets)
 (declare-function test-helper-json-resource "test-helper.el")
 
 
 (defconst sample-get-secrets-response (test-helper-json-resource "get-secrets-response.json"))
 
 (defun draw-secrets-section (state)
-  (kubernetes-ast-eval (kubernetes--render-secrets-section state)))
+  (kubernetes-ast-eval (kubernetes-secrets-render state)))
 
 
 ;; Shows "Fetching..." when state isn't initialized yet.
