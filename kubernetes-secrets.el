@@ -39,8 +39,8 @@
                              line))))))
 
 (defun kubernetes-secrets-render (state &optional hidden)
-  (-let* (((&alist 'current-time current-time
-                   'secrets (secrets-response &as &alist 'items secrets)) state)
+  (-let* ((current-time (kubernetes-state-current-time state))
+          ((secrets-response &as &alist 'items secrets) (kubernetes-state-secrets state))
           (secrets (append secrets nil))
           (column-heading (propertize (format "%-45s %6s %6s" "Name" "Data" "Age") 'face 'magit-section-heading)))
     `(section (secrets-container ,hidden)

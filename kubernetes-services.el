@@ -63,8 +63,8 @@
                              line))))))
 
 (defun kubernetes-services-render (state &optional hidden)
-  (-let* (((&alist 'current-time current-time
-                   'services (services-response &as &alist 'items services)) state)
+  (-let* ((current-time (kubernetes-state-current-time state))
+          ((services-response &as &alist 'items services) (kubernetes-state-services state))
           (services (append services nil))
           (column-heading (propertize (format "%-30s %15s %15s %6s" "Name" "Internal IP" "External IP" "Age") 'face 'magit-section-heading)))
     `(section (services-container ,hidden)

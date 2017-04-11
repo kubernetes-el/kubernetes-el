@@ -71,6 +71,61 @@
       (ignore-errors (kill-buffer buf)))))
 
 
+;;; Background polling processes.
+
+(defmacro kubernetes-state--define-polling-process (resource)
+  "Create resource polling-related definitions.
+
+RESOURCE is the name of the resource as a symbol.
+
+Defines the following functions:
+
+- `kubernetes-state-set-poll-RESOURCE-process'
+- `kubernetes-state-release-poll-RESOURCE-process'
+- `kubernetes-state-poll-RESOURCE-process'."
+  (unless (symbolp resource) (error "RESOURCE must be a symbol"))
+  (let ((proc-var-name (intern (format "kubernetes--internal-poll-%s-process" resource)))
+        (proc-live-p (intern (format "kubernetes-state-poll-%s-process-live-p" resource)))
+        (releaser-name (intern (format "kubernetes-state-release-poll-%s-process" resource)))
+        (setter-name (intern (format "kubernetes-state-set-poll-%s-process" resource))))
+    `(progn
+       (defvar ,proc-var-name nil
+         "Variable used to coordinate polling access to resources.
+
+Do not use this variable directly. Instead, use its corresponding accessors.")
+
+       (defun ,proc-live-p ()
+         "Get the polling process for this resource if it is running."
+         (when-let (proc ,proc-var-name)
+           (when (process-live-p proc)
+             proc)))
+
+       (defun ,setter-name (proc)
+         "Set the polling process to PROC."
+         (,releaser-name)
+         (setq ,proc-var-name proc))
+
+       (defun ,releaser-name ()
+         "Kill the existing polling process, if any."
+         (kubernetes-process-kill-quietly ,proc-var-name)
+         (setq ,proc-var-name nil)))))
+
+(kubernetes-state--define-polling-process namespaces)
+(kubernetes-state--define-polling-process context)
+(kubernetes-state--define-polling-process pods)
+(kubernetes-state--define-polling-process configmaps)
+(kubernetes-state--define-polling-process secrets)
+(kubernetes-state--define-polling-process services)
+
+(defun kubernetes-state-kill-polling-processes ()
+  (kubernetes-state-release-poll-namespaces-process)
+  (kubernetes-state-release-poll-services-process)
+  (kubernetes-state-release-poll-context-process)
+  (kubernetes-state-release-poll-pods-process)
+  (kubernetes-state-release-poll-configmaps-process)
+  (kubernetes-state-release-poll-secrets-process))
+
+
 (provide 'kubernetes-process)
 
 ;;; kubernetes-process.el ends here

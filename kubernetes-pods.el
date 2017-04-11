@@ -5,6 +5,7 @@
 (require 'dash)
 (require 'seq)
 
+(require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-vars)
 
@@ -91,8 +92,8 @@
                              line))))))
 
 (defun kubernetes-pods-render (state &optional hidden)
-  (-let* (((&alist 'current-time current-time
-                   'pods (pods-response &as &alist 'items pods)) state)
+  (-let* ((current-time (kubernetes-state-current-time state))
+          ((pods-response &as &alist 'items pods) (kubernetes-state-pods state))
           (pods (append pods nil))
           (column-heading (propertize (format "%-45s %-10s %-5s   %6s %6s" "Name" "Status" "Ready" "Restarts" "Age")
                                       'face 'magit-section-heading)))

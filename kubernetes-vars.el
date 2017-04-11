@@ -128,6 +128,12 @@ balance interface stuttering with update frequency."
 (defconst kubernetes-exec-buffer-name "*kubernetes exec*")
 
 
+(defconst kubernetes-default-props
+  '((update-last-error-fn . kubernetes-state-update-last-error))
+  "Variable used to inject functions across modules.
+
+Helps decouple modules for testing.")
+
 (provide 'kubernetes-vars)
 
 ;;; kubernetes-vars.el ends here

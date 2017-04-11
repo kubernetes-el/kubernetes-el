@@ -6,6 +6,7 @@
 (require 'subr-x)
 
 (require 'kubernetes-kubectl)
+(require 'kubernetes-state)
 
 (autoload 'org-read-date "org")
 
@@ -14,11 +15,11 @@
 
 Update the pod state if it not set yet."
   (-let* (((&alist 'items pods)
-           (or kubernetes-state--get-pods-response
+           (or (kubernetes-state-pods)
                (progn
                  (message "Getting pods...")
-                 (let ((response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-pods)))
-                   (setq kubernetes-state--get-pods-response response)
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props (kubernetes-state) #'kubernetes-kubectl-get-pods)))
+                   (kubernetes-state-update-pods response)
                    response))))
           (pods (append pods nil))
           (names (-map #'kubernetes-state-resource-name pods)))
@@ -29,11 +30,11 @@ Update the pod state if it not set yet."
 
 Update the configmap state if it not set yet."
   (-let* (((&alist 'items configmaps)
-           (or kubernetes-state--get-configmaps-response
+           (or (kubernetes-state-configmaps)
                (progn
                  (message "Getting configmaps...")
-                 (let ((response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-configmaps)))
-                   (setq kubernetes-state--get-configmaps-response response)
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props (kubernetes-state) #'kubernetes-kubectl-get-configmaps)))
+                   (kubernetes-state-update-configmaps response)
                    response))))
           (configmaps (append configmaps nil))
           (names (-map #'kubernetes-state-resource-name configmaps)))
@@ -44,11 +45,11 @@ Update the configmap state if it not set yet."
 
 Update the secret state if it not set yet."
   (-let* (((&alist 'items secrets)
-           (or kubernetes-state--get-secrets-response
+           (or (kubernetes-state-secrets)
                (progn
                  (message "Getting secrets...")
-                 (let ((response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-secrets)))
-                   (setq kubernetes-state--get-secrets-response response)
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props (kubernetes-state) #'kubernetes-kubectl-get-secrets)))
+                   (kubernetes-state-update-secrets response)
                    response))))
           (secrets (append secrets nil))
           (names (-map #'kubernetes-state-resource-name secrets)))
@@ -59,11 +60,11 @@ Update the secret state if it not set yet."
 
 Update the service state if it not set yet."
   (-let* (((&alist 'items services)
-           (or kubernetes-state--get-services-response
+           (or (kubernetes-state-services)
                (progn
                  (message "Getting services...")
-                 (let ((response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-services)))
-                   (setq kubernetes-state--get-services-response response)
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props (kubernetes-state) #'kubernetes-kubectl-get-services)))
+                   (kubernetes-state-update-services response)
                    response))))
           (services (append services nil))
           (names (-map #'kubernetes-state-resource-name services)))
@@ -123,7 +124,7 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
             (let ((entries (--map
                             (-let [(k . v) it]
                               (concat indentation
-                                      (propertize (format "%s: " (symbol-name k)) 'face 'kubernetes-json-key)
+                                      (propertize (format "%s: " k) 'face 'kubernetes-json-key)
                                       (cond
                                        ((equal t v) "true")
                                        ((equal :json-false v) "false")

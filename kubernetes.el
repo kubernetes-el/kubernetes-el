@@ -73,10 +73,12 @@ FORCE ensures it happens."
                 ;; position in the buffer if a popup window is open.
                 (equal (window-buffer) buf))
 
+        (kubernetes-state-update-current-time (current-time))
+
         (let ((pos (point))
               (inhibit-read-only t)
               (inhibit-redisplay t)
-              (state (kubernetes--state)))
+              (state (kubernetes-state)))
 
           (-when-let ((&alist 'pods (&alist 'items pods)) state)
             (kubernetes-state-update-marked-pods (append pods nil)))
@@ -121,10 +123,12 @@ FORCE ensures it happens."
                 ;; position in the buffer if a popup window is open.
                 (equal (window-buffer) buf))
 
+        (kubernetes-state-update-current-time (current-time))
+
         (let ((pos (point))
               (inhibit-read-only t)
               (inhibit-redisplay t)
-              (state (kubernetes--state)))
+              (state (kubernetes-state)))
 
           (erase-buffer)
           (kubernetes-ast-eval `(section (root nil)
@@ -166,10 +170,12 @@ FORCE ensures it happens."
                 ;; position in the buffer if a popup window is open.
                 (equal (window-buffer) buf))
 
+        (kubernetes-state-update-current-time (current-time))
+
         (let ((pos (point))
               (inhibit-read-only t)
               (inhibit-redisplay t)
-              (state (kubernetes--state)))
+              (state (kubernetes-state)))
 
           (erase-buffer)
           (kubernetes-ast-eval `(section (root nil)
@@ -196,7 +202,7 @@ FORCE ensures it happens."
 ;;;###autoload
 (defun kubernetes-display-config (config)
   "Display information for CONFIG in a new window."
-  (interactive (list (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-config-view)))
+  (interactive (list (kubernetes-kubectl-await-on-async kubernetes-default-props (kubernetes-state) #'kubernetes-kubectl-config-view)))
   (with-current-buffer (kubernetes-display-config-refresh config)
     (goto-char (point-min))
     (select-window (display-buffer (current-buffer)))))
@@ -376,7 +382,9 @@ POD-NAME is the name of the pod to display."
     (dolist (pod kubernetes-state--marked-pod-names)
       (add-to-list 'kubernetes-state--pods-pending-deletion pod)
 
-      (kubernetes-kubectl-delete-pod pod
+      (kubernetes-kubectl-delete-pod kubernetes-default-props
+                           (kubernetes-state)
+                           pod
                            (lambda (_)
                              (message "Deleting pod %s succeeded." pod)
                              (kubernetes-refresh))
@@ -390,7 +398,9 @@ POD-NAME is the name of the pod to display."
     (dolist (configmap kubernetes-state--marked-configmap-names)
       (add-to-list 'kubernetes-state--configmaps-pending-deletion configmap)
 
-      (kubernetes-kubectl-delete-configmap configmap
+      (kubernetes-kubectl-delete-configmap kubernetes-default-props
+                                 (kubernetes-state)
+                                 configmap
                                  (lambda (_)
                                    (message "Deleting configmap %s succeeded." configmap)
                                    (kubernetes-refresh))
@@ -404,7 +414,9 @@ POD-NAME is the name of the pod to display."
     (dolist (secret kubernetes-state--marked-secret-names)
       (add-to-list 'kubernetes-state--secrets-pending-deletion secret)
 
-      (kubernetes-kubectl-delete-secret secret
+      (kubernetes-kubectl-delete-secret kubernetes-default-props
+                              (kubernetes-state)
+                              secret
                               (lambda (_)
                                 (message "Deleting secret %s succeeded." secret)
                                 (kubernetes-refresh))
@@ -424,7 +436,7 @@ taken."
   (interactive "d")
   (pcase (get-text-property point 'kubernetes-nav)
     (:display-config
-     (kubernetes-display-config (alist-get 'config (kubernetes--state))))
+     (kubernetes-display-config (alist-get 'config (kubernetes-state))))
     (`(:configmap-name ,configmap-name)
      (kubernetes-display-configmap configmap-name))
     (`(:service-name ,service-name)
@@ -469,63 +481,69 @@ additional information of state changes."
 
     (unless (kubernetes-state-poll-namespaces-process-live-p)
       (kubernetes-state-set-poll-namespaces-process
-       (kubernetes-kubectl-get-namespaces
-        (lambda (config)
-          (setq kubernetes-state--get-namespaces-response config)
-          (when interactive
-            (message "Updated namespaces.")))
-        (lambda ()
-          (kubernetes-state-release-poll-namespaces-process)))))
+       (kubernetes-kubectl-get-namespaces kubernetes-default-props
+                                (kubernetes-state)
+                                (lambda (response)
+                                  (kubernetes-state-update-namespaces response)
+                                  (when interactive
+                                    (message "Updated namespaces.")))
+                                (lambda ()
+                                  (kubernetes-state-release-poll-namespaces-process)))))
 
     (unless (kubernetes-state-poll-context-process-live-p)
       (kubernetes-state-set-poll-context-process
-       (kubernetes-kubectl-config-view
-        (lambda (config)
-          (setq kubernetes-state--view-config-response config)
-          (when interactive
-            (message "Updated contexts.")))
-        (lambda ()
-          (kubernetes-state-release-poll-context-process)))))
+       (kubernetes-kubectl-config-view kubernetes-default-props
+                             (kubernetes-state)
+                             (lambda (response)
+                               (kubernetes-state-update-config response)
+                               (when interactive
+                                 (message "Updated contexts.")))
+                             (lambda ()
+                               (kubernetes-state-release-poll-context-process)))))
 
     (unless (kubernetes-state-poll-configmaps-process-live-p)
       (kubernetes-state-set-poll-configmaps-process
-       (kubernetes-kubectl-get-configmaps
-        (lambda (response)
-          (setq kubernetes-state--get-configmaps-response response)
-          (when interactive
-            (message "Updated configmaps.")))
-        (lambda ()
-          (kubernetes-state-release-poll-configmaps-process)))))
+       (kubernetes-kubectl-get-configmaps kubernetes-default-props
+                                (kubernetes-state)
+                                (lambda (response)
+                                  (kubernetes-state-update-configmaps response)
+                                  (when interactive
+                                    (message "Updated configmaps.")))
+                                (lambda ()
+                                  (kubernetes-state-release-poll-configmaps-process)))))
 
     (unless (kubernetes-state-poll-services-process-live-p)
       (kubernetes-state-set-poll-services-process
-       (kubernetes-kubectl-get-services
-        (lambda (response)
-          (setq kubernetes-state--get-services-response response)
-          (when interactive
-            (message "Updated services.")))
-        (lambda ()
-          (kubernetes-state-release-poll-services-process)))))
+       (kubernetes-kubectl-get-services kubernetes-default-props
+                              (kubernetes-state)
+                              (lambda (response)
+                                (kubernetes-state-update-services response)
+                                (when interactive
+                                  (message "Updated services.")))
+                              (lambda ()
+                                (kubernetes-state-release-poll-services-process)))))
 
     (unless (kubernetes-state-poll-secrets-process-live-p)
       (kubernetes-state-set-poll-secrets-process
-       (kubernetes-kubectl-get-secrets
-        (lambda (response)
-          (setq kubernetes-state--get-secrets-response response)
-          (when interactive
-            (message "Updated secrets.")))
-        (lambda ()
-          (kubernetes-state-release-poll-secrets-process)))))
+       (kubernetes-kubectl-get-secrets kubernetes-default-props
+                             (kubernetes-state)
+                             (lambda (response)
+                               (kubernetes-state-update-secrets response)
+                               (when interactive
+                                 (message "Updated secrets.")))
+                             (lambda ()
+                               (kubernetes-state-release-poll-secrets-process)))))
 
     (unless (kubernetes-state-poll-pods-process-live-p)
       (kubernetes-state-set-poll-pods-process
-       (kubernetes-kubectl-get-pods
-        (lambda (response)
-          (setq kubernetes-state--get-pods-response response)
-          (when interactive
-            (message "Updated pods.")))
-        (lambda ()
-          (kubernetes-state-release-poll-pods-process)))))))
+       (kubernetes-kubectl-get-pods kubernetes-default-props
+                          (kubernetes-state)
+                          (lambda (response)
+                            (kubernetes-state-update-pods response)
+                            (when interactive
+                              (message "Updated pods.")))
+                          (lambda ()
+                            (kubernetes-state-release-poll-pods-process)))))))
 
 
 ;; Logs
@@ -622,8 +640,8 @@ ARGS are additional args to pass to kubectl."
   (interactive (list (or (kubernetes--maybe-pod-name-at-point) (kubernetes--read-pod-name))
                      (kubernetes-logs-arguments)))
   (let ((args (append (list "logs") args (list pod-name)
-                      (when kubernetes-state--current-namespace
-                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
+                      (when-let (ns (kubernetes-state-current-namespace))
+                        (list (format "--namespace=%s" ns))))))
     (with-current-buffer (kubernetes-process-buffer-start kubernetes-logs-buffer-name #'kubernetes-logs-mode kubernetes-kubectl-executable args)
       (select-window (display-buffer (current-buffer))))))
 
@@ -677,7 +695,10 @@ POD-NAME is the name of the pod to describe."
                                   (insert s)
                                   (untabify (point-min) (point-max))
                                   (goto-char (point-min))))))
-           (proc (kubernetes-kubectl-describe-pod pod-name populate-buffer)))
+           (proc (kubernetes-kubectl-describe-pod kubernetes-default-props
+                                        (kubernetes-state)
+                                        pod-name
+                                        populate-buffer)))
       (with-current-buffer buf
         (add-hook 'kill-buffer-hook (lambda () (kubernetes-process-kill-quietly proc)) nil t)))
 
@@ -718,20 +739,20 @@ Should be invoked via command `kubernetes-logs-popup'."
 
   (let* ((command-args (append (list "exec")
                                args
-                               (when kubernetes-state--current-namespace
-                                 (list (format "--namespace=%s" kubernetes-state--current-namespace)))
+                               (when-let (ns (kubernetes-state-current-namespace))
+                                 (list (format "--namespace=%s" ns)))
                                (list pod-name exec-command)))
 
          (interactive-tty (member "-t" args))
          (buf
           (if interactive-tty
               (kubernetes-process-term-buffer-start kubernetes-exec-buffer-name
-                                                    kubernetes-kubectl-executable
-                                                    command-args)
+                                          kubernetes-kubectl-executable
+                                          command-args)
             (kubernetes-process-buffer-start kubernetes-exec-buffer-name
-                                             #'kubernetes-mode
-                                             kubernetes-kubectl-executable
-                                             command-args))))
+                                   #'kubernetes-mode
+                                   kubernetes-kubectl-executable
+                                   command-args))))
 
     (when (and interactive-tty kubernetes-clean-up-interactive-exec-buffers)
       (set-process-sentinel (get-buffer-process buf) #'kubernetes-process-kill-quietly))
@@ -752,16 +773,16 @@ Should be invoked via command `kubernetes-logs-popup'."
   "Set the namespace to query to NS, overriding the settings for the current context."
   (interactive (list (completing-read "Use namespace: " (kubernetes--namespace-names) nil t)))
   ;; The context is safe to preserve, but everything else should be reset.
-  (let ((context kubernetes-state--view-config-response))
+  (let ((config (kubernetes-state-config)))
     (kubernetes-state-kill-polling-processes)
     (kubernetes-state-clear)
     (goto-char (point-min))
-    (setq kubernetes-state--view-config-response context)
-    (setq kubernetes-state--current-namespace ns)
+    (kubernetes-state-update-config config)
+    (kubernetes-state-update-current-namespace ns)
     (kubernetes--redraw-buffers t)))
 
 (defun kubernetes--namespace-names ()
-  (-let* ((config (or kubernetes-state--get-namespaces-response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-get-namespaces)))
+  (-let* ((config (or (kubernetes-state-namespaces) (kubernetes-kubectl-await-on-async kubernetes-default-props (kubernetes-state) #'kubernetes-kubectl-get-namespaces)))
           ((&alist 'items items) config))
     (-map (-lambda ((&alist 'metadata (&alist 'name name))) name) items)))
 
@@ -774,11 +795,14 @@ CONTEXT is the name of a context as a string."
   (kubernetes-state-clear)
   (kubernetes--redraw-buffers t)
   (goto-char (point-min))
-  (kubernetes-kubectl-config-use-context context (lambda (_)
-                                                   (kubernetes-refresh))))
+  (kubernetes-kubectl-config-use-context kubernetes-default-props
+                               (kubernetes-state)
+                               context
+                               (lambda (_)
+                                 (kubernetes-refresh))))
 
 (defun kubernetes--context-names ()
-  (-let* ((config (or kubernetes-state--view-config-response (kubernetes-kubectl-await-on-async #'kubernetes-kubectl-config-view)))
+  (-let* ((config (or (kubernetes-state-config) (kubernetes-kubectl-await-on-async kubernetes-default-props (kubernetes-state) #'kubernetes-kubectl-config-view)))
           ((&alist 'contexts contexts) config))
     (--map (alist-get 'name it) contexts)))
 
@@ -1081,11 +1105,12 @@ FORCE ensures it happens."
                 (equal (window-buffer) buf))
 
         (kubernetes-state-clear-error-if-stale)
+        (kubernetes-state-update-current-time (current-time))
 
         (let ((pos (point))
               (inhibit-read-only t)
               (inhibit-redisplay t)
-              (state (kubernetes--state)))
+              (state (kubernetes-state)))
 
           (erase-buffer)
           (kubernetes-ast-eval `(section (root nil)

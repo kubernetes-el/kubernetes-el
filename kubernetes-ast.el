@@ -5,6 +5,7 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (require 'magit)
 
 (defconst kubernetes-ast--indentation-width 2)
@@ -58,10 +59,10 @@ Warning: This could blow the stack if the AST gets too deep."
       ;; Sugar forms
 
       (`(key-value ,width ,k ,v)
-       (unless (numberp width) (error "Eval AST: key-value width was not a number"))
-       (when (< width 0) (error "Eval AST: key-value width was negative"))
-       (unless (stringp k) (error "Eval AST: key-value key was not a string"))
-       (unless (stringp v) (error "Eval AST: key-value value was not a string"))
+       (cl-assert (numberp width))
+       (cl-assert (<= 0 width))
+       (cl-assert (stringp k))
+       (cl-assert (stringp v))
 
        (let* ((fmt-string (concat "%-" (number-to-string width) "s"))
               (str (concat (propertize (format fmt-string (concat k ":")) 'face 'magit-header-line)
@@ -74,8 +75,7 @@ Warning: This could blow the stack if the AST gets too deep."
               indent-level))
 
       (`(copy-prop ,copy-str . ,inner-ast)
-       (unless (stringp copy-str)
-         (error "Eval AST: nav-prop copy-str was not a string"))
+       (cl-assert (stringp copy-str))
        (kubernetes-ast-eval `(propertize (kubernetes-copy ,copy-str)
                            ,inner-ast)
               indent-level))

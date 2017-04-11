@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 'subr-x)
 
 (defun kubernetes-errors-render (state)
   (-when-let* (((&alist 'error (&alist 'message message 'command command)) state)
