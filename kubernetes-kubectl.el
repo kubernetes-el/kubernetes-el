@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'kubernetes-state)
+(require 'kubernetes-vars)
 
 (autoload 'json-read-from-string "json")
 

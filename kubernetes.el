@@ -32,7 +32,6 @@
 (require 'kubernetes-ast)
 (require 'kubernetes-configmaps)
 (require 'kubernetes-contexts)
-(require 'kubernetes-custom)
 (require 'kubernetes-errors)
 (require 'kubernetes-kubectl)
 (require 'kubernetes-pods)
@@ -40,6 +39,7 @@
 (require 'kubernetes-services)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
+(require 'kubernetes-vars)
 
 (autoload 'json-pretty-print-buffer "json")
 

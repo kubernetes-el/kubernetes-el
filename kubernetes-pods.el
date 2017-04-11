@@ -5,8 +5,8 @@
 (require 'dash)
 (require 'seq)
 
-(require 'kubernetes-custom)
 (require 'kubernetes-utils)
+(require 'kubernetes-vars)
 
 
 (defun kubernetes-pods--format-detail (pod)

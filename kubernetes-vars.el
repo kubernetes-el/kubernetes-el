@@ -1,4 +1,4 @@
-;;; kubernetes-custom.el --- Customizable interface for Kubernetes package.  -*- lexical-binding: t; -*-
+;;; kubernetes-vars.el --- Customizable interface for Kubernetes package.  -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -128,6 +128,6 @@ balance interface stuttering with update frequency."
 (defconst kubernetes-exec-buffer-name "*kubernetes exec*")
 
 
-(provide 'kubernetes-custom)
+(provide 'kubernetes-vars)
 
-;;; kubernetes-custom.el ends here
+;;; kubernetes-vars.el ends here

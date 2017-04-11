@@ -5,8 +5,8 @@
 (require 'dash)
 (require 'subr-x)
 
-(require 'kubernetes-custom)
 (require 'kubernetes-process)
+(require 'kubernetes-vars)
 
 
 ;;; Main state
