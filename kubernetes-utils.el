@@ -127,6 +127,7 @@ LEVEL indentation level to use.  It defaults to 0 if not supplied."
                                       (cond
                                        ((equal t v) "true")
                                        ((equal :json-false v) "false")
+                                       ((equal nil v) "null")
 
                                        ((numberp v)
                                         (number-to-string v))
