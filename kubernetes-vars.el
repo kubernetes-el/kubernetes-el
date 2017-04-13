@@ -12,17 +12,17 @@
   :group 'kubernetes
   :type 'string)
 
-(defcustom kubernetes-display-buffer-select t
+(defcustom kubernetes-utils-display-buffer-select t
   "Whether to select Kubernetes buffers automatically."
   :group 'kubernetes
   :type 'boolean)
 
-(defcustom kubernetes-display-buffer-function 'kubernetes-display-buffer-fullframe
+(defcustom kubernetes-utils-display-buffer-function 'kubernetes-utils-display-buffer-fullframe
   "The function used display a Kubernetes buffer.
 
 The function must take a single argument, which is the buffer to display."
   :group 'kubernetes
-  :type '(radio (function-item kubernetes-display-buffer-fullframe)
+  :type '(radio (function-item kubernetes-utils-display-buffer-fullframe)
                 (function-item display-buffer)
                 (function :tag "Function")))
 

@@ -21,14 +21,14 @@
            secret)
           (line `(line ,(concat
                          ;; Name
-                         (format "%-45s " (kubernetes--ellipsize name 45))
+                         (format "%-45s " (kubernetes-utils-ellipsize name 45))
 
                          ;; Data
                          (propertize (format "%6s " (seq-length data)) 'face 'magit-dimmed)
 
                          ;; Age
-                         (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
-                           (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
+                         (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
+                           (propertize (format "%6s" (kubernetes-utils-time-diff-string start current-time))
                                        'face 'magit-dimmed))))))
 
     `(nav-prop (:secret-name ,name)

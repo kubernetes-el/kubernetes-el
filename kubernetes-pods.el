@@ -44,10 +44,10 @@
           (str
            (concat
             ;; Name
-            (format "%-45s " (kubernetes--ellipsize name 45))
+            (format "%-45s " (kubernetes-utils-ellipsize name 45))
 
             ;; State
-            (let ((s (format "%-10s " (kubernetes--ellipsize pod-state 10))))
+            (let ((s (format "%-10s " (kubernetes-utils-ellipsize pod-state 10))))
               (if (equal pod-state "Running") (propertize s 'face 'magit-dimmed) s))
 
             ;; Count
@@ -71,8 +71,8 @@
                 s)))
 
             ;; Age
-            (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp start-time))))
-              (propertize (format "%8s" (kubernetes--time-diff-string start current-time))
+            (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp start-time))))
+              (propertize (format "%8s" (kubernetes-utils-time-diff-string start current-time))
                           'face 'magit-dimmed))))
 
           (str (cond

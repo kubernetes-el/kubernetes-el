@@ -42,7 +42,7 @@
            service)
           (line `(line ,(concat
                          ;; Name
-                         (format "%-30s " (kubernetes--ellipsize name 30))
+                         (format "%-30s " (kubernetes-utils-ellipsize name 30))
 
                          ;; Internal IP
                          (propertize (format "%15s " internal-ip) 'face 'magit-dimmed)
@@ -52,8 +52,8 @@
                            (propertize (format "%15s " (or (car ips) "")) 'face 'magit-dimmed))
 
                          ;; Age
-                         (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
-                           (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
+                         (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
+                           (propertize (format "%6s" (kubernetes-utils-time-diff-string start current-time))
                                        'face 'magit-dimmed))))))
     `(nav-prop (:service-name ,name)
                (copy-prop ,name

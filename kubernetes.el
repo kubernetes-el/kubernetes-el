@@ -57,7 +57,7 @@
       (goto-char (point-min))
 
       (kubernetes-state-initialize-timers)
-      (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
+      (add-hook 'kill-buffer-hook (kubernetes-utils-make-cleanup-fn buf) nil t))
     buf))
 
 (defun kubernetes--redraw-pods-buffer (&optional force)
@@ -107,7 +107,7 @@ FORCE ensures it happens."
       (goto-char (point-min))
 
       (kubernetes-state-initialize-timers)
-      (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
+      (add-hook 'kill-buffer-hook (kubernetes-utils-make-cleanup-fn buf) nil t))
     buf))
 
 (defun kubernetes--redraw-configmaps-buffer (&optional force)
@@ -154,7 +154,7 @@ FORCE ensures it happens."
       (goto-char (point-min))
 
       (kubernetes-state-initialize-timers)
-      (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
+      (add-hook 'kill-buffer-hook (kubernetes-utils-make-cleanup-fn buf) nil t))
     buf))
 
 (defun kubernetes--redraw-secrets-buffer (&optional force)
@@ -196,7 +196,7 @@ FORCE ensures it happens."
       (kubernetes-display-thing-mode)
       (let ((inhibit-read-only t))
         (erase-buffer)
-        (insert (kubernetes--json-to-yaml config))))
+        (insert (kubernetes-utils-json-to-yaml config))))
     buf))
 
 ;;;###autoload
@@ -217,7 +217,7 @@ FORCE ensures it happens."
           (kubernetes-display-thing-mode)
           (let ((inhibit-read-only t))
             (erase-buffer)
-            (insert (kubernetes--json-to-yaml configmap))))
+            (insert (kubernetes-utils-json-to-yaml configmap))))
         buf)
     (error "Unknown configmap: %s" configmap-name)))
 
@@ -226,7 +226,7 @@ FORCE ensures it happens."
   "Display information for a configmap in a new window.
 
 CONFIGMAP-NAME is the name of the configmap to display."
-  (interactive (list (kubernetes--read-configmap-name)))
+  (interactive (list (kubernetes-utils-read-configmap-name)))
   (with-current-buffer (kubernetes-display-configmap-refresh configmap-name)
     (goto-char (point-min))
     (select-window (display-buffer (current-buffer)))))
@@ -241,7 +241,7 @@ CONFIGMAP-NAME is the name of the configmap to display."
           (kubernetes-display-thing-mode)
           (let ((inhibit-read-only t))
             (erase-buffer)
-            (insert (kubernetes--json-to-yaml secret))))
+            (insert (kubernetes-utils-json-to-yaml secret))))
         buf)
     (error "Unknown secret: %s" secret-name)))
 
@@ -250,7 +250,7 @@ CONFIGMAP-NAME is the name of the configmap to display."
   "Display information for a secret in a new window.
 
 SECRET-NAME is the name of the secret to display."
-  (interactive (list (kubernetes--read-secret-name)))
+  (interactive (list (kubernetes-utils-read-secret-name)))
   (with-current-buffer (kubernetes-display-secret-refresh secret-name)
     (goto-char (point-min))
     (select-window (display-buffer (current-buffer)))))
@@ -265,7 +265,7 @@ SECRET-NAME is the name of the secret to display."
           (kubernetes-display-thing-mode)
           (let ((inhibit-read-only t))
             (erase-buffer)
-            (insert (kubernetes--json-to-yaml service))))
+            (insert (kubernetes-utils-json-to-yaml service))))
         buf)
     (error "Unknown service: %s" service-name)))
 
@@ -274,7 +274,7 @@ SECRET-NAME is the name of the secret to display."
   "Display information for a service in a new window.
 
 SERVICE-NAME is the name of the service to display."
-  (interactive (list (kubernetes--read-service-name)))
+  (interactive (list (kubernetes-utils-read-service-name)))
   (with-current-buffer (kubernetes-display-service-refresh service-name)
     (goto-char (point-min))
     (select-window (display-buffer (current-buffer)))))
@@ -289,7 +289,7 @@ SERVICE-NAME is the name of the service to display."
           (kubernetes-display-thing-mode)
           (let ((inhibit-read-only t))
             (erase-buffer)
-            (insert (kubernetes--json-to-yaml pod))))
+            (insert (kubernetes-utils-json-to-yaml pod))))
         buf)
     (error "Unknown pod: %s" pod-name)))
 
@@ -298,7 +298,7 @@ SERVICE-NAME is the name of the service to display."
   "Display information for a pod in a new window.
 
 POD-NAME is the name of the pod to display."
-  (interactive (list (kubernetes--read-pod-name)))
+  (interactive (list (kubernetes-utils-read-pod-name)))
   (with-current-buffer (kubernetes-display-pod-refresh pod-name)
     (goto-char (point-min))
     (select-window (display-buffer (current-buffer)))))
@@ -607,8 +607,8 @@ additional information of state changes."
   '("Options for customizing logging behaviour"
     (?t "Number of lines to display" "--tail=" read-number "-1")
     "Time controls"
-    (?s "Since relative time" "--since=" kubernetes--read-time-value)
-    (?d "Since absolute datetime" "--since-time=" kubernetes--read-iso-datetime))
+    (?s "Since relative time" "--since=" kubernetes-utils-read-time-value)
+    (?d "Since absolute datetime" "--since-time=" kubernetes-utils-read-iso-datetime))
 
   :switches
   '((?p "Print logs for previous instances of the container in this pod" "-p"))
@@ -627,7 +627,7 @@ additional information of state changes."
 POD-NAME is the name of the pod to log.
 
 ARGS are additional args to pass to kubectl."
-  (interactive (list (or (kubernetes--maybe-pod-name-at-point) (kubernetes--read-pod-name))
+  (interactive (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name))
                      (kubernetes-logs-arguments)))
   (kubernetes-logs-fetch-all pod-name (cons "-f" args)))
 
@@ -637,7 +637,7 @@ ARGS are additional args to pass to kubectl."
 POD-NAME is the name of the pod to log.
 
 ARGS are additional args to pass to kubectl."
-  (interactive (list (or (kubernetes--maybe-pod-name-at-point) (kubernetes--read-pod-name))
+  (interactive (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name))
                      (kubernetes-logs-arguments)))
   (let ((args (append (list "logs") args (list pod-name)
                       (when-let (ns (kubernetes-state-current-namespace))
@@ -676,7 +676,7 @@ THING must be a valid target for `kubectl describe'."
   "Display a buffer for describing a pod.
 
 POD-NAME is the name of the pod to describe."
-  (interactive (list (or (kubernetes--maybe-pod-name-at-point) (kubernetes--read-pod-name))))
+  (interactive (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name))))
   (let ((buf (get-buffer-create kubernetes-pod-buffer-name))
         (marker (make-marker)))
     (with-current-buffer buf
@@ -731,7 +731,7 @@ ARGS are additional args to pass to kubectl.
 EXEC-COMMAND is the command to run in the container.
 
 Should be invoked via command `kubernetes-logs-popup'."
-  (interactive (list (or (kubernetes--maybe-pod-name-at-point) (kubernetes--read-pod-name))
+  (interactive (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name))
                      (kubernetes-exec-arguments)
                      (let ((cmd (string-trim (read-string (format "Command (default: %s): " kubernetes-default-exec-command)
                                                           nil 'kubernetes-exec-history))))
@@ -1057,21 +1057,21 @@ Type \\[kubernetes-refresh] to refresh the buffer.
 (defun kubernetes-display-pods ()
   "Display a list of pods in the current Kubernetes context."
   (interactive)
-  (kubernetes-display-buffer (kubernetes--display-pods-initialize-buffer))
+  (kubernetes-utils-display-buffer (kubernetes--display-pods-initialize-buffer))
   (message (substitute-command-keys "\\<kubernetes-display-pods-mode-map>Type \\[kubernetes-overview-popup] for usage.")))
 
 ;;;###autoload
 (defun kubernetes-display-configmaps ()
   "Display a list of configmaps in the current Kubernetes context."
   (interactive)
-  (kubernetes-display-buffer (kubernetes--display-configmaps-initialize-buffer))
+  (kubernetes-utils-display-buffer (kubernetes--display-configmaps-initialize-buffer))
   (message (substitute-command-keys "\\<kubernetes-display-configmaps-mode-map>Type \\[kubernetes-overview-popup] for usage.")))
 
 ;;;###autoload
 (defun kubernetes-display-secrets ()
   "Display a list of secrets in the current Kubernetes context."
   (interactive)
-  (kubernetes-display-buffer (kubernetes--display-secrets-initialize-buffer))
+  (kubernetes-utils-display-buffer (kubernetes--display-secrets-initialize-buffer))
   (message (substitute-command-keys "\\<kubernetes-display-secrets-mode-map>Type \\[kubernetes-overview-popup] for usage.")))
 
 
@@ -1088,7 +1088,7 @@ Type \\[kubernetes-refresh] to refresh the buffer.
       (goto-char (point-min))
 
       (kubernetes-state-initialize-timers)
-      (add-hook 'kill-buffer-hook (kubernetes--make-cleanup-fn buf) nil t))
+      (add-hook 'kill-buffer-hook (kubernetes-utils-make-cleanup-fn buf) nil t))
     buf))
 
 (defun kubernetes--redraw-overview-buffer (&optional force)
@@ -1130,7 +1130,7 @@ FORCE ensures it happens."
 (defun kubernetes-overview ()
   "Display an overview buffer for Kubernetes."
   (interactive)
-  (kubernetes-display-buffer (kubernetes--overview-initialize-buffer))
+  (kubernetes-utils-display-buffer (kubernetes--overview-initialize-buffer))
   (message (substitute-command-keys "\\<kubernetes-overview-mode-map>Type \\[kubernetes-overview-popup] for usage.")))
 
 (provide 'kubernetes)

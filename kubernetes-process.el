@@ -73,21 +73,21 @@
 
 ;;; Background polling processes.
 
-(defmacro kubernetes-state--define-polling-process (resource)
+(defmacro kubernetes-process--define-polling-process (resource)
   "Create resource polling-related definitions.
 
 RESOURCE is the name of the resource as a symbol.
 
 Defines the following functions:
 
-- `kubernetes-state-set-poll-RESOURCE-process'
-- `kubernetes-state-release-poll-RESOURCE-process'
-- `kubernetes-state-poll-RESOURCE-process'."
+- `kubernetes-process-set-poll-RESOURCE-process'
+- `kubernetes-process-release-poll-RESOURCE-process'
+- `kubernetes-process-poll-RESOURCE-process'."
   (unless (symbolp resource) (error "RESOURCE must be a symbol"))
   (let ((proc-var-name (intern (format "kubernetes--internal-poll-%s-process" resource)))
-        (proc-live-p (intern (format "kubernetes-state-poll-%s-process-live-p" resource)))
-        (releaser-name (intern (format "kubernetes-state-release-poll-%s-process" resource)))
-        (setter-name (intern (format "kubernetes-state-set-poll-%s-process" resource))))
+        (proc-live-p (intern (format "kubernetes-process-poll-%s-process-live-p" resource)))
+        (releaser-name (intern (format "kubernetes-process-release-poll-%s-process" resource)))
+        (setter-name (intern (format "kubernetes-process-set-poll-%s-process" resource))))
     `(progn
        (defvar ,proc-var-name nil
          "Variable used to coordinate polling access to resources.
@@ -110,20 +110,20 @@ Do not use this variable directly. Instead, use its corresponding accessors.")
          (kubernetes-process-kill-quietly ,proc-var-name)
          (setq ,proc-var-name nil)))))
 
-(kubernetes-state--define-polling-process namespaces)
-(kubernetes-state--define-polling-process context)
-(kubernetes-state--define-polling-process pods)
-(kubernetes-state--define-polling-process configmaps)
-(kubernetes-state--define-polling-process secrets)
-(kubernetes-state--define-polling-process services)
+(kubernetes-process--define-polling-process namespaces)
+(kubernetes-process--define-polling-process context)
+(kubernetes-process--define-polling-process pods)
+(kubernetes-process--define-polling-process configmaps)
+(kubernetes-process--define-polling-process secrets)
+(kubernetes-process--define-polling-process services)
 
-(defun kubernetes-state-kill-polling-processes ()
-  (kubernetes-state-release-poll-namespaces-process)
-  (kubernetes-state-release-poll-services-process)
-  (kubernetes-state-release-poll-context-process)
-  (kubernetes-state-release-poll-pods-process)
-  (kubernetes-state-release-poll-configmaps-process)
-  (kubernetes-state-release-poll-secrets-process))
+(defun kubernetes-process-kill-polling-processes ()
+  (kubernetes-process-release-poll-namespaces-process)
+  (kubernetes-process-release-poll-services-process)
+  (kubernetes-process-release-poll-context-process)
+  (kubernetes-process-release-poll-pods-process)
+  (kubernetes-process-release-poll-configmaps-process)
+  (kubernetes-process-release-poll-secrets-process))
 
 
 (provide 'kubernetes-process)
