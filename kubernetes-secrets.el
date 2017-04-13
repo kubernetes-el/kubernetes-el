@@ -13,8 +13,11 @@
     `((copy-prop ,ns (key-value 12 "Namespace" ,ns))
       (copy-prop ,time (key-value 12 "Created" ,time)))))
 
-(defun kubernetes-secrets--format-line (secret current-time)
-  (-let* (((&alist 'data data 'metadata (&alist 'name name 'creationTimestamp created-time))
+(defun kubernetes-secrets--format-line (state secret)
+  (-let* ((current-time (kubernetes-state-current-time state))
+          (pending-deletion (kubernetes-state-secrets-pending-deletion state))
+          (marked-secrets (kubernetes-state-marked-secrets state))
+          ((&alist 'data data 'metadata (&alist 'name name 'creationTimestamp created-time))
            secret)
           (line `(line ,(concat
                          ;; Name
@@ -31,16 +34,15 @@
     `(nav-prop (:secret-name ,name)
                (copy-prop ,name
                           ,(cond
-                            ((member name kubernetes-state--secrets-pending-deletion)
+                            ((member name pending-deletion)
                              `(propertize (face kubernetes-pending-deletion) ,line))
-                            ((member name kubernetes-state--marked-secret-names)
+                            ((member name marked-secrets)
                              `(mark-for-delete ,line))
                             (t
                              line))))))
 
 (defun kubernetes-secrets-render (state &optional hidden)
-  (-let* ((current-time (kubernetes-state-current-time state))
-          ((secrets-response &as &alist 'items secrets) (kubernetes-state-secrets state))
+  (-let* (((secrets-response &as &alist 'items secrets) (kubernetes-state-secrets state))
           (secrets (append secrets nil))
           (column-heading (propertize (format "%-45s %6s %6s" "Name" "Data" "Age") 'face 'magit-section-heading)))
     `(section (secrets-container ,hidden)
@@ -57,7 +59,7 @@
                  (let ((make-entry
                         (lambda (it)
                           `(section (,(intern (kubernetes-state-resource-name it)) t)
-                                    (heading ,(kubernetes-secrets--format-line it current-time))
+                                    (heading ,(kubernetes-secrets--format-line state it))
                                     (section (details nil)
                                              (indent
                                               ,@(kubernetes-secrets--format-detail it)

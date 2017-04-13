@@ -32,8 +32,11 @@
                     (when-let (ports (append ports nil))
                       (funcall detail "Ports" (string-join (-map format-ports ports) ", ")))))))
 
-(defun kubernetes-services--format-line (service current-time)
-  (-let* (((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
+(defun kubernetes-services--format-line (state service)
+  (-let* ((current-time (kubernetes-state-current-time state))
+          (pending-deletion (kubernetes-state-services-pending-deletion state))
+          (marked-services (kubernetes-state-marked-services state))
+          ((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
                    'spec (&alist 'clusterIP internal-ip
                                  'externalIPs external-ips))
            service)
@@ -55,16 +58,15 @@
     `(nav-prop (:service-name ,name)
                (copy-prop ,name
                           ,(cond
-                            ((member name kubernetes-state--services-pending-deletion)
+                            ((member name pending-deletion)
                              `(propertize (face kubernetes-pending-deletion) ,line))
-                            ((member name kubernetes-state--marked-service-names)
+                            ((member name marked-services)
                              `(mark-for-delete ,line))
                             (t
                              line))))))
 
 (defun kubernetes-services-render (state &optional hidden)
-  (-let* ((current-time (kubernetes-state-current-time state))
-          ((services-response &as &alist 'items services) (kubernetes-state-services state))
+  (-let* (((services-response &as &alist 'items services) (kubernetes-state-services state))
           (services (append services nil))
           (column-heading (propertize (format "%-30s %15s %15s %6s" "Name" "Internal IP" "External IP" "Age") 'face 'magit-section-heading)))
     `(section (services-container ,hidden)
@@ -82,7 +84,7 @@
                  (let ((make-entry
                         (lambda (it)
                           `(section (,(intern (kubernetes-state-resource-name it)) t)
-                                    (heading ,(kubernetes-services--format-line it current-time))
+                                    (heading ,(kubernetes-services--format-line state it))
                                     (indent
                                      (section (details nil)
                                               ,@(kubernetes-services--format-details it)

@@ -29,23 +29,26 @@
                     (funcall detail "Pod IP" pod-ip)
                     (funcall detail "Started" start-time)))))
 
-(defun kubernetes-pods--format-line (pod current-time)
-  (-let* (((&alist 'metadata (&alist 'name name)
+(defun kubernetes-pods--format-line (state pod)
+  (-let* ((current-time (kubernetes-state-current-time state))
+          (marked-pods (kubernetes-state-marked-pods state))
+          (pending-deletion (kubernetes-state-pods-pending-deletion state))
+          ((&alist 'metadata (&alist 'name name)
                    'status (&alist 'containerStatuses containers
                                    'startTime start-time
                                    'phase phase))
            pod)
-          ([(&alist 'restartCount restarts 'state state)] containers)
-          (state (or (alist-get 'reason (alist-get 'waiting state))
-                     phase))
+          ([(&alist 'restartCount restarts 'state pod-state)] containers)
+          (pod-state (or (alist-get 'reason (alist-get 'waiting pod-state))
+                         phase))
           (str
            (concat
             ;; Name
             (format "%-45s " (kubernetes--ellipsize name 45))
 
             ;; State
-            (let ((s (format "%-10s " (kubernetes--ellipsize state 10))))
-              (if (equal state "Running") (propertize s 'face 'magit-dimmed) s))
+            (let ((s (format "%-10s " (kubernetes--ellipsize pod-state 10))))
+              (if (equal pod-state "Running") (propertize s 'face 'magit-dimmed) s))
 
             ;; Count
             (format "%5s "
@@ -73,9 +76,9 @@
                           'face 'magit-dimmed))))
 
           (str (cond
-                ((member (downcase state) '("running" "containercreating" "terminated"))
+                ((member (downcase pod-state) '("running" "containercreating" "terminated"))
                  str)
-                ((member (downcase state) '("runcontainererror" "crashloopbackoff"))
+                ((member (downcase pod-state) '("runcontainererror" "crashloopbackoff"))
                  (propertize str 'face 'error))
                 (t
                  (propertize str 'face 'warning))))
@@ -84,16 +87,15 @@
     `(nav-prop (:pod-name ,name)
                (copy-prop ,name
                           ,(cond
-                            ((member name kubernetes-state--pods-pending-deletion)
+                            ((member name pending-deletion)
                              `(propertize (face kubernetes-pending-deletion) ,line))
-                            ((member name kubernetes-state--marked-pod-names)
+                            ((member name marked-pods)
                              `(mark-for-delete ,line))
                             (t
                              line))))))
 
 (defun kubernetes-pods-render (state &optional hidden)
-  (-let* ((current-time (kubernetes-state-current-time state))
-          ((pods-response &as &alist 'items pods) (kubernetes-state-pods state))
+  (-let* (((pods-response &as &alist 'items pods) (kubernetes-state-pods state))
           (pods (append pods nil))
           (column-heading (propertize (format "%-45s %-10s %-5s   %6s %6s" "Name" "Status" "Ready" "Restarts" "Age")
                                       'face 'magit-section-heading)))
@@ -114,7 +116,7 @@
                        (make-pod-entry
                         (lambda (pod)
                           `(section (,(intern (kubernetes-state-resource-name pod)) t)
-                                    (heading ,(kubernetes-pods--format-line pod current-time))
+                                    (heading ,(kubernetes-pods--format-line state pod))
                                     (indent
                                      (section (details nil)
                                               ,@(kubernetes-pods--format-detail pod)

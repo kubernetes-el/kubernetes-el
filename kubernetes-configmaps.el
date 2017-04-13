@@ -13,8 +13,11 @@
     `((copy-prop ,ns (key-value 12 "Namespace" ,ns))
       (copy-prop ,time (key-value 12 "Created" ,time)))))
 
-(defun kubernetes-configmaps--format-line (configmap current-time)
-  (-let* (((&alist 'data data
+(defun kubernetes-configmaps--format-line (state configmap)
+  (-let* ((current-time (kubernetes-state-current-time state))
+          (pending-deletion (kubernetes-state-configmaps-pending-deletion state))
+          (marked-configmaps (kubernetes-state-marked-configmaps state))
+          ((&alist 'data data
                    'metadata (&alist 'name name 'creationTimestamp created-time))
            configmap)
           (line `(line ,(concat
@@ -31,22 +34,20 @@
     `(nav-prop (:configmap-name ,name)
                (copy-prop ,name
                           ,(cond
-                            ((member name kubernetes-state--configmaps-pending-deletion)
+                            ((member name pending-deletion)
                              `(propertize (face kubernetes-pending-deletion) ,line))
-                            ((member name kubernetes-state--marked-configmap-names)
+                            ((member name marked-configmaps)
                              `(mark-for-delete ,line))
                             (t
                              line))))))
 
 (defun kubernetes-configmaps-render (state &optional hidden)
-  (-let* (((&alist 'current-time current-time
-                   'configmaps (configmaps-response &as &alist 'items configmaps)) state)
-          (configmaps (append configmaps nil))
+  (-let* (((state-set-p &as &alist 'items configmaps) (kubernetes-state-configmaps state))
           (column-heading (propertize (format "%-45s %6s %6s" "Name" "Data" "Age") 'face 'magit-section-heading)))
     `(section (configmaps-container ,hidden)
               ,(cond
                 ;; If the state is set and there are no configmaps, write "None".
-                ((and configmaps-response (null configmaps))
+                ((and state-set-p (seq-empty-p configmaps))
                  `((heading ,(concat (propertize "Configmaps" 'face 'magit-header-line) " (0)"))
                    (section (configmaps-list nil)
                             (indent
@@ -57,7 +58,7 @@
                  (let ((make-entry
                         (lambda (it)
                           `(section (,(intern (kubernetes-state-resource-name it)) t)
-                                    (heading ,(kubernetes-configmaps--format-line it current-time))
+                                    (heading ,(kubernetes-configmaps--format-line state it))
                                     (section (details nil)
                                              (indent
                                               ,@(kubernetes-configmaps--format-detail it)
@@ -66,7 +67,7 @@
                    `((heading ,(concat (propertize "Configmaps" 'face 'magit-header-line) " " (format "(%s)" (length configmaps))))
                      (indent
                       (line ,column-heading)
-                      ,@(-map make-entry configmaps)))))
+                      ,@(seq-map make-entry configmaps)))))
 
                 ;; If there's no state, assume requests are in progress.
                 (t

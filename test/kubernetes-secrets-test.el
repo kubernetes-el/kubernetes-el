@@ -84,7 +84,8 @@ Secrets (2)
                      (substring-no-properties (buffer-string)))))))
 
 (ert-deftest kubernetes-secrets-test---sample-response-text-properties ()
-  (let ((state `((secrets . ,sample-get-secrets-response))))
+  (let ((state `((secrets . ,sample-get-secrets-response)
+                 (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-secrets-section state)))
