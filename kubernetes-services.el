@@ -1,30 +1,16 @@
-;;; kubernetes-services.el --- <enter description here>  -*- lexical-binding: t; -*-
-
-;; Copyright (C) 2017  Chris Barrett
-
-;; Author: Chris Barrett <chris+emacs@walrus.cool>
-
-;; This program is free software; you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
-
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
-
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+;;; kubernetes-services.el --- Rendering for Kubernetes services.  -*- lexical-binding: t; -*-
 ;;; Commentary:
-
 ;;; Code:
 
 (require 'dash)
+
+(require 'kubernetes-kubectl)
+(require 'kubernetes-modes)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 
+
+;; Component
 
 (defun kubernetes-services--format-details (service)
   (-let ((detail
@@ -51,14 +37,17 @@
                     (when-let (ports (append ports nil))
                       (funcall detail "Ports" (string-join (-map format-ports ports) ", ")))))))
 
-(defun kubernetes-services--format-line (service current-time)
-  (-let* (((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
+(defun kubernetes-services--format-line (state service)
+  (-let* ((current-time (kubernetes-state-current-time state))
+          (pending-deletion (kubernetes-state-services-pending-deletion state))
+          (marked-services (kubernetes-state-marked-services state))
+          ((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
                    'spec (&alist 'clusterIP internal-ip
                                  'externalIPs external-ips))
            service)
           (line `(line ,(concat
                          ;; Name
-                         (format "%-30s " (kubernetes--ellipsize name 30))
+                         (format "%-30s " (kubernetes-utils-ellipsize name 30))
 
                          ;; Internal IP
                          (propertize (format "%15s " internal-ip) 'face 'magit-dimmed)
@@ -68,22 +57,21 @@
                            (propertize (format "%15s " (or (car ips) "")) 'face 'magit-dimmed))
 
                          ;; Age
-                         (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp created-time))))
-                           (propertize (format "%6s" (kubernetes--time-diff-string start current-time))
+                         (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
+                           (propertize (format "%6s" (kubernetes-utils-time-diff-string start current-time))
                                        'face 'magit-dimmed))))))
     `(nav-prop (:service-name ,name)
                (copy-prop ,name
                           ,(cond
-                            ((member name kubernetes-state--services-pending-deletion)
+                            ((member name pending-deletion)
                              `(propertize (face kubernetes-pending-deletion) ,line))
-                            ((member name kubernetes-state--marked-service-names)
+                            ((member name marked-services)
                              `(mark-for-delete ,line))
                             (t
                              line))))))
 
 (defun kubernetes-services-render (state &optional hidden)
-  (-let* (((&alist 'current-time current-time
-                   'services (services-response &as &alist 'items services)) state)
+  (-let* (((services-response &as &alist 'items services) (kubernetes-state-services state))
           (services (append services nil))
           (column-heading (propertize (format "%-30s %15s %15s %6s" "Name" "Internal IP" "External IP" "Age") 'face 'magit-section-heading)))
     `(section (services-container ,hidden)
@@ -101,7 +89,7 @@
                  (let ((make-entry
                         (lambda (it)
                           `(section (,(intern (kubernetes-state-resource-name it)) t)
-                                    (heading ,(kubernetes-services--format-line it current-time))
+                                    (heading ,(kubernetes-services--format-line state it))
                                     (indent
                                      (section (details nil)
                                               ,@(kubernetes-services--format-details it)
@@ -119,6 +107,60 @@
                     (section (services-list nil)
                              (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
               (padding))))
+
+
+;; Requests and state management
+
+(defun kubernetes-services-refresh (&optional interactive)
+  (unless (kubernetes-process-poll-services-process-live-p)
+    (kubernetes-process-set-poll-services-process
+     (kubernetes-kubectl-get-services kubernetes-default-props
+                                      (kubernetes-state)
+                                      (lambda (response)
+                                        (kubernetes-state-update-services response)
+                                        (when interactive
+                                          (message "Updated services.")))
+                                      (lambda ()
+                                        (kubernetes-process-release-poll-services-process))))))
+
+(defun kubernetes-services-delete-marked (state)
+  (let ((names (kubernetes-state-marked-services state)))
+    (dolist (name names)
+      (kubernetes-state-delete-service name)
+      (kubernetes-kubectl-delete-service kubernetes-default-props state name
+                                         (lambda (_)
+                                           (message "Deleting service %s succeeded." name))
+                                         (lambda (_)
+                                           (message "Deleting service %s failed" name)
+                                           (kubernetes-state-mark-service name))))
+    (kubernetes-state-trigger-redraw)))
+
+
+;; Displaying services
+
+(defun kubernetes-services--redraw-service-buffer (service-name state)
+  (if-let (service (kubernetes-state-lookup-service service-name state))
+      (let ((buf (get-buffer-create kubernetes-display-service-buffer-name)))
+        (with-current-buffer buf
+          (kubernetes-display-thing-mode)
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert (kubernetes-utils-json-to-yaml service))))
+        buf)
+    (error "Unknown service: %s" service-name)))
+
+;;;###autoload
+(defun kubernetes-display-service (service-name state)
+  "Display information for a service in a new window.
+
+STATE is the current application state.
+
+SERVICE-NAME is the name of the service to display."
+  (interactive (list (kubernetes-utils-read-service-name)
+                     (kubernetes-state)))
+  (with-current-buffer (kubernetes-services--redraw-service-buffer service-name state)
+    (goto-char (point-min))
+    (select-window (display-buffer (current-buffer)))))
 
 
 (provide 'kubernetes-services)

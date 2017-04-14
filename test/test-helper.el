@@ -38,4 +38,16 @@
     (json-read-from-string sample-response)))
 
 
+;; Helpers
+
+(defmacro should-assert (form)
+  `(let ((debug-on-error nil))
+     (should-error ,form :type 'cl-assertion-failed)))
+
+(defmacro test-helper-with-empty-state (&rest body)
+  (declare (indent 0))
+  `(let ((kubernetes-state--current-state nil))
+     ,@body))
+
+
 ;;; test-helper.el ends here

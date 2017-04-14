@@ -123,6 +123,19 @@
       (save-excursion (kubernetes-ast-eval ast))
       (should (equal (format "%-10s%s\n" "Key:" "Value") (substring-no-properties (buffer-string)))))))
 
+(ert-deftest kubernetes-ast-test--key-value--validates-width-as-nat ()
+  (with-temp-buffer
+    (should-assert (kubernetes-ast-eval '(key-value "10" "Key" "Value")))
+    (should-assert (kubernetes-ast-eval '(key-value -1 "Key" "Value")))))
+
+(ert-deftest kubernetes-ast-test--key-value--validates-key-as-string ()
+  (with-temp-buffer
+    (should-assert (kubernetes-ast-eval '(key-value 10 nil "Value")))))
+
+(ert-deftest kubernetes-ast-test--key-value--validates-value-as-string ()
+  (with-temp-buffer
+    (should-assert (kubernetes-ast-eval '(key-value 10 "Key" 1)))))
+
 
 ;; nav-prop
 
@@ -166,7 +179,7 @@
 (ert-deftest kubernetes-ast-test--copy-prop-error-if-copy-value-not-a-string ()
   (let ((ast '(copy-prop 1 (line "Test"))))
     (with-temp-buffer
-      (should-error (kubernetes-ast-eval ast)))))
+      (should-assert (kubernetes-ast-eval ast)))))
 
 
 ;; mark-for-delete

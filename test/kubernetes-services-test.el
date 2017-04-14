@@ -89,7 +89,8 @@ Services (2)
                      (substring-no-properties (buffer-string)))))))
 
 (ert-deftest kubernetes-services-test--sample-response-text-properties ()
-  (let ((state `((services . ,sample-get-services-response))))
+  (let ((state `((services . ,sample-get-services-response)
+                 (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-services-section state)))

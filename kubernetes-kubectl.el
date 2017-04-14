@@ -2,7 +2,10 @@
 ;;; Commentary:
 ;;; Code:
 
-(require 'kubernetes-state)
+(require 'dash)
+
+(require 'kubernetes-process)
+(require 'kubernetes-vars)
 
 (autoload 'json-read-from-string "json")
 
@@ -12,8 +15,11 @@
       (unless (string-match-p (rx bol (* space) "killed:" (* space) "9" (* space) eol) status)
         (message "kubernetes command failed.  See the overview buffer for details.")))))
 
-(defun kubernetes-kubectl (args on-success &optional on-error cleanup-cb)
+(defun kubernetes-kubectl (props args on-success &optional on-error cleanup-cb)
   "Run kubectl with ARGS.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-default-props'.
 
 ON-SUCCESS is a function of one argument, called with the process' buffer.
 
@@ -48,11 +54,12 @@ Returns the process object for this execution of kubectl."
                          (t
                           (let ((err-message (with-current-buffer err-buf (buffer-string))))
                             (unless (= 9 exit-code)
-                              (kubernetes-state-set-error err-message command))
-                            (cond (on-error
-                                   (funcall on-error err-buf))
-                                  (t
-                                   (kubernetes-kubectl--default-error-handler err-buf status)))))))
+                              (-let [(&alist 'update-last-error-fn update-last-error) props]
+                                (funcall update-last-error err-message command (current-time)))))
+                          (cond (on-error
+                                 (funcall on-error err-buf))
+                                (t
+                                 (kubernetes-kubectl--default-error-handler err-buf status))))))
                     (when cleanup-cb
                       (funcall cleanup-cb))
                     (kubernetes-process-kill-quietly proc))))))
@@ -66,14 +73,20 @@ Returns the process object for this execution of kubectl."
 
     proc))
 
-(defun kubernetes-kubectl-get-pods (cb &optional cleanup-cb)
+(defun kubernetes-kubectl-get-pods (props state cb &optional cleanup-cb)
   "Get all pods and execute callback CB with the parsed JSON.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-default-props'.
+
+STATE is the application state.
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (let ((args (append '("get" "pods" "-o" "json")
-                      (when kubernetes-state--current-namespace
-                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
-    (kubernetes-kubectl args
+                      (-when-let ((&alist 'current-namespace ns) state)
+                        (list (format "--namespace=%s" ns))))))
+    (kubernetes-kubectl props
+                        args
                         (lambda (buf)
                           (let ((json (with-current-buffer buf
                                         (json-read-from-string (buffer-string)))))
@@ -81,14 +94,20 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
                         nil
                         cleanup-cb)))
 
-(defun kubernetes-kubectl-get-configmaps (cb &optional cleanup-cb)
+(defun kubernetes-kubectl-get-configmaps (props state cb &optional cleanup-cb)
   "Get all configmaps and execute callback CB with the parsed JSON.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-default-props'.
+
+STATE is the application state.
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (let ((args (append '("get" "configmaps" "-o" "json")
-                      (when kubernetes-state--current-namespace
-                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
-    (kubernetes-kubectl args
+                      (-when-let ((&alist 'current-namespace ns) state)
+                        (list (format "--namespace=%s" ns))))))
+    (kubernetes-kubectl props
+                        args
                         (lambda (buf)
                           (let ((json (with-current-buffer buf
                                         (json-read-from-string (buffer-string)))))
@@ -96,14 +115,20 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
                         nil
                         cleanup-cb)))
 
-(defun kubernetes-kubectl-get-secrets (cb &optional cleanup-cb)
+(defun kubernetes-kubectl-get-secrets (props state cb &optional cleanup-cb)
   "Get all secrets and execute callback CB with the parsed JSON.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-default-props'.
+
+STATE is the application state.
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (let ((args (append '("get" "secrets" "-o" "json")
-                      (when kubernetes-state--current-namespace
-                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
-    (kubernetes-kubectl args
+                      (-when-let ((&alist 'current-namespace ns) state)
+                        (list (format "--namespace=%s" ns))))))
+    (kubernetes-kubectl props
+                        args
                         (lambda (buf)
                           (let ((json (with-current-buffer buf
                                         (json-read-from-string (buffer-string)))))
@@ -111,14 +136,20 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
                         nil
                         cleanup-cb)))
 
-(defun kubernetes-kubectl-get-services (cb &optional cleanup-cb)
+(defun kubernetes-kubectl-get-services (props state cb &optional cleanup-cb)
   "Get all services and execute callback CB with the parsed JSON.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-default-props'.
+
+STATE is the application state.
 
 CLEANUP-CB is a function taking no arguments used to release any resources."
   (let ((args (append '("get" "services" "-o" "json")
-                      (when kubernetes-state--current-namespace
-                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
-    (kubernetes-kubectl args
+                      (-when-let ((&alist 'current-namespace ns) state)
+                        (list (format "--namespace=%s" ns))))))
+    (kubernetes-kubectl props
+                        args
                         (lambda (buf)
                           (let ((json (with-current-buffer buf
                                         (json-read-from-string (buffer-string)))))
@@ -126,11 +157,17 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
                         nil
                         cleanup-cb)))
 
-(defun kubernetes-kubectl-config-view (cb &optional cleanup-cb)
+(defun kubernetes-kubectl-config-view (props _state cb &optional cleanup-cb)
   "Get the current configuration and pass it to CB.
 
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-default-props'.
+
+STATE is the application state.
+
 CLEANUP-CB is a function taking no arguments used to release any resources."
-  (kubernetes-kubectl '("config" "view" "-o" "json")
+  (kubernetes-kubectl props
+                      '("config" "view" "-o" "json")
                       (lambda (buf)
                         (let ((json (with-current-buffer buf
                                       (json-read-from-string (buffer-string)))))
@@ -138,22 +175,34 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
                       nil
                       cleanup-cb))
 
-(defun kubernetes-kubectl-config-use-context (context-name cb)
+(defun kubernetes-kubectl-config-use-context (props _state context-name cb)
   "Change the current kubernetes context to CONTEXT-NAME, a string.
 
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-default-props'.
+
+STATE is the application state.
+
 CB is a function taking the name of the context that was switched to."
-  (kubernetes-kubectl (list "config" "use-context" context-name)
+  (kubernetes-kubectl props
+                      (list "config" "use-context" context-name)
                       (lambda (buf)
                         (with-current-buffer buf
                           (string-match (rx bol "Switched to context \"" (group (+? nonl)) "\"." (* space) eol)
                                         (buffer-string))
                           (funcall cb (match-string 1 (buffer-string)))))))
 
-(defun kubernetes-kubectl-get-namespaces (cb &optional cleanup-cb)
+(defun kubernetes-kubectl-get-namespaces (props _state cb &optional cleanup-cb)
   "Get namespaces for the current cluster and pass the parsed response to CB.
 
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-default-props'.
+
+STATE is the application state.
+
 CLEANUP-CB is a function taking no arguments used to release any resources."
-  (kubernetes-kubectl '("get" "namespaces" "-o" "json")
+  (kubernetes-kubectl props
+                      '("get" "namespaces" "-o" "json")
                       (lambda (buf)
                         (let ((json (with-current-buffer buf
                                       (json-read-from-string (buffer-string)))))
@@ -161,72 +210,122 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
                       nil
                       cleanup-cb))
 
-(defun kubernetes-kubectl-delete-pod (pod-name cb &optional error-cb)
+(defun kubernetes-kubectl-delete-pod (props state pod-name cb &optional error-cb)
   "Delete pod with POD-NAME, then execute CB with the response buffer.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-default-props'.
+
+STATE is the application state.
 
 ERROR-CB is called if an error occurred."
   (let ((args (append (list "delete" "pod" pod-name "-o" "name")
-                      (when kubernetes-state--current-namespace
-                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
-    (kubernetes-kubectl args
+                      (-when-let ((&alist 'current-namespace ns) state)
+                        (list (format "--namespace=%s" ns))))))
+    (kubernetes-kubectl props
+                        args
                         (lambda (buf)
                           (with-current-buffer buf
                             (string-match (rx bol "pod/" (group (+ nonl))) (buffer-string))
                             (funcall cb (match-string 1 (buffer-string)))))
                         error-cb)))
 
-(defun kubernetes-kubectl-delete-configmap (configmap-name cb &optional error-cb)
+(defun kubernetes-kubectl-delete-configmap (props state configmap-name cb &optional error-cb)
   "Delete CONFIGMAP-NAME, then execute CB with the response buffer.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-default-props'.
+
+STATE is the application state.
 
 ERROR-CB is called if an error occurred."
   (let ((args (append (list "delete" "configmap" configmap-name "-o" "name")
-                      (when kubernetes-state--current-namespace
-                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
-    (kubernetes-kubectl args
+                      (-when-let ((&alist 'current-namespace ns) state)
+                        (list (format "--namespace=%s" ns))))))
+    (kubernetes-kubectl props
+                        args
                         (lambda (buf)
                           (with-current-buffer buf
                             (string-match (rx bol "configmap/" (group (+ nonl))) (buffer-string))
                             (funcall cb (match-string 1 (buffer-string)))))
                         error-cb)))
 
-(defun kubernetes-kubectl-delete-secret (secret-name cb &optional error-cb)
+(defun kubernetes-kubectl-delete-secret (props state secret-name cb &optional error-cb)
   "Delete SECRET-NAME, then execute CB with the response buffer.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-default-props'.
+
+STATE is the application state.
 
 ERROR-CB is called if an error occurred."
   (let ((args (append (list "delete" "secret" secret-name "-o" "name")
-                      (when kubernetes-state--current-namespace
-                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
-    (kubernetes-kubectl args
+                      (-when-let ((&alist 'current-namespace ns) state)
+                        (list (format "--namespace=%s" ns))))))
+    (kubernetes-kubectl props
+                        args
                         (lambda (buf)
                           (with-current-buffer buf
                             (string-match (rx bol "secret/" (group (+ nonl))) (buffer-string))
                             (funcall cb (match-string 1 (buffer-string)))))
                         error-cb)))
 
-(defun kubernetes-kubectl-describe-pod (pod-name cb)
-  "Describe pod with POD-NAME, then execute CB with the string response."
+(defun kubernetes-kubectl-describe-pod (props state pod-name cb)
+  "Describe pod with POD-NAME, then execute CB with the string response.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-default-props'.
+
+STATE is the application state."
   (let ((args (append (list "describe" "pod" pod-name)
-                      (when kubernetes-state--current-namespace
-                        (list (format "--namespace=%s" kubernetes-state--current-namespace))))))
-    (kubernetes-kubectl args
+                      (-when-let ((&alist 'current-namespace ns) state)
+                        (list (format "--namespace=%s" ns))))))
+    (kubernetes-kubectl props
+                        args
                         (lambda (buf)
                           (let ((s (with-current-buffer buf (buffer-string))))
                             (funcall cb s))))))
 
-(defun kubernetes-kubectl-await-on-async (fn)
+(defun kubernetes-kubectl-delete-service (props state service-name cb &optional error-cb)
+  "Delete SERVICE-NAME, then execute CB with the response buffer.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-default-props'.
+
+STATE is the application state.
+
+ERROR-CB is called if an error occurred."
+  (let ((args (append (list "delete" "service" service-name "-o" "name")
+                      (-when-let ((&alist 'current-namespace ns) state)
+                        (list (format "--namespace=%s" ns))))))
+    (kubernetes-kubectl props
+                        args
+                        (lambda (buf)
+                          (with-current-buffer buf
+                            (string-match (rx bol "service/" (group (+ nonl))) (buffer-string))
+                            (funcall cb (match-string 1 (buffer-string)))))
+                        error-cb)))
+
+
+(defun kubernetes-kubectl-await-on-async (props state fn)
   "Turn an async function requiring a callback into a synchronous one.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-default-props'.
+
+STATE is the application state.
 
 Transforms a function of type:
 
-  FN : (a -> b) -> process
+  FN : (props, state, a -> b) -> process
 
 to a function of the type:
 
   FN' : () -> a"
   (let* (complete result)
-    (funcall fn (lambda (response)
-                  (setq complete t)
-                  (setq result response)))
+    (funcall fn props state (lambda (response)
+                              (setq complete t)
+                              (setq result response)))
 
     (while (not complete)
       (sleep-for 0.001))

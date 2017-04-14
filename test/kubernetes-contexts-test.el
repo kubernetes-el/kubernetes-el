@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 's)
+(require 'kubernetes-ast)
 (require 'kubernetes-contexts)
 (declare-function test-helper-json-resource "test-helper.el")
 

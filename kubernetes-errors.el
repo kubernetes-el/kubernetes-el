@@ -3,30 +3,28 @@
 ;;; Code:
 
 (require 'dash)
+(require 'subr-x)
+
+(require 'kubernetes-state)
 
 (defun kubernetes-errors-render (state)
-  (-when-let* (((&alist 'error (&alist 'message message 'command command)) state)
-               (header (concat (propertize "kubectl command failed" 'face 'font-lock-warning-face)))
+  (-when-let* (((&alist 'message message 'command command) (kubernetes-state-last-error state))
                (message-paragraph
-                (propertize (concat (with-temp-buffer
-                                      (insert message)
-                                      (fill-region (point-min) (point-max))
-                                      (indent-region (point-min) (point-max) 2)
-                                      (string-trim-right (buffer-string))))
-                            'kubernetes-copy message))
-               (command-str (string-join command " ")))
+                (with-temp-buffer
+                  (insert message)
+                  (fill-region (point-min) (point-max))
+                  (indent-region (point-min) (point-max) 2)
+                  (string-trim-right (buffer-string)))))
 
     `(section (error nil)
-              (heading ,header)
+              (heading (propertize (face font-lock-warning-face) "kubectl command failed"))
               (padding)
               (section (message nil)
-                       (line ,message-paragraph)
+                       (copy-prop ,message (line ,message-paragraph))
                        (padding))
               (section (command nil)
-                       (copy-prop ,command-str (key-value 10 "Command" ,command-str))
+                       (copy-prop ,command (key-value 10 "Command" ,command))
                        (padding)))))
-
-
 
 (provide 'kubernetes-errors)
 

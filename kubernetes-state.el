@@ -3,125 +3,356 @@
 ;;; Code:
 
 (require 'dash)
+(require 'cl-lib)
+(require 'seq)
 (require 'subr-x)
 
-(require 'kubernetes-custom)
-(require 'kubernetes-process)
+(require 'kubernetes-vars)
 
 
 ;;; Main state
 
-(defvar kubernetes-state--last-error nil
-  "The last error response from kubectl.
+(defvar kubernetes-state--current-state nil)
 
-It is an alist with the following keys:
-  - message : the stderr from the process
-  - time : the time at which the error was set
-  - command : the executable command that failed.
+(defun kubernetes-state ()
+  kubernetes-state--current-state)
 
-Used to provide error feedback in the overview.")
+(defun kubernetes-state-update (action &optional args)
+  (let ((updated (kubernetes-state-next kubernetes-state--current-state action args)))
+    (setq kubernetes-state--current-state updated)))
 
-(defvar kubernetes-state--get-pods-response nil
-  "State representing the get pods response from the API.
+(defun kubernetes-state-next (state action &optional args)
+  (let ((next (copy-alist state)))
+    (pcase action
 
-Used to draw the pods list of the main buffer.")
+      (:update-current-time
+       (setf (alist-get 'current-time next) args))
+      (:update-last-error
+       (setf (alist-get 'last-error next) args))
+      (:update-namespaces
+       (setf (alist-get 'namespaces next) args))
+      (:update-current-namespace
+       (setf (alist-get 'current-namespace next) args))
 
-(defvar kubernetes-state--get-configmaps-response nil
-  "State representing the get configmaps response from the API.")
+      (:update-config
+       (setf (alist-get 'config next) args)
+       (unless (alist-get 'current-namespace next)
+         (-when-let ((&alist 'context (&alist 'namespace ns))
+                     (kubernetes-state--lookup-current-context args))
+           (setf (alist-get 'current-namespace next) ns))))
 
-(defvar kubernetes-state--get-secrets-response nil
-  "State representing the get secrets response from the API.")
+      (:unmark-all
+       (setf (alist-get 'marked-pods next nil t) nil)
+       (setf (alist-get 'marked-configmaps next nil t) nil)
+       (setf (alist-get 'marked-secrets next nil t) nil)
+       (setf (alist-get 'marked-services next nil t) nil))
 
-(defvar kubernetes-state--get-services-response nil
-  "State representing the get services response from the API.")
+      ;; Pods
 
-(defvar kubernetes-state--view-config-response nil
-  "State representing the view config response from the API.
+      (:mark-pod
+       (let ((cur (alist-get 'marked-pods state)))
+         (setf (alist-get 'marked-pods next)
+               (delete-dups (cons args cur)))))
+      (:unmark-pod
+       (setf (alist-get 'marked-pods next)
+             (remove args (alist-get 'marked-pods next))))
+      (:delete-pod
+       (let ((updated (cons args (alist-get 'pods-pending-deletion state))))
+         (setf (alist-get 'pods-pending-deletion next)
+               (delete-dups updated))))
+      (:update-pods
+       (setf (alist-get 'pods next) args)
+       ;; Prune deleted pods from state.
+       (-let* (((&alist 'items pods) args)
+               (pod-names (seq-map #'kubernetes-state-resource-name pods)))
+         (setf (alist-get 'marked-pods next)
+               (seq-intersection (alist-get 'marked-pods next)
+                                 pod-names))
+         (setf (alist-get 'pods-pending-deletion next)
+               (seq-intersection (alist-get 'pods-pending-deletion next)
+                                 pod-names))))
 
-Used to draw the context section of the main buffer.")
+      ;; Configmaps
 
-(defvar kubernetes-state--get-namespaces-response nil
-  "State representing the namespaces response from the API.
+      (:mark-configmap
+       (let ((cur (alist-get 'marked-configmaps state)))
+         (setf (alist-get 'marked-configmaps next)
+               (delete-dups (cons args cur)))))
+      (:unmark-configmap
+       (setf (alist-get 'marked-configmaps next)
+             (remove args (alist-get 'marked-configmaps next))))
+      (:delete-configmap
+       (let ((updated (cons args (alist-get 'configmaps-pending-deletion state))))
+         (setf (alist-get 'configmaps-pending-deletion next)
+               (delete-dups updated))))
+      (:update-configmaps
+       (setf (alist-get 'configmaps next) args)
 
-Used for namespace selection within a cluster.")
+       ;; Prune deleted configmaps from state.
+       (-let* (((&alist 'items configmaps) args)
+               (configmap-names (seq-map #'kubernetes-state-resource-name configmaps)))
+         (setf (alist-get 'marked-configmaps next)
+               (seq-intersection (alist-get 'marked-configmaps next)
+                                 configmap-names))
+         (setf (alist-get 'configmaps-pending-deletion next)
+               (seq-intersection (alist-get 'configmaps-pending-deletion next)
+                                 configmap-names))))
 
-(defvar kubernetes-state--current-namespace nil
-  "The namespace to use in queries.  Overrides the context settings.")
+      ;; Secrets
+
+      (:mark-secret
+       (let ((cur (alist-get 'marked-secrets state)))
+         (setf (alist-get 'marked-secrets next)
+               (delete-dups (cons args cur)))))
+      (:unmark-secret
+       (setf (alist-get 'marked-secrets next)
+             (remove args (alist-get 'marked-secrets next))))
+      (:delete-secret
+       (let ((updated (cons args (alist-get 'secrets-pending-deletion state))))
+         (setf (alist-get 'secrets-pending-deletion next)
+               (delete-dups updated))))
+      (:update-secrets
+       (setf (alist-get 'secrets next) args)
+
+       ;; Prune deleted secrets from state.
+       (-let* (((&alist 'items secrets) args)
+               (secret-names (seq-map #'kubernetes-state-resource-name secrets)))
+         (setf (alist-get 'marked-secrets next)
+               (seq-intersection (alist-get 'marked-secrets next)
+                                 secret-names))
+         (setf (alist-get 'secrets-pending-deletion next)
+               (seq-intersection (alist-get 'secrets-pending-deletion next)
+                                 secret-names))))
+
+
+      ;; Services
+
+      (:mark-service
+       (let ((cur (alist-get 'marked-services state)))
+         (setf (alist-get 'marked-services next)
+               (delete-dups (cons args cur)))))
+      (:unmark-service
+       (setf (alist-get 'marked-services next)
+             (remove args (alist-get 'marked-services next))))
+      (:delete-service
+       (let ((updated (cons args (alist-get 'services-pending-deletion state))))
+         (setf (alist-get 'services-pending-deletion next)
+               (delete-dups updated))))
+      (:update-services
+       (setf (alist-get 'services next) args)
+
+       ;; Prune deleted services from state.
+       (-let* (((&alist 'items services) args)
+               (service-names (seq-map #'kubernetes-state-resource-name services)))
+         (setf (alist-get 'marked-services next)
+               (seq-intersection (alist-get 'marked-services next)
+                                 service-names))
+         (setf (alist-get 'services-pending-deletion next)
+               (seq-intersection (alist-get 'services-pending-deletion next)
+                                 service-names))))
+
+      (_
+       (error "Unknown action: %s" action)))
+
+    next))
+
+(defun kubernetes-state--lookup-current-context (config)
+  (-let [(&alist 'contexts contexts 'current-context current) config]
+    (--find (equal current (alist-get 'name it)) (append contexts nil))))
 
 (defun kubernetes-state-clear ()
-  (setq kubernetes-state--last-error nil)
-  (setq kubernetes-state--get-pods-response nil)
-  (setq kubernetes-state--get-configmaps-response nil)
-  (setq kubernetes-state--get-secrets-response nil)
-  (setq kubernetes-state--get-services-response nil)
-  (setq kubernetes-state--view-config-response nil)
-  (setq kubernetes-state--get-namespaces-response nil)
-  (setq kubernetes-state--current-namespace nil))
+  (setq kubernetes-state--current-state nil))
 
-(defun kubernetes-state-clear-error-if-stale ()
-  (-when-let ((&alist 'error (&alist 'time err-time)) (kubernetes--state))
-    (when (< kubernetes-minimum-error-display-time
+
+;; Actions
+
+(defun kubernetes-state-mark-pod (pod-name)
+  (cl-assert (stringp pod-name))
+  (kubernetes-state-update :mark-pod pod-name))
+
+(defun kubernetes-state-unmark-pod (pod-name)
+  (cl-assert (stringp pod-name))
+  (kubernetes-state-update :unmark-pod pod-name))
+
+(defun kubernetes-state-delete-pod (pod-name)
+  (cl-assert (stringp pod-name))
+  (kubernetes-state-update :delete-pod pod-name)
+  (kubernetes-state-update :unmark-pod pod-name))
+
+(defun kubernetes-state-mark-configmap (configmap-name)
+  (cl-assert (stringp configmap-name))
+  (kubernetes-state-update :mark-configmap configmap-name))
+
+(defun kubernetes-state-unmark-configmap (configmap-name)
+  (cl-assert (stringp configmap-name))
+  (kubernetes-state-update :unmark-configmap configmap-name))
+
+(defun kubernetes-state-delete-configmap (configmap-name)
+  (cl-assert (stringp configmap-name))
+  (kubernetes-state-update :delete-configmap configmap-name)
+  (kubernetes-state-update :unmark-configmap configmap-name))
+
+(defun kubernetes-state-mark-secret (secret-name)
+  (cl-assert (stringp secret-name))
+  (kubernetes-state-update :mark-secret secret-name))
+
+(defun kubernetes-state-unmark-secret (secret-name)
+  (cl-assert (stringp secret-name))
+  (kubernetes-state-update :unmark-secret secret-name))
+
+(defun kubernetes-state-delete-secret (secret-name)
+  (cl-assert (stringp secret-name))
+  (kubernetes-state-update :delete-secret secret-name)
+  (kubernetes-state-update :unmark-secret secret-name))
+
+(defun kubernetes-state-mark-service (service-name)
+  (cl-assert (stringp service-name))
+  (kubernetes-state-update :mark-service service-name))
+
+(defun kubernetes-state-unmark-service (service-name)
+  (cl-assert (stringp service-name))
+  (kubernetes-state-update :unmark-service service-name))
+
+(defun kubernetes-state-delete-service (service-name)
+  (cl-assert (stringp service-name))
+  (kubernetes-state-update :delete-service service-name)
+  (kubernetes-state-update :unmark-service service-name))
+
+(defun kubernetes-state-unmark-all ()
+  (kubernetes-state-update :unmark-all))
+
+
+;; State accessors
+
+(defmacro kubernetes-state--define-getter (attr)
+  `(defun ,(intern (format "kubernetes-state-%s" attr)) (state)
+     (alist-get (quote ,attr) state)))
+
+(defmacro kubernetes-state--define-accessors (attr arglist &rest assertions)
+  (declare (indent 2))
+  (let ((arg
+         (pcase arglist
+           (`(,x) x)
+           (xs `(list ,@xs)))))
+    `(progn
+       (kubernetes-state--define-getter ,attr)
+
+       (defun ,(intern (format "kubernetes-state-update-%s" attr)) ,arglist
+         ,@assertions
+         (let ((arg ,arg))
+           (kubernetes-state-update ,(intern (format ":update-%s" attr)) ,arg)
+           arg)))))
+
+(kubernetes-state--define-accessors current-time (time)
+  (cl-assert time)
+  (cl-assert (listp time))
+  (cl-assert (-all? #'integerp time)))
+
+(kubernetes-state--define-accessors current-namespace (namespace)
+  (cl-assert (stringp namespace)))
+
+(kubernetes-state--define-accessors pods (pods)
+  (cl-assert (listp pods)))
+
+(kubernetes-state--define-accessors configmaps (configmaps)
+  (cl-assert (listp configmaps)))
+
+(kubernetes-state--define-accessors secrets (secrets)
+  (cl-assert (listp secrets)))
+
+(kubernetes-state--define-accessors services (services)
+  (cl-assert (listp services)))
+
+(kubernetes-state--define-accessors namespaces (namespaces)
+  (cl-assert (listp namespaces)))
+
+(kubernetes-state--define-accessors config (config)
+  (cl-assert (listp config)))
+
+(kubernetes-state--define-getter marked-configmaps)
+(kubernetes-state--define-getter configmaps-pending-deletion)
+
+(kubernetes-state--define-getter marked-pods)
+(kubernetes-state--define-getter pods-pending-deletion)
+
+(kubernetes-state--define-getter marked-secrets)
+(kubernetes-state--define-getter secrets-pending-deletion)
+
+(kubernetes-state--define-getter marked-services)
+(kubernetes-state--define-getter services-pending-deletion)
+
+(kubernetes-state--define-getter last-error)
+
+(defun kubernetes-state-update-last-error (message command time)
+  (cl-assert (stringp message))
+  (cl-assert (stringp command))
+  (cl-assert time)
+  (cl-assert (listp time))
+  (cl-assert (-all? #'integerp time))
+  (let ((arg `((message . ,message)
+               (command . ,command)
+               (time ., time))))
+    (kubernetes-state-update :update-last-error arg)
+    arg))
+
+
+;; Convenience functions.
+
+(defun kubernetes-state-clear-error-if-stale (error-display-time)
+  (-when-let ((&alist 'time err-time) (kubernetes-state-last-error (kubernetes-state)))
+    (when (< error-display-time
              (- (time-to-seconds) (time-to-seconds err-time)))
-      (setq kubernetes-state--last-error nil))))
+      (kubernetes-state-update :update-last-error nil))))
 
-(defun kubernetes-state-set-error (message command)
-  (setq kubernetes-state--last-error `((message . ,message)
-                       (time . ,(current-time))
-                       (command . ,command))))
-
-(defun kubernetes--state ()
-  "Return the current state as an alist."
-  `((pods . ,kubernetes-state--get-pods-response)
-    (error . ,kubernetes-state--last-error)
-    (configmaps . ,kubernetes-state--get-configmaps-response)
-    (secrets . ,kubernetes-state--get-secrets-response)
-    (services . ,kubernetes-state--get-services-response)
-    (config . ,kubernetes-state--view-config-response)
-    (namespaces . ,kubernetes-state--get-namespaces-response)
-    (current-namespace . ,kubernetes-state--current-namespace)
-    (current-time . ,(current-time))))
-
-(defun kubernetes-state-lookup-pod (pod-name)
+(defun kubernetes-state-lookup-pod (pod-name state)
   "Look up a pod by name in the current state.
 
 POD-NAME is the name of the pod to search for.
 
+STATE is the current application state.
+
 If lookup succeeds, return the alist representation of the pod.
 If lookup fails, return nil."
-  (-let [(&alist 'pods (&alist 'items pods)) (kubernetes--state)]
+  (-let [(&alist 'pods (&alist 'items pods)) state]
     (--find (equal (kubernetes-state-resource-name it) pod-name)
             (append pods nil))))
 
-(defun kubernetes-state-lookup-configmap (configmap-name)
+(defun kubernetes-state-lookup-configmap (configmap-name state)
   "Look up a configmap by name in the current state.
+
+STATE is the current application state.
 
 CONFIGMAP-NAME is the name of the configmap to search for.
 
 If lookup succeeds, return the alist representation of the configmap.
 If lookup fails, return nil."
-  (-let [(&alist 'configmaps (&alist 'items configmaps)) (kubernetes--state)]
+  (-let [(&alist 'configmaps (&alist 'items configmaps)) state]
     (--find (equal (kubernetes-state-resource-name it) configmap-name)
             (append configmaps nil))))
 
-(defun kubernetes-state-lookup-secret (secret-name)
+(defun kubernetes-state-lookup-secret (secret-name state)
   "Look up a secret by name in the current state.
+
+STATE is the current application state.
 
 SECRET-NAME is the name of the secret to search for.
 
 If lookup succeeds, return the alist representation of the secret.
 If lookup fails, return nil."
-  (-let [(&alist 'secrets (&alist 'items secrets)) (kubernetes--state)]
+  (-let [(&alist 'secrets (&alist 'items secrets)) state]
     (--find (equal (kubernetes-state-resource-name it) secret-name)
             (append secrets nil))))
 
-(defun kubernetes-state-lookup-service (service-name)
+(defun kubernetes-state-lookup-service (service-name state)
   "Look up a service by name in the current state.
+
+STATE is the current application state.
 
 SERVICE-NAME is the name of the service to search for.
 
 If lookup succeeds, return the alist representation of the service.
 If lookup fails, return nil."
-  (-let [(&alist 'services (&alist 'items services)) (kubernetes--state)]
+  (-let [(&alist 'services (&alist 'items services)) state]
     (--find (equal (kubernetes-state-resource-name it) service-name)
             (append services nil))))
 
@@ -133,111 +364,14 @@ pod, secret, configmap, etc."
   (-let [(&alist 'metadata (&alist 'name name)) resource]
     name))
 
+(defun kubernetes-state-current-context (state)
+  (when-let (config (kubernetes-state-config state))
+    (kubernetes-state--lookup-current-context config)))
 
-;;; Background polling processes.
-
-(defmacro kubernetes-state--define-polling-process (resource)
-  "Create resource polling-related definitions.
-
-RESOURCE is the name of the resource as a symbol.
-
-Defines the following functions:
-
-- `kubernetes-state-set-poll-RESOURCE-process'
-- `kubernetes-state-release-poll-RESOURCE-process'
-- `kubernetes-state-poll-RESOURCE-process'."
-  (unless (symbolp resource) (error "RESOURCE must be a symbol"))
-  (let ((proc-var-name (intern (format "kubernetes--internal-poll-%s-process" resource)))
-        (proc-live-p (intern (format "kubernetes-state-poll-%s-process-live-p" resource)))
-        (releaser-name (intern (format "kubernetes-state-release-poll-%s-process" resource)))
-        (setter-name (intern (format "kubernetes-state-set-poll-%s-process" resource))))
-    `(progn
-       (defvar ,proc-var-name nil
-         "Variable used to coordinate polling access to resources.
-
-Do not use this variable directly. Instead, use its corresponding accessors.")
-
-       (defun ,proc-live-p ()
-         "Get the polling process for this resource if it is running."
-         (when-let (proc ,proc-var-name)
-           (when (process-live-p proc)
-             proc)))
-
-       (defun ,setter-name (proc)
-         "Set the polling process to PROC."
-         (,releaser-name)
-         (setq ,proc-var-name proc))
-
-       (defun ,releaser-name ()
-         "Kill the existing polling process, if any."
-         (kubernetes-process-kill-quietly ,proc-var-name)
-         (setq ,proc-var-name nil)))))
-
-(kubernetes-state--define-polling-process namespaces)
-(kubernetes-state--define-polling-process context)
-(kubernetes-state--define-polling-process pods)
-(kubernetes-state--define-polling-process configmaps)
-(kubernetes-state--define-polling-process secrets)
-(kubernetes-state--define-polling-process services)
-
-(defun kubernetes-state-kill-polling-processes ()
-  (kubernetes-state-release-poll-namespaces-process)
-  (kubernetes-state-release-poll-services-process)
-  (kubernetes-state-release-poll-context-process)
-  (kubernetes-state-release-poll-pods-process)
-  (kubernetes-state-release-poll-configmaps-process)
-  (kubernetes-state-release-poll-secrets-process))
-
-
-;; Polling and redisplay timers
-
-(defvar kubernetes-state--poll-timer nil
-  "Background timer used to poll for updates.
-
-This is used to regularly synchronise local state with Kubernetes.")
-
-(defvar kubernetes-state--redraw-timer nil
-  "Background timer used to trigger buffer redrawing.
-
-This is used to display the current state.")
-
-(defun kubernetes-state-initialize-timers ()
-  (unless kubernetes-state--redraw-timer
-    (setq kubernetes-state--redraw-timer (run-with-timer kubernetes-redraw-frequency kubernetes-redraw-frequency 'kubernetes--redraw-buffers)))
-  (unless kubernetes-state--poll-timer
-    (setq kubernetes-state--poll-timer (run-with-timer kubernetes-poll-frequency kubernetes-poll-frequency 'kubernetes-refresh))))
-
-(defun kubernetes-state-kill-timers ()
-  (when-let (timer kubernetes-state--redraw-timer)
-    (cancel-timer timer))
-  (when-let (timer kubernetes-state--poll-timer)
-    (cancel-timer timer))
-  (setq kubernetes-state--redraw-timer nil)
-  (setq kubernetes-state--poll-timer nil))
-
-
-;; Marked objects
-
-(defvar kubernetes-state--marked-pod-names nil)
-(defvar kubernetes-state--pods-pending-deletion nil)
-
-(defvar kubernetes-state--marked-configmap-names nil)
-(defvar kubernetes-state--configmaps-pending-deletion nil)
-
-(defvar kubernetes-state--marked-secret-names nil)
-(defvar kubernetes-state--secrets-pending-deletion nil)
-
-(defvar kubernetes-state--marked-service-names nil)
-(defvar kubernetes-state--services-pending-deletion nil)
-
-(defun kubernetes-state-update-marked-pods (pods)
-  (let ((pod-names (-map #'kubernetes-state-resource-name pods)))
-    (setq kubernetes-state--pods-pending-deletion
-          (-intersection kubernetes-state--pods-pending-deletion pod-names))
-    (setq kubernetes-state--marked-pod-names
-          (-intersection kubernetes-state--marked-pod-names pod-names))))
-
-
+(defun kubernetes-state-trigger-redraw ()
+  (kubernetes-state-update-current-time (current-time))
+  (kubernetes-state-clear-error-if-stale kubernetes-minimum-error-display-time)
+  (run-hooks 'kubernetes-redraw-hook))
 
 
 (provide 'kubernetes-state)

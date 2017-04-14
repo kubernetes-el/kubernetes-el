@@ -1,4 +1,4 @@
-;;; kubernetes-custom.el --- Customizable interface for Kubernetes package.  -*- lexical-binding: t; -*-
+;;; kubernetes-vars.el --- Customizable interface for Kubernetes package.  -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -12,17 +12,17 @@
   :group 'kubernetes
   :type 'string)
 
-(defcustom kubernetes-display-buffer-select t
+(defcustom kubernetes-utils-display-buffer-select t
   "Whether to select Kubernetes buffers automatically."
   :group 'kubernetes
   :type 'boolean)
 
-(defcustom kubernetes-display-buffer-function 'kubernetes-display-buffer-fullframe
+(defcustom kubernetes-utils-display-buffer-function 'kubernetes-utils-display-buffer-fullframe
   "The function used display a Kubernetes buffer.
 
 The function must take a single argument, which is the buffer to display."
   :group 'kubernetes
-  :type '(radio (function-item kubernetes-display-buffer-fullframe)
+  :type '(radio (function-item kubernetes-utils-display-buffer-fullframe)
                 (function-item display-buffer)
                 (function :tag "Function")))
 
@@ -128,6 +128,20 @@ balance interface stuttering with update frequency."
 (defconst kubernetes-exec-buffer-name "*kubernetes exec*")
 
 
-(provide 'kubernetes-custom)
+(defconst kubernetes-default-props
+  '((update-last-error-fn . kubernetes-state-update-last-error))
+  "Variable used to inject functions across modules.
 
-;;; kubernetes-custom.el ends here
+Helps decouple modules for testing.")
+
+
+(defvar kubernetes-poll-hook nil
+  "Hook run every time polling should occur.")
+
+(defvar kubernetes-redraw-hook nil
+  "Hook run every time redrawing should occur.")
+
+
+(provide 'kubernetes-vars)
+
+;;; kubernetes-vars.el ends here
