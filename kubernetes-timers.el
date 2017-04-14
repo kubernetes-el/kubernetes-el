@@ -27,7 +27,7 @@ This is used to display the current state.")
   (unless kubernetes-timers--poll-timer
     (setq kubernetes-timers--poll-timer (run-with-timer 0 kubernetes-poll-frequency
                                        (lambda ()
-                                         (run-hooks 'kubernetes-timers-poll-hook))))))
+                                         (run-hooks 'kubernetes-poll-hook))))))
 
 (defun kubernetes-timers-kill-timers ()
   (when-let (timer kubernetes-timers--redraw-timer)

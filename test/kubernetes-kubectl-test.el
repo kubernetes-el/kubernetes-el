@@ -163,6 +163,40 @@ will be mocked."
                    #'ignore))))
 
 
+;; Delete service
+
+(ert-deftest kubernetes-kubectl-test--deleting-service-succeeds ()
+  (let ((service-name "example-svc"))
+    (with-successful-response-at '("delete" "service" "example-service" "-o" "name") "service/example-svc"
+      (kubernetes-kubectl-delete-service kubernetes-kubectl-test-props
+                       (kubernetes-state)
+                       "example-service"
+                       (lambda (result)
+                         (should (equal service-name result)))))))
+
+(ert-deftest kubernetes-kubectl-test--deleting-service-fails ()
+  (let ((on-error-called))
+    (with-error-response-at '("delete" "service" "example-service" "-o" "name") "service/example-svc"
+      (kubernetes-kubectl-delete-service kubernetes-kubectl-test-props
+                       (kubernetes-state)
+                       "example-service"
+                       (lambda (_)
+                         (error "Unexpected success response"))
+                       (lambda (_)
+                         (setq on-error-called t))))
+    (should on-error-called)))
+
+(ert-deftest kubernetes-kubectl-test--deleting-service-applies-current-namespace ()
+  (let* ((service-name "example-svc")
+         (state (cons '(current-namespace . "foo") (kubernetes-state))))
+    (with-successful-response-at `("delete" "service" ,service-name "-o" "name" "--namespace=foo")
+        "service/example-svc"
+      (kubernetes-kubectl-delete-service kubernetes-kubectl-test-props
+                       state
+                       service-name
+                       #'ignore))))
+
+
 ;; Describe pod
 
 (ert-deftest kubernetes-kubectl-test--describing-pods ()

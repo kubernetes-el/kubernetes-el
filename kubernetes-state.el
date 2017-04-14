@@ -371,7 +371,7 @@ pod, secret, configmap, etc."
 (defun kubernetes-state-trigger-redraw ()
   (kubernetes-state-update-current-time (current-time))
   (kubernetes-state-clear-error-if-stale kubernetes-minimum-error-display-time)
-  (run-hooks 'kubernetes-timers-redraw-hook))
+  (run-hooks 'kubernetes-redraw-hook))
 
 
 (provide 'kubernetes-state)

@@ -5,10 +5,12 @@
 (require 'dash)
 (require 'seq)
 
+(require 'kubernetes-modes)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-vars)
 
+;; Component
 
 (defun kubernetes-pods--format-detail (pod)
   (-let ((detail (lambda (k v)
@@ -135,6 +137,59 @@
                                (line ,column-heading)
                                (line ,fetching)))))))
               (padding))))
+
+
+;; Requests and state management
+
+(defun kubernetes-pods-refresh (&optional interactive)
+  (unless (kubernetes-process-poll-pods-process-live-p)
+    (kubernetes-process-set-poll-pods-process
+     (kubernetes-kubectl-get-pods kubernetes-default-props
+                                  (kubernetes-state)
+                                  (lambda (response)
+                                    (kubernetes-state-update-pods response)
+                                    (when interactive
+                                      (message "Updated pods.")))
+                                  (lambda ()
+                                    (kubernetes-process-release-poll-pods-process))))))
+
+(defun kubernetes-pods-delete-marked (state)
+  (let ((names (kubernetes-state-marked-pods state)))
+    (dolist (name names)
+      (kubernetes-state-delete-pod name)
+      (kubernetes-kubectl-delete-pod kubernetes-default-props state name
+                                     (lambda (_)
+                                       (message "Deleting pod %s succeeded." name))
+                                     (lambda (_)
+                                       (message "Deleting pod %s failed" name)
+                                       (kubernetes-state-mark-pod name))))
+    (kubernetes-state-trigger-redraw)))
+
+;; Interactive commands
+
+(defun kubernetes-pods--redraw-pod-buffer (pod-name state)
+  (if-let (pod (kubernetes-state-lookup-pod pod-name state))
+      (let ((buf (get-buffer-create kubernetes-pod-buffer-name)))
+        (with-current-buffer buf
+          (kubernetes-display-thing-mode)
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert (kubernetes-utils-json-to-yaml pod))))
+        buf)
+    (error "Unknown pod: %s" pod-name)))
+
+;;;###autoload
+(defun kubernetes-display-pod (pod-name state)
+  "Display information for a pod in a new window.
+
+STATE is the current application state.
+
+POD-NAME is the name of the pod to display."
+  (interactive (list (kubernetes-utils-read-pod-name)
+                     (kubernetes-state)))
+  (with-current-buffer (kubernetes-pods--redraw-pod-buffer pod-name state)
+    (goto-char (point-min))
+    (select-window (display-buffer (current-buffer)))))
 
 
 (provide 'kubernetes-pods)

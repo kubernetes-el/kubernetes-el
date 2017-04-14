@@ -11,60 +11,68 @@
 
 (autoload 'org-read-date "org")
 
-(defun kubernetes-utils-read-pod-name ()
+(defun kubernetes-utils-read-pod-name (state)
   "Read a pod name from the user.
+
+STATE is the current application state.
 
 Update the pod state if it not set yet."
   (-let* (((&alist 'items pods)
-           (or (kubernetes-state-pods)
+           (or (kubernetes-state-pods state)
                (progn
                  (message "Getting pods...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props (kubernetes-state) #'kubernetes-kubectl-get-pods)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props state #'kubernetes-kubectl-get-pods)))
                    (kubernetes-state-update-pods response)
                    response))))
           (pods (append pods nil))
           (names (-map #'kubernetes-state-resource-name pods)))
     (completing-read "Pod: " names nil t)))
 
-(defun kubernetes-utils-read-configmap-name ()
+(defun kubernetes-utils-read-configmap-name (state)
   "Read a configmap name from the user.
+
+STATE is the current application state.
 
 Update the configmap state if it not set yet."
   (-let* (((&alist 'items configmaps)
-           (or (kubernetes-state-configmaps)
+           (or (kubernetes-state-configmaps state)
                (progn
                  (message "Getting configmaps...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props (kubernetes-state) #'kubernetes-kubectl-get-configmaps)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props state #'kubernetes-kubectl-get-configmaps)))
                    (kubernetes-state-update-configmaps response)
                    response))))
           (configmaps (append configmaps nil))
           (names (-map #'kubernetes-state-resource-name configmaps)))
     (completing-read "Configmap: " names nil t)))
 
-(defun kubernetes-utils-read-secret-name ()
+(defun kubernetes-utils-read-secret-name (state)
   "Read a secret name from the user.
+
+STATE is the current application state.
 
 Update the secret state if it not set yet."
   (-let* (((&alist 'items secrets)
-           (or (kubernetes-state-secrets)
+           (or (kubernetes-state-secrets state)
                (progn
                  (message "Getting secrets...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props (kubernetes-state) #'kubernetes-kubectl-get-secrets)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props state #'kubernetes-kubectl-get-secrets)))
                    (kubernetes-state-update-secrets response)
                    response))))
           (secrets (append secrets nil))
           (names (-map #'kubernetes-state-resource-name secrets)))
     (completing-read "Secret: " names nil t)))
 
-(defun kubernetes-utils-read-service-name ()
+(defun kubernetes-utils-read-service-name (state)
   "Read a service name from the user.
+
+STATE is the current application state.
 
 Update the service state if it not set yet."
   (-let* (((&alist 'items services)
-           (or (kubernetes-state-services)
+           (or (kubernetes-state-services state)
                (progn
                  (message "Getting services...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props (kubernetes-state) #'kubernetes-kubectl-get-services)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props state #'kubernetes-kubectl-get-services)))
                    (kubernetes-state-update-services response)
                    response))))
           (services (append services nil))
@@ -196,23 +204,6 @@ buffer is killed."
             (kubernetes-state-clear)))
         (kubernetes-process-kill-polling-processes)
         (kubernetes-timers-kill-timers)))))
-
-(defun kubernetes-utils-display-buffer-fullframe (buffer)
-  (let ((display-fn
-         (lambda (buffer alist)
-           (when-let (window (or (display-buffer-reuse-window buffer alist)
-                                 (display-buffer-same-window buffer alist)
-                                 (display-buffer-pop-up-window buffer alist)
-                                 (display-buffer-use-some-window buffer alist)))
-             (delete-other-windows window)
-             window))))
-    (display-buffer buffer (list display-fn))))
-
-(defun kubernetes-utils-display-buffer (buffer)
-  (let ((window (funcall kubernetes-utils-display-buffer-function buffer)))
-    (when kubernetes-utils-display-buffer-select
-      (select-frame-set-input-focus
-       (window-frame (select-window window))))))
 
 (provide 'kubernetes-utils)
 

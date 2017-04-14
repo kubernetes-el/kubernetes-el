@@ -4,9 +4,12 @@
 
 (require 'dash)
 
+(require 'kubernetes-modes)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 
+
+;; Component
 
 (defun kubernetes-secrets--format-detail (secret)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) secret]
@@ -77,6 +80,60 @@
                     (section (secrets-list nil)
                              (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
               (padding))))
+
+
+;; Requests and state management
+
+(defun kubernetes-secrets-refresh (&optional interactive)
+  (unless (kubernetes-process-poll-secrets-process-live-p)
+    (kubernetes-process-set-poll-secrets-process
+     (kubernetes-kubectl-get-secrets kubernetes-default-props
+                                     (kubernetes-state)
+                                     (lambda (response)
+                                       (kubernetes-state-update-secrets response)
+                                       (when interactive
+                                         (message "Updated secrets.")))
+                                     (lambda ()
+                                       (kubernetes-process-release-poll-secrets-process))))))
+
+(defun kubernetes-secrets-delete-marked (state)
+  (let ((names (kubernetes-state-marked-secrets state)))
+    (dolist (name names)
+      (kubernetes-state-delete-secret name)
+      (kubernetes-kubectl-delete-secret kubernetes-default-props state name
+                                        (lambda (_)
+                                          (message "Deleting secret %s succeeded." name))
+                                        (lambda (_)
+                                          (message "Deleting secret %s failed" name)
+                                          (kubernetes-state-mark-secret name))))
+    (kubernetes-state-trigger-redraw)))
+
+
+;; Displaying secrets.
+
+(defun kubernetes-secrets--redraw-secret-buffer (secret-name state)
+  (if-let (secret (kubernetes-state-lookup-secret secret-name state))
+      (let ((buf (get-buffer-create kubernetes-display-secret-buffer-name)))
+        (with-current-buffer buf
+          (kubernetes-display-thing-mode)
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert (kubernetes-utils-json-to-yaml secret))))
+        buf)
+    (error "Unknown secret: %s" secret-name)))
+
+;;;###autoload
+(defun kubernetes-display-secret (secret-name state)
+  "Display information for a secret in a new window.
+
+STATE is the current application state.
+
+SECRET-NAME is the name of the secret to display."
+  (interactive (list (kubernetes-utils-read-secret-name)
+                     (kubernetes-state)))
+  (with-current-buffer (kubernetes-secrets--redraw-secret-buffer secret-name state)
+    (goto-char (point-min))
+    (select-window (display-buffer (current-buffer)))))
 
 
 (provide 'kubernetes-secrets)

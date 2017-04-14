@@ -3,9 +3,14 @@
 ;;; Code:
 
 (require 'dash)
+
+(require 'kubernetes-kubectl)
+(require 'kubernetes-modes)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 
+
+;; Component
 
 (defun kubernetes-services--format-details (service)
   (-let ((detail
@@ -102,6 +107,60 @@
                     (section (services-list nil)
                              (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
               (padding))))
+
+
+;; Requests and state management
+
+(defun kubernetes-services-refresh (&optional interactive)
+  (unless (kubernetes-process-poll-services-process-live-p)
+    (kubernetes-process-set-poll-services-process
+     (kubernetes-kubectl-get-services kubernetes-default-props
+                                      (kubernetes-state)
+                                      (lambda (response)
+                                        (kubernetes-state-update-services response)
+                                        (when interactive
+                                          (message "Updated services.")))
+                                      (lambda ()
+                                        (kubernetes-process-release-poll-services-process))))))
+
+(defun kubernetes-services-delete-marked (state)
+  (let ((names (kubernetes-state-marked-services state)))
+    (dolist (name names)
+      (kubernetes-state-delete-service name)
+      (kubernetes-kubectl-delete-service kubernetes-default-props state name
+                                         (lambda (_)
+                                           (message "Deleting service %s succeeded." name))
+                                         (lambda (_)
+                                           (message "Deleting service %s failed" name)
+                                           (kubernetes-state-mark-service name))))
+    (kubernetes-state-trigger-redraw)))
+
+
+;; Displaying services
+
+(defun kubernetes-services--redraw-service-buffer (service-name state)
+  (if-let (service (kubernetes-state-lookup-service service-name state))
+      (let ((buf (get-buffer-create kubernetes-display-service-buffer-name)))
+        (with-current-buffer buf
+          (kubernetes-display-thing-mode)
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert (kubernetes-utils-json-to-yaml service))))
+        buf)
+    (error "Unknown service: %s" service-name)))
+
+;;;###autoload
+(defun kubernetes-display-service (service-name state)
+  "Display information for a service in a new window.
+
+STATE is the current application state.
+
+SERVICE-NAME is the name of the service to display."
+  (interactive (list (kubernetes-utils-read-service-name)
+                     (kubernetes-state)))
+  (with-current-buffer (kubernetes-services--redraw-service-buffer service-name state)
+    (goto-char (point-min))
+    (select-window (display-buffer (current-buffer)))))
 
 
 (provide 'kubernetes-services)
