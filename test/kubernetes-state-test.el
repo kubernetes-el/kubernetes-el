@@ -206,15 +206,24 @@
 (kubernetes-state-marking-tests secret)
 (kubernetes-state-marking-tests service)
 
+(ert-deftest kubernetes-state-test-unmark-all ()
+  (test-helper-with-empty-state
+    (kubernetes-state-mark-pod "pod")
+    (kubernetes-state-mark-secret "secret")
+    (kubernetes-state-mark-configmap "configmap")
+    (kubernetes-state-mark-service "svc")
+    (kubernetes-state-unmark-all)
+    (should-not (kubernetes-state))))
+
 
 ;; Convenience functions
 
 (ert-deftest kubernetes-state-test--clear-error-if-stale--not-stale ()
   (test-helper-with-empty-state
-   (let* ((time (current-time))
-          (kubernetes-state--current-state `((last-error . ((time . ,time))))))
-     (kubernetes-state-clear-error-if-stale 5)
-     (should (kubernetes-state-last-error (kubernetes-state))))))
+    (let* ((time (current-time))
+           (kubernetes-state--current-state `((last-error . ((time . ,time))))))
+      (kubernetes-state-clear-error-if-stale 5)
+      (should (kubernetes-state-last-error (kubernetes-state))))))
 
 (ert-deftest kubernetes-state-test--clear-error-if-stale--stale ()
   (test-helper-with-empty-state

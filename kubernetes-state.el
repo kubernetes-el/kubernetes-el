@@ -39,6 +39,12 @@
                      (kubernetes-state--lookup-current-context args))
            (setf (alist-get 'current-namespace next) ns))))
 
+      (:unmark-all
+       (setf (alist-get 'marked-pods next nil t) nil)
+       (setf (alist-get 'marked-configmaps next nil t) nil)
+       (setf (alist-get 'marked-secrets next nil t) nil)
+       (setf (alist-get 'marked-services next nil t) nil))
+
       ;; Pods
 
       (:mark-pod
@@ -209,6 +215,9 @@
   (cl-assert (stringp service-name))
   (kubernetes-state-update :delete-service service-name)
   (kubernetes-state-update :unmark-service service-name))
+
+(defun kubernetes-state-unmark-all ()
+  (kubernetes-state-update :unmark-all))
 
 
 ;; State accessors
