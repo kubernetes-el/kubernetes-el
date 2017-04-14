@@ -4,6 +4,7 @@
 
 (require 'kubernetes-configmaps)
 (require 'kubernetes-contexts)
+(require 'kubernetes-namespaces)
 (require 'kubernetes-pods)
 (require 'kubernetes-popups)
 (require 'kubernetes-secrets)

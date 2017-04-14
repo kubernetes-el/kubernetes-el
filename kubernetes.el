@@ -35,6 +35,7 @@
 (require 'kubernetes-kubectl)
 (require 'kubernetes-logs)
 (require 'kubernetes-modes)
+(require 'kubernetes-namespaces)
 (require 'kubernetes-overview)
 (require 'kubernetes-pods)
 (require 'kubernetes-popups)
