@@ -3,7 +3,10 @@
 ;;; Code:
 
 (require 'subr-x)
+(require 'kubernetes-state)
 (require 'kubernetes-vars)
+
+;; Timer vars
 
 (defvar kubernetes-timers--poll-timer nil
   "Background timer used to poll for updates.
@@ -15,11 +18,16 @@ This is used to regularly synchronise local state with Kubernetes.")
 
 This is used to display the current state.")
 
+
+;; Timer management
+
 (defun kubernetes-timers-initialize-timers ()
   (unless kubernetes-timers--redraw-timer
-    (setq kubernetes-timers--redraw-timer (run-with-timer kubernetes-redraw-frequency kubernetes-redraw-frequency 'kubernetes--redraw-buffers)))
+    (setq kubernetes-timers--redraw-timer (run-with-timer 0 kubernetes-redraw-frequency #'kubernetes-state-trigger-redraw)))
   (unless kubernetes-timers--poll-timer
-    (setq kubernetes-timers--poll-timer (run-with-timer kubernetes-poll-frequency kubernetes-poll-frequency 'kubernetes-refresh))))
+    (setq kubernetes-timers--poll-timer (run-with-timer 0 kubernetes-poll-frequency
+                                       (lambda ()
+                                         (run-hooks 'kubernetes-timers-poll-hook))))))
 
 (defun kubernetes-timers-kill-timers ()
   (when-let (timer kubernetes-timers--redraw-timer)

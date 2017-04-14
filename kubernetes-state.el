@@ -7,6 +7,8 @@
 (require 'seq)
 (require 'subr-x)
 
+(require 'kubernetes-vars)
+
 
 ;;; Main state
 
@@ -365,6 +367,11 @@ pod, secret, configmap, etc."
 (defun kubernetes-state-current-context (state)
   (when-let (config (kubernetes-state-config state))
     (kubernetes-state--lookup-current-context config)))
+
+(defun kubernetes-state-trigger-redraw ()
+  (kubernetes-state-update-current-time (current-time))
+  (kubernetes-state-clear-error-if-stale kubernetes-minimum-error-display-time)
+  (run-hooks 'kubernetes-timers-redraw-hook))
 
 
 (provide 'kubernetes-state)

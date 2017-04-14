@@ -134,6 +134,14 @@ balance interface stuttering with update frequency."
 
 Helps decouple modules for testing.")
 
+
+(defvar kubernetes-timers-poll-hook nil
+  "Hook run every time polling should occur.")
+
+(defvar kubernetes-timers-redraw-hook nil
+  "Hook run every time redrawing should occur.")
+
+
 (provide 'kubernetes-vars)
 
 ;;; kubernetes-vars.el ends here
