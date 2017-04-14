@@ -32,10 +32,7 @@ packages. If you use [use-package][], the forms below will get you started.
 ```elisp
 (use-package kubernetes
   :ensure t
-  :commands (kubernetes-overview
-             kubernetes-display-pods
-             kubernetes-display-configmaps
-             kubernetes-display-secrets))
+  :commands (kubernetes-overview))
 
 ;; If you want to pull in the Evil compatibility package.
 (use-package kubernetes-evil
