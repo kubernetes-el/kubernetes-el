@@ -179,7 +179,7 @@ POD-NAME is the name of the pod to describe."
     (select-window (display-buffer buf))
     buf))
 
-(defun kubernetes-exec-into (pod-name args exec-command)
+(defun kubernetes-exec-into (pod-name args exec-command state)
   "Open a terminal for execting into a pod.
 
 POD-NAME is the name of the pod to exec into.
@@ -188,16 +188,20 @@ ARGS are additional args to pass to kubectl.
 
 EXEC-COMMAND is the command to run in the container.
 
+STATE is the current application state.
+
 Should be invoked via command `kubernetes-logs-popup'."
-  (interactive (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name))
-                     (kubernetes-exec-arguments)
-                     (let ((cmd (string-trim (read-string (format "Command (default: %s): " kubernetes-default-exec-command)
-                                                          nil 'kubernetes-exec-history))))
-                       (if (string-empty-p cmd) kubernetes-default-exec-command cmd))))
+  (interactive (let* ((state (kubernetes-state))
+                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name)))
+                      (command
+                       (let ((cmd (string-trim (read-string (format "Command (default: %s): " kubernetes-default-exec-command)
+                                                            nil 'kubernetes-exec-history))))
+                         (if (string-empty-p cmd) kubernetes-default-exec-command cmd))))
+                 (list pod-name (kubernetes-exec-arguments) command state)))
 
   (let* ((command-args (append (list "exec")
                                args
-                               (when-let (ns (kubernetes-state-current-namespace))
+                               (when-let (ns (kubernetes-state-current-namespace state))
                                  (list (format "--namespace=%s" ns)))
                                (list pod-name exec-command)))
 
