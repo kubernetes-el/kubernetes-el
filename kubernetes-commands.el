@@ -104,6 +104,7 @@ With optional argument VERBOSE, log status changes."
 (defun kubernetes--poll (&optional verbose)
   (kubernetes-configmaps-refresh verbose)
   (kubernetes-contexts-refresh verbose)
+  (kubernetes-namespaces-refresh verbose)
   (kubernetes-pods-refresh verbose)
   (kubernetes-secrets-refresh verbose)
   (kubernetes-services-refresh verbose))
