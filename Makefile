@@ -55,6 +55,7 @@ install : $(TAR)
 
 
 test : $(SRCS)
+	rm -f $(wildcard *.elc)
 	${CASK} exec ert-runner
 
 
