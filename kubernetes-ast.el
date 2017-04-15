@@ -7,6 +7,7 @@
 
 (require 'cl-lib)
 (require 'magit)
+(require 'subr-x)
 
 (defconst kubernetes-ast--indentation-width 2)
 (defconst kubernetes-ast--space ?\ )
@@ -26,7 +27,9 @@ Warning: This could blow the stack if the AST gets too deep."
       ;; Core forms
 
       ((and x (pred stringp))
-       (insert (concat (kubernetes-ast--indentation indent-level) x)))
+       (insert (if (string-empty-p (buffer-substring (line-beginning-position) (point)))
+                   (concat (kubernetes-ast--indentation indent-level) x)
+                 x)))
 
       (`(line ,inner-ast)
        (kubernetes-ast-eval inner-ast indent-level)
