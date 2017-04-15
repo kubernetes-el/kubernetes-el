@@ -62,7 +62,7 @@ clean-all: clean
 	rm -rf .cask "~/.emacs.d/elpa/kubernetes-$(VERSION)"
 
 
-release : assert-clean-worktree assert-on-master clean set-package-version dist git-release github-browse-release
+release : assert-clean-worktree assert-on-master clean test set-package-version dist git-release github-browse-release
 	@echo 'Release successful.'
 
 
