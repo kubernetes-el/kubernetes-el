@@ -7,6 +7,7 @@
 
 (require 'cl-lib)
 (require 'magit)
+(require 'subr-x)
 
 (defconst kubernetes-ast--indentation-width 2)
 (defconst kubernetes-ast--space ?\ )
@@ -26,7 +27,9 @@ Warning: This could blow the stack if the AST gets too deep."
       ;; Core forms
 
       ((and x (pred stringp))
-       (insert (concat (kubernetes-ast--indentation indent-level) x)))
+       (insert (if (string-empty-p (buffer-substring (line-beginning-position) (point)))
+                   (concat (kubernetes-ast--indentation indent-level) x)
+                 x)))
 
       (`(line ,inner-ast)
        (kubernetes-ast-eval inner-ast indent-level)
@@ -55,19 +58,32 @@ Warning: This could blow the stack if the AST gets too deep."
       (`(indent . ,inner-ast)
        (kubernetes-ast-eval inner-ast (1+ indent-level)))
 
+      (`(list . ,items)
+       (dolist (item items)
+         (let ((item-start (point)))
+           (kubernetes-ast-eval `(line ,item) (+ 1 indent-level))
+           ;; Insert dash for item.
+           (save-excursion
+             (goto-char item-start)
+             (goto-char (line-beginning-position))
+             (skip-chars-forward " ")
+             (unless (eq (char-after) ?-)
+               (delete-char -2)
+               (insert "- "))))))
+
 
       ;; Sugar forms
 
       (`(key-value ,width ,k ,v)
-       (cl-assert (numberp width))
-       (cl-assert (<= 0 width))
-       (cl-assert (stringp k))
-       (cl-assert (stringp v))
+       (cl-assert (numberp width) t)
+       (cl-assert (<= 0 width) t)
+       (cl-assert (stringp k) t)
+       (cl-assert (stringp v) t)
 
        (let* ((fmt-string (concat "%-" (number-to-string width) "s"))
-              (str (concat (propertize (format fmt-string (concat k ":")) 'face 'magit-header-line)
+              (str (concat (propertize (format fmt-string (concat k ": ")) 'face 'magit-header-line)
                            v)))
-         (kubernetes-ast-eval `(line ,str) indent-level)))
+         (kubernetes-ast-eval `(copy-prop ,v (line ,str)) indent-level)))
 
       (`(nav-prop ,spec . ,inner-ast)
        (kubernetes-ast-eval `(propertize (kubernetes-nav ,spec)
@@ -75,7 +91,7 @@ Warning: This could blow the stack if the AST gets too deep."
               indent-level))
 
       (`(copy-prop ,copy-str . ,inner-ast)
-       (cl-assert (stringp copy-str))
+       (cl-assert (stringp copy-str) t)
        (kubernetes-ast-eval `(propertize (kubernetes-copy ,copy-str)
                            ,inner-ast)
               indent-level))

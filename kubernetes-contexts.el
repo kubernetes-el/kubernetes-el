@@ -10,6 +10,7 @@
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-vars)
+(require 'kubernetes-yaml)
 
 
 ;; Component
@@ -71,22 +72,13 @@
 
 ;; Displaying config.
 
-(defun kubernetes-contexts--redraw-config-buffer (config)
-  (let ((buf (get-buffer-create kubernetes-display-config-buffer-name)))
-    (with-current-buffer buf
-      (kubernetes-display-thing-mode)
-      (let ((inhibit-read-only t))
-        (erase-buffer)
-        (insert (kubernetes-utils-json-to-yaml config))))
-    buf))
-
 ;;;###autoload
 (defun kubernetes-display-config (config)
   "Display information for CONFIG in a new window."
   (interactive (list (kubernetes-kubectl-await-on-async kubernetes-default-props (kubernetes-state) #'kubernetes-kubectl-config-view)))
-  (with-current-buffer (kubernetes-contexts--redraw-config-buffer config)
-    (goto-char (point-min))
-    (select-window (display-buffer (current-buffer)))))
+  (select-window
+   (display-buffer
+    (kubernetes-yaml-make-buffer kubernetes-display-config-buffer-name config))))
 
 
 (provide 'kubernetes-contexts)

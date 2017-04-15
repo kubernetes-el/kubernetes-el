@@ -106,6 +106,7 @@ ast = STRING
     | ( line STRING* )
     | ( heading ast )
     | ( indent ast* )
+    | ( list ast* )
     | ( propertize ( properties* ) ast* )
     | ( section ( SYMBOL hiddenp ) ast* )
     | ( mark-for-delete ast* )

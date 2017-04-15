@@ -7,6 +7,7 @@
 (require 'kubernetes-modes)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
+(require 'kubernetes-yaml)
 
 
 ;; Component
@@ -111,16 +112,22 @@
 
 ;; Displaying secrets.
 
-(defun kubernetes-secrets--redraw-secret-buffer (secret-name state)
-  (if-let (secret (kubernetes-state-lookup-secret secret-name state))
-      (let ((buf (get-buffer-create kubernetes-display-secret-buffer-name)))
-        (with-current-buffer buf
-          (kubernetes-display-thing-mode)
-          (let ((inhibit-read-only t))
-            (erase-buffer)
-            (insert (kubernetes-utils-json-to-yaml secret))))
-        buf)
-    (error "Unknown secret: %s" secret-name)))
+(defun kubernetes-secrets--read-name (state)
+  "Read a secret name from the user.
+
+STATE is the current application state.
+
+Update the secret state if it not set yet."
+  (-let* (((&alist 'items secrets)
+           (or (kubernetes-state-secrets state)
+               (progn
+                 (message "Getting secrets...")
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props state #'kubernetes-kubectl-get-secrets)))
+                   (kubernetes-state-update-secrets response)
+                   response))))
+          (secrets (append secrets nil))
+          (names (-map #'kubernetes-state-resource-name secrets)))
+    (completing-read "Secret: " names nil t)))
 
 ;;;###autoload
 (defun kubernetes-display-secret (secret-name state)
@@ -129,11 +136,13 @@
 STATE is the current application state.
 
 SECRET-NAME is the name of the secret to display."
-  (interactive (list (kubernetes-utils-read-secret-name)
-                     (kubernetes-state)))
-  (with-current-buffer (kubernetes-secrets--redraw-secret-buffer secret-name state)
-    (goto-char (point-min))
-    (select-window (display-buffer (current-buffer)))))
+  (interactive (let ((state (kubernetes-state)))
+                 (list (kubernetes-secrets--read-name state) state)))
+  (if-let (secret (kubernetes-state-lookup-secret secret-name state))
+      (select-window
+       (display-buffer
+        (kubernetes-yaml-make-buffer kubernetes-display-secret-buffer-name secret)))
+    (error "Unknown secret: %s" secret-name)))
 
 
 (provide 'kubernetes-secrets)

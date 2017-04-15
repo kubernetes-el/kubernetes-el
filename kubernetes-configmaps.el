@@ -8,6 +8,7 @@
 (require 'kubernetes-process)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
+(require 'kubernetes-yaml)
 
 
 ;; Component
@@ -112,16 +113,23 @@
 
 ;; Displaying configmaps.
 
-(defun kubernetes-configmaps--redraw-configmap-buffer (configmap-name state)
-  (if-let (configmap (kubernetes-state-lookup-configmap configmap-name state))
-      (let ((buf (get-buffer-create kubernetes-display-configmap-buffer-name)))
-        (with-current-buffer buf
-          (kubernetes-display-thing-mode)
-          (let ((inhibit-read-only t))
-            (erase-buffer)
-            (insert (kubernetes-utils-json-to-yaml configmap))))
-        buf)
-    (error "Unknown configmap: %s" configmap-name)))
+(defun kubernetes-configmaps--read-name (state)
+  "Read a configmap name from the user.
+
+STATE is the current application state.
+
+Update the configmap state if it not set yet."
+  (-let* (((&alist 'items configmaps)
+           (or (kubernetes-state-configmaps state)
+               (progn
+                 (message "Getting configmaps...")
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props state #'kubernetes-kubectl-get-configmaps)))
+                   (kubernetes-state-update-configmaps response)
+                   response))))
+          (configmaps (append configmaps nil))
+          (names (-map #'kubernetes-state-resource-name configmaps)))
+    (completing-read "Configmap: " names nil t)))
+
 
 ;;;###autoload
 (defun kubernetes-display-configmap (configmap-name state)
@@ -130,11 +138,13 @@
 STATE is the current application state.
 
 CONFIGMAP-NAME is the name of the configmap to display."
-  (interactive (list (kubernetes-utils-read-configmap-name)
-                     (kubernetes-state)))
-  (with-current-buffer (kubernetes-configmaps--redraw-configmap-buffer configmap-name state)
-    (goto-char (point-min))
-    (select-window (display-buffer (current-buffer)))))
+  (interactive (let ((state (kubernetes-state)))
+                 (list (kubernetes-configmaps--read-name state) state)))
+  (if-let (configmap (kubernetes-state-lookup-configmap configmap-name state))
+      (select-window
+       (display-buffer
+        (kubernetes-yaml-make-buffer kubernetes-display-configmap-buffer-name configmap)))
+    (error "Unknown configmap: %s" configmap-name)))
 
 
 (provide 'kubernetes-configmaps)
