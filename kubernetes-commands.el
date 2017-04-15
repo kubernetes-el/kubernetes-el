@@ -209,13 +209,13 @@ Should be invoked via command `kubernetes-logs-popup'."
          (interactive-tty (member "-t" args))
          (buf
           (if interactive-tty
-              (kubernetes-process-term-buffer-start kubernetes-exec-buffer-name
-                                                    kubernetes-kubectl-executable
-                                                    command-args)
-            (kubernetes-process-buffer-start kubernetes-exec-buffer-name
-                                             #'kubernetes-mode
-                                             kubernetes-kubectl-executable
-                                             command-args))))
+              (kubernetes-utils-term-buffer-start kubernetes-exec-buffer-name
+                                                  kubernetes-kubectl-executable
+                                                  command-args)
+            (kubernetes-utils-process-buffer-start kubernetes-exec-buffer-name
+                                                   #'kubernetes-mode
+                                                   kubernetes-kubectl-executable
+                                                   command-args))))
 
     (when (and interactive-tty kubernetes-clean-up-interactive-exec-buffers)
       (set-process-sentinel (get-buffer-process buf) #'kubernetes-process-kill-quietly))

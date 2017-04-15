@@ -75,7 +75,7 @@ ARGS are additional args to pass to kubectl."
   (let ((args (append (list "logs") args (list pod-name)
                       (when-let (ns (kubernetes-state-current-namespace (kubernetes-state)))
                         (list (format "--namespace=%s" ns))))))
-    (with-current-buffer (kubernetes-process-buffer-start kubernetes-logs-buffer-name #'kubernetes-logs-mode kubernetes-kubectl-executable args)
+    (with-current-buffer (kubernetes-utils-process-buffer-start kubernetes-logs-buffer-name #'kubernetes-logs-mode kubernetes-kubectl-executable args)
       (select-window (display-buffer (current-buffer))))))
 
 
