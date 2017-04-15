@@ -405,4 +405,43 @@ will be mocked."
                      #'ignore))))
 
 
+;; Error handler
+
+(ert-deftest kubernetes-kubectl-test--error-handler-writes-messages-when-overview-buffer-not-selected ()
+  (let* ((message-called-p)
+         (props
+          (append `((message . ,(lambda (&rest _) (setq message-called-p t))))
+                  kubernetes-kubectl-test-props)))
+
+    (kubernetes-kubectl--default-error-handler props "")
+    (should message-called-p)))
+
+(ert-deftest kubernetes-kubectl-test--error-handler-does-not-write-message-if-overview-buffer-selected ()
+  (let* ((message-called-p)
+         (props
+          (append `((message . ,(lambda (&rest _) (setq message-called-p t)))
+                    (overview-buffer-selected-p . (lambda (&rest _) t)))
+                  kubernetes-kubectl-test-props)))
+
+    (kubernetes-kubectl--default-error-handler props "")
+    (should-not message-called-p)))
+
+(ert-deftest kubernetes-kubectl-test--error-handler-does-not-write-message-if-error-already-set ()
+  (let* ((message-called-p)
+         (props
+          (append `((message . ,(lambda (&rest _) (setq message-called-p t)))
+                    (get-last-error . (lambda (&rest _) t)))
+                  kubernetes-kubectl-test-props)))
+
+    (kubernetes-kubectl--default-error-handler props "")
+    (should-not message-called-p)))
+
+(ert-deftest kubernetes-kubectl-test--error-handler-does-not-write-message-if-process-was-sigkilled ()
+  (let* ((message-called-p)
+         (props (append `((message . ,(lambda (&rest _) (setq message-called-p t))))
+                        kubernetes-kubectl-test-props)))
+
+    (kubernetes-kubectl--default-error-handler props "killed: 9")
+    (should-not message-called-p)))
+
 ;;; kubernetes-kubectl-test.el ends here

@@ -10,14 +10,12 @@
 
 (autoload 'json-read-from-string "json")
 
-(defun kubernetes-kubectl--default-error-handler (props buf status)
-  (unless (equal (current-buffer) (get-buffer kubernetes-overview-buffer-name))
-    (with-current-buffer buf
-      (-let* (((&alist 'get-last-error-fn get-last-error-fn) props)
-              (last-error-already-set (funcall get-last-error-fn))
-              (process-killed-manually (string-match-p (rx bol (* space) "killed:" (* space) "9" (* space) eol) status)))
-        (unless (or process-killed-manually last-error-already-set)
-          (message "kubernetes command failed.  See the overview buffer for details."))))))
+(defun kubernetes-kubectl--default-error-handler (props status)
+  (unless (kubernetes-props-overview-buffer-selected-p props)
+    (-let* ((last-error-already-set (kubernetes-props-get-last-error props))
+            (process-killed-manually (string-match-p (rx bol (* space) "killed:" (* space) "9" (* space) eol) status)))
+      (unless (or process-killed-manually last-error-already-set)
+        (kubernetes-props-message props "kubernetes command failed.  See the overview buffer for details.")))))
 
 (defun kubernetes-kubectl (props args on-success &optional on-error cleanup-cb)
   "Run kubectl with ARGS.
@@ -58,15 +56,11 @@ Returns the process object for this execution of kubectl."
                          (t
                           (let ((err-message (with-current-buffer err-buf (buffer-string))))
                             (unless (= 9 exit-code)
-                              (-let [(&alist 'update-last-error-fn update-last-error) props]
-                                (funcall update-last-error
-                                         err-message
-                                         (string-join command " ")
-                                         (current-time)))))
+                              (kubernetes-props-update-last-error props err-message (string-join command " ") (current-time))))
                           (cond (on-error
                                  (funcall on-error err-buf))
                                 (t
-                                 (kubernetes-kubectl--default-error-handler props err-buf status))))))
+                                 (kubernetes-kubectl--default-error-handler props status))))))
                     (when cleanup-cb
                       (funcall cleanup-cb))
                     (kubernetes-process-kill-quietly proc))))))
