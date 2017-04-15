@@ -6,6 +6,7 @@
 
 (require 'kubernetes-kubectl)
 (require 'kubernetes-modes)
+(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-yaml)
@@ -115,7 +116,7 @@
 (defun kubernetes-services-refresh (&optional interactive)
   (unless (kubernetes-process-poll-services-process-live-p)
     (kubernetes-process-set-poll-services-process
-     (kubernetes-kubectl-get-services kubernetes-default-props
+     (kubernetes-kubectl-get-services kubernetes-props
                                       (kubernetes-state)
                                       (lambda (response)
                                         (kubernetes-state-update-services response)
@@ -128,7 +129,7 @@
   (let ((names (kubernetes-state-marked-services state)))
     (dolist (name names)
       (kubernetes-state-delete-service name)
-      (kubernetes-kubectl-delete-service kubernetes-default-props state name
+      (kubernetes-kubectl-delete-service kubernetes-props state name
                                          (lambda (_)
                                            (message "Deleting service %s succeeded." name))
                                          (lambda (_)
@@ -149,7 +150,7 @@ Update the service state if it not set yet."
            (or (kubernetes-state-services state)
                (progn
                  (message "Getting services...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props state #'kubernetes-kubectl-get-services)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-services)))
                    (kubernetes-state-update-services response)
                    response))))
           (services (append services nil))

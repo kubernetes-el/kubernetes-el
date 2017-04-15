@@ -8,8 +8,10 @@
 
 (require 'kubernetes-ast)
 (require 'kubernetes-kubectl)
+(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-timers)
+(require 'kubernetes-vars)
 
 (autoload 'org-read-date "org")
 
@@ -23,7 +25,7 @@ Update the pod state if it not set yet."
            (or (kubernetes-state-pods state)
                (progn
                  (message "Getting pods...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props state #'kubernetes-kubectl-get-pods)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-pods)))
                    (kubernetes-state-update-pods response)
                    response))))
           (pods (append pods nil))
@@ -151,6 +153,9 @@ buffer is killed."
         (set-process-filter proc process-filter))
       (set-process-query-on-exit-flag proc nil))
     buf))
+
+(defun kubernetes-utils-overview-buffer-selected-p ()
+  (equal (current-buffer) (get-buffer kubernetes-overview-buffer-name)))
 
 
 (provide 'kubernetes-utils)

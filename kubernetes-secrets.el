@@ -5,6 +5,7 @@
 (require 'dash)
 
 (require 'kubernetes-modes)
+(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-yaml)
@@ -88,7 +89,7 @@
 (defun kubernetes-secrets-refresh (&optional interactive)
   (unless (kubernetes-process-poll-secrets-process-live-p)
     (kubernetes-process-set-poll-secrets-process
-     (kubernetes-kubectl-get-secrets kubernetes-default-props
+     (kubernetes-kubectl-get-secrets kubernetes-props
                                      (kubernetes-state)
                                      (lambda (response)
                                        (kubernetes-state-update-secrets response)
@@ -101,7 +102,7 @@
   (let ((names (kubernetes-state-marked-secrets state)))
     (dolist (name names)
       (kubernetes-state-delete-secret name)
-      (kubernetes-kubectl-delete-secret kubernetes-default-props state name
+      (kubernetes-kubectl-delete-secret kubernetes-props state name
                                         (lambda (_)
                                           (message "Deleting secret %s succeeded." name))
                                         (lambda (_)
@@ -122,7 +123,7 @@ Update the secret state if it not set yet."
            (or (kubernetes-state-secrets state)
                (progn
                  (message "Getting secrets...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props state #'kubernetes-kubectl-get-secrets)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-secrets)))
                    (kubernetes-state-update-secrets response)
                    response))))
           (secrets (append secrets nil))

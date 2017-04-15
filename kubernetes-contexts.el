@@ -7,6 +7,7 @@
 (require 'kubernetes-kubectl)
 (require 'kubernetes-modes)
 (require 'kubernetes-process)
+(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-vars)
@@ -59,7 +60,7 @@
 (defun kubernetes-contexts-refresh (&optional interactive)
   (unless (kubernetes-process-poll-config-process-live-p)
     (kubernetes-process-set-poll-config-process
-     (kubernetes-kubectl-config-view kubernetes-default-props
+     (kubernetes-kubectl-config-view kubernetes-props
                                      (kubernetes-state)
                                      (lambda (response)
                                        (kubernetes-state-update-config response)
@@ -74,7 +75,7 @@
 ;;;###autoload
 (defun kubernetes-display-config (config)
   "Display information for CONFIG in a new window."
-  (interactive (list (kubernetes-kubectl-await-on-async kubernetes-default-props (kubernetes-state) #'kubernetes-kubectl-config-view)))
+  (interactive (list (kubernetes-kubectl-await-on-async kubernetes-props (kubernetes-state) #'kubernetes-kubectl-config-view)))
   (select-window
    (display-buffer
     (kubernetes-yaml-make-buffer kubernetes-display-config-buffer-name config))))

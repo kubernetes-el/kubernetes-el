@@ -7,6 +7,7 @@
 (require 'kubernetes-namespaces)
 (require 'kubernetes-pods)
 (require 'kubernetes-popups)
+(require 'kubernetes-props)
 (require 'kubernetes-secrets)
 (require 'kubernetes-services)
 (require 'kubernetes-state)
@@ -179,7 +180,7 @@ POD-NAME is the name of the pod to describe."
                                   (insert s)
                                   (untabify (point-min) (point-max))
                                   (goto-char (point-min))))))
-           (proc (kubernetes-kubectl-describe-pod kubernetes-default-props
+           (proc (kubernetes-kubectl-describe-pod kubernetes-props
                                                   (kubernetes-state)
                                                   pod-name
                                                   populate-buffer)))
@@ -276,7 +277,7 @@ STATE is the current application state."
     (kubernetes-state-trigger-redraw)))
 
 (defun kubernetes--namespace-names (state)
-  (-let* ((config (or (kubernetes-state-namespaces state) (kubernetes-kubectl-await-on-async kubernetes-default-props state #'kubernetes-kubectl-get-namespaces)))
+  (-let* ((config (or (kubernetes-state-namespaces state) (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-namespaces)))
           ((&alist 'items items) config))
     (-map (-lambda ((&alist 'metadata (&alist 'name name))) name) items)))
 
@@ -289,14 +290,14 @@ CONTEXT is the name of a context as a string."
   (kubernetes-state-clear)
   (kubernetes-state-trigger-redraw)
   (goto-char (point-min))
-  (kubernetes-kubectl-config-use-context kubernetes-default-props
+  (kubernetes-kubectl-config-use-context kubernetes-props
                                          (kubernetes-state)
                                          context
                                          (lambda (_)
                                            (kubernetes-state-trigger-redraw))))
 
 (defun kubernetes--context-names (state)
-  (-let* ((config (or (kubernetes-state-config state) (kubernetes-kubectl-await-on-async kubernetes-default-props state #'kubernetes-kubectl-config-view)))
+  (-let* ((config (or (kubernetes-state-config state) (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-config-view)))
           ((&alist 'contexts contexts) config))
     (--map (alist-get 'name it) contexts)))
 

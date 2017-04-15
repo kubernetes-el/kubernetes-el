@@ -6,6 +6,7 @@
 (require 'seq)
 
 (require 'kubernetes-modes)
+(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-vars)
@@ -145,7 +146,7 @@
 (defun kubernetes-pods-refresh (&optional interactive)
   (unless (kubernetes-process-poll-pods-process-live-p)
     (kubernetes-process-set-poll-pods-process
-     (kubernetes-kubectl-get-pods kubernetes-default-props
+     (kubernetes-kubectl-get-pods kubernetes-props
                                   (kubernetes-state)
                                   (lambda (response)
                                     (kubernetes-state-update-pods response)
@@ -158,7 +159,7 @@
   (let ((names (kubernetes-state-marked-pods state)))
     (dolist (name names)
       (kubernetes-state-delete-pod name)
-      (kubernetes-kubectl-delete-pod kubernetes-default-props state name
+      (kubernetes-kubectl-delete-pod kubernetes-props state name
                                      (lambda (_)
                                        (message "Deleting pod %s succeeded." name))
                                      (lambda (_)

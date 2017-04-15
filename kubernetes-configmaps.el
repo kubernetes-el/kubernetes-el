@@ -6,6 +6,7 @@
 
 (require 'kubernetes-modes)
 (require 'kubernetes-process)
+(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-yaml)
@@ -89,7 +90,7 @@
 (defun kubernetes-configmaps-refresh (&optional interactive)
   (unless (kubernetes-process-poll-configmaps-process-live-p)
     (kubernetes-process-set-poll-configmaps-process
-     (kubernetes-kubectl-get-configmaps kubernetes-default-props
+     (kubernetes-kubectl-get-configmaps kubernetes-props
                                         (kubernetes-state)
                                         (lambda (response)
                                           (kubernetes-state-update-configmaps response)
@@ -102,7 +103,7 @@
   (let ((names (kubernetes-state-marked-configmaps state)))
     (dolist (name names)
       (kubernetes-state-delete-configmap name)
-      (kubernetes-kubectl-delete-configmap kubernetes-default-props state name
+      (kubernetes-kubectl-delete-configmap kubernetes-props state name
                                            (lambda (_)
                                              (message "Deleting configmap %s succeeded." name))
                                            (lambda (_)
@@ -123,7 +124,7 @@ Update the configmap state if it not set yet."
            (or (kubernetes-state-configmaps state)
                (progn
                  (message "Getting configmaps...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props state #'kubernetes-kubectl-get-configmaps)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-configmaps)))
                    (kubernetes-state-update-configmaps response)
                    response))))
           (configmaps (append configmaps nil))

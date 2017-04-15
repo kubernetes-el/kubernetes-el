@@ -5,28 +5,32 @@
 (require 'dash)
 
 (require 'kubernetes-process)
+(require 'kubernetes-props)
 (require 'kubernetes-vars)
 
 (autoload 'json-read-from-string "json")
 
-(defun kubernetes-kubectl--default-error-handler (buf status)
+(defun kubernetes-kubectl--default-error-handler (props buf status)
   (unless (equal (current-buffer) (get-buffer kubernetes-overview-buffer-name))
     (with-current-buffer buf
-      (unless (string-match-p (rx bol (* space) "killed:" (* space) "9" (* space) eol) status)
-        (message "kubernetes command failed.  See the overview buffer for details.")))))
+      (-let* (((&alist 'get-last-error-fn get-last-error-fn) props)
+              (last-error-already-set (funcall get-last-error-fn))
+              (process-killed-manually (string-match-p (rx bol (* space) "killed:" (* space) "9" (* space) eol) status)))
+        (unless (or process-killed-manually last-error-already-set)
+          (message "kubernetes command failed.  See the overview buffer for details."))))))
 
 (defun kubernetes-kubectl (props args on-success &optional on-error cleanup-cb)
   "Run kubectl with ARGS.
 
 PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-default-props'.
+`kubernetes-props'.
 
 ON-SUCCESS is a function of one argument, called with the process' buffer.
 
 Optional ON-ERROR is a function of two arguments, called with the
-process' buffer.  If omitted, it defaults to
-`kubernetes-kubectl--default-error-handler', which logs an
-error if the process exited unexpectedly.
+process' stderr buffer.  If omitted, it defaults to
+`kubernetes-kubectl--default-error-handler', which logs an error
+if the process exited unexpectedly.
 
 Optional CLEANUP-CB is a function of no arguments that is always
 called after the other callbacks.  It can be used for releasing
@@ -62,7 +66,7 @@ Returns the process object for this execution of kubectl."
                           (cond (on-error
                                  (funcall on-error err-buf))
                                 (t
-                                 (kubernetes-kubectl--default-error-handler err-buf status))))))
+                                 (kubernetes-kubectl--default-error-handler props err-buf status))))))
                     (when cleanup-cb
                       (funcall cleanup-cb))
                     (kubernetes-process-kill-quietly proc))))))
@@ -80,7 +84,7 @@ Returns the process object for this execution of kubectl."
   "Get all pods and execute callback CB with the parsed JSON.
 
 PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-default-props'.
+`kubernetes-props'.
 
 STATE is the application state.
 
@@ -101,7 +105,7 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
   "Get all configmaps and execute callback CB with the parsed JSON.
 
 PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-default-props'.
+`kubernetes-props'.
 
 STATE is the application state.
 
@@ -122,7 +126,7 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
   "Get all secrets and execute callback CB with the parsed JSON.
 
 PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-default-props'.
+`kubernetes-props'.
 
 STATE is the application state.
 
@@ -143,7 +147,7 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
   "Get all services and execute callback CB with the parsed JSON.
 
 PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-default-props'.
+`kubernetes-props'.
 
 STATE is the application state.
 
@@ -164,7 +168,7 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
   "Get the current configuration and pass it to CB.
 
 PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-default-props'.
+`kubernetes-props'.
 
 STATE is the application state.
 
@@ -182,7 +186,7 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
   "Change the current kubernetes context to CONTEXT-NAME, a string.
 
 PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-default-props'.
+`kubernetes-props'.
 
 STATE is the application state.
 
@@ -199,7 +203,7 @@ CB is a function taking the name of the context that was switched to."
   "Get namespaces for the current cluster and pass the parsed response to CB.
 
 PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-default-props'.
+`kubernetes-props'.
 
 STATE is the application state.
 
@@ -217,7 +221,7 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
   "Delete pod with POD-NAME, then execute CB with the response buffer.
 
 PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-default-props'.
+`kubernetes-props'.
 
 STATE is the application state.
 
@@ -237,7 +241,7 @@ ERROR-CB is called if an error occurred."
   "Delete CONFIGMAP-NAME, then execute CB with the response buffer.
 
 PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-default-props'.
+`kubernetes-props'.
 
 STATE is the application state.
 
@@ -257,7 +261,7 @@ ERROR-CB is called if an error occurred."
   "Delete SECRET-NAME, then execute CB with the response buffer.
 
 PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-default-props'.
+`kubernetes-props'.
 
 STATE is the application state.
 
@@ -277,7 +281,7 @@ ERROR-CB is called if an error occurred."
   "Describe pod with POD-NAME, then execute CB with the string response.
 
 PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-default-props'.
+`kubernetes-props'.
 
 STATE is the application state."
   (let ((args (append (list "describe" "pod" pod-name)
@@ -293,7 +297,7 @@ STATE is the application state."
   "Delete SERVICE-NAME, then execute CB with the response buffer.
 
 PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-default-props'.
+`kubernetes-props'.
 
 STATE is the application state.
 
@@ -314,7 +318,7 @@ ERROR-CB is called if an error occurred."
   "Turn an async function requiring a callback into a synchronous one.
 
 PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-default-props'.
+`kubernetes-props'.
 
 STATE is the application state.
 
