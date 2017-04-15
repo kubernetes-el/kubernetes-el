@@ -8,6 +8,7 @@
 (require 'kubernetes-modes)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
+(require 'kubernetes-yaml)
 
 
 ;; Component
@@ -138,16 +139,22 @@
 
 ;; Displaying services
 
-(defun kubernetes-services--redraw-service-buffer (service-name state)
-  (if-let (service (kubernetes-state-lookup-service service-name state))
-      (let ((buf (get-buffer-create kubernetes-display-service-buffer-name)))
-        (with-current-buffer buf
-          (kubernetes-display-thing-mode)
-          (let ((inhibit-read-only t))
-            (erase-buffer)
-            (insert (kubernetes-utils-json-to-yaml service))))
-        buf)
-    (error "Unknown service: %s" service-name)))
+(defun kubernetes-services--read-name (state)
+  "Read a service name from the user.
+
+STATE is the current application state.
+
+Update the service state if it not set yet."
+  (-let* (((&alist 'items services)
+           (or (kubernetes-state-services state)
+               (progn
+                 (message "Getting services...")
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-default-props state #'kubernetes-kubectl-get-services)))
+                   (kubernetes-state-update-services response)
+                   response))))
+          (services (append services nil))
+          (names (-map #'kubernetes-state-resource-name services)))
+    (completing-read "Service: " names nil t)))
 
 ;;;###autoload
 (defun kubernetes-display-service (service-name state)
@@ -156,11 +163,13 @@
 STATE is the current application state.
 
 SERVICE-NAME is the name of the service to display."
-  (interactive (list (kubernetes-utils-read-service-name)
-                     (kubernetes-state)))
-  (with-current-buffer (kubernetes-services--redraw-service-buffer service-name state)
-    (goto-char (point-min))
-    (select-window (display-buffer (current-buffer)))))
+  (interactive (let ((state (kubernetes-state)))
+                 (list (kubernetes-services--read-name state) state)))
+  (if-let (service (kubernetes-state-lookup-service service-name state))
+      (select-window
+       (display-buffer
+        (kubernetes-yaml-make-buffer kubernetes-display-service-buffer-name service)))
+    (error "Unknown service: %s" service-name)))
 
 
 (provide 'kubernetes-services)

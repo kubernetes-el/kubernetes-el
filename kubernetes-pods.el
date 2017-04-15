@@ -9,6 +9,7 @@
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-vars)
+(require 'kubernetes-yaml)
 
 ;; Component
 
@@ -167,17 +168,6 @@
 
 ;; Interactive commands
 
-(defun kubernetes-pods--redraw-pod-buffer (pod-name state)
-  (if-let (pod (kubernetes-state-lookup-pod pod-name state))
-      (let ((buf (get-buffer-create kubernetes-pod-buffer-name)))
-        (with-current-buffer buf
-          (kubernetes-display-thing-mode)
-          (let ((inhibit-read-only t))
-            (erase-buffer)
-            (insert (kubernetes-utils-json-to-yaml pod))))
-        buf)
-    (error "Unknown pod: %s" pod-name)))
-
 ;;;###autoload
 (defun kubernetes-display-pod (pod-name state)
   "Display information for a pod in a new window.
@@ -185,11 +175,13 @@
 STATE is the current application state.
 
 POD-NAME is the name of the pod to display."
-  (interactive (list (kubernetes-utils-read-pod-name)
-                     (kubernetes-state)))
-  (with-current-buffer (kubernetes-pods--redraw-pod-buffer pod-name state)
-    (goto-char (point-min))
-    (select-window (display-buffer (current-buffer)))))
+  (interactive (let ((state (kubernetes-state)))
+                 (list (kubernetes-utils-read-pod-name state) state)))
+  (if-let (pod (kubernetes-state-lookup-pod pod-name state))
+      (select-window
+       (display-buffer
+        (kubernetes-yaml-make-buffer kubernetes-pod-buffer-name pod)))
+    (error "Unknown pod: %s" pod-name)))
 
 
 (provide 'kubernetes-pods)
