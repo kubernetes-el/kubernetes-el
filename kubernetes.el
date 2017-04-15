@@ -1,4 +1,4 @@
-;;; kubernetes.el --- Emacs porcelain for Kubernetes.  -*- lexical-binding: t; -*-
+;;; kubernetes.el --- Magit-like porcelain for Kubernetes.  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2017  Chris Barrett
 
