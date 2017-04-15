@@ -16,7 +16,7 @@
 (defun kubernetes-pods--format-detail (pod)
   (-let ((detail (lambda (k v)
                    (when v
-                     `(copy-prop ,v (key-value 12 ,k ,v)))))
+                     `(key-value 12 ,k ,v))))
 
          ((&alist 'metadata (&alist 'namespace ns 'labels (&alist 'name label-name))
                   'status (&alist 'containerStatuses [(&alist 'image image 'name name)]

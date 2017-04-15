@@ -15,8 +15,8 @@
 
 (defun kubernetes-configmaps--format-detail (configmap)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) configmap]
-    `((copy-prop ,ns (key-value 12 "Namespace" ,ns))
-      (copy-prop ,time (key-value 12 "Created" ,time)))))
+    `((key-value 12 "Namespace" ,ns)
+      (key-value 12 "Created" ,time))))
 
 (defun kubernetes-configmaps--format-line (state configmap)
   (-let* ((current-time (kubernetes-state-current-time state))

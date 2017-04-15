@@ -23,7 +23,7 @@
                        (copy-prop ,message (line ,message-paragraph))
                        (padding))
               (section (command nil)
-                       (copy-prop ,command (key-value 10 "Command" ,command))
+                       (key-value 10 "Command" ,command)
                        (padding)))))
 
 (provide 'kubernetes-errors)

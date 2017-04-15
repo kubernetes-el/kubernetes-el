@@ -23,16 +23,15 @@
           (context-name (propertize name 'face 'kubernetes-context-name))
           (namespace-in-use (or current-namespace context-namespace)))
     `(nav-prop :display-config
-               (heading (copy-prop ,name (key-value 12 "Context" ,context-name)))
-               (copy-prop ,cluster-name (key-value 12 "Cluster" ,cluster-name))
-               (copy-prop ,namespace-in-use
-                          (key-value 12 "Namespace" ,namespace-in-use)))))
+               (heading (key-value 12 "Context" ,context-name))
+               (key-value 12 "Cluster" ,cluster-name)
+               (key-value 12 "Namespace" ,namespace-in-use))))
 
 (defun kubernetes-contexts--render-namespace-only (current-namespace)
   (let ((none (propertize "<none>" 'face 'magit-dimmed)))
     `(nav-prop :display-config
                (heading (key-value 12 "Context" ,none))
-               (copy-prop ,current-namespace (key-value 12 "Namespace" ,current-namespace)))))
+               (key-value 12 "Namespace" ,current-namespace))))
 
 (defun kubernetes-contexts--render-fetching ()
   (let ((fetching (propertize "Fetching..." 'face 'kubernetes-progress-indicator)))

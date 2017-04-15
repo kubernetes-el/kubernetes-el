@@ -14,8 +14,8 @@
 
 (defun kubernetes-secrets--format-detail (secret)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) secret]
-    `((copy-prop ,ns (key-value 12 "Namespace" ,ns))
-      (copy-prop ,time (key-value 12 "Created" ,time)))))
+    `((key-value 12 "Namespace" ,ns)
+      (key-value 12 "Created" ,time))))
 
 (defun kubernetes-secrets--format-line (state secret)
   (-let* ((current-time (kubernetes-state-current-time state))

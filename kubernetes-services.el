@@ -17,7 +17,7 @@
   (-let ((detail
           (lambda (key value)
             (when value
-              `(copy-prop ,value (key-value 15 ,key ,value)))))
+              `(key-value 15 ,key ,value))))
 
          (format-ports
           (-lambda ((&alist 'name name 'port port 'protocol prot))
