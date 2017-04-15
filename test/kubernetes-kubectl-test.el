@@ -5,7 +5,6 @@
 (require 'json)
 (require 'noflet)
 (require 'kubernetes-kubectl)
-(require 'kubernetes-state)
 (declare-function test-helper-string-resource "test-helper.el")
 
 
@@ -70,7 +69,10 @@ will be mocked."
      ,form))
 
 (defconst kubernetes-kubectl-test-props
-  '((update-last-error-fn . ignore)))
+  '((message-fn . ignore)
+    (update-last-error-fn . ignore)
+    (overview-buffer-selected-p . ignore)
+    (get-last-error-fn . ignore)))
 
 
 ;; Subprocess calls
@@ -100,7 +102,7 @@ will be mocked."
     (with-successful-response-at '("get" "pods" "-o" "json") sample-response
       (kubernetes-kubectl-get-pods
        kubernetes-kubectl-test-props
-       (kubernetes-state)
+       nil
        (lambda (response)
          (should (equal parsed-response response)))
        (lambda ()
@@ -108,7 +110,7 @@ will be mocked."
     (should cleanup-callback-called)))
 
 (ert-deftest kubernetes-kubectl-test--get-pods-applies-current-namespace ()
-  (let ((state (cons '(current-namespace . "foo") (kubernetes-state))))
+  (let ((state '((current-namespace . "foo"))))
     (with-successful-response-at `("get" "pods" "-o" "json" "--namespace=foo")
         "{}"
       (kubernetes-kubectl-get-pods kubernetes-kubectl-test-props
@@ -121,7 +123,7 @@ will be mocked."
          (cleanup-callback-called))
     (with-successful-response-at '("config" "view" "-o" "json") sample-response
       (kubernetes-kubectl-config-view kubernetes-kubectl-test-props
-                    (kubernetes-state)
+                    nil
                     (lambda (response)
                       (should (equal parsed-response response)))
                     (lambda ()
@@ -135,7 +137,7 @@ will be mocked."
   (let ((pod-name "example-v3-4120544588-55kmw"))
     (with-successful-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
       (kubernetes-kubectl-delete-pod kubernetes-kubectl-test-props
-                   (kubernetes-state)
+                   nil
                    "example-pod"
                    (lambda (result)
                      (should (equal pod-name result)))))))
@@ -144,7 +146,7 @@ will be mocked."
   (let ((on-error-called))
     (with-error-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
       (kubernetes-kubectl-delete-pod kubernetes-kubectl-test-props
-                   (kubernetes-state)
+                   nil
                    "example-pod"
                    (lambda (_)
                      (error "Unexpected success response"))
@@ -154,7 +156,7 @@ will be mocked."
 
 (ert-deftest kubernetes-kubectl-test--deleting-pod-applies-current-namespace ()
   (let* ((pod-name "example-v3-4120544588-55kmw")
-         (state (cons '(current-namespace . "foo") (kubernetes-state))))
+         (state '((current-namespace . "foo"))))
     (with-successful-response-at `("delete" "pod" ,pod-name "-o" "name" "--namespace=foo")
         "pod/example-v3-4120544588-55kmw"
       (kubernetes-kubectl-delete-pod kubernetes-kubectl-test-props
@@ -169,7 +171,7 @@ will be mocked."
   (let ((service-name "example-svc"))
     (with-successful-response-at '("delete" "service" "example-service" "-o" "name") "service/example-svc"
       (kubernetes-kubectl-delete-service kubernetes-kubectl-test-props
-                       (kubernetes-state)
+                       nil
                        "example-service"
                        (lambda (result)
                          (should (equal service-name result)))))))
@@ -178,7 +180,7 @@ will be mocked."
   (let ((on-error-called))
     (with-error-response-at '("delete" "service" "example-service" "-o" "name") "service/example-svc"
       (kubernetes-kubectl-delete-service kubernetes-kubectl-test-props
-                       (kubernetes-state)
+                       nil
                        "example-service"
                        (lambda (_)
                          (error "Unexpected success response"))
@@ -188,7 +190,7 @@ will be mocked."
 
 (ert-deftest kubernetes-kubectl-test--deleting-service-applies-current-namespace ()
   (let* ((service-name "example-svc")
-         (state (cons '(current-namespace . "foo") (kubernetes-state))))
+         (state '((current-namespace . "foo"))))
     (with-successful-response-at `("delete" "service" ,service-name "-o" "name" "--namespace=foo")
         "service/example-svc"
       (kubernetes-kubectl-delete-service kubernetes-kubectl-test-props
@@ -205,7 +207,7 @@ will be mocked."
         (on-success-called))
     (with-successful-response-at `("describe" "pod" ,pod-name) sample-response
       (kubernetes-kubectl-describe-pod kubernetes-kubectl-test-props
-                     (kubernetes-state)
+                     nil
                      pod-name
                      (lambda (str)
                        (setq on-success-called t)
@@ -214,7 +216,7 @@ will be mocked."
 
 (ert-deftest kubernetes-kubectl-test--describing-pod-applies-current-namespace ()
   (let* ((pod-name "example-v3-4120544588-55kmw")
-         (state (cons '(current-namespace . "foo") (kubernetes-state))))
+         (state '((current-namespace . "foo"))))
     (with-successful-response-at `("describe" "pod" ,pod-name "--namespace=foo")
         ""
       (kubernetes-kubectl-describe-pod kubernetes-kubectl-test-props
@@ -231,7 +233,7 @@ will be mocked."
          (on-success-called))
     (with-successful-response-at (list "config" "use-context" context-name) sample-response
       (kubernetes-kubectl-config-use-context kubernetes-kubectl-test-props
-                           (kubernetes-state)
+                           nil
                            context-name
                            (lambda (str)
                              (setq on-success-called t)
@@ -248,7 +250,7 @@ will be mocked."
          (cleanup-callback-called))
     (with-successful-response-at '("get" "namespaces" "-o" "json") sample-response
       (kubernetes-kubectl-get-namespaces kubernetes-kubectl-test-props
-                       (kubernetes-state)
+                       nil
                        (lambda (response)
                          (setq on-success-called t)
                          (should (equal parsed-response response)))
@@ -267,7 +269,7 @@ will be mocked."
 
     (with-successful-response-at '("get" "configmaps" "-o" "json") sample-response
       (kubernetes-kubectl-get-configmaps kubernetes-kubectl-test-props
-                       (kubernetes-state)
+                       nil
                        (lambda (response)
                          (should (equal parsed-response response)))
                        (lambda ()
@@ -275,7 +277,7 @@ will be mocked."
     (should cleanup-callback-called)))
 
 (ert-deftest kubernetes-kubectl-test--get-configmaps-applies-current-namespace ()
-  (let ((state (cons '(current-namespace . "foo") (kubernetes-state))))
+  (let ((state '((current-namespace . "foo"))))
     (with-successful-response-at `("get" "configmaps" "-o" "json" "--namespace=foo")
         "{}"
       (kubernetes-kubectl-get-configmaps kubernetes-kubectl-test-props
@@ -289,7 +291,7 @@ will be mocked."
   (let ((configmap-name "example-config"))
     (with-successful-response-at '("delete" "configmap" "example-configmap" "-o" "name") "configmap/example-config"
       (kubernetes-kubectl-delete-configmap kubernetes-kubectl-test-props
-                         (kubernetes-state)
+                         nil
                          "example-configmap"
                          (lambda (result)
                            (should (equal configmap-name result)))))))
@@ -298,7 +300,7 @@ will be mocked."
   (let ((on-error-called))
     (with-error-response-at '("delete" "configmap" "example-configmap" "-o" "name") "configmap/example-config"
       (kubernetes-kubectl-delete-configmap kubernetes-kubectl-test-props
-                         (kubernetes-state)
+                         nil
                          "example-configmap"
                          (lambda (_)
                            (error "Unexpected success response"))
@@ -308,7 +310,7 @@ will be mocked."
 
 (ert-deftest kubernetes-kubectl-test--deleting-configmap-applies-current-namespace ()
   (let* ((configmap-name "example-config")
-         (state (cons '(current-namespace . "foo") (kubernetes-state))))
+         (state '((current-namespace . "foo"))))
     (with-successful-response-at `("delete" "configmap" ,configmap-name "-o" "name"
                                    "--namespace=foo")
         "configmap/example-config"
@@ -327,7 +329,7 @@ will be mocked."
 
     (with-successful-response-at '("get" "secrets" "-o" "json") sample-response
       (kubernetes-kubectl-get-secrets kubernetes-kubectl-test-props
-                    (kubernetes-state)
+                    nil
                     (lambda (response)
                       (should (equal parsed-response response)))
                     (lambda ()
@@ -335,7 +337,7 @@ will be mocked."
     (should cleanup-callback-called)))
 
 (ert-deftest kubernetes-kubectl-test--get-secrets-applies-current-namespace ()
-  (let ((state (cons '(current-namespace . "foo") (kubernetes-state))))
+  (let ((state '((current-namespace . "foo"))))
     (with-successful-response-at `("get" "secrets" "-o" "json" "--namespace=foo")
         "{}"
       (kubernetes-kubectl-get-secrets kubernetes-kubectl-test-props
@@ -349,7 +351,7 @@ will be mocked."
   (let ((secret-name "example-config"))
     (with-successful-response-at '("delete" "secret" "example-secret" "-o" "name") "secret/example-config"
       (kubernetes-kubectl-delete-secret kubernetes-kubectl-test-props
-                      (kubernetes-state)
+                      nil
                       "example-secret"
                       (lambda (result)
                         (should (equal secret-name result)))))))
@@ -358,7 +360,7 @@ will be mocked."
   (let ((on-error-called))
     (with-error-response-at '("delete" "secret" "example-secret" "-o" "name") "secret/example-config"
       (kubernetes-kubectl-delete-secret kubernetes-kubectl-test-props
-                      (kubernetes-state)
+                      nil
                       "example-secret"
                       (lambda (_)
                         (error "Unexpected success response"))
@@ -368,7 +370,7 @@ will be mocked."
 
 (ert-deftest kubernetes-kubectl-test--deleting-secret-applies-current-namespace ()
   (let* ((secret-name "example-config")
-         (state (cons '(current-namespace . "foo") (kubernetes-state))))
+         (state '((current-namespace . "foo"))))
     (with-successful-response-at `("delete" "secret" ,secret-name "-o" "name"
                                    "--namespace=foo")
         "secret/example-config"
@@ -387,7 +389,7 @@ will be mocked."
 
     (with-successful-response-at '("get" "services" "-o" "json") sample-response
       (kubernetes-kubectl-get-services kubernetes-kubectl-test-props
-                     (kubernetes-state)
+                     nil
                      (lambda (response)
                        (should (equal parsed-response response)))
                      (lambda ()
@@ -395,7 +397,7 @@ will be mocked."
     (should cleanup-callback-called)))
 
 (ert-deftest kubernetes-kubectl-test--get-services-applies-current-namespace ()
-  (let ((state (cons '(current-namespace . "foo") (kubernetes-state))))
+  (let ((state '((current-namespace . "foo"))))
     (with-successful-response-at `("get" "services" "-o" "json" "--namespace=foo")
         "{}"
       (kubernetes-kubectl-get-services kubernetes-kubectl-test-props
