@@ -1,12 +1,15 @@
 CASK ?= cask
 EMACS ?= emacs
+EMACS_BATCH = ${CASK} exec ${EMACS} -Q --batch -l package
 
 REPO = github.com/chrisbarrett/kubernetes-el
 
 DEPS_SCRIPT = assets/project-deps.el
 DEPS_PNG = assets/project-deps.png
 
-SRCS = .cask $(wildcard *.el)
+CASKDIR = .cask
+SRCS = $(wildcard *.el)
+TARGETS = $(SRCS:.el=.elc)
 
 MAIN_PACKAGE_FILE = kubernetes.el
 EVIL_PACKAGE_FILE = kubernetes-evil.el
@@ -21,7 +24,9 @@ TAR     := dist/kubernetes-$(VERSION).tar
 	git-release github-browse-release
 
 
-build : $(SRCS) $(DEPS_PNG)
+build : $(TARGETS) $(DEPS_PNG)
+
+$(TARGETS) : $(SRCS) $(CASKDIR)
 	${CASK} build
 
 
@@ -47,7 +52,7 @@ help :
 
 
 install : $(TAR)
-	${CASK} exec ${EMACS} -Q --batch -l package \
+	$(EMACS_BATCH) \
 		--eval "(add-to-list 'package-archives '(\"MELPA Stable\" . \"https://stable.melpa.org/packages/\"))" \
 		-f package-initialize \
 		--eval "(unless package-archive-contents (package-refresh-contents))" \
@@ -65,7 +70,7 @@ clean :
 
 
 clean-all: clean
-	rm -rf .cask "~/.emacs.d/elpa/kubernetes-$(VERSION)"
+	rm -rf $(CASKDIR) "~/.emacs.d/elpa/kubernetes-$(VERSION)"
 
 
 release : assert-clean-worktree assert-on-master clean test set-package-version dist git-release github-browse-release
@@ -116,12 +121,12 @@ github-browse-release :
 	python -mwebbrowser "https://$(REPO)/releases/tag/$$TAG"
 
 
-.cask :
+$(CASKDIR) :
 	${CASK} install
 
 
 $(DEPS_PNG) : $(DEPS_SCRIPT) $(SRCS)
-	${CASK} exec ${EMACS} -Q --batch -l package -f package-initialize -l $(DEPS_SCRIPT) -f project-deps-generate
+	$(EMACS_BATCH) -f package-initialize -l $(DEPS_SCRIPT) -f project-deps-generate
 
 
 
