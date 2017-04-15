@@ -58,6 +58,19 @@ Warning: This could blow the stack if the AST gets too deep."
       (`(indent . ,inner-ast)
        (kubernetes-ast-eval inner-ast (1+ indent-level)))
 
+      (`(list . ,items)
+       (dolist (item items)
+         (let ((item-start (point)))
+           (kubernetes-ast-eval `(line ,item) (+ 1 indent-level))
+           ;; Insert dash for item.
+           (save-excursion
+             (goto-char item-start)
+             (goto-char (line-beginning-position))
+             (skip-chars-forward " ")
+             (unless (eq (char-after) ?-)
+               (delete-char -2)
+               (insert "- "))))))
+
 
       ;; Sugar forms
 
