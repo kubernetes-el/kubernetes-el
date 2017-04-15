@@ -48,8 +48,10 @@
   [M-tab]     #'magit-section-cycle-diffs
   [S-tab]     #'magit-section-cycle-global
 
-  (kbd "j") #'next-line
-  (kbd "k") #'previous-line
+  [remap evil-next-line] #'next-line
+  [remap evil-previous-line] #'previous-line
+  [remap evil-next-visual-line] #'next-line
+  [remap evil-previous-visual-line] #'previous-line
 
   (kbd "q") #'quit-window
   (kbd "RET") #'kubernetes-navigate
