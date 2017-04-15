@@ -25,27 +25,9 @@
 
 ;;; Code:
 
-(require 'dash)
-(require 'subr-x)
-
-(require 'kubernetes-ast)
-(require 'kubernetes-configmaps)
-(require 'kubernetes-contexts)
-(require 'kubernetes-errors)
-(require 'kubernetes-kubectl)
+(require 'kubernetes-commands)
 (require 'kubernetes-logs)
-(require 'kubernetes-modes)
-(require 'kubernetes-namespaces)
 (require 'kubernetes-overview)
-(require 'kubernetes-pods)
-(require 'kubernetes-popups)
-(require 'kubernetes-process)
-(require 'kubernetes-secrets)
-(require 'kubernetes-services)
-(require 'kubernetes-state)
-(require 'kubernetes-timers)
-(require 'kubernetes-utils)
-(require 'kubernetes-vars)
 
 (provide 'kubernetes)
 

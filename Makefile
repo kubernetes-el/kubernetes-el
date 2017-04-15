@@ -3,7 +3,11 @@ EMACS ?= emacs
 
 REPO = github.com/chrisbarrett/kubernetes-el
 
-SRCS = .cask kubernetes.el kubernetes-evil.el
+DEPS_SCRIPT = assets/project-deps.el
+DEPS_SVG = assets/project-deps.svg
+
+SRCS = .cask $(wildcard *.el)
+
 MAIN_PACKAGE_FILE = kubernetes.el
 EVIL_PACKAGE_FILE = kubernetes-evil.el
 
@@ -11,12 +15,13 @@ VERSION := $(shell EMACS=${EMACS} ${CASK} version)
 TAR     := dist/kubernetes-$(VERSION).tar
 
 
+
 .PHONY: build dist install help test clean clean-all release \
 	set-package-version assert-on-master assert-clean-worktree \
 	git-release github-browse-release
 
 
-build : $(SRCS)
+build : $(SRCS) $(DEPS_SVG)
 	${CASK} build
 
 
@@ -112,6 +117,11 @@ github-browse-release :
 
 .cask :
 	${CASK} install
+
+
+$(DEPS_SVG) : $(DEPS_SCRIPT) $(SRCS)
+	${CASK} exec ${EMACS} -Q --batch -l package -f package-initialize -l $(DEPS_SCRIPT) -f project-deps-generate
+
 
 
 # Assert cask is installed
