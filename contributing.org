@@ -71,21 +71,58 @@ make test
 
 * Implementation Notes
 
-Below are some general notes to help make sense of this beast.
+Below are some general notes to help make sense of this beast. The main points
+to understand are:
 
-** State
+- This package implements a state manager
+- A timer is used to fetch information from Kubernetes and update the state
+- Another timer is used to compile the state into a representation of the
+  overview buffer, which is then interpreted.
 
-The package stores its state in several variables ([[file:kubernetes.el::;;%20Main%20state][here]]), which are set by background
-polling timers ([[file:kubernetes.el::;;%20Background%20polling%20processes][here]]). These variables are cleared whenever:
+The separation of state from rendering improves testability, and makes it easier
+to develop view components that can be reused throughout the package.
 
-1. The user closes all the main Kubernetes buffers, or
-2. The user changes their Kubernetes context via the porcelain.
+** State Management
 
-Certain user operations can update these state variables, e.g. updating the current namespace.
+This package implements its own state manager, which provides structured
+mechanisms for accessing the application state. The state can be read using the
+[[file:kubernetes-state.el::(defun%20kubernetes-state%20()][kubernetes-state]] routine, and the package implements a suite of accessor
+functions for reading and modifying specific parts of the state.
+
+The core of the state manager is the function [[file:kubernetes-state.el::(defun%20kubernetes-state-next%20(state%20action%20&optional%20args)][kubernetes-state-next]], which is a
+pure function taking the current state, an action to perform, and any arguments
+required for that action. Its return value is the next application state.
+
+In order to actually make changes to the state, the [[file:kubernetes-state.el::(defun%20kubernetes-state-update%20(action%20&optional%20args)][kubernetes-state-update]]
+routine is used to evaluate an action and arguments and store the updated state.
+Other update routines are built around it, providing a more structured interface
+to the state manager.
+
+** State Updates
+
+A timer is used to trigger polling processes which query Kubernetes for its
+state and resources. This timer starts when the overview buffer is opened, and
+repeats until that buffer is killed.
+
+The polling timer runs a hook, =kubernetes-poll-hook=, which in turn runs the
+polling routines that update the application state.
+
+The routine [[file:kubernetes-state.el::(defun%20kubernetes-state-trigger-redraw%20()][kubernetes-state-trigger-redraw]] is the main routine used to trigger
+a redraw. It runs a hook, =kubernetes-redraw-hook=, which is used to signal that a
+redraw should occur. This routine is sometimes triggered manually, but is most
+often triggered by the redraw timer. See [[file:kubernetes-timers.el::(defvar%20kubernetes-timers--redraw-timer%20nil][kubernetes-timers]].
+
+Rendering is mostly decoupled from state management, so redrawing occurs
+asynchronously from state updates caused by polling. However, as a special case
+a redraw is triggered the first time each state variable is set. This ensures
+the UI displays values as soon as possible when the porcelain is started.
 
 ** Rendering
 
-Rendering the main pods list is divided into two stages:
+This package implements a DSL (domain-specific language) used to specify how
+objects should be rendered in the UI.
+
+Rendering the overview buffer is divided into two stages:
 
 1. Take the current state and compile an AST of the desired changes
 2. Erase the buffer and interpret the AST to execute the changes ([[file:kubernetes.el::;;%20Render%20AST%20Interpreter][here]]).
