@@ -4,9 +4,9 @@
 
 ;; Author: Chris Barrett <chris+emacs@walrus.cool>
 
-;; Version: 0.3.2
+;; Version: 0.3.3
 
-;; Package-Requires: ((kubernetes "0.3.2") (evil "1.2.12"))
+;; Package-Requires: ((kubernetes "0.3.3") (evil "1.2.12"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
