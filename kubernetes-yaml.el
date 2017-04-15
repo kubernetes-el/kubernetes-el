@@ -2,6 +2,7 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 'dash)
 (require 'subr-x)
 
 (require 'kubernetes-ast)
@@ -11,62 +12,54 @@
 
 ;; Compile parsed JSON into an AST representation for rendering.
 
-(defun kubernetes-yaml-render (json &optional level)
-  "Process some parsed JSON and pretty-print as YAML.
+(defun kubernetes-yaml--render-helper (json)
+  (pcase json
+    ;; Literals
 
-JSON is a parsed JSON value.
+    ('nil "null")
+    ('t "true")
+    (:json-false "false")
+    ((pred stringp) json)
+    ((pred numberp) (number-to-string json))
+    ((pred symbolp) (symbol-name json))
 
-LEVEL indentation level to use.  It defaults to 0 if not supplied."
-  (let* ((level (or level 0))
-         (space (string-to-char " "))
-         (indentation (make-string (* level kubernetes-yaml-indentation-width) space))
-         (body
-          (cond
-           ((vectorp json)
-            (let* ((list-items (--map (string-trim-left (kubernetes-yaml-render it (1+ level)))
-                                      (append json nil)))
-                   (separator (concat "\n"
-                                      indentation "-" "\n"
-                                      indentation "  "))
-                   (joined (string-join list-items separator)))
-              ;; If this is an empty or singleton list, do not drop.
-              (if (<= (length list-items) 1)
-                  (concat indentation "- " (string-trim-right joined))
-                (concat indentation "- \n"
-                        indentation "  " (string-trim-right joined)))))
-           ((listp json)
-            (let ((entries (--map
-                            (-let [(k . v) it]
-                              (concat indentation
-                                      (propertize (format "%s: " k) 'face 'kubernetes-json-key)
-                                      (cond
-                                       ((equal t v) "true")
-                                       ((equal :json-false v) "false")
-                                       ((equal nil v) "null")
+    ;; Lists
 
-                                       ((numberp v)
-                                        (number-to-string v))
+    ((pred vectorp)
+     `(list ,@(seq-map (lambda (it)
+                         `(section (item nil) ,(kubernetes-yaml--render-helper it)))
+                       json)))
 
-                                       ((and (stringp v) (string-match-p "\n" v))
-                                        (let* ((next-indentation (make-string (* (1+ level) kubernetes-yaml-indentation-width) space))
-                                               (indented
-                                                (string-join
-                                                 (--map (concat next-indentation it) (split-string v "\n"))
-                                                 "\n")))
-                                          (concat "|-\n" indented)))
+    ;; Objects
 
-                                       ((and (stringp v) (< (length v) kubernetes-yaml-string-drop-threshold))
-                                        v)
+    ((pred listp)
+     (seq-map (-lambda ((k . v))
+                (let ((k (kubernetes-yaml--render-helper k))
+                      (v (kubernetes-yaml--render-helper v)))
+                  `(section (object-kvp nil)
+                            ,(cond
+                              ;; Indent multiline strings.
+                              ((and (stringp v) (string-match-p "\n" (string-trim-right v)))
+                               `(copy-prop ,v
+                                           (heading ,(concat (propertize (format "%s:" k) 'face 'magit-section-heading) " |-"))
+                                           (indent ,@(--map `(line ,it) (split-string (string-trim-right v) "\n")))))
 
-                                       (t
-                                        (concat "\n" (kubernetes-yaml-render v (1+ level)))))))
-                            json)))
-              (string-join entries "\n")))
-           (t
-            (format "%s%s" indentation json)))))
-    (if (= 0 level)
-        (concat (propertize "---\n" 'face 'magit-dimmed) body)
-      body)))
+                              ((stringp v)
+                               `(key-value 0 ,k ,v))
+
+                              (t
+                               `((heading ,(concat (propertize (format "%s:" k) 'face 'magit-section-heading) " "))
+                                 (indent ,v)))))))
+              json))
+
+    (_
+     (error "Don't know how to render %s" json))))
+
+(defun kubernetes-yaml-render (json)
+  "Process some parsed JSON into a YAML AST for rendering."
+  `(section (json-root nil)
+            ,(kubernetes-yaml--render-helper json)
+            (padding)))
 
 
 ;; Drawing utilites
