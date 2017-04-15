@@ -30,6 +30,7 @@
         (goto-char (point-min)))
       (current-buffer))))
 
+;;;###autoload
 (defun kubernetes-logs-inspect-line (pos)
   "Show detail for the log line at POS."
   (interactive "d")
@@ -38,6 +39,7 @@
                      (goto-char pos)
                      (buffer-substring (line-beginning-position) (line-end-position))))))
 
+;;;###autoload
 (defun kubernetes-logs-previous-line ()
   "Move backward and inspect the line at point."
   (interactive)
@@ -46,6 +48,7 @@
     (when (get-buffer kubernetes-log-line-buffer-name)
       (kubernetes-logs-inspect-line (point)))))
 
+;;;###autoload
 (defun kubernetes-logs-forward-line ()
   "Move forward and inspect the line at point."
   (interactive)
@@ -54,6 +57,7 @@
     (when (get-buffer kubernetes-log-line-buffer-name)
       (kubernetes-logs-inspect-line (point)))))
 
+;;;###autoload
 (defun kubernetes-logs-follow (pod-name args)
   "Open a streaming logs buffer for a pod.
 
@@ -64,6 +68,7 @@ ARGS are additional args to pass to kubectl."
                      (kubernetes-logs-arguments)))
   (kubernetes-logs-fetch-all pod-name (cons "-f" args)))
 
+;;;###autoload
 (defun kubernetes-logs-fetch-all (pod-name args)
   "Open a streaming logs buffer for POD.
 

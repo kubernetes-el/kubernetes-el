@@ -14,6 +14,7 @@
 
 ;; Mark management
 
+;;;###autoload
 (defun kubernetes-mark-for-delete (point)
   "Mark the thing at POINT for deletion, then advance to the next line."
   (interactive "d")
@@ -33,6 +34,7 @@
     (kubernetes-ast-put-delete-mark-on-line-at-pt point))
   (magit-section-forward))
 
+;;;###autoload
 (defun kubernetes-unmark (point)
   "Unmark the thing at POINT, then advance to the next line."
   (interactive "d")
@@ -47,6 +49,7 @@
   (goto-char point)
   (magit-section-forward))
 
+;;;###autoload
 (defun kubernetes-unmark-all ()
   "Unmark everything in the buffer."
   (interactive)
@@ -55,6 +58,7 @@
     (kubernetes-state-trigger-redraw)
     (goto-char pt)))
 
+;;;###autoload
 (defun kubernetes-execute-marks ()
   "Action all marked items in the buffer."
   (interactive)
@@ -84,6 +88,7 @@
 
 ;; Misc commands
 
+;;;###autoload
 (defun kubernetes-copy-thing-at-point (point)
   "Perform a context-sensitive copy action.
 
@@ -94,6 +99,7 @@ what to copy."
     (kill-new s)
     (message "Copied: %s" s)))
 
+;;;###autoload
 (defun kubernetes-refresh (&optional verbose)
   "Force Kubernetes buffers to redraw.
 
@@ -110,6 +116,7 @@ With optional argument VERBOSE, log status changes."
   (kubernetes-secrets-refresh verbose)
   (kubernetes-services-refresh verbose))
 
+;;;###autoload
 (defun kubernetes-navigate (point state)
   "Perform a context-sensitive navigation action.
 
@@ -136,6 +143,7 @@ taken."
     (back-to-indentation)
     (get-text-property (point) 'kubernetes-nav)))
 
+;;;###autoload
 (defun kubernetes-describe-dwim (thing)
   "Describe the thing at point.
 
@@ -147,6 +155,7 @@ THING must be a valid target for `kubectl describe'."
     (_
      (user-error "Nothing at point to describe"))))
 
+;;;###autoload
 (defun kubernetes-describe-pod (pod-name)
   "Display a buffer for describing a pod.
 
@@ -180,6 +189,7 @@ POD-NAME is the name of the pod to describe."
     (select-window (display-buffer buf))
     buf))
 
+;;;###autoload
 (defun kubernetes-exec-into (pod-name args exec-command state)
   "Open a terminal for execting into a pod.
 
@@ -245,6 +255,7 @@ Should be invoked via command `kubernetes-logs-popup'."
 
 ;; Config management
 
+;;;###autoload
 (defun kubernetes-set-namespace (ns state)
   "Set the namespace to query to NS.
 
