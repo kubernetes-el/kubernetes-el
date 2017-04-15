@@ -44,11 +44,13 @@ FORCE ensures it happens."
                 (equal (window-buffer) buf))
 
         (let ((pos (point))
+              (col (current-column))
               (inhibit-read-only t)
               (inhibit-redisplay t))
           (erase-buffer)
           (kubernetes-ast-eval (kubernetes-overview-render (kubernetes-state)))
-          (goto-char pos)))
+          (goto-char pos)
+          (move-to-column col)))
 
       ;; Force the section at point to highlight.
       (magit-section-update-highlight))))
