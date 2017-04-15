@@ -58,27 +58,38 @@
       (kubernetes-logs-inspect-line (point)))))
 
 ;;;###autoload
-(defun kubernetes-logs-follow (pod-name args)
+(defun kubernetes-logs-follow (pod-name args state)
   "Open a streaming logs buffer for a pod.
 
 POD-NAME is the name of the pod to log.
 
-ARGS are additional args to pass to kubectl."
-  (interactive (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name))
-                     (kubernetes-logs-arguments)))
-  (kubernetes-logs-fetch-all pod-name (cons "-f" args)))
+ARGS are additional args to pass to kubectl.
+
+STATE is the current application state."
+  (interactive
+   (let ((state (kubernetes-state)))
+     (list (or (kubernetes-utils-maybe-pod-name-at-point)
+               (kubernetes-utils-read-pod-name state))
+           (kubernetes-logs-arguments)
+           state)))
+  (kubernetes-logs-fetch-all pod-name (cons "-f" args) state))
 
 ;;;###autoload
-(defun kubernetes-logs-fetch-all (pod-name args)
+(defun kubernetes-logs-fetch-all (pod-name args state)
   "Open a streaming logs buffer for POD.
 
 POD-NAME is the name of the pod to log.
 
-ARGS are additional args to pass to kubectl."
-  (interactive (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name))
-                     (kubernetes-logs-arguments)))
+ARGS are additional args to pass to kubectl.
+
+STATE is the current application state"
+  (interactive
+   (let ((state (kubernetes-state)))
+     (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state))
+           (kubernetes-logs-arguments)
+           state)))
   (let ((args (append (list "logs") args (list pod-name)
-                      (when-let (ns (kubernetes-state-current-namespace (kubernetes-state)))
+                      (when-let (ns (kubernetes-state-current-namespace state))
                         (list (format "--namespace=%s" ns))))))
     (with-current-buffer (kubernetes-utils-process-buffer-start kubernetes-logs-buffer-name #'kubernetes-logs-mode kubernetes-kubectl-executable args)
       (select-window (display-buffer (current-buffer))))))

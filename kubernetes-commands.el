@@ -160,7 +160,7 @@ THING must be a valid target for `kubectl describe'."
   "Display a buffer for describing a pod.
 
 POD-NAME is the name of the pod to describe."
-  (interactive (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name))))
+  (interactive (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name (kubernetes-state)))))
   (let ((buf (get-buffer-create kubernetes-pod-buffer-name))
         (marker (make-marker)))
     (with-current-buffer buf
@@ -203,7 +203,7 @@ STATE is the current application state.
 
 Should be invoked via command `kubernetes-logs-popup'."
   (interactive (let* ((state (kubernetes-state))
-                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name)))
+                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state)))
                       (command
                        (let ((cmd (string-trim (read-string (format "Command (default: %s): " kubernetes-default-exec-command)
                                                             nil 'kubernetes-exec-history))))
