@@ -59,10 +59,10 @@ Warning: This could blow the stack if the AST gets too deep."
       ;; Sugar forms
 
       (`(key-value ,width ,k ,v)
-       (cl-assert (numberp width))
-       (cl-assert (<= 0 width))
-       (cl-assert (stringp k))
-       (cl-assert (stringp v))
+       (cl-assert (numberp width) t)
+       (cl-assert (<= 0 width) t)
+       (cl-assert (stringp k) t)
+       (cl-assert (stringp v) t)
 
        (let* ((fmt-string (concat "%-" (number-to-string width) "s"))
               (str (concat (propertize (format fmt-string (concat k ": ")) 'face 'magit-header-line)
@@ -75,7 +75,7 @@ Warning: This could blow the stack if the AST gets too deep."
               indent-level))
 
       (`(copy-prop ,copy-str . ,inner-ast)
-       (cl-assert (stringp copy-str))
+       (cl-assert (stringp copy-str) t)
        (kubernetes-ast-eval `(propertize (kubernetes-copy ,copy-str)
                            ,inner-ast)
               indent-level))
