@@ -27,6 +27,7 @@ TAR     := dist/kubernetes-$(VERSION).tar
 build : $(TARGETS) $(DEPS_PNG)
 
 $(TARGETS) : $(SRCS) $(CASKDIR)
+	${CASK} clean-elc
 	${CASK} build
 
 
@@ -60,7 +61,7 @@ install : $(TAR)
 
 
 test : $(SRCS)
-	rm -f $(wildcard *.elc)
+	${CASK} clean-elc
 	${CASK} exec ert-runner
 
 
