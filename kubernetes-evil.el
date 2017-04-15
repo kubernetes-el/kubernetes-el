@@ -27,8 +27,8 @@
 
 ;;; Code:
 
-(require 'kubernetes)
 (require 'evil)
+(require 'kubernetes)
 
 (evil-set-initial-state 'kubernetes-mode 'motion)
 (evil-set-initial-state 'kubernetes-display-thing-mode 'motion)

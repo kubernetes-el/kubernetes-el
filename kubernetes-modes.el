@@ -7,7 +7,6 @@
 
 (autoload 'kubernetes-navigate "kubernetes-commands")
 (autoload 'kubernetes-copy-thing-at-point "kubernetes-commands")
-(autoload 'kubernetes--poll "kubernetes-commands")
 
 ;;;###autoload
 (define-derived-mode kubernetes-display-thing-mode kubernetes-mode "Kubernetes Object"
@@ -62,9 +61,7 @@
     (linum-mode -1))
   (when (and (fboundp 'nlinum-mode)
              (bound-and-true-p global-nlinum-mode))
-    (nlinum-mode -1))
-
-  (add-hook 'kubernetes-poll-hook #'kubernetes--poll))
+    (nlinum-mode -1)))
 
 (provide 'kubernetes-modes)
 

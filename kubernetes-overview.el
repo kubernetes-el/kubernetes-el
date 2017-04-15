@@ -9,11 +9,12 @@
 (require 'kubernetes-contexts)
 (require 'kubernetes-errors)
 (require 'kubernetes-modes)
+(require 'kubernetes-namespaces)
 (require 'kubernetes-pods)
+(require 'kubernetes-popups)
 (require 'kubernetes-secrets)
 (require 'kubernetes-services)
 (require 'kubernetes-timers)
-(require 'kubernetes-popups)
 
 ;; Component
 
@@ -62,12 +63,21 @@ overview buffer change during redraw."
         ;; Force the section at point to highlight.
         (magit-section-update-highlight)))))
 
+(defun kubernetes-overview--poll (&optional verbose)
+  (kubernetes-configmaps-refresh verbose)
+  (kubernetes-contexts-refresh verbose)
+  (kubernetes-namespaces-refresh verbose)
+  (kubernetes-pods-refresh verbose)
+  (kubernetes-secrets-refresh verbose)
+  (kubernetes-services-refresh verbose))
+
 (defun kubernetes-overview--initialize-buffer ()
   "Called the first time the overview buffer is opened to set up the buffer."
   (let ((buf (get-buffer-create kubernetes-overview-buffer-name)))
     (with-current-buffer buf
       (kubernetes-overview-mode)
       (add-hook 'kubernetes-redraw-hook #'kubernetes-overview--redraw-buffer)
+      (add-hook 'kubernetes-poll-hook #'kubernetes-overview--poll)
       (kubernetes-timers-initialize-timers)
       (add-hook 'kill-buffer-hook (kubernetes-utils-make-cleanup-fn buf) nil t))
     buf))

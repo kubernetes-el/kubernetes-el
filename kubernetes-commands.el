@@ -2,15 +2,22 @@
 ;;; Commentary:
 ;;; Code:
 
-(require 'kubernetes-configmaps)
-(require 'kubernetes-contexts)
-(require 'kubernetes-namespaces)
-(require 'kubernetes-pods)
+(require 'kubernetes-ast)
+(require 'kubernetes-modes)
 (require 'kubernetes-popups)
 (require 'kubernetes-props)
-(require 'kubernetes-secrets)
-(require 'kubernetes-services)
 (require 'kubernetes-state)
+(require 'kubernetes-utils)
+
+(autoload 'kubernetes-configmaps-delete-marked "kubernetes-configmaps")
+(autoload 'kubernetes-display-config "kubernetes-contexts")
+(autoload 'kubernetes-display-configmap "kubernetes-configmaps")
+(autoload 'kubernetes-display-pod "kubernetes-pods")
+(autoload 'kubernetes-display-secret "kubernetes-secrets")
+(autoload 'kubernetes-display-service "kubernetes-services")
+(autoload 'kubernetes-pods-delete-marked "kubernetes-pods")
+(autoload 'kubernetes-secrets-delete-marked "kubernetes-secrets")
+(autoload 'kubernetes-services-delete-marked "kubernetes-services")
 
 
 ;; Mark management
@@ -106,16 +113,8 @@ what to copy."
 
 With optional argument VERBOSE, log status changes."
   (interactive "p")
-  (kubernetes--poll verbose)
+  (run-hook-with-args 'kubernetes-poll-hook verbose)
   (kubernetes-state-trigger-redraw))
-
-(defun kubernetes--poll (&optional verbose)
-  (kubernetes-configmaps-refresh verbose)
-  (kubernetes-contexts-refresh verbose)
-  (kubernetes-namespaces-refresh verbose)
-  (kubernetes-pods-refresh verbose)
-  (kubernetes-secrets-refresh verbose)
-  (kubernetes-services-refresh verbose))
 
 ;;;###autoload
 (defun kubernetes-navigate (point state)
