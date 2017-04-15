@@ -13,7 +13,6 @@
 (require 'kubernetes-secrets)
 (require 'kubernetes-services)
 (require 'kubernetes-timers)
-(require 'kubernetes-vars)
 (require 'kubernetes-popups)
 
 ;; Component

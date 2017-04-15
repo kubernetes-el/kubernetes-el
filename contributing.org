@@ -172,7 +172,7 @@ sugared
 ** Feature dependencies
 
 The chart below shows the dependencies between features, excluding
-=kubernetes-state=, =kubernets-vars= and =kubernetes-modes= which are direct
+=kubernetes-state=, =kubernets-props= and =kubernetes-modes= which are direct
 dependencies of many modules.
 
 [[file:assets/project-deps.png]]

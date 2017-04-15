@@ -7,7 +7,6 @@
 
 (require 'kubernetes-ast)
 (require 'kubernetes-modes)
-(require 'kubernetes-vars)
 
 
 ;; Compile parsed JSON into an AST representation for rendering.

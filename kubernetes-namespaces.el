@@ -6,7 +6,6 @@
 (require 'kubernetes-process)
 (require 'kubernetes-props)
 (require 'kubernetes-state)
-(require 'kubernetes-vars)
 
 (defun kubernetes-namespaces-refresh (&optional interactive)
   (unless (kubernetes-process-poll-namespaces-process-live-p)

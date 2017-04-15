@@ -10,7 +10,6 @@
 (require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
-(require 'kubernetes-vars)
 (require 'kubernetes-yaml)
 
 

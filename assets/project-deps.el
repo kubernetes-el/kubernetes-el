@@ -9,7 +9,7 @@
 (defvar project-deps--repo-root (locate-dominating-file default-directory ".git"))
 
 (defconst project-deps--excluded-from-graph
-  '("kubernetes-vars"
+  '("kubernetes-props"
     "kubernetes-state"
     "kubernetes-modes"
     "kubernetes-evil"))

@@ -4,7 +4,7 @@ EMACS ?= emacs
 REPO = github.com/chrisbarrett/kubernetes-el
 
 DEPS_SCRIPT = assets/project-deps.el
-DEPS_PNG = assets/project-deps.svg
+DEPS_PNG = assets/project-deps.png
 
 SRCS = .cask $(wildcard *.el)
 
