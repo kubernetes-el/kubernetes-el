@@ -55,7 +55,10 @@ Returns the process object for this execution of kubectl."
                           (let ((err-message (with-current-buffer err-buf (buffer-string))))
                             (unless (= 9 exit-code)
                               (-let [(&alist 'update-last-error-fn update-last-error) props]
-                                (funcall update-last-error err-message command (current-time)))))
+                                (funcall update-last-error
+                                         err-message
+                                         (string-join command " ")
+                                         (current-time)))))
                           (cond (on-error
                                  (funcall on-error err-buf))
                                 (t
