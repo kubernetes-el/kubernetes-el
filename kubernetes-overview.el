@@ -30,19 +30,15 @@
 
 ;; Overview buffer.
 
-(defun kubernetes-overview--redraw-buffer (&optional force)
-  "Redraws the main buffer using the current state.
-
-FORCE ensures it happens."
+(defun kubernetes-overview--redraw-buffer ()
+  "Redraws the main buffer using the current state."
   (when-let (buf (get-buffer kubernetes-overview-buffer-name))
     (with-current-buffer buf
-      (when (or force
-                ;; HACK: Only redraw the buffer if it is in the selected window.
-                ;;
-                ;; The cursor moves unpredictably in a redraw, which ruins the current
-                ;; position in the buffer if a popup window is open.
-                (equal (window-buffer) buf))
-
+      ;; HACK: Only redraw the buffer if it is in the selected window.
+      ;;
+      ;; The cursor moves unpredictably in a redraw, which ruins the current
+      ;; position in the buffer if a popup window is open.
+      (when (equal (window-buffer) buf)
         (let ((pos (point))
               (col (current-column))
               (inhibit-read-only t)
