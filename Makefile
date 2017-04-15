@@ -4,7 +4,7 @@ EMACS ?= emacs
 REPO = github.com/chrisbarrett/kubernetes-el
 
 DEPS_SCRIPT = assets/project-deps.el
-DEPS_SVG = assets/project-deps.svg
+DEPS_PNG = assets/project-deps.svg
 
 SRCS = .cask $(wildcard *.el)
 
@@ -21,7 +21,7 @@ TAR     := dist/kubernetes-$(VERSION).tar
 	git-release github-browse-release
 
 
-build : $(SRCS) $(DEPS_SVG)
+build : $(SRCS) $(DEPS_PNG)
 	${CASK} build
 
 
@@ -119,7 +119,7 @@ github-browse-release :
 	${CASK} install
 
 
-$(DEPS_SVG) : $(DEPS_SCRIPT) $(SRCS)
+$(DEPS_PNG) : $(DEPS_SCRIPT) $(SRCS)
 	${CASK} exec ${EMACS} -Q --batch -l package -f package-initialize -l $(DEPS_SCRIPT) -f project-deps-generate
 
 

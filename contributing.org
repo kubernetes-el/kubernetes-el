@@ -175,4 +175,4 @@ The chart below shows the dependencies between features, excluding
 =kubernetes-state=, =kubernets-vars= and =kubernetes-modes= which are direct
 dependencies of many modules.
 
-[[https://raw.githubusercontent.com/chrisbarrett/kubernetes-el/master/assets/project-deps.svg]]
+[[file:assets/project-deps.png]]

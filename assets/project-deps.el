@@ -20,7 +20,7 @@
                                                      project-deps--excluded-from-graph)))))
 
 (defconst project-deps--dot-file (f-join project-deps--repo-root "assets" "project-deps.dot"))
-(defconst project-deps--svg-file (f-join project-deps--repo-root "assets" "project-deps.svg"))
+(defconst project-deps--png-file (f-join project-deps--repo-root "assets" "project-deps.png"))
 
 (defconst project-deps--format-string (string-trim-left "
 digraph {
@@ -78,9 +78,9 @@ digraph {
          (str (format project-deps--format-string body)))
     (f-write-text str 'utf-8 project-deps--dot-file)
     (shell-command
-     (format "dot -Tsvg %s -o %s"
+     (format "dot -Tpng %s -o %s"
              project-deps--dot-file
-             project-deps--svg-file))))
+             project-deps--png-file))))
 
 (provide 'project-deps)
 
