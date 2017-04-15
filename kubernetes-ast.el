@@ -69,7 +69,8 @@ Warning: This could blow the stack if the AST gets too deep."
              (skip-chars-forward " ")
              (unless (eq (char-after) ?-)
                (delete-char -2)
-               (insert "- "))))))
+               (insert "- "))))
+         (delete-char -1)))
 
 
       ;; Sugar forms

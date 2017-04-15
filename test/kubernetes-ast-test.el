@@ -39,7 +39,7 @@
 ;; list
 
 (ert-deftest kubernetes-ast-test--lists ()
-  (let ((ast '(list "foo" "bar" "baz"))
+  (let ((ast '(list (line "foo") (line "bar") (line "baz")))
         (expected (string-trim-left "
 - foo
 - bar
@@ -56,28 +56,24 @@
         (expected (string-trim-left "
 - foo
   bar
-
 - foo
     bar
-
-- foobar
-")))
+- foobar")))
     (with-temp-buffer
       (kubernetes-ast-eval ast)
       (should (equal expected (buffer-string))))))
 
 (ert-deftest kubernetes-ast-test--lists-with-indentation ()
-  (let ((ast '(list "foo"
-                    "bar"
-                    (list "foo"
-                          "bar")
-                    "baz"))
+  (let ((ast '(list (line "foo")
+                    (line "bar")
+                    (list (line "foo")
+                          (line "bar"))
+                    (line "baz")))
         (expected (string-trim-left "
 - foo
 - bar
   - foo
   - bar
-
 - baz
 ")))
     (with-temp-buffer
