@@ -30,6 +30,21 @@
 
 ;; Overview buffer.
 
+(defmacro kubernetes-overview--save-window-state (&rest body)
+  "Restore window state after executing BODY.
+
+`save-excursion' doesn't work because the contents of the
+overview buffer change during redraw."
+  `(let ((pos (point))
+         (col (current-column))
+         (window-start-line (window-start))
+         (inhibit-redisplay t))
+     (save-excursion
+       ,@body)
+     (goto-char pos)
+     (move-to-column col)
+     (set-window-start (selected-window) window-start-line)))
+
 (defun kubernetes-overview--redraw-buffer ()
   "Redraws the main buffer using the current state."
   (when-let (buf (get-buffer kubernetes-overview-buffer-name))
@@ -38,18 +53,15 @@
       ;;
       ;; The cursor moves unpredictably in a redraw, which ruins the current
       ;; position in the buffer if a popup window is open.
-      (when (equal (window-buffer) buf)
-        (let ((pos (point))
-              (col (current-column))
-              (inhibit-read-only t)
-              (inhibit-redisplay t))
-          (erase-buffer)
-          (kubernetes-ast-eval (kubernetes-overview-render (kubernetes-state)))
-          (goto-char pos)
-          (move-to-column col)))
+      (when (equal (get-buffer-window buf)
+                   (selected-window))
+        (kubernetes-overview--save-window-state
+         (let ((inhibit-read-only t))
+           (erase-buffer)
+           (kubernetes-ast-eval (kubernetes-overview-render (kubernetes-state)))))
 
-      ;; Force the section at point to highlight.
-      (magit-section-update-highlight))))
+        ;; Force the section at point to highlight.
+        (magit-section-update-highlight)))))
 
 (defun kubernetes-overview--initialize-buffer ()
   "Called the first time the overview buffer is opened to set up the buffer."
