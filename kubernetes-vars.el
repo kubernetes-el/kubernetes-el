@@ -31,16 +31,6 @@ The function must take a single argument, which is the buffer to display."
   :group 'kubernetes
   :type 'number)
 
-(defcustom kubernetes-yaml-indentation-width 2
-  "The size of each indentation step in YAML.  Used by the YAML formatter."
-  :group 'kubernetes
-  :type 'integer)
-
-(defcustom kubernetes-yaml-string-drop-threshold 60
-  "The threshold above which a string value will be dropped to the next line."
-  :group 'kubernetes
-  :type 'integer)
-
 (defcustom kubernetes-poll-frequency 5
   "The frequency at which to poll Kubernetes for changes."
   :group 'kubernetes
