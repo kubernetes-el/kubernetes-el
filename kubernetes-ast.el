@@ -65,7 +65,7 @@ Warning: This could blow the stack if the AST gets too deep."
        (cl-assert (stringp v))
 
        (let* ((fmt-string (concat "%-" (number-to-string width) "s"))
-              (str (concat (propertize (format fmt-string (concat k ":")) 'face 'magit-header-line)
+              (str (concat (propertize (format fmt-string (concat k ": ")) 'face 'magit-header-line)
                            v)))
          (kubernetes-ast-eval `(line ,str) indent-level)))
 
