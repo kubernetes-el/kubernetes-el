@@ -75,6 +75,8 @@
 (kubernetes-state-test-getter marked-services)
 (kubernetes-state-test-getter services-pending-deletion)
 
+(kubernetes-state-test-getter current-time)
+
 
 ;; Test simple state transitions.
 
@@ -94,9 +96,6 @@
 
 (kubernetes-state-test-accessor current-namespace
   (kubernetes-state-update-current-namespace "example-ns"))
-
-(kubernetes-state-test-accessor current-time
-  (kubernetes-state-update-current-time (current-time)))
 
 (kubernetes-state-test-accessor last-error
   (kubernetes-state-update-last-error "Foo" "Cmd" (current-time)))

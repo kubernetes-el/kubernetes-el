@@ -230,7 +230,8 @@
 
 (defmacro kubernetes-state--define-accessors (attr arglist &rest assertions)
   (declare (indent 2))
-  (let ((arg
+  (let ((getter (intern (format "kubernetes-state-%s" attr)))
+        (arg
          (pcase arglist
            (`(,x) x)
            (xs `(list ,@xs)))))
@@ -239,14 +240,15 @@
 
        (defun ,(intern (format "kubernetes-state-update-%s" attr)) ,arglist
          ,@assertions
-         (let ((arg ,arg))
+         (let ((prev (,getter (kubernetes-state)))
+               (arg ,arg))
            (kubernetes-state-update ,(intern (format ":update-%s" attr)) ,arg)
-           arg)))))
 
-(kubernetes-state--define-accessors current-time (time)
-  (cl-assert time)
-  (cl-assert (listp time))
-  (cl-assert (-all? #'integerp time)))
+           ;; Redraw immediately if this value was previously unset.
+           (unless prev
+             (kubernetes-state-trigger-redraw))
+
+           arg)))))
 
 (kubernetes-state--define-accessors current-namespace (namespace)
   (cl-assert (stringp namespace)))
@@ -294,6 +296,10 @@
                (time ., time))))
     (kubernetes-state-update :update-last-error arg)
     arg))
+
+;; No update function is provided. The time is updated internally before the
+;; redrawing hook is run.
+(kubernetes-state--define-getter current-time)
 
 
 ;; Convenience functions.
@@ -369,7 +375,7 @@ pod, secret, configmap, etc."
     (kubernetes-state--lookup-current-context config)))
 
 (defun kubernetes-state-trigger-redraw ()
-  (kubernetes-state-update-current-time (current-time))
+  (kubernetes-state-update :update-current-time (current-time))
   (kubernetes-state-clear-error-if-stale kubernetes-minimum-error-display-time)
   (run-hooks 'kubernetes-redraw-hook))
 
