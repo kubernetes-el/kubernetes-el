@@ -30,28 +30,38 @@
 
 ;; Overview buffer.
 
-(defun kubernetes-overview--redraw-buffer (&optional force)
-  "Redraws the main buffer using the current state.
+(defmacro kubernetes-overview--save-window-state (&rest body)
+  "Restore window state after executing BODY.
 
-FORCE ensures it happens."
+`save-excursion' doesn't work because the contents of the
+overview buffer change during redraw."
+  `(let ((pos (point))
+         (col (current-column))
+         (window-start-line (window-start))
+         (inhibit-redisplay t))
+     (save-excursion
+       ,@body)
+     (goto-char pos)
+     (move-to-column col)
+     (set-window-start (selected-window) window-start-line)))
+
+(defun kubernetes-overview--redraw-buffer ()
+  "Redraws the main buffer using the current state."
   (when-let (buf (get-buffer kubernetes-overview-buffer-name))
     (with-current-buffer buf
-      (when (or force
-                ;; HACK: Only redraw the buffer if it is in the selected window.
-                ;;
-                ;; The cursor moves unpredictably in a redraw, which ruins the current
-                ;; position in the buffer if a popup window is open.
-                (equal (window-buffer) buf))
+      ;; HACK: Only redraw the buffer if it is in the selected window.
+      ;;
+      ;; The cursor moves unpredictably in a redraw, which ruins the current
+      ;; position in the buffer if a popup window is open.
+      (when (equal (get-buffer-window buf)
+                   (selected-window))
+        (kubernetes-overview--save-window-state
+         (let ((inhibit-read-only t))
+           (erase-buffer)
+           (kubernetes-ast-eval (kubernetes-overview-render (kubernetes-state)))))
 
-        (let ((pos (point))
-              (inhibit-read-only t)
-              (inhibit-redisplay t))
-          (erase-buffer)
-          (kubernetes-ast-eval (kubernetes-overview-render (kubernetes-state)))
-          (goto-char pos)))
-
-      ;; Force the section at point to highlight.
-      (magit-section-update-highlight))))
+        ;; Force the section at point to highlight.
+        (magit-section-update-highlight)))))
 
 (defun kubernetes-overview--initialize-buffer ()
   "Called the first time the overview buffer is opened to set up the buffer."
