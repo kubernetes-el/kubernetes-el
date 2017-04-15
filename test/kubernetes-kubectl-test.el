@@ -69,10 +69,10 @@ will be mocked."
      ,form))
 
 (defconst kubernetes-kubectl-test-props
-  '((message-fn . ignore)
-    (update-last-error-fn . ignore)
+  '((message . ignore)
+    (update-last-error . ignore)
     (overview-buffer-selected-p . ignore)
-    (get-last-error-fn . ignore)))
+    (get-last-error . ignore)))
 
 
 ;; Subprocess calls

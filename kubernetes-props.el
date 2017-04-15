@@ -3,21 +3,21 @@
 ;;; Code:
 
 (defconst kubernetes-props
-  '((message-fn . message)
-    (update-last-error-fn . kubernetes-state-update-last-error)
+  '((message . message)
+    (update-last-error . kubernetes-state-update-last-error)
     (overview-buffer-selected-p . kubernetes-utils-overview-buffer-selected-p)
-    (get-last-error-fn . (lambda ()
-                           (kubernetes-state-last-error (kubernetes-state)))))
+    (get-last-error . (lambda ()
+                        (kubernetes-state-last-error (kubernetes-state)))))
   "Variable used to inject functions across modules.")
 
 (defun kubernetes-props-update-last-error (props message command time)
-  (funcall (alist-get 'update-last-error-fn props) message command time))
+  (funcall (alist-get 'update-last-error props) message command time))
 
 (defun kubernetes-props-get-last-error (props)
-  (funcall (alist-get 'get-last-error-fn props)))
+  (funcall (alist-get 'get-last-error props)))
 
 (defun kubernetes-props-message (props fmt-string &rest args)
-  (apply (alist-get 'message-fn props) fmt-string args))
+  (apply (alist-get 'message props) fmt-string args))
 
 (defun kubernetes-props-overview-buffer-selected-p (props)
   (funcall (alist-get 'overview-buffer-selected-p props)))
