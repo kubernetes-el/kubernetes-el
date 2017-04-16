@@ -5,21 +5,21 @@ Hello there, intrepid contributor! Please see the [[file:Readme.md][Readme]] for
 about this project.
 
 If you would like to submit a bug report or contribute code or documentation,
-read over the guidelines for the expectations. Then follow the development setup
-steps to get started.
+read over the guidelines below for the expectations. Then follow the development
+setup steps to get started.
 
-* Contribution Guidlines
+* Contribution Guidelines
 
-The first thing you should do is browse open tickets for discussion relating to
-the bug or feature you want to work on. Do your best here!
+The first thing you should do is browse the GitHub issues for discussion
+relating to the bug or feature you're interested in. Do your best here!
 
 ** Bug reports
 
 Make sure you're using the latest release of the package, and are using
 Emacs 25.
 
-If no ticket exists, you can write a new issue. Provide reproduction steps if
-you can, as well as your Emacs version and basic OS info.
+If no ticket exists yet, you can write a new issue. Provide reproduction steps
+if you can, as well as your Emacs version and basic OS info.
 
 If the issue relates to integration with =kubectl=, make sure to supply your
 =kubectl= version.
@@ -27,7 +27,6 @@ If the issue relates to integration with =kubectl=, make sure to supply your
 ** Code changes
 
 For code changes, please follow the following guidelines.
-
 
 - Create a GitHub issue to track your work
 - Fork the repository on GitHub
