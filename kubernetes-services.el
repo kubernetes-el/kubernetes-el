@@ -38,14 +38,16 @@
                                 'selector (&alist 'name selector)))
           service))
     (list
+     (when selector
+       `(section (selector nil)
+                 (nav-prop (:selector ,selector) ,(funcall detail "Selector" selector))))
      (funcall detail "Label" label)
      (funcall detail "Namespace" ns)
      (funcall detail "Created" created-time)
      (funcall detail "Internal IP" internal-ip)
      (when-let (ips (append ips nil))
        (funcall detail "External IPs" (string-join ips ", ")))
-     (funcall detail "Ports" (string-join (seq-map format-ports ports) ", "))
-     (funcall detail "Selector" selector))))
+     (funcall detail "Ports" (string-join (seq-map format-ports ports) ", ")))))
 
 (defun kubernetes-services--format-line (state service)
   (-let* ((current-time (kubernetes-state-current-time state))

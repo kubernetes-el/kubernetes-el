@@ -23,9 +23,10 @@
                  'spec (&alist 'selector (&alist 'matchLabels
                                                  (&alist 'name selector))))
          deployment]
-    `((key-value 12 "Namespace" ,ns)
-      (key-value 12 "Created" ,time)
-      ,(when selector `(key-value 12 "Selector" ,selector)))))
+    `((section (selector nil)
+               (nav-prop (:selector ,selector) (key-value 12 "Selector" ,selector)))
+      (key-value 12 "Namespace" ,ns)
+      (key-value 12 "Created" ,time))))
 
 (defun kubernetes-deployments--format-line (state deployment)
   (-let* ((current-time (kubernetes-state-current-time state))

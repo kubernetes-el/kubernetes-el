@@ -20,6 +20,7 @@
 (autoload 'kubernetes-pods-delete-marked "kubernetes-pods")
 (autoload 'kubernetes-secrets-delete-marked "kubernetes-secrets")
 (autoload 'kubernetes-services-delete-marked "kubernetes-services")
+(autoload 'kubernetes-show-pods-for-label "kubernetes-labels")
 
 
 ;; Mark management
@@ -149,7 +150,9 @@ taken."
     (`(:secret-name ,secret-name)
      (kubernetes-display-secret secret-name state))
     (`(:pod-name ,pod-name)
-     (kubernetes-display-pod pod-name state))))
+     (kubernetes-display-pod pod-name state))
+    (`(:selector ,selector)
+     (kubernetes-show-pods-for-label selector))))
 
 (defun kubernetes--describable-thing-at-pt ()
   (save-excursion
