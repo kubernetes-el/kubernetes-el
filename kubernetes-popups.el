@@ -10,16 +10,17 @@
   :prefix "kubernetes-")
 
 (magit-define-popup kubernetes-logs-popup
-  "Popup console for logging commands for POD."
+  "Popup console for pod logging commands."
   :group 'kubernetes
+  :default-arguments '("-p")
+  :switches
+  '((?p "Print logs for previous instances of the container in this pod" "-p"))
   :options
   '("Options for customizing logging behaviour"
-    (?t "Number of lines to display" "--tail=" read-number "-1")
+    (?t "Number of lines to display" "--tail=" read-number)
     "Time controls"
     (?s "Since relative time" "--since=" kubernetes-utils-read-time-value)
     (?d "Since absolute datetime" "--since-time=" kubernetes-utils-read-iso-datetime))
-  :switches
-  '((?p "Print logs for previous instances of the container in this pod" "-p"))
   :actions
   '((?l "Logs" kubernetes-logs-fetch-all)
     (?f "Logs (stream and follow)" kubernetes-logs-follow))
@@ -32,10 +33,10 @@
   :actions
   '("Environment"
     (?c "Configuration" kubernetes-config-popup)
-    "Marking pods"
-    (?D "Delete pod at point" kubernetes-mark-for-delete)
-    (?u "Unmark pod at point" kubernetes-unmark)
-    (?U "Unmark all pods" kubernetes-unmark-all)
+    "Marks"
+    (?D "Delete" kubernetes-mark-for-delete)
+    (?u "Unmark" kubernetes-unmark)
+    (?U "Unmark all" kubernetes-unmark-all)
     "Popup commands"
     (?d "Describe" kubernetes-describe-popup)
     (?e "Exec" kubernetes-exec-popup)
