@@ -97,6 +97,8 @@ balance interface stuttering with update frequency."
 
 (defconst kubernetes-display-config-buffer-name "*kubernetes config*")
 
+(defconst kubernetes-display-deployment-buffer-name "*kubernetes deployment*")
+
 (defconst kubernetes-display-configmap-buffer-name "*kubernetes configmap*")
 
 (defconst kubernetes-display-service-buffer-name "*kubernetes service*")

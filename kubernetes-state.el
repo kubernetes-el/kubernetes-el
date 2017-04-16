@@ -42,8 +42,9 @@
            (setf (alist-get 'current-namespace next) ns))))
 
       (:unmark-all
-       (setf (alist-get 'marked-pods next nil t) nil)
        (setf (alist-get 'marked-configmaps next nil t) nil)
+       (setf (alist-get 'marked-deployments next nil t) nil)
+       (setf (alist-get 'marked-pods next nil t) nil)
        (setf (alist-get 'marked-secrets next nil t) nil)
        (setf (alist-get 'marked-services next nil t) nil))
 
@@ -151,6 +152,32 @@
                (seq-intersection (alist-get 'services-pending-deletion next)
                                  service-names))))
 
+      ;; Deployments
+
+      (:mark-deployment
+       (let ((cur (alist-get 'marked-deployments state)))
+         (setf (alist-get 'marked-deployments next)
+               (delete-dups (cons args cur)))))
+      (:unmark-deployment
+       (setf (alist-get 'marked-deployments next)
+             (remove args (alist-get 'marked-deployments next))))
+      (:delete-deployment
+       (let ((updated (cons args (alist-get 'deployments-pending-deletion state))))
+         (setf (alist-get 'deployments-pending-deletion next)
+               (delete-dups updated))))
+      (:update-deployments
+       (setf (alist-get 'deployments next) args)
+
+       ;; Prune deleted deployments from state.
+       (-let* (((&alist 'items deployments) args)
+               (deployment-names (seq-map #'kubernetes-state-resource-name deployments)))
+         (setf (alist-get 'marked-deployments next)
+               (seq-intersection (alist-get 'marked-deployments next)
+                                 deployment-names))
+         (setf (alist-get 'deployments-pending-deletion next)
+               (seq-intersection (alist-get 'deployments-pending-deletion next)
+                                 deployment-names))))
+
       (_
        (error "Unknown action: %s" action)))
 
@@ -218,6 +245,19 @@
   (kubernetes-state-update :delete-service service-name)
   (kubernetes-state-update :unmark-service service-name))
 
+(defun kubernetes-state-mark-deployment (deployment-name)
+  (cl-assert (stringp deployment-name))
+  (kubernetes-state-update :mark-deployment deployment-name))
+
+(defun kubernetes-state-unmark-deployment (deployment-name)
+  (cl-assert (stringp deployment-name))
+  (kubernetes-state-update :unmark-deployment deployment-name))
+
+(defun kubernetes-state-delete-deployment (deployment-name)
+  (cl-assert (stringp deployment-name))
+  (kubernetes-state-update :delete-deployment deployment-name)
+  (kubernetes-state-update :unmark-deployment deployment-name))
+
 (defun kubernetes-state-unmark-all ()
   (kubernetes-state-update :unmark-all))
 
@@ -265,6 +305,9 @@
 (kubernetes-state--define-accessors services (services)
   (cl-assert (listp services)))
 
+(kubernetes-state--define-accessors deployments (deployments)
+  (cl-assert (listp deployments)))
+
 (kubernetes-state--define-accessors namespaces (namespaces)
   (cl-assert (listp namespaces)))
 
@@ -282,6 +325,9 @@
 
 (kubernetes-state--define-getter marked-services)
 (kubernetes-state--define-getter services-pending-deletion)
+
+(kubernetes-state--define-getter marked-deployments)
+(kubernetes-state--define-getter deployments-pending-deletion)
 
 (kubernetes-state--define-getter last-error)
 
@@ -361,6 +407,19 @@ If lookup fails, return nil."
   (-let [(&alist 'services (&alist 'items services)) state]
     (--find (equal (kubernetes-state-resource-name it) service-name)
             (append services nil))))
+
+(defun kubernetes-state-lookup-deployment (deployment-name state)
+  "Look up a deployment by name in the current state.
+
+STATE is the current application state.
+
+DEPLOYMENT-NAME is the name of the deployment to search for.
+
+If lookup succeeds, return the alist representation of the deployment.
+If lookup fails, return nil."
+  (-let [(&alist 'deployments (&alist 'items deployments)) state]
+    (--find (equal (kubernetes-state-resource-name it) deployment-name)
+            (append deployments nil))))
 
 (defun kubernetes-state-resource-name (resource)
   "Get the name of RESOURCE from its metadata.

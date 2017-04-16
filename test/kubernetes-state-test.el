@@ -24,6 +24,9 @@
 (defconst sample-get-namespaces-response
   (test-helper-json-resource "get-namespaces-response.json"))
 
+(defconst sample-get-deployments-response
+  (test-helper-json-resource "get-deployments-response.json"))
+
 (defconst sample-get-config-response
   (test-helper-json-resource "config-view-response.json"))
 
@@ -75,6 +78,9 @@
 (kubernetes-state-test-getter marked-services)
 (kubernetes-state-test-getter services-pending-deletion)
 
+(kubernetes-state-test-getter marked-deployments)
+(kubernetes-state-test-getter deployments-pending-deletion)
+
 (kubernetes-state-test-getter current-time)
 
 
@@ -108,6 +114,9 @@
 
 (kubernetes-state-test-accessor secrets
   (kubernetes-state-update-secrets sample-get-secrets-response))
+
+(kubernetes-state-test-accessor deployments
+  (kubernetes-state-update-deployments sample-get-deployments-response))
 
 (kubernetes-state-test-accessor services
   (kubernetes-state-update-services sample-get-services-response))
@@ -202,14 +211,16 @@
 
 (kubernetes-state-marking-tests pod)
 (kubernetes-state-marking-tests configmap)
+(kubernetes-state-marking-tests deployment)
 (kubernetes-state-marking-tests secret)
 (kubernetes-state-marking-tests service)
 
 (ert-deftest kubernetes-state-test-unmark-all ()
   (test-helper-with-empty-state
+    (kubernetes-state-mark-configmap "configmap")
+    (kubernetes-state-mark-deployment "deployment")
     (kubernetes-state-mark-pod "pod")
     (kubernetes-state-mark-secret "secret")
-    (kubernetes-state-mark-configmap "configmap")
     (kubernetes-state-mark-service "svc")
     (kubernetes-state-unmark-all)
     (should-not (kubernetes-state))))
@@ -266,6 +277,15 @@
   (test-helper-with-empty-state
     (kubernetes-state-update-services sample-get-services-response)
     (should (kubernetes-state-lookup-service "example-svc-1" (kubernetes-state)))))
+
+(ert-deftest kubernetes-state-test--lookup-deployment--no-such-deployment ()
+  (test-helper-with-empty-state
+    (should (not (kubernetes-state-lookup-deployment "example" (kubernetes-state))))))
+
+(ert-deftest kubernetes-state-test--lookup-deployment--existing-deployment ()
+  (test-helper-with-empty-state
+    (kubernetes-state-update-deployments sample-get-deployments-response)
+    (should (kubernetes-state-lookup-deployment "deployment-1" (kubernetes-state)))))
 
 (ert-deftest kubernetes-state-test--current-context--no-context-set ()
   (test-helper-with-empty-state

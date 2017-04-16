@@ -65,7 +65,7 @@ Pods (2)
   Name                                          Status     Ready   Restarts    Age
   example-svc-v3-1603416598-2f9lb               Running      1/1        0      36d
     Name:       example-service
-    Labels:     example-pod-v3
+    Label:      example-pod-v3
     Namespace:  ns.example
     Image:      example.com/example-service:3.0.0
     Host IP:    10.0.0.0
@@ -74,7 +74,7 @@ Pods (2)
 
   example-svc-v4-1603416598-2f9lb               Running      1/1        0      36d
     Name:       example-service
-    Labels:     example-pod-v4
+    Label:      example-pod-v4
     Namespace:  ns.example
     Image:      example.com/example-service:4.8.0
     Host IP:    10.0.0.0
@@ -103,7 +103,7 @@ Pods (2)
       (forward-line 2)
 
       (dolist (key '("Name"
-                     "Labels"
+                     "Label"
                      "Namespace"
                      "Image"
                      "Host IP"

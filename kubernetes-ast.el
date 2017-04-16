@@ -21,7 +21,8 @@
 INDENT-LEVEL is the current indentation level at which to render.
 
 Warning: This could blow the stack if the AST gets too deep."
-  (let ((indent-level (or indent-level 0)))
+  (let ((indent-level (or indent-level 0))
+        (max-lisp-eval-depth 2000))
     (pcase render-ast
 
       ;; Core forms
@@ -84,6 +85,8 @@ Warning: This could blow the stack if the AST gets too deep."
        (let* ((fmt-string (concat "%-" (number-to-string width) "s"))
               (str (concat (propertize (format fmt-string (concat k ": ")) 'face 'magit-header-line)
                            v)))
+         (unless (string-blank-p (buffer-substring (line-beginning-position) (line-end-position)))
+           (newline))
          (kubernetes-ast-eval `(copy-prop ,v (line ,str)) indent-level)))
 
       (`(nav-prop ,spec . ,inner-ast)

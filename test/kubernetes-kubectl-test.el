@@ -345,7 +345,7 @@ will be mocked."
                     #'ignore))))
 
 
-;; Delete configmap
+;; Delete secret
 
 (ert-deftest kubernetes-kubectl-test--deleting-secret-succeeds ()
   (let ((secret-name "example-config"))
@@ -403,6 +403,65 @@ will be mocked."
       (kubernetes-kubectl-get-services kubernetes-kubectl-test-props
                      state
                      #'ignore))))
+
+
+;; Get deployments
+
+(ert-deftest kubernetes-kubectl-test--get-deployments-returns-parsed-json ()
+  (let* ((sample-response (test-helper-string-resource "get-deployments-response.json"))
+         (parsed-response (json-read-from-string sample-response))
+         (cleanup-callback-called))
+
+    (with-successful-response-at '("get" "deployments" "-o" "json") sample-response
+      (kubernetes-kubectl-get-deployments kubernetes-kubectl-test-props
+                        nil
+                        (lambda (response)
+                          (should (equal parsed-response response)))
+                        (lambda ()
+                          (setq cleanup-callback-called t))))
+    (should cleanup-callback-called)))
+
+(ert-deftest kubernetes-kubectl-test--get-deployments-applies-current-namespace ()
+  (let ((state '((current-namespace . "foo"))))
+    (with-successful-response-at `("get" "deployments" "-o" "json" "--namespace=foo")
+        "{}"
+      (kubernetes-kubectl-get-deployments kubernetes-kubectl-test-props
+                        state
+                        #'ignore))))
+
+;; Delete deployment
+
+(ert-deftest kubernetes-kubectl-test--deleting-deployment-succeeds ()
+  (let ((deployment-name "example-config"))
+    (with-successful-response-at '("delete" "deployment" "example-deployment" "-o" "name") "deployment/example-config"
+      (kubernetes-kubectl-delete-deployment kubernetes-kubectl-test-props
+                          nil
+                          "example-deployment"
+                          (lambda (result)
+                            (should (equal deployment-name result)))))))
+
+(ert-deftest kubernetes-kubectl-test--deleting-deployment-fails ()
+  (let ((on-error-called))
+    (with-error-response-at '("delete" "deployment" "example-deployment" "-o" "name") "deployment/example-config"
+      (kubernetes-kubectl-delete-deployment kubernetes-kubectl-test-props
+                          nil
+                          "example-deployment"
+                          (lambda (_)
+                            (error "Unexpected success response"))
+                          (lambda (_)
+                            (setq on-error-called t))))
+    (should on-error-called)))
+
+(ert-deftest kubernetes-kubectl-test--deleting-deployment-applies-current-namespace ()
+  (let* ((deployment-name "example-config")
+         (state '((current-namespace . "foo"))))
+    (with-successful-response-at `("delete" "deployment" ,deployment-name "-o" "name"
+                                   "--namespace=foo")
+        "deployment/example-config"
+      (kubernetes-kubectl-delete-deployment kubernetes-kubectl-test-props
+                          state
+                          deployment-name
+                          #'ignore))))
 
 
 ;; Error handler

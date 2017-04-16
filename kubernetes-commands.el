@@ -10,8 +10,10 @@
 (require 'kubernetes-utils)
 
 (autoload 'kubernetes-configmaps-delete-marked "kubernetes-configmaps")
+(autoload 'kubernetes-deployments-delete-marked "kubernetes-deployments")
 (autoload 'kubernetes-display-config "kubernetes-contexts")
 (autoload 'kubernetes-display-configmap "kubernetes-configmaps")
+(autoload 'kubernetes-display-deployment "kubernetes-deployments")
 (autoload 'kubernetes-display-pod "kubernetes-pods")
 (autoload 'kubernetes-display-secret "kubernetes-secrets")
 (autoload 'kubernetes-display-service "kubernetes-services")
@@ -35,6 +37,8 @@
      (kubernetes-state-mark-secret name))
     (`(:service-name ,name)
      (kubernetes-state-mark-service name))
+    (`(:deployment-name ,name)
+     (kubernetes-state-mark-deployment name))
     (_
      (user-error "Nothing here can be marked")))
 
@@ -51,6 +55,8 @@
      (kubernetes-state-unmark-pod pod-name))
     (`(:secret-name ,secret-name)
      (kubernetes-state-unmark-secret secret-name))
+    (`(:deployment-name ,deployment-name)
+     (kubernetes-state-unmark-deployment deployment-name))
     (`(:configmap-name ,configmap-name)
      (kubernetes-state-unmark-configmap configmap-name)))
   (kubernetes-state-trigger-redraw)
@@ -85,6 +91,11 @@
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s secret%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-secrets-delete-marked state)))
+
+    (let ((n (length (kubernetes-state-marked-deployments state))))
+      (when (and (not (zerop n))
+                 (y-or-n-p (format "Delete %s deployment%s? " n (if (equal 1 n) "" "s"))))
+        (kubernetes-deployments-delete-marked state)))
 
     (let ((n (length (kubernetes-state-marked-services state))))
       (when (and (not (zerop n))
@@ -133,6 +144,8 @@ taken."
      (kubernetes-display-configmap configmap-name state))
     (`(:service-name ,service-name)
      (kubernetes-display-service service-name state))
+    (`(:deployment-name ,deployment-name)
+     (kubernetes-display-deployment deployment-name state))
     (`(:secret-name ,secret-name)
      (kubernetes-display-secret secret-name state))
     (`(:pod-name ,pod-name)

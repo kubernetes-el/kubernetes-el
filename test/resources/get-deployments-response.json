@@ -1,0 +1,224 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "extensions/v1beta1",
+      "kind": "Deployment",
+      "metadata": {
+        "annotations": {
+          "deployment.kubernetes.io/revision": "1",
+          "kubectl.kubernetes.io/last-applied-configuration": "{}"
+        },
+        "creationTimestamp": "2017-02-17T02:23:30Z",
+        "generation": 3,
+        "labels": {
+          "name": "deployment-1"
+        },
+        "name": "deployment-1",
+        "namespace": "example-ns",
+        "resourceVersion": "77459993",
+        "selfLink": "/apis/extensions/v1beta1/namespaces/example-ns/deployments/deployment-1",
+        "uid": "125476f0-f4b8-11f6-98d0-eae012fc8e71"
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": {
+          "matchLabels": {
+            "name": "deployment-1"
+          }
+        },
+        "strategy": {
+          "rollingUpdate": {
+            "maxSurge": 1,
+            "maxUnavailable": 1
+          },
+          "type": "RollingUpdate"
+        },
+        "template": {
+          "metadata": {
+            "creationTimestamp": null,
+            "labels": {
+              "name": "deployment-1"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "env": [
+                  {
+                    "name": "MAX_HEAP_SIZE",
+                    "value": "1000M"
+                  },
+                  {
+                    "name": "HEAP_NEWSIZE",
+                    "value": "1000M"
+                  }
+                ],
+                "image": "example:3.9",
+                "imagePullPolicy": "IfNotPresent",
+                "livenessProbe": {
+                  "failureThreshold": 3,
+                  "initialDelaySeconds": 120,
+                  "periodSeconds": 10,
+                  "successThreshold": 1,
+                  "tcpSocket": {
+                    "port": 9042
+                  },
+                  "timeoutSeconds": 10
+                },
+                "name": "deployment-1",
+                "ports": [
+                  {
+                    "containerPort": 6000,
+                    "name": "gossip",
+                    "protocol": "TCP"
+                  },
+                  {
+                    "containerPort": 7000,
+                    "name": "jmx",
+                    "protocol": "TCP"
+                  }
+                ],
+                "resources": {
+                  "limits": {
+                    "cpu": "2",
+                    "memory": "3000Mi"
+                  },
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "1500Mi"
+                  }
+                },
+                "terminationMessagePath": "/dev/termination-log"
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "Always",
+            "securityContext": null,
+            "terminationGracePeriodSeconds": 30
+          }
+        }
+      },
+      "status": {
+        "availableReplicas": 1,
+        "conditions": [
+          {
+            "lastTransitionTime": "2017-02-17T02:23:30Z",
+            "lastUpdateTime": "2017-02-17T02:23:30Z",
+            "message": "Deployment has minimum availability.",
+            "reason": "MinimumReplicasAvailable",
+            "status": "True",
+            "type": "Available"
+          }
+        ],
+        "observedGeneration": 3,
+        "replicas": 1,
+        "updatedReplicas": 1
+      }
+    },
+    {
+      "apiVersion": "extensions/v1beta1",
+      "kind": "Deployment",
+      "metadata": {
+        "annotations": {
+          "deployment.kubernetes.io/revision": "1",
+          "kubectl.kubernetes.io/last-applied-configuration": "{}"
+        },
+        "creationTimestamp": "2017-02-22T02:15:36Z",
+        "generation": 1,
+        "labels": {
+          "name": "deployment-2"
+        },
+        "name": "deployment-2",
+        "namespace": "example-ns",
+        "resourceVersion": "66635449",
+        "selfLink": "/apis/extensions/v1beta1/namespaces/example-ns/deployments/deployment-2",
+        "uid": "cbfcbe2c-f8a4-21e6-8378-0e9fa26c327b"
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": {
+          "matchLabels": {
+            "name": "deployment-2"
+          }
+        },
+        "strategy": {
+          "rollingUpdate": {
+            "maxSurge": 1,
+            "maxUnavailable": 1
+          },
+          "type": "RollingUpdate"
+        },
+        "template": {
+          "metadata": {
+            "creationTimestamp": null,
+            "labels": {
+              "name": "deployment-2"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "image": "docker.example.com/deployment-2:v1.0.7",
+                "imagePullPolicy": "IfNotPresent",
+                "livenessProbe": {
+                  "failureThreshold": 3,
+                  "initialDelaySeconds": 60,
+                  "periodSeconds": 10,
+                  "successThreshold": 1,
+                  "tcpSocket": {
+                    "port": 3306
+                  },
+                  "timeoutSeconds": 1
+                },
+                "name": "deployment-2",
+                "ports": [
+                  {
+                    "containerPort": 3306,
+                    "name": "external",
+                    "protocol": "TCP"
+                  }
+                ],
+                "resources": {
+                  "limits": {
+                    "cpu": "2",
+                    "memory": "3000Mi"
+                  },
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "100Mi"
+                  }
+                },
+                "terminationMessagePath": "/dev/termination-log"
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "Always",
+            "securityContext": null,
+            "terminationGracePeriodSeconds": 30
+          }
+        }
+      },
+      "status": {
+        "availableReplicas": 1,
+        "conditions": [
+          {
+            "lastTransitionTime": "2017-02-22T02:15:36Z",
+            "lastUpdateTime": "2017-02-22T02:15:36Z",
+            "message": "Deployment has minimum availability.",
+            "reason": "MinimumReplicasAvailable",
+            "status": "True",
+            "type": "Available"
+          }
+        ],
+        "observedGeneration": 1,
+        "replicas": 1,
+        "updatedReplicas": 1
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": null,
+  "resourceVersion": "",
+  "selfLink": ""
+}

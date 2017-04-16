@@ -116,6 +116,27 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
                         nil
                         cleanup-cb)))
 
+(defun kubernetes-kubectl-get-deployments (props state cb &optional cleanup-cb)
+  "Get all deployments and execute callback CB with the parsed JSON.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-props'.
+
+STATE is the application state.
+
+CLEANUP-CB is a function taking no arguments used to release any resources."
+  (let ((args (append '("get" "deployments" "-o" "json")
+                      (-when-let ((&alist 'current-namespace ns) state)
+                        (list (format "--namespace=%s" ns))))))
+    (kubernetes-kubectl props
+                        args
+                        (lambda (buf)
+                          (let ((json (with-current-buffer buf
+                                        (json-read-from-string (buffer-string)))))
+                            (funcall cb json)))
+                        nil
+                        cleanup-cb)))
+
 (defun kubernetes-kubectl-get-secrets (props state cb &optional cleanup-cb)
   "Get all secrets and execute callback CB with the parsed JSON.
 
@@ -304,6 +325,26 @@ ERROR-CB is called if an error occurred."
                         (lambda (buf)
                           (with-current-buffer buf
                             (string-match (rx bol "service/" (group (+ nonl))) (buffer-string))
+                            (funcall cb (match-string 1 (buffer-string)))))
+                        error-cb)))
+
+(defun kubernetes-kubectl-delete-deployment (props state deployment-name cb &optional error-cb)
+  "Delete DEPLOYMENT-NAME, then execute CB with the response buffer.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-props'.
+
+STATE is the application state.
+
+ERROR-CB is called if an error occurred."
+  (let ((args (append (list "delete" "deployment" deployment-name "-o" "name")
+                      (-when-let ((&alist 'current-namespace ns) state)
+                        (list (format "--namespace=%s" ns))))))
+    (kubernetes-kubectl props
+                        args
+                        (lambda (buf)
+                          (with-current-buffer buf
+                            (string-match (rx bol "deployment/" (group (+ nonl))) (buffer-string))
                             (funcall cb (match-string 1 (buffer-string)))))
                         error-cb)))
 
