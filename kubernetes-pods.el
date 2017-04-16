@@ -13,7 +13,7 @@
 
 ;; Component
 
-(defconst kubernetes-pods--column-heading
+(defconst kubernetes-pods-column-heading
   (propertize (format "%-45s %-10s %-5s   %6s %6s" "Name" "Status" "Ready" "Restarts" "Age")
               'face 'magit-section-heading))
 
@@ -127,7 +127,7 @@
                  (let ((heading (concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods)))))
                    `((heading ,heading)
                      (indent
-                      (line ,kubernetes-pods--column-heading)
+                      (line ,kubernetes-pods-column-heading)
                       ,@(seq-map (lambda (it) (kubernetes-pods-render-pod state it)) pods)))))
 
                 ;; If there's no state, assume requests are in progress.
@@ -136,7 +136,7 @@
                    `((heading "Pods")
                      (section (pods-list nil)
                               (indent
-                               (line ,kubernetes-pods--column-heading)
+                               (line ,kubernetes-pods-column-heading)
                                (line ,fetching)))))))
               (padding))))
 

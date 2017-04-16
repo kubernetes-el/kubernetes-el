@@ -55,9 +55,8 @@
 
   (kbd "q") #'quit-window
   (kbd "RET") #'kubernetes-navigate
-  (kbd "M-w") #'kubernetes-copy-thing-at-point)
+  (kbd "M-w") #'kubernetes-copy-thing-at-point
 
-(evil-define-key 'motion kubernetes-overview-mode-map
   (kbd "?") #'kubernetes-overview-popup
   (kbd "c") #'kubernetes-config-popup
   (kbd "g r") #'kubernetes-refresh
@@ -68,7 +67,8 @@
   (kbd "u") #'kubernetes-unmark
   (kbd "U") #'kubernetes-unmark-all
   (kbd "x") #'kubernetes-execute-marks
-  (kbd "l") #'kubernetes-logs-popup)
+  (kbd "l") #'kubernetes-logs-popup
+  (kbd "L") #'kubernetes-labels-popup)
 
 (evil-define-key 'motion kubernetes-logs-mode-map
   (kbd "n") #'kubernetes-logs-forward-line

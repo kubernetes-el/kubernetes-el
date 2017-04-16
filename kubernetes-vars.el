@@ -12,17 +12,17 @@
   :group 'kubernetes
   :type 'string)
 
-(defcustom kubernetes-utils-display-buffer-select t
+(defcustom kubernetes-commands-display-buffer-select t
   "Whether to select Kubernetes buffers automatically."
   :group 'kubernetes
   :type 'boolean)
 
-(defcustom kubernetes-utils-display-buffer-function 'kubernetes-utils-display-buffer-fullframe
+(defcustom kubernetes-commands-display-buffer-function 'kubernetes-commands-display-buffer-fullframe
   "The function used display a Kubernetes buffer.
 
 The function must take a single argument, which is the buffer to display."
   :group 'kubernetes
-  :type '(radio (function-item kubernetes-utils-display-buffer-fullframe)
+  :type '(radio (function-item kubernetes-commands-display-buffer-fullframe)
                 (function-item display-buffer)
                 (function :tag "Function")))
 
@@ -118,6 +118,8 @@ balance interface stuttering with update frequency."
 (defconst kubernetes-pod-buffer-name "*kubernetes pod*")
 
 (defconst kubernetes-exec-buffer-name "*kubernetes exec*")
+
+(defconst kubernetes-label-query-buffer-name "*kubernetes-label-query*")
 
 
 (defvar kubernetes-poll-hook nil

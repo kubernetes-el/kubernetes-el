@@ -89,9 +89,7 @@ reference to it is needed to determine which buffers remain.
 The function will terminate polling when the last Kubernetes
 buffer is killed."
   (lambda ()
-    (let* ((bufs (-keep #'get-buffer (list kubernetes-display-pods-buffer-name
-                                           kubernetes-display-configmaps-buffer-name
-                                           kubernetes-display-secrets-buffer-name
+    (let* ((bufs (-keep #'get-buffer (list kubernetes-label-query-buffer-name
                                            kubernetes-overview-buffer-name)))
            (more-buffers (remove buf bufs)))
       (unless more-buffers
@@ -156,6 +154,22 @@ buffer is killed."
 
 (defun kubernetes-utils-overview-buffer-selected-p ()
   (equal (current-buffer) (get-buffer kubernetes-overview-buffer-name)))
+
+(defmacro kubernetes-utils--save-window-state (&rest body)
+  "Restore window state after executing BODY.
+
+This is useful if the buffer is erased and repopulated in BODY,
+in which case `save-excursion' is insufficient to restore the
+window state."
+  `(let ((pos (point))
+         (col (current-column))
+         (window-start-line (window-start))
+         (inhibit-redisplay t))
+     (save-excursion
+       ,@body)
+     (goto-char pos)
+     (move-to-column col)
+     (set-window-start (selected-window) window-start-line)))
 
 
 (provide 'kubernetes-utils)
