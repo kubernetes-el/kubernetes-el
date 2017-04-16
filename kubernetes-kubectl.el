@@ -328,6 +328,26 @@ ERROR-CB is called if an error occurred."
                             (funcall cb (match-string 1 (buffer-string)))))
                         error-cb)))
 
+(defun kubernetes-kubectl-delete-deployment (props state deployment-name cb &optional error-cb)
+  "Delete DEPLOYMENT-NAME, then execute CB with the response buffer.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-props'.
+
+STATE is the application state.
+
+ERROR-CB is called if an error occurred."
+  (let ((args (append (list "delete" "deployment" deployment-name "-o" "name")
+                      (-when-let ((&alist 'current-namespace ns) state)
+                        (list (format "--namespace=%s" ns))))))
+    (kubernetes-kubectl props
+                        args
+                        (lambda (buf)
+                          (with-current-buffer buf
+                            (string-match (rx bol "deployment/" (group (+ nonl))) (buffer-string))
+                            (funcall cb (match-string 1 (buffer-string)))))
+                        error-cb)))
+
 
 (defun kubernetes-kubectl-await-on-async (props state fn)
   "Turn an async function requiring a callback into a synchronous one.

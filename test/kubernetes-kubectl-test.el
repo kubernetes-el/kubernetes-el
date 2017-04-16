@@ -429,6 +429,41 @@ will be mocked."
                         state
                         #'ignore))))
 
+;; Delete deployment
+
+(ert-deftest kubernetes-kubectl-test--deleting-deployment-succeeds ()
+  (let ((deployment-name "example-config"))
+    (with-successful-response-at '("delete" "deployment" "example-deployment" "-o" "name") "deployment/example-config"
+      (kubernetes-kubectl-delete-deployment kubernetes-kubectl-test-props
+                          nil
+                          "example-deployment"
+                          (lambda (result)
+                            (should (equal deployment-name result)))))))
+
+(ert-deftest kubernetes-kubectl-test--deleting-deployment-fails ()
+  (let ((on-error-called))
+    (with-error-response-at '("delete" "deployment" "example-deployment" "-o" "name") "deployment/example-config"
+      (kubernetes-kubectl-delete-deployment kubernetes-kubectl-test-props
+                          nil
+                          "example-deployment"
+                          (lambda (_)
+                            (error "Unexpected success response"))
+                          (lambda (_)
+                            (setq on-error-called t))))
+    (should on-error-called)))
+
+(ert-deftest kubernetes-kubectl-test--deleting-deployment-applies-current-namespace ()
+  (let* ((deployment-name "example-config")
+         (state '((current-namespace . "foo"))))
+    (with-successful-response-at `("delete" "deployment" ,deployment-name "-o" "name"
+                                   "--namespace=foo")
+        "deployment/example-config"
+      (kubernetes-kubectl-delete-deployment kubernetes-kubectl-test-props
+                          state
+                          deployment-name
+                          #'ignore))))
+
+
 ;; Error handler
 
 (ert-deftest kubernetes-kubectl-test--error-handler-writes-messages-when-overview-buffer-not-selected ()
