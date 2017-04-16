@@ -405,6 +405,30 @@ will be mocked."
                      #'ignore))))
 
 
+;; Get deployments
+
+(ert-deftest kubernetes-kubectl-test--get-deployments-returns-parsed-json ()
+  (let* ((sample-response (test-helper-string-resource "get-deployments-response.json"))
+         (parsed-response (json-read-from-string sample-response))
+         (cleanup-callback-called))
+
+    (with-successful-response-at '("get" "deployments" "-o" "json") sample-response
+      (kubernetes-kubectl-get-deployments kubernetes-kubectl-test-props
+                        nil
+                        (lambda (response)
+                          (should (equal parsed-response response)))
+                        (lambda ()
+                          (setq cleanup-callback-called t))))
+    (should cleanup-callback-called)))
+
+(ert-deftest kubernetes-kubectl-test--get-deployments-applies-current-namespace ()
+  (let ((state '((current-namespace . "foo"))))
+    (with-successful-response-at `("get" "deployments" "-o" "json" "--namespace=foo")
+        "{}"
+      (kubernetes-kubectl-get-deployments kubernetes-kubectl-test-props
+                        state
+                        #'ignore))))
+
 ;; Error handler
 
 (ert-deftest kubernetes-kubectl-test--error-handler-writes-messages-when-overview-buffer-not-selected ()
