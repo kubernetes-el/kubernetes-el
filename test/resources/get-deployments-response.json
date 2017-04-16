@@ -12,19 +12,19 @@
         "creationTimestamp": "2017-02-17T02:23:30Z",
         "generation": 3,
         "labels": {
-          "name": "deployment1"
+          "name": "deployment-1"
         },
-        "name": "deployment1",
+        "name": "deployment-1",
         "namespace": "example-ns",
         "resourceVersion": "77459993",
-        "selfLink": "/apis/extensions/v1beta1/namespaces/example-ns/deployments/deployment1",
+        "selfLink": "/apis/extensions/v1beta1/namespaces/example-ns/deployments/deployment-1",
         "uid": "125476f0-f4b8-11f6-98d0-eae012fc8e71"
       },
       "spec": {
         "replicas": 1,
         "selector": {
           "matchLabels": {
-            "name": "deployment1"
+            "name": "deployment-1"
           }
         },
         "strategy": {
@@ -38,7 +38,7 @@
           "metadata": {
             "creationTimestamp": null,
             "labels": {
-              "name": "deployment1"
+              "name": "deployment-1"
             }
           },
           "spec": {
@@ -66,7 +66,7 @@
                   },
                   "timeoutSeconds": 10
                 },
-                "name": "deployment1",
+                "name": "deployment-1",
                 "ports": [
                   {
                     "containerPort": 6000,
@@ -127,19 +127,19 @@
         "creationTimestamp": "2017-02-22T02:15:36Z",
         "generation": 1,
         "labels": {
-          "name": "deployment2"
+          "name": "deployment-2"
         },
-        "name": "deployment2",
+        "name": "deployment-2",
         "namespace": "example-ns",
         "resourceVersion": "66635449",
-        "selfLink": "/apis/extensions/v1beta1/namespaces/example-ns/deployments/deployment2",
+        "selfLink": "/apis/extensions/v1beta1/namespaces/example-ns/deployments/deployment-2",
         "uid": "cbfcbe2c-f8a4-21e6-8378-0e9fa26c327b"
       },
       "spec": {
         "replicas": 1,
         "selector": {
           "matchLabels": {
-            "name": "deployment2"
+            "name": "deployment-2"
           }
         },
         "strategy": {
@@ -153,13 +153,13 @@
           "metadata": {
             "creationTimestamp": null,
             "labels": {
-              "name": "deployment2"
+              "name": "deployment-2"
             }
           },
           "spec": {
             "containers": [
               {
-                "image": "docker.example.com/deployment2:v1.0.7",
+                "image": "docker.example.com/deployment-2:v1.0.7",
                 "imagePullPolicy": "IfNotPresent",
                 "livenessProbe": {
                   "failureThreshold": 3,
@@ -171,7 +171,7 @@
                   },
                   "timeoutSeconds": 1
                 },
-                "name": "deployment2",
+                "name": "deployment-2",
                 "ports": [
                   {
                     "containerPort": 3306,
