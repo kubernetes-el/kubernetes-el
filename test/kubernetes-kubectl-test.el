@@ -345,7 +345,7 @@ will be mocked."
                     #'ignore))))
 
 
-;; Delete configmap
+;; Delete secret
 
 (ert-deftest kubernetes-kubectl-test--deleting-secret-succeeds ()
   (let ((secret-name "example-config"))
