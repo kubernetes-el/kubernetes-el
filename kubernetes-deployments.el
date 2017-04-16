@@ -104,7 +104,7 @@
                             (indent
                              (propertize (face magit-dimmed) (line "None."))))))
 
-                ;; If there are deployments, write sections for each deployments.
+                ;; If there are deployments, write sections for each deployment.
                 (deployments
                  (let ((make-entry
                         (lambda (it)

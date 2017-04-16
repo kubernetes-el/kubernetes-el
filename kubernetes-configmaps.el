@@ -59,7 +59,7 @@
                             (indent
                              (propertize (face magit-dimmed) (line "None."))))))
 
-                ;; If there are configmaps, write sections for each configmaps.
+                ;; If there are configmaps, write sections for each configmap.
                 (configmaps
                  (let ((make-entry
                         (lambda (it)

@@ -113,7 +113,7 @@
                               (indent
                                (line ,none))))))
 
-                ;; If there are pods, write sections for each pods.
+                ;; If there are pods, write sections for each pod.
                 (pods
                  (let ((heading (concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods))))
                        (make-pod-entry
