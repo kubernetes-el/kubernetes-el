@@ -40,6 +40,7 @@
     "Popup commands"
     (?d "Describe" kubernetes-describe-popup)
     (?e "Exec" kubernetes-exec-popup)
+    (?L "Labels" kubernetes-labels-popup)
     (?l "Logs" kubernetes-logs-popup)
     "Misc"
     (?h "Describe mode and keybindings" describe-mode)))
@@ -72,6 +73,13 @@
   '((?d "Dwim" kubernetes-describe-dwim)
     (?p "Pod" kubernetes-describe-pod))
   :default-action 'kubernetes-logs)
+
+(magit-define-popup kubernetes-labels-popup
+  "Popup console for commands relating to labels."
+  :group 'kubernetes
+  :actions
+  '((?p "Pods" kubernetes-show-pods-for-label))
+  :default-action 'kubernetes-show-pods-for-label)
 
 
 (provide 'kubernetes-popups)

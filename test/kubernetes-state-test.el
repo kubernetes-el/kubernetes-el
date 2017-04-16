@@ -137,6 +137,9 @@
                  (time . , time))
                (kubernetes-state-last-error (kubernetes-state)))))))
 
+(kubernetes-state-test-accessor label-query
+  (kubernetes-state-update-label-query "test"))
+
 
 ;; Test special behaviours
 

@@ -29,6 +29,8 @@
        (setf (alist-get 'current-time next) args))
       (:update-last-error
        (setf (alist-get 'last-error next) args))
+      (:update-label-query
+       (setf (alist-get 'label-query next) args))
       (:update-namespaces
        (setf (alist-get 'namespaces next) args))
       (:update-current-namespace
@@ -313,6 +315,9 @@
 
 (kubernetes-state--define-accessors config (config)
   (cl-assert (listp config)))
+
+(kubernetes-state--define-accessors label-query (label-name)
+  (cl-assert (stringp label-name)))
 
 (kubernetes-state--define-getter marked-configmaps)
 (kubernetes-state--define-getter configmaps-pending-deletion)

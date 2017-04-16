@@ -20,6 +20,7 @@
 (autoload 'kubernetes-pods-delete-marked "kubernetes-pods")
 (autoload 'kubernetes-secrets-delete-marked "kubernetes-secrets")
 (autoload 'kubernetes-services-delete-marked "kubernetes-services")
+(autoload 'kubernetes-show-pods-for-label "kubernetes-labels")
 
 
 ;; Mark management
@@ -149,7 +150,9 @@ taken."
     (`(:secret-name ,secret-name)
      (kubernetes-display-secret secret-name state))
     (`(:pod-name ,pod-name)
-     (kubernetes-display-pod pod-name state))))
+     (kubernetes-display-pod pod-name state))
+    (`(:selector ,selector)
+     (kubernetes-show-pods-for-label selector))))
 
 (defun kubernetes--describable-thing-at-pt ()
   (save-excursion
@@ -248,7 +251,7 @@ Should be invoked via command `kubernetes-logs-popup'."
 
 ;; View management
 
-(defun kubernetes-utils-display-buffer-fullframe (buffer)
+(defun kubernetes-commands-display-buffer-fullframe (buffer)
   (let ((display-fn
          (lambda (buffer alist)
            (when-let (window (or (display-buffer-reuse-window buffer alist)
@@ -259,9 +262,9 @@ Should be invoked via command `kubernetes-logs-popup'."
              window))))
     (display-buffer buffer (list display-fn))))
 
-(defun kubernetes-utils-display-buffer (buffer)
-  (let ((window (funcall kubernetes-utils-display-buffer-function buffer)))
-    (when kubernetes-utils-display-buffer-select
+(defun kubernetes-commands-display-buffer (buffer)
+  (let ((window (funcall kubernetes-commands-display-buffer-function buffer)))
+    (when kubernetes-commands-display-buffer-select
       (select-frame-set-input-focus
        (window-frame (select-window window))))))
 

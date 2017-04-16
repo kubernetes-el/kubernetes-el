@@ -26,6 +26,7 @@
 ;;; Code:
 
 (require 'kubernetes-commands)
+(require 'kubernetes-labels)
 (require 'kubernetes-logs)
 (require 'kubernetes-overview)
 

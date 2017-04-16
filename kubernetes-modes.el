@@ -5,8 +5,19 @@
 (require 'magit)
 (require 'subr-x)
 
-(autoload 'kubernetes-navigate "kubernetes-commands")
+(autoload 'kubernetes-config-popup "kubernetes-popups")
 (autoload 'kubernetes-copy-thing-at-point "kubernetes-commands")
+(autoload 'kubernetes-describe-popup "kubernetes-popups")
+(autoload 'kubernetes-exec-popup "kubernetes-popups")
+(autoload 'kubernetes-execute-marks "kubernetes-commands")
+(autoload 'kubernetes-labels-popup "kubernetes-popups")
+(autoload 'kubernetes-logs-popup "kubernetes-popups")
+(autoload 'kubernetes-mark-for-delete "kubernetes-commands")
+(autoload 'kubernetes-navigate "kubernetes-commands")
+(autoload 'kubernetes-overview-popup "kubernetes-popups")
+(autoload 'kubernetes-refresh "kubernetes-commands")
+(autoload 'kubernetes-unmark "kubernetes-commands")
+(autoload 'kubernetes-unmark-all "kubernetes-commands")
 
 ;;;###autoload
 (define-derived-mode kubernetes-display-thing-mode kubernetes-mode "Kubernetes Object"
@@ -33,6 +44,19 @@
     (define-key keymap (kbd "q") #'quit-window)
     (define-key keymap (kbd "RET") #'kubernetes-navigate)
     (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
+    (define-key keymap (kbd "h") #'describe-mode)
+
+    (define-key keymap (kbd "?") #'kubernetes-overview-popup)
+    (define-key keymap (kbd "c") #'kubernetes-config-popup)
+    (define-key keymap (kbd "d") #'kubernetes-describe-popup)
+    (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
+    (define-key keymap (kbd "e") #'kubernetes-exec-popup)
+    (define-key keymap (kbd "g") #'kubernetes-refresh)
+    (define-key keymap (kbd "l") #'kubernetes-logs-popup)
+    (define-key keymap (kbd "L") #'kubernetes-labels-popup)
+    (define-key keymap (kbd "u") #'kubernetes-unmark)
+    (define-key keymap (kbd "U") #'kubernetes-unmark-all)
+    (define-key keymap (kbd "x") #'kubernetes-execute-marks)
 
     keymap)
   "Keymap for `kubernetes-mode'.  This is the base keymap for all derived modes.")

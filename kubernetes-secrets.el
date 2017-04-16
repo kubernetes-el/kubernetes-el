@@ -13,6 +13,10 @@
 
 ;; Component
 
+(defconst kubernetes-secrets--column-heading
+  (propertize (format "%-45s %6s %6s" "Name" "Data" "Age")
+              'face 'magit-section-heading))
+
 (defun kubernetes-secrets--format-detail (secret)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) secret]
     `((key-value 12 "Namespace" ,ns)
@@ -46,14 +50,20 @@
                             (t
                              line))))))
 
+(defun kubernetes-secrets-render-secret (state secret)
+  `(section (,(intern (kubernetes-state-resource-name secret)) t)
+            (heading ,(kubernetes-secrets--format-line state secret))
+            (section (details nil)
+                     (indent
+                      ,@(kubernetes-secrets--format-detail secret)
+                      (padding)))))
+
 (defun kubernetes-secrets-render (state &optional hidden)
-  (-let* (((secrets-response &as &alist 'items secrets) (kubernetes-state-secrets state))
-          (secrets (append secrets nil))
-          (column-heading (propertize (format "%-45s %6s %6s" "Name" "Data" "Age") 'face 'magit-section-heading)))
+  (-let [(secrets-response &as &alist 'items secrets) (kubernetes-state-secrets state)]
     `(section (secrets-container ,hidden)
               ,(cond
                 ;; If the state is set and there are no secrets, write "None".
-                ((and secrets-response (null secrets))
+                ((and secrets-response (seq-empty-p secrets))
                  `((heading ,(concat (propertize "Secrets" 'face 'magit-header-line) " (0)"))
                    (indent
                     (section (secrets-list nil)
@@ -61,24 +71,16 @@
 
                 ;; If there are secrets, write sections for each secret.
                 (secrets
-                 (let ((make-entry
-                        (lambda (it)
-                          `(section (,(intern (kubernetes-state-resource-name it)) t)
-                                    (heading ,(kubernetes-secrets--format-line state it))
-                                    (section (details nil)
-                                             (indent
-                                              ,@(kubernetes-secrets--format-detail it)
-                                              (padding)))))))
-                   `((heading ,(concat (propertize "Secrets" 'face 'magit-header-line) " " (format "(%s)" (length secrets))))
-                     (indent
-                      (line ,column-heading)
-                      ,@(-map make-entry secrets)))))
+                 `((heading ,(concat (propertize "Secrets" 'face 'magit-header-line) " " (format "(%s)" (length secrets))))
+                   (indent
+                    (line ,kubernetes-secrets--column-heading)
+                    ,@(seq-map (lambda (it) (kubernetes-secrets-render-secret state it)) secrets))))
 
                 ;; If there's no state, assume requests are in progress.
                 (t
                  `((heading "Secrets")
                    (indent
-                    (line ,column-heading)
+                    (line ,kubernetes-secrets--column-heading)
                     (section (secrets-list nil)
                              (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
               (padding))))

@@ -32,21 +32,6 @@
 
 ;; Overview buffer.
 
-(defmacro kubernetes-overview--save-window-state (&rest body)
-  "Restore window state after executing BODY.
-
-`save-excursion' doesn't work because the contents of the
-overview buffer change during redraw."
-  `(let ((pos (point))
-         (col (current-column))
-         (window-start-line (window-start))
-         (inhibit-redisplay t))
-     (save-excursion
-       ,@body)
-     (goto-char pos)
-     (move-to-column col)
-     (set-window-start (selected-window) window-start-line)))
-
 (defun kubernetes-overview--redraw-buffer ()
   "Redraws the main buffer using the current state."
   (when-let (buf (get-buffer kubernetes-overview-buffer-name))
@@ -57,7 +42,7 @@ overview buffer change during redraw."
       ;; position in the buffer if a popup window is open.
       (when (equal (get-buffer-window buf)
                    (selected-window))
-        (kubernetes-overview--save-window-state
+        (kubernetes-utils--save-window-state
          (let ((inhibit-read-only t))
            (erase-buffer)
            (kubernetes-ast-eval (kubernetes-overview-render (kubernetes-state)))))
@@ -86,23 +71,6 @@ overview buffer change during redraw."
     buf))
 
 ;;;###autoload
-(defvar kubernetes-overview-mode-map
-  (let ((keymap (make-sparse-keymap)))
-    (define-key keymap (kbd "?") #'kubernetes-overview-popup)
-    (define-key keymap (kbd "c") #'kubernetes-config-popup)
-    (define-key keymap (kbd "d") #'kubernetes-describe-popup)
-    (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
-    (define-key keymap (kbd "e") #'kubernetes-exec-popup)
-    (define-key keymap (kbd "g") #'kubernetes-refresh)
-    (define-key keymap (kbd "l") #'kubernetes-logs-popup)
-    (define-key keymap (kbd "u") #'kubernetes-unmark)
-    (define-key keymap (kbd "U") #'kubernetes-unmark-all)
-    (define-key keymap (kbd "x") #'kubernetes-execute-marks)
-    (define-key keymap (kbd "h") #'describe-mode)
-    keymap)
-  "Keymap for `kubernetes-overview-mode'.")
-
-;;;###autoload
 (define-derived-mode kubernetes-overview-mode kubernetes-mode "Kubernetes Overview"
   "Mode for working with Kubernetes overview.
 
@@ -123,7 +91,7 @@ Type \\[kubernetes-refresh] to refresh the buffer.
 (defun kubernetes-overview ()
   "Display an overview buffer for Kubernetes."
   (interactive)
-  (kubernetes-utils-display-buffer (kubernetes-overview--initialize-buffer))
+  (kubernetes-commands-display-buffer (kubernetes-overview--initialize-buffer))
   (message (substitute-command-keys "\\<kubernetes-overview-mode-map>Type \\[kubernetes-overview-popup] for usage.")))
 
 

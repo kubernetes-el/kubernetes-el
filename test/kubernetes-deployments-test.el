@@ -64,14 +64,14 @@ Deployments (0)
 Deployments (2)
   Name                                            Replicas   UpToDate  Available    Age
   deployment-1                                         1/1          1          1    44d
+    Selector:   deployment-1
     Namespace:  example-ns
     Created:    2017-02-17T02:23:30Z
-    Selector:   deployment-1
 
   deployment-2                                         1/1          1          1    39d
+    Selector:   deployment-2
     Namespace:  example-ns
     Created:    2017-02-22T02:15:36Z
-    Selector:   deployment-2
 
 
 "))
