@@ -24,6 +24,7 @@
             ,(kubernetes-errors-render state)
             ,(kubernetes-contexts-render state)
             ,(kubernetes-configmaps-render state t)
+            ,(kubernetes-deployments-render state t)
             ,(kubernetes-pods-render state t)
             ,(kubernetes-secrets-render state t)
             ,(kubernetes-services-render state t)))

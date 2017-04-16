@@ -12,6 +12,112 @@
 (require 'kubernetes-yaml)
 
 
+;; Component
+
+(defun kubernetes-deployments--format-detail (deployment)
+  (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
+                 'spec (&alist 'selector (&alist 'matchLabels
+                                                 (&alist 'name selector))))
+         deployment]
+    `((key-value 12 "Namespace" ,ns)
+      (key-value 12 "Created" ,time)
+      ,(when selector `(key-value 12 "Selector" ,selector)))))
+
+(defun kubernetes-deployments--format-line (state deployment)
+  (-let* ((current-time (kubernetes-state-current-time state))
+          (pending-deletion (kubernetes-state-deployments-pending-deletion state))
+          (marked-deployments (kubernetes-state-marked-deployments state))
+
+          ((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
+
+                   'spec (&alist 'replicas desired)
+
+                   'status (&alist 'replicas current
+                                   'availableReplicas available
+                                   'updatedReplicas up-to-date))
+           deployment)
+
+          (line `(line ,(concat
+                         ;; Name
+                         (format "%-45s " (kubernetes-utils-ellipsize name 45))
+
+                         ;; Replicas (current/desired)
+                         (let ((str (format "%s/%s" current desired)))
+                           (cond
+                            ((zerop current)
+                             (propertize (format "%10s " str) 'face 'warning))
+                            ((/= current desired)
+                             (format "%10s " str))
+                            (t
+                             (propertize (format "%10s " str) 'face 'magit-dimmed))))
+
+                         ;; Up-to-date
+                         (cond
+                          ((zerop up-to-date)
+                           (propertize (format "%10s " up-to-date) 'face 'warning))
+                          (t
+                           (propertize (format "%10s " up-to-date) 'face 'magit-dimmed)))
+
+                         ;; Available
+                         (cond
+                          ((zerop available)
+                           (propertize (format "%10s " available) 'face 'warning))
+                          (t
+                           (propertize (format "%10s " available) 'face 'magit-dimmed)))
+
+
+                         ;; Age
+                         (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
+                           (propertize (format "%6s" (kubernetes-utils-time-diff-string start current-time))
+                                       'face 'magit-dimmed))))))
+    `(nav-prop (:deployment-name ,name)
+               (copy-prop ,name
+                          ,(cond
+                            ((member name pending-deletion)
+                             `(propertize (face kubernetes-pending-deletion) ,line))
+                            ((member name marked-deployments)
+                             `(mark-for-delete ,line))
+                            (t
+                             line))))))
+
+(defun kubernetes-deployments-render (state &optional hidden)
+  (-let* (((state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state))
+          (column-heading (propertize (format "%-45s %10s %10s %10s %6s" "Name" "Replicas" "UpToDate" "Available" "Age") 'face 'magit-section-heading)))
+    `(section (deployments-container ,hidden)
+              ,(cond
+                ;; If the state is set and there are no deployments, write "None".
+                ((and state-set-p (seq-empty-p deployments))
+                 `((heading ,(concat (propertize "Deployments" 'face 'magit-header-line) " (0)"))
+                   (section (deployments-list nil)
+                            (indent
+                             (propertize (face magit-dimmed) (line "None."))))))
+
+                ;; If there are deployments, write sections for each deployments.
+                (deployments
+                 (let ((make-entry
+                        (lambda (it)
+                          `(section (,(intern (kubernetes-state-resource-name it)) t)
+                                    (heading ,(kubernetes-deployments--format-line state it))
+                                    (section (details nil)
+                                             (indent
+                                              ,@(kubernetes-deployments--format-detail it)
+                                              (padding)))))))
+
+                   `((heading ,(concat (propertize "Deployments" 'face 'magit-header-line) " " (format "(%s)" (length deployments))))
+                     (indent
+                      (line ,column-heading)
+                      ,@(seq-map make-entry deployments)))))
+
+                ;; If there's no state, assume requests are in progress.
+                (t
+                 `((heading "Deployments")
+                   (indent
+                    (line ,column-heading)
+                    (section (deployments-list nil)
+                             (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
+              (padding))))
+
+
 ;; Requests and state management
 
 (defun kubernetes-deployments-refresh (&optional interactive)
