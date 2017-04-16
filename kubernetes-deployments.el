@@ -36,6 +36,10 @@
                                    'availableReplicas available
                                    'updatedReplicas up-to-date))
            deployment)
+          (current (or current 0))
+          (desired (or desired 0))
+          (available (or available 0))
+          (up-to-date (or up-to-date 0))
 
           (line `(line ,(concat
                          ;; Name
@@ -44,6 +48,8 @@
                          ;; Replicas (current/desired)
                          (let ((str (format "%s/%s" current desired)))
                            (cond
+                            ((zerop desired)
+                             (format "%10s " str))
                             ((zerop current)
                              (propertize (format "%10s " str) 'face 'warning))
                             ((/= current desired)
@@ -53,6 +59,8 @@
 
                          ;; Up-to-date
                          (cond
+                          ((zerop desired)
+                           (format "%10s " up-to-date))
                           ((zerop up-to-date)
                            (propertize (format "%10s " up-to-date) 'face 'warning))
                           (t
@@ -60,6 +68,8 @@
 
                          ;; Available
                          (cond
+                          ((zerop desired)
+                           (format "%10s " available))
                           ((zerop available)
                            (propertize (format "%10s " available) 'face 'warning))
                           (t
@@ -77,6 +87,8 @@
                              `(propertize (face kubernetes-pending-deletion) ,line))
                             ((member name marked-deployments)
                              `(mark-for-delete ,line))
+                            ((zerop desired)
+                             `(propertize (face magit-dimmed) ,line))
                             (t
                              line))))))
 
