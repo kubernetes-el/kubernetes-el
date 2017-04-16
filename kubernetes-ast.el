@@ -21,7 +21,8 @@
 INDENT-LEVEL is the current indentation level at which to render.
 
 Warning: This could blow the stack if the AST gets too deep."
-  (let ((indent-level (or indent-level 0)))
+  (let ((indent-level (or indent-level 0))
+        (max-lisp-eval-depth 2000))
     (pcase render-ast
 
       ;; Core forms
