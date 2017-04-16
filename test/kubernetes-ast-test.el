@@ -179,6 +179,12 @@
   (with-temp-buffer
     (should-assert (kubernetes-ast-eval '(key-value 10 "Key" 1)))))
 
+(ert-deftest kubernetes-ast-test--key-value--ensures-values-are-inserted-on-new-lines ()
+  (let ((ast '("foo" (key-value 10 "Key" "Value"))))
+    (with-temp-buffer
+      (save-excursion (kubernetes-ast-eval ast))
+      (should (equal (format "foo\n%-10s%s\n" "Key:" "Value") (substring-no-properties (buffer-string)))))))
+
 
 ;; nav-prop
 

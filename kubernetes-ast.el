@@ -85,6 +85,8 @@ Warning: This could blow the stack if the AST gets too deep."
        (let* ((fmt-string (concat "%-" (number-to-string width) "s"))
               (str (concat (propertize (format fmt-string (concat k ": ")) 'face 'magit-header-line)
                            v)))
+         (unless (string-blank-p (buffer-substring (line-beginning-position) (line-end-position)))
+           (newline))
          (kubernetes-ast-eval `(copy-prop ,v (line ,str)) indent-level)))
 
       (`(nav-prop ,spec . ,inner-ast)
