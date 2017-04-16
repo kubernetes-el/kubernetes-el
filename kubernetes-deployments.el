@@ -14,6 +14,10 @@
 
 ;; Component
 
+(defconst kubernetes-deployments--column-heading
+  (propertize (format "%-45s %10s %10s %10s %6s" "Name" "Replicas" "UpToDate" "Available" "Age")
+              'face 'magit-section-heading))
+
 (defun kubernetes-deployments--format-detail (deployment)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
                  'spec (&alist 'selector (&alist 'matchLabels
@@ -92,9 +96,16 @@
                             (t
                              line))))))
 
+(defun kubernetes-deployments-render-deployment (state deployment)
+  `(section (,(intern (kubernetes-state-resource-name deployment)) t)
+            (heading ,(kubernetes-deployments--format-line state deployment))
+            (section (details nil)
+                     (indent
+                      ,@(kubernetes-deployments--format-detail deployment)
+                      (padding)))))
+
 (defun kubernetes-deployments-render (state &optional hidden)
-  (-let* (((state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state))
-          (column-heading (propertize (format "%-45s %10s %10s %10s %6s" "Name" "Replicas" "UpToDate" "Available" "Age") 'face 'magit-section-heading)))
+  (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state)]
     `(section (deployments-container ,hidden)
               ,(cond
                 ;; If the state is set and there are no deployments, write "None".
@@ -106,25 +117,16 @@
 
                 ;; If there are deployments, write sections for each deployment.
                 (deployments
-                 (let ((make-entry
-                        (lambda (it)
-                          `(section (,(intern (kubernetes-state-resource-name it)) t)
-                                    (heading ,(kubernetes-deployments--format-line state it))
-                                    (section (details nil)
-                                             (indent
-                                              ,@(kubernetes-deployments--format-detail it)
-                                              (padding)))))))
-
-                   `((heading ,(concat (propertize "Deployments" 'face 'magit-header-line) " " (format "(%s)" (length deployments))))
-                     (indent
-                      (line ,column-heading)
-                      ,@(seq-map make-entry deployments)))))
+                 `((heading ,(concat (propertize "Deployments" 'face 'magit-header-line) " " (format "(%s)" (length deployments))))
+                   (indent
+                    (line ,kubernetes-deployments--column-heading)
+                    ,@(seq-map (lambda (it) (kubernetes-deployments-render-deployment state it)) deployments))))
 
                 ;; If there's no state, assume requests are in progress.
                 (t
                  `((heading "Deployments")
                    (indent
-                    (line ,column-heading)
+                    (line ,kubernetes-deployments--column-heading)
                     (section (deployments-list nil)
                              (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
               (padding))))

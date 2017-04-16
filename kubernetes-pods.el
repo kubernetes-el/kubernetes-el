@@ -13,6 +13,10 @@
 
 ;; Component
 
+(defconst kubernetes-pods--column-heading
+  (propertize (format "%-45s %-10s %-5s   %6s %6s" "Name" "Status" "Ready" "Restarts" "Age")
+              'face 'magit-section-heading))
+
 (defun kubernetes-pods--format-detail (pod)
   (-let ((detail (lambda (k v)
                    (when v
@@ -97,15 +101,20 @@
                             (t
                              line))))))
 
+(defun kubernetes-pods-render-pod (state pod)
+  `(section (,(intern (kubernetes-state-resource-name pod)) t)
+            (heading ,(kubernetes-pods--format-line state pod))
+            (indent
+             (section (details nil)
+                      ,@(kubernetes-pods--format-detail pod)
+                      (padding)))))
+
 (defun kubernetes-pods-render (state &optional hidden)
-  (-let* (((pods-response &as &alist 'items pods) (kubernetes-state-pods state))
-          (pods (append pods nil))
-          (column-heading (propertize (format "%-45s %-10s %-5s   %6s %6s" "Name" "Status" "Ready" "Restarts" "Age")
-                                      'face 'magit-section-heading)))
+  (-let [(pods-response &as &alist 'items pods) (kubernetes-state-pods state)]
     `(section (pods-container ,hidden)
               ,(cond
                 ;; If the state is set and there are no pods, write "None".
-                ((and pods-response (null pods))
+                ((and pods-response (seq-empty-p pods))
                  (let ((none (propertize "None." 'face 'magit-dimmed))
                        (heading (concat (propertize "Pods" 'face 'magit-header-line) " (0)")))
                    `((heading ,heading)
@@ -115,19 +124,11 @@
 
                 ;; If there are pods, write sections for each pod.
                 (pods
-                 (let ((heading (concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods))))
-                       (make-pod-entry
-                        (lambda (pod)
-                          `(section (,(intern (kubernetes-state-resource-name pod)) t)
-                                    (heading ,(kubernetes-pods--format-line state pod))
-                                    (indent
-                                     (section (details nil)
-                                              ,@(kubernetes-pods--format-detail pod)
-                                              (padding)))))))
+                 (let ((heading (concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods)))))
                    `((heading ,heading)
                      (indent
-                      (line ,column-heading)
-                      ,@(-map make-pod-entry pods)))))
+                      (line ,kubernetes-pods--column-heading)
+                      ,@(seq-map (lambda (it) (kubernetes-pods-render-pod state it)) pods)))))
 
                 ;; If there's no state, assume requests are in progress.
                 (t
@@ -135,7 +136,7 @@
                    `((heading "Pods")
                      (section (pods-list nil)
                               (indent
-                               (line ,column-heading)
+                               (line ,kubernetes-pods--column-heading)
                                (line ,fetching)))))))
               (padding))))
 

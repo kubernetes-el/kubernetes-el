@@ -14,6 +14,10 @@
 
 ;; Component
 
+(defconst kubernetes-services--column-heading
+  (propertize (format "%-30s %15s %15s %6s" "Name" "Internal IP" "External IP" "Age")
+              'face 'magit-section-heading))
+
 (defun kubernetes-services--format-details (service)
   (-let ((detail
           (lambda (key value)
@@ -76,15 +80,21 @@
                             (t
                              line))))))
 
+(defun kubernetes-services-render-service (state service)
+  `(section (,(intern (kubernetes-state-resource-name service)) t)
+            (heading ,(kubernetes-services--format-line state service))
+            (indent
+             (section (details nil)
+                      ,@(kubernetes-services--format-details service)
+                      (padding)))))
+
 (defun kubernetes-services-render (state &optional hidden)
-  (-let* (((services-response &as &alist 'items services) (kubernetes-state-services state))
-          (services (append services nil))
-          (column-heading (propertize (format "%-30s %15s %15s %6s" "Name" "Internal IP" "External IP" "Age") 'face 'magit-section-heading)))
+  (-let [(services-response &as &alist 'items services) (kubernetes-state-services state)]
     `(section (services-container ,hidden)
               ,(cond
 
                 ;; If the state is set and there are no services, write "None".
-                ((and services-response (null services))
+                ((and services-response (seq-empty-p services))
                  `((heading ,(concat (propertize "Services" 'face 'magit-header-line) " (0)"))
                    (indent
                     (section (services-list nil)
@@ -92,24 +102,16 @@
 
                 ;; If there are services, write sections for each service.
                 (services
-                 (let ((make-entry
-                        (lambda (it)
-                          `(section (,(intern (kubernetes-state-resource-name it)) t)
-                                    (heading ,(kubernetes-services--format-line state it))
-                                    (indent
-                                     (section (details nil)
-                                              ,@(kubernetes-services--format-details it)
-                                              (padding)))))))
-                   `((heading ,(concat (propertize "Services" 'face 'magit-header-line) " " (format "(%s)" (length services))))
-                     (indent
-                      (line ,column-heading)
-                      ,@(-map make-entry services)))))
+                 `((heading ,(concat (propertize "Services" 'face 'magit-header-line) " " (format "(%s)" (length services))))
+                   (indent
+                    (line ,kubernetes-services--column-heading)
+                    ,@(seq-map (lambda (it) (kubernetes-services-render-service state it)) services))))
 
                 ;; If there's no state, assume requests are in progress.
                 (t
                  `((heading "Services")
                    (indent
-                    (line ,column-heading)
+                    (line ,kubernetes-services--column-heading)
                     (section (services-list nil)
                              (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
               (padding))))
