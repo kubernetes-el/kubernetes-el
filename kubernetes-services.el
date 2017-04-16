@@ -26,20 +26,22 @@
                     (number-to-string port) "/" prot)))
 
          ((&alist 'metadata (&alist 'namespace ns
-                                    'creationTimestamp created-time)
+                                    'creationTimestamp created-time
+                                    'labels (&alist 'name label))
                   'spec (&alist 'clusterIP internal-ip
                                 'externalIPs ips
                                 'ports ports
                                 'selector (&alist 'name selector)))
           service))
-    (-non-nil (list (funcall detail "Namespace" ns)
-                    (funcall detail "Created" created-time)
-                    (funcall detail "Internal IP" internal-ip)
-                    (when-let (ips (append ips nil))
-                      (funcall detail "External IPs" (string-join ips ", ")))
-                    (when-let (ports (append ports nil))
-                      (funcall detail "Ports" (string-join (-map format-ports ports) ", ")))
-                    (funcall detail "Selector" selector)))))
+    (list
+     (funcall detail "Label" label)
+     (funcall detail "Namespace" ns)
+     (funcall detail "Created" created-time)
+     (funcall detail "Internal IP" internal-ip)
+     (when-let (ips (append ips nil))
+       (funcall detail "External IPs" (string-join ips ", ")))
+     (funcall detail "Ports" (string-join (seq-map format-ports ports) ", "))
+     (funcall detail "Selector" selector))))
 
 (defun kubernetes-services--format-line (state service)
   (-let* ((current-time (kubernetes-state-current-time state))

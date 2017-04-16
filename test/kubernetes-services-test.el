@@ -64,6 +64,7 @@ Services (0)
 Services (2)
   Name                               Internal IP     External IP    Age
   example-svc-1                      192.168.0.0     192.168.0.0     4d
+    Label:         example-svc-1
     Namespace:     example
     Created:       2017-03-29T21:42:56Z
     Internal IP:   192.168.0.0
@@ -72,6 +73,7 @@ Services (2)
     Selector:      example-pod-v1
 
   example-svc-2                      192.168.0.0                    19d
+    Label:         example-svc-2
     Namespace:     example
     Created:       2017-03-14T21:42:56Z
     Internal IP:   192.168.0.0
