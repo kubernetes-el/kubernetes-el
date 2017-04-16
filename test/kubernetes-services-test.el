@@ -69,12 +69,14 @@ Services (2)
     Internal IP:   192.168.0.0
     External IPs:  192.168.0.0
     Ports:         80/TCP
+    Selector:      example-pod-v1
 
   example-svc-2                      192.168.0.0                    19d
     Namespace:     example
     Created:       2017-03-14T21:42:56Z
     Internal IP:   192.168.0.0
     Ports:         80/TCP
+    Selector:      example-pod-v1
 
 
 "))
