@@ -67,6 +67,7 @@
       (add-hook 'kubernetes-redraw-hook #'kubernetes-overview--redraw-buffer)
       (add-hook 'kubernetes-poll-hook #'kubernetes-overview--poll)
       (kubernetes-timers-initialize-timers)
+      (kubernetes-overview--redraw-buffer)
       (add-hook 'kill-buffer-hook (kubernetes-utils-make-cleanup-fn buf) nil t))
     buf))
 
