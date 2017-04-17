@@ -15,6 +15,7 @@
 (defsubst kubernetes-ast--indentation (indent-level)
   (make-string (* indent-level kubernetes-ast--indentation-width) kubernetes-ast--space))
 
+;; TODO: Rewrite as a loop.
 (defun kubernetes-ast-eval (render-ast &optional indent-level)
   "Evaluate RENDER-AST in the context of the current buffer.
 
@@ -22,7 +23,9 @@ INDENT-LEVEL is the current indentation level at which to render.
 
 Warning: This could blow the stack if the AST gets too deep."
   (let ((indent-level (or indent-level 0))
-        (max-lisp-eval-depth 2000))
+        ;; HACK: Temporarily increase interpreter limits for recursive calls.
+        (max-lisp-eval-depth 2000)
+        (max-specpdl-size    4000))
     (pcase render-ast
 
       ;; Core forms
