@@ -92,6 +92,11 @@ balance interface stuttering with update frequency."
   "Face for deletion mark indicators."
   :group 'kubernetes)
 
+(defface kubernetes-selector
+  '((t :inherit magit-branch-remote))
+  "Face for labels used as selectors."
+  :group 'kubernetes)
+
 
 (defconst kubernetes-display-pods-buffer-name "*kubernetes pods*")
 

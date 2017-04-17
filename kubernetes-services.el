@@ -9,6 +9,7 @@
 (require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
+(require 'kubernetes-vars)
 (require 'kubernetes-yaml)
 
 
@@ -40,7 +41,7 @@
     (list
      (when selector
        `(section (selector nil)
-                 (nav-prop (:selector ,selector) ,(funcall detail "Selector" selector))))
+                 (nav-prop (:selector ,selector) ,(funcall detail "Selector" (propertize selector 'face 'kubernetes-selector)))))
      (funcall detail "Label" label)
      (funcall detail "Namespace" ns)
      (funcall detail "Created" created-time)

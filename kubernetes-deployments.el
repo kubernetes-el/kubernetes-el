@@ -9,6 +9,7 @@
 (require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
+(require 'kubernetes-vars)
 (require 'kubernetes-yaml)
 
 
@@ -24,7 +25,7 @@
                                                  (&alist 'name selector))))
          deployment]
     `((section (selector nil)
-               (nav-prop (:selector ,selector) (key-value 12 "Selector" ,selector)))
+               (nav-prop (:selector ,selector) (key-value 12 "Selector" ,(propertize selector 'face 'kubernetes-selector))))
       (key-value 12 "Namespace" ,ns)
       (key-value 12 "Created" ,time))))
 

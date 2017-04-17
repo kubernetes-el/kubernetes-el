@@ -28,7 +28,7 @@
                               nil))))
     `(section (root nil)
               (section (query-header nil)
-                       (key-value 10 "Label" ,query)
+                       (key-value 10 "Label" ,(propertize query 'face 'kubernetes-selector))
                        (padding))
               ,(cond
                 ((and state-set-p (null matches))
