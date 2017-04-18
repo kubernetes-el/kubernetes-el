@@ -299,6 +299,16 @@
     (kubernetes-state-update-config sample-get-config-response)
     (should (kubernetes-state-current-context (kubernetes-state)))))
 
+(ert-deftest kubernetes-state-test--lookup-namespace--no-such-namespace ()
+  (test-helper-with-empty-state
+    (should (not (kubernetes-state-lookup-namespace "example" (kubernetes-state))))))
+
+(ert-deftest kubernetes-state-test--lookup-namespace--existing-namespace ()
+  (test-helper-with-empty-state
+    (kubernetes-state-update-namespaces sample-get-namespaces-response)
+    (should (kubernetes-state-lookup-namespace "ns2" (kubernetes-state)))))
+
+
 (provide 'kubernetes-state-test)
 
 ;;; kubernetes-state-test.el ends here

@@ -426,6 +426,19 @@ If lookup fails, return nil."
     (--find (equal (kubernetes-state-resource-name it) deployment-name)
             (append deployments nil))))
 
+(defun kubernetes-state-lookup-namespace (namespace-name state)
+  "Look up a namespace by name in the current state.
+
+STATE is the current application state.
+
+NAMESPACE-NAME is the name of the namespace to search for.
+
+If lookup succeeds, return the alist representation of the namespace.
+If lookup fails, return nil."
+  (-let [(&alist 'namespaces (&alist 'items namespaces)) state]
+    (--find (equal (kubernetes-state-resource-name it) namespace-name)
+            (append namespaces nil))))
+
 (defun kubernetes-state-resource-name (resource)
   "Get the name of RESOURCE from its metadata.
 
