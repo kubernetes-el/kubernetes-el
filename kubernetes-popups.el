@@ -12,7 +12,6 @@
 (magit-define-popup kubernetes-logs-popup
   "Popup console for pod logging commands."
   :group 'kubernetes
-  :default-arguments '("-p")
   :switches
   '((?p "Print logs for previous instances of the container in this pod" "-p"))
   :options
