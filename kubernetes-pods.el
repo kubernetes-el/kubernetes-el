@@ -29,9 +29,10 @@
                                   'startTime start-time))
           pod))
     `(,(funcall detail "Name" name)
-      (section (selector nil)
-               (nav-prop (:selector ,label-name)
-                         ,(funcall detail "Label" (propertize label-name 'face 'kubernetes-selector))))
+      ,(when label-name
+         `(section (selector nil)
+                   (nav-prop (:selector ,label-name)
+                             ,(funcall detail "Label" (propertize label-name 'face 'kubernetes-selector)))))
       ,(when ns
          `(section (namespace nil)
                    (nav-prop (:namespace-name ,ns)
