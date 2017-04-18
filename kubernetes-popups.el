@@ -3,11 +3,26 @@
 ;;; Code:
 
 (require 'magit-popup)
+(require 'kubernetes-state)
 
 (defgroup kubernetes nil
   "Emacs porcelain for Kubernetes."
   :group 'tools
   :prefix "kubernetes-")
+
+
+;; Utilities
+
+(defun kubernetes-popups--read-existing-file (prompt &optional default)
+  (read-file-name prompt nil default t nil #'file-regular-p))
+
+(defun kubernetes-popups--read-server-and-port (&optional _option defaults)
+  (-let* (((server port) (split-string (or defaults "") ":" t))
+          (port (or (ignore-errors (string-to-number port)) 8080)))
+    (format "%s:%s" (read-string "Server: " server) (read-number "Port: " port))))
+
+
+;; Popup definitions
 
 (magit-define-popup kubernetes-logs-popup
   "Popup console for pod logging commands."
@@ -44,15 +59,6 @@
     "Misc"
     (?h "Describe mode and keybindings" describe-mode)))
 
-(magit-define-popup kubernetes-config-popup
-  "Popup console for showing an overview of available config commands."
-  :group 'kubernetes
-  :actions
-  '("Managing contexts"
-    (?c "Change context" kubernetes-use-context)
-    "Query settings"
-    (?n "Set namespace" kubernetes-set-namespace)))
-
 (magit-define-popup kubernetes-exec-popup
   "Popup console for exec commands for POD."
   :group 'kubernetes
@@ -80,6 +86,47 @@
   '((?p "Pods" kubernetes-show-pods-for-label))
   :default-action 'kubernetes-show-pods-for-label)
 
+
+;; Config popup
+;;
+;; The macro definition is expanded here and modified to support marshalling
+;; state between the state manager and the magit popup's global state.
+
+(defconst kubernetes-config-popup
+  (list :group 'kubernetes
+        :variable 'kubernetes-kubectl-flags
+        :options
+        `("Configuration"
+          (?f "Kubeconfig file" "--kubeconfig=" kubernetes-popups--read-existing-file)
+          (?l "Cluster name in config" "--cluster=" read-string)
+          (?s "Server address and port" "--server=" kubernetes-popups--read-server-and-port)
+          (?u "User in kubeconfig" "--user=" read-string)
+          "Authentication"
+          (?a "CA cert file" "--certificate-authority=" kubernetes-popups--read-existing-file)
+          (?k "Client key file" "--client-key=" kubernetes-popups--read-existing-file)
+          (?r "Client cert file" "--client-certificate=" kubernetes-popups--read-existing-file)
+          (?t "API token" "--token=" read-string))
+        :actions
+        '((?c "Change context" kubernetes-use-context)
+          (?n "Set namespace" kubernetes-set-namespace))))
+
+(defun kubernetes-popups--update-kubectl-state ()
+  ;; HACK: Need to use internal magit vars, since this is run inside the popup
+  ;; refresh hook.
+  (when (eq magit-this-popup 'kubernetes-config-popup)
+    (kubernetes-state-update-kubectl-flags (magit-popup-get-args))))
+
+(defun kubernetes-config-popup (&optional arg)
+  "Popup console for showing an overview of available config commands.
+
+With ARG, execute default command."
+  (interactive "P")
+  (let ((flags (kubernetes-state-kubectl-flags (kubernetes-state))))
+    (setq kubernetes-kubectl-flags flags))
+  (add-hook 'magit-refresh-popup-buffer-hook #'kubernetes-popups--update-kubectl-state)
+  (magit-invoke-popup 'kubernetes-config-popup nil arg))
+
+(magit-define-popup-keys-deferred 'kubernetes-config-popup)
 
 (provide 'kubernetes-popups)
 

@@ -159,6 +159,21 @@
     (should (kubernetes-state-config (kubernetes-state)))
     (should (equal "foo" (kubernetes-state-current-namespace (kubernetes-state))))))
 
+(ert-deftest kubernetes-state-test--kubectl-flags-initialized-using-config-popup-vars ()
+  (let ((kubernetes-kubectl-flags '("--foo=bar" "-x")))
+    (should (equal kubernetes-kubectl-flags (kubernetes-state-kubectl-flags nil)))))
+
+(ert-deftest kubernetes-state-test--kubectl-flags-not-reinitialized-if-present ()
+  (let ((flags '("--foo=bar" "-x")))
+    (test-helper-with-empty-state
+      (kubernetes-state-update-kubectl-flags flags)
+      (should (equal flags (kubernetes-state-kubectl-flags (kubernetes-state)))))))
+
+(ert-deftest kubernetes-state-test--updating-kubectl-flags-updates-global-variable ()
+  (let ((flags '("--foo=bar" "-x")))
+    (test-helper-with-empty-state
+      (kubernetes-state-update-kubectl-flags flags)
+      (should (equal kubernetes-kubectl-flags flags)))))
 
 ;; Test marking/unmarking/deleting actions
 

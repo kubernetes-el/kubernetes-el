@@ -324,9 +324,15 @@
 (kubernetes-state--define-accessors label-query (label-name)
   (cl-assert (stringp label-name)))
 
-(kubernetes-state--define-accessors kubectl-flags (flags)
+(defun kubernetes-state-kubectl-flags (state)
+  (if-let (flags (alist-get 'kubectl-flags state))
+      flags
+    (alist-get 'kubectl-flags (kubernetes-state-update :update-kubectl-flags kubernetes-kubectl-flags))))
+
+(kubernetes-state--define-setter kubectl-flags (flags)
   (cl-assert (listp flags))
-  (cl-assert (-all? #'stringp flags)))
+  (cl-assert (-all? #'stringp flags))
+  (setq kubernetes-kubectl-flags flags))
 
 (kubernetes-state--define-getter marked-configmaps)
 (kubernetes-state--define-getter configmaps-pending-deletion)

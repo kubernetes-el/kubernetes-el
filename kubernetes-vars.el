@@ -65,6 +65,15 @@ balance interface stuttering with update frequency."
   :group 'kubernetes
   :type 'integer)
 
+(defcustom kubernetes-kubectl-flags nil
+  "A list of extra commandline flags to pass to kubectl.
+
+It is a list, where each element is assumed to be a flag of the
+form \"--flag=value\" or \"-flag\"."
+  :type '(repeat (string :tag "Argument"))
+  :group 'kubernetes)
+
+
 (defface kubernetes-context-name
   '((((class color) (background light)) :foreground "SkyBlue4")
     (((class color) (background  dark)) :foreground "LightSkyBlue1"))
@@ -139,6 +148,7 @@ balance interface stuttering with update frequency."
 
 (defvar kubernetes-redraw-hook nil
   "Hook run every time redrawing should occur.")
+
 
 
 (provide 'kubernetes-vars)
