@@ -35,6 +35,8 @@
        (setf (alist-get 'namespaces next) args))
       (:update-current-namespace
        (setf (alist-get 'current-namespace next) args))
+      (:update-kubectl-flags
+       (setf (alist-get 'kubectl-flags next) args))
 
       (:update-config
        (setf (alist-get 'config next) args)
@@ -318,6 +320,10 @@
 
 (kubernetes-state--define-accessors label-query (label-name)
   (cl-assert (stringp label-name)))
+
+(kubernetes-state--define-accessors kubectl-flags (flags)
+  (cl-assert (listp flags))
+  (cl-assert (--all? (stringp (car it)) flags)))
 
 (kubernetes-state--define-getter marked-configmaps)
 (kubernetes-state--define-getter configmaps-pending-deletion)
