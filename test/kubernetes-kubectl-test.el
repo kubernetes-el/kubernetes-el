@@ -429,6 +429,7 @@ will be mocked."
                         state
                         #'ignore))))
 
+
 ;; Delete deployment
 
 (ert-deftest kubernetes-kubectl-test--deleting-deployment-succeeds ()
