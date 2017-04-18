@@ -355,89 +355,36 @@
 
 ;; Convenience functions.
 
-(defun kubernetes-state-clear-error-if-stale (error-display-time)
-  (-when-let ((&alist 'time err-time) (kubernetes-state-last-error (kubernetes-state)))
-    (when (< error-display-time
-             (- (time-to-seconds) (time-to-seconds err-time)))
-      (kubernetes-state-update :update-last-error nil))))
+(defmacro kubernetes-state-define-named-lookup (resource state-key)
+  "Define `kubernetes-state-lookup-RESOURCE' for looking up an item by name.
 
-(defun kubernetes-state-lookup-pod (pod-name state)
-  "Look up a pod by name in the current state.
+RESOURCE is the name of the resource.
 
-POD-NAME is the name of the pod to search for.
+STATE-KEY is the key to look up an item in the state."
+  (let* ((ident (symbol-name resource))
+         (docstring
+          (format "Look up a %s by name in the current state.
 
-STATE is the current application state.
-
-If lookup succeeds, return the alist representation of the pod.
-If lookup fails, return nil."
-  (-let [(&alist 'pods (&alist 'items pods)) state]
-    (--find (equal (kubernetes-state-resource-name it) pod-name)
-            (append pods nil))))
-
-(defun kubernetes-state-lookup-configmap (configmap-name state)
-  "Look up a configmap by name in the current state.
+%s-NAME is the name of the %s to search for.
 
 STATE is the current application state.
 
-CONFIGMAP-NAME is the name of the configmap to search for.
-
-If lookup succeeds, return the alist representation of the configmap.
+If lookup succeeds, return the alist representation of the resource.
 If lookup fails, return nil."
-  (-let [(&alist 'configmaps (&alist 'items configmaps)) state]
-    (--find (equal (kubernetes-state-resource-name it) configmap-name)
-            (append configmaps nil))))
+                  ident (upcase ident) ident)))
 
-(defun kubernetes-state-lookup-secret (secret-name state)
-  "Look up a secret by name in the current state.
+    `(defun ,(intern (format "kubernetes-state-lookup-%s" resource)) (name state)
+       ,docstring
+       (-let [(&alist ',state-key (&alist 'items items)) state]
+         (seq-find (lambda (it) (equal (kubernetes-state-resource-name it) name))
+                   items)))))
 
-STATE is the current application state.
-
-SECRET-NAME is the name of the secret to search for.
-
-If lookup succeeds, return the alist representation of the secret.
-If lookup fails, return nil."
-  (-let [(&alist 'secrets (&alist 'items secrets)) state]
-    (--find (equal (kubernetes-state-resource-name it) secret-name)
-            (append secrets nil))))
-
-(defun kubernetes-state-lookup-service (service-name state)
-  "Look up a service by name in the current state.
-
-STATE is the current application state.
-
-SERVICE-NAME is the name of the service to search for.
-
-If lookup succeeds, return the alist representation of the service.
-If lookup fails, return nil."
-  (-let [(&alist 'services (&alist 'items services)) state]
-    (--find (equal (kubernetes-state-resource-name it) service-name)
-            (append services nil))))
-
-(defun kubernetes-state-lookup-deployment (deployment-name state)
-  "Look up a deployment by name in the current state.
-
-STATE is the current application state.
-
-DEPLOYMENT-NAME is the name of the deployment to search for.
-
-If lookup succeeds, return the alist representation of the deployment.
-If lookup fails, return nil."
-  (-let [(&alist 'deployments (&alist 'items deployments)) state]
-    (--find (equal (kubernetes-state-resource-name it) deployment-name)
-            (append deployments nil))))
-
-(defun kubernetes-state-lookup-namespace (namespace-name state)
-  "Look up a namespace by name in the current state.
-
-STATE is the current application state.
-
-NAMESPACE-NAME is the name of the namespace to search for.
-
-If lookup succeeds, return the alist representation of the namespace.
-If lookup fails, return nil."
-  (-let [(&alist 'namespaces (&alist 'items namespaces)) state]
-    (--find (equal (kubernetes-state-resource-name it) namespace-name)
-            (append namespaces nil))))
+(kubernetes-state-define-named-lookup pod pods)
+(kubernetes-state-define-named-lookup configmap configmaps)
+(kubernetes-state-define-named-lookup secret secrets)
+(kubernetes-state-define-named-lookup service services)
+(kubernetes-state-define-named-lookup deployment deployments)
+(kubernetes-state-define-named-lookup namespace namespaces)
 
 (defun kubernetes-state-resource-name (resource)
   "Get the name of RESOURCE from its metadata.
@@ -450,6 +397,12 @@ pod, secret, configmap, etc."
 (defun kubernetes-state-current-context (state)
   (when-let (config (kubernetes-state-config state))
     (kubernetes-state--lookup-current-context config)))
+
+(defun kubernetes-state-clear-error-if-stale (error-display-time)
+  (-when-let ((&alist 'time err-time) (kubernetes-state-last-error (kubernetes-state)))
+    (when (< error-display-time
+             (- (time-to-seconds) (time-to-seconds err-time)))
+      (kubernetes-state-update :update-last-error nil))))
 
 (defun kubernetes-state-trigger-redraw ()
   (kubernetes-state-update :update-current-time (current-time))
