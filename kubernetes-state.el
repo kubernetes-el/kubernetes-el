@@ -272,27 +272,30 @@
   `(defun ,(intern (format "kubernetes-state-%s" attr)) (state)
      (alist-get (quote ,attr) state)))
 
-(defmacro kubernetes-state--define-accessors (attr arglist &rest assertions)
+(defmacro kubernetes-state--define-setter (attr arglist &rest forms-before-update)
   (declare (indent 2))
   (let ((getter (intern (format "kubernetes-state-%s" attr)))
         (arg
          (pcase arglist
            (`(,x) x)
            (xs `(list ,@xs)))))
-    `(progn
-       (kubernetes-state--define-getter ,attr)
+    `(defun ,(intern (format "kubernetes-state-update-%s" attr)) ,arglist
+       ,@forms-before-update
+       (let ((prev (,getter (kubernetes-state)))
+             (arg ,arg))
+         (kubernetes-state-update ,(intern (format ":update-%s" attr)) ,arg)
 
-       (defun ,(intern (format "kubernetes-state-update-%s" attr)) ,arglist
-         ,@assertions
-         (let ((prev (,getter (kubernetes-state)))
-               (arg ,arg))
-           (kubernetes-state-update ,(intern (format ":update-%s" attr)) ,arg)
+         ;; Redraw immediately if this value was previously unset.
+         (unless prev
+           (kubernetes-state-trigger-redraw))
 
-           ;; Redraw immediately if this value was previously unset.
-           (unless prev
-             (kubernetes-state-trigger-redraw))
+         arg))))
 
-           arg)))))
+(defmacro kubernetes-state--define-accessors (attr arglist &rest forms-before-update)
+  (declare (indent 2))
+  `(progn
+     (kubernetes-state--define-getter ,attr)
+     (kubernetes-state--define-setter ,attr ,arglist ,@forms-before-update)))
 
 (kubernetes-state--define-accessors current-namespace (namespace)
   (cl-assert (stringp namespace)))
