@@ -128,7 +128,7 @@
   (kubernetes-state-update-config sample-get-config-response))
 
 (kubernetes-state-test-accessor kubectl-flags
-  (kubernetes-state-update-kubectl-flags '(("--key=" . value))))
+  (kubernetes-state-update-kubectl-flags '("--key=value")))
 
 (ert-deftest kubernetes-state-test--error-is-alist ()
   (test-helper-with-empty-state

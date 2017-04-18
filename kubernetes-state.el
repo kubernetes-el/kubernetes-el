@@ -323,7 +323,7 @@
 
 (kubernetes-state--define-accessors kubectl-flags (flags)
   (cl-assert (listp flags))
-  (cl-assert (--all? (stringp (car it)) flags)))
+  (cl-assert (-all? #'stringp flags)))
 
 (kubernetes-state--define-getter marked-configmaps)
 (kubernetes-state--define-getter configmaps-pending-deletion)

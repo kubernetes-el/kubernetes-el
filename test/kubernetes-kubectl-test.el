@@ -21,7 +21,7 @@ FORM is the Elisp form to be evaluated, in which `kubernetes-kubectl'
 will be mocked."
   (declare (indent 2))
   `(noflet ((kubernetes-kubectl
-             (_props args on-success &optional _on-error cleanup-cb)
+             (_props _state args on-success &optional _on-error cleanup-cb)
 
              ;; Silence byte-compiler warnings
              this-fn
@@ -49,7 +49,7 @@ FORM is the Elisp form to be evaluated, in which `kubernetes-kubectl'
 will be mocked."
   (declare (indent 2))
   `(noflet ((kubernetes-kubectl
-             (_props args _on-success &optional on-error cleanup-cb)
+             (_props _state args _on-success &optional on-error cleanup-cb)
 
              ;; Silence byte-compiler warnings
              this-fn
@@ -77,12 +77,21 @@ will be mocked."
 
 ;; Subprocess calls
 
+(ert-deftest kubernetes-kubectl-test--flags-from-state-applies-namespace ()
+  (let ((state '((current-namespace . "foo"))))
+    (should (equal '("--namespace=foo") (kubernetes-kubectl--flags-from-state state)))))
+
+(ert-deftest kubernetes-kubectl-test--flags-from-state-applies-extra-flags ()
+  (let ((state '((kubectl-flags . ("--foo=bar" "-x")))))
+    (should (equal '("--foo=bar" "-x") (kubernetes-kubectl--flags-from-state state)))))
+
 (ert-deftest kubernetes-kubectl-test--running-kubectl-works ()
   (if (executable-find kubernetes-kubectl-executable)
       (let ((result-string (kubernetes-kubectl-await-on-async kubernetes-kubectl-test-props nil
                                             (lambda (props _ cb)
                                               (kubernetes-kubectl
                                                props
+                                               nil
                                                '("version" "--client")
                                                (lambda (buf)
                                                  (with-current-buffer buf
@@ -108,14 +117,6 @@ will be mocked."
        (lambda ()
          (setq cleanup-callback-called t))))
     (should cleanup-callback-called)))
-
-(ert-deftest kubernetes-kubectl-test--get-pods-applies-current-namespace ()
-  (let ((state '((current-namespace . "foo"))))
-    (with-successful-response-at `("get" "pods" "-o" "json" "--namespace=foo")
-        "{}"
-      (kubernetes-kubectl-get-pods kubernetes-kubectl-test-props
-                 state
-                 #'ignore))))
 
 (ert-deftest kubernetes-kubectl-test--viewing-config-returns-parsed-json ()
   (let* ((sample-response (test-helper-string-resource "config-view-response.json"))
@@ -154,16 +155,6 @@ will be mocked."
                      (setq on-error-called t))))
     (should on-error-called)))
 
-(ert-deftest kubernetes-kubectl-test--deleting-pod-applies-current-namespace ()
-  (let* ((pod-name "example-v3-4120544588-55kmw")
-         (state '((current-namespace . "foo"))))
-    (with-successful-response-at `("delete" "pod" ,pod-name "-o" "name" "--namespace=foo")
-        "pod/example-v3-4120544588-55kmw"
-      (kubernetes-kubectl-delete-pod kubernetes-kubectl-test-props
-                   state
-                   pod-name
-                   #'ignore))))
-
 
 ;; Delete service
 
@@ -188,16 +179,6 @@ will be mocked."
                          (setq on-error-called t))))
     (should on-error-called)))
 
-(ert-deftest kubernetes-kubectl-test--deleting-service-applies-current-namespace ()
-  (let* ((service-name "example-svc")
-         (state '((current-namespace . "foo"))))
-    (with-successful-response-at `("delete" "service" ,service-name "-o" "name" "--namespace=foo")
-        "service/example-svc"
-      (kubernetes-kubectl-delete-service kubernetes-kubectl-test-props
-                       state
-                       service-name
-                       #'ignore))))
-
 
 ;; Describe pod
 
@@ -213,16 +194,6 @@ will be mocked."
                        (setq on-success-called t)
                        (should (equal sample-response str)))))
     (should on-success-called)))
-
-(ert-deftest kubernetes-kubectl-test--describing-pod-applies-current-namespace ()
-  (let* ((pod-name "example-v3-4120544588-55kmw")
-         (state '((current-namespace . "foo"))))
-    (with-successful-response-at `("describe" "pod" ,pod-name "--namespace=foo")
-        ""
-      (kubernetes-kubectl-describe-pod kubernetes-kubectl-test-props
-                     state
-                     pod-name
-                     #'ignore))))
 
 
 ;; Use context
@@ -276,14 +247,6 @@ will be mocked."
                          (setq cleanup-callback-called t))))
     (should cleanup-callback-called)))
 
-(ert-deftest kubernetes-kubectl-test--get-configmaps-applies-current-namespace ()
-  (let ((state '((current-namespace . "foo"))))
-    (with-successful-response-at `("get" "configmaps" "-o" "json" "--namespace=foo")
-        "{}"
-      (kubernetes-kubectl-get-configmaps kubernetes-kubectl-test-props
-                       state
-                       #'ignore))))
-
 
 ;; Delete configmap
 
@@ -308,17 +271,6 @@ will be mocked."
                            (setq on-error-called t))))
     (should on-error-called)))
 
-(ert-deftest kubernetes-kubectl-test--deleting-configmap-applies-current-namespace ()
-  (let* ((configmap-name "example-config")
-         (state '((current-namespace . "foo"))))
-    (with-successful-response-at `("delete" "configmap" ,configmap-name "-o" "name"
-                                   "--namespace=foo")
-        "configmap/example-config"
-      (kubernetes-kubectl-delete-configmap kubernetes-kubectl-test-props
-                         state
-                         configmap-name
-                         #'ignore))))
-
 
 ;; Get secrets
 
@@ -335,14 +287,6 @@ will be mocked."
                     (lambda ()
                       (setq cleanup-callback-called t))))
     (should cleanup-callback-called)))
-
-(ert-deftest kubernetes-kubectl-test--get-secrets-applies-current-namespace ()
-  (let ((state '((current-namespace . "foo"))))
-    (with-successful-response-at `("get" "secrets" "-o" "json" "--namespace=foo")
-        "{}"
-      (kubernetes-kubectl-get-secrets kubernetes-kubectl-test-props
-                    state
-                    #'ignore))))
 
 
 ;; Delete secret
@@ -368,17 +312,6 @@ will be mocked."
                         (setq on-error-called t))))
     (should on-error-called)))
 
-(ert-deftest kubernetes-kubectl-test--deleting-secret-applies-current-namespace ()
-  (let* ((secret-name "example-config")
-         (state '((current-namespace . "foo"))))
-    (with-successful-response-at `("delete" "secret" ,secret-name "-o" "name"
-                                   "--namespace=foo")
-        "secret/example-config"
-      (kubernetes-kubectl-delete-secret kubernetes-kubectl-test-props
-                      state
-                      secret-name
-                      #'ignore))))
-
 
 ;; Get services
 
@@ -396,14 +329,6 @@ will be mocked."
                        (setq cleanup-callback-called t))))
     (should cleanup-callback-called)))
 
-(ert-deftest kubernetes-kubectl-test--get-services-applies-current-namespace ()
-  (let ((state '((current-namespace . "foo"))))
-    (with-successful-response-at `("get" "services" "-o" "json" "--namespace=foo")
-        "{}"
-      (kubernetes-kubectl-get-services kubernetes-kubectl-test-props
-                     state
-                     #'ignore))))
-
 
 ;; Get deployments
 
@@ -420,14 +345,6 @@ will be mocked."
                         (lambda ()
                           (setq cleanup-callback-called t))))
     (should cleanup-callback-called)))
-
-(ert-deftest kubernetes-kubectl-test--get-deployments-applies-current-namespace ()
-  (let ((state '((current-namespace . "foo"))))
-    (with-successful-response-at `("get" "deployments" "-o" "json" "--namespace=foo")
-        "{}"
-      (kubernetes-kubectl-get-deployments kubernetes-kubectl-test-props
-                        state
-                        #'ignore))))
 
 
 ;; Delete deployment
@@ -452,17 +369,6 @@ will be mocked."
                           (lambda (_)
                             (setq on-error-called t))))
     (should on-error-called)))
-
-(ert-deftest kubernetes-kubectl-test--deleting-deployment-applies-current-namespace ()
-  (let* ((deployment-name "example-config")
-         (state '((current-namespace . "foo"))))
-    (with-successful-response-at `("delete" "deployment" ,deployment-name "-o" "name"
-                                   "--namespace=foo")
-        "deployment/example-config"
-      (kubernetes-kubectl-delete-deployment kubernetes-kubectl-test-props
-                          state
-                          deployment-name
-                          #'ignore))))
 
 
 ;; Error handler
