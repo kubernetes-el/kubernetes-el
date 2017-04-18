@@ -20,7 +20,9 @@
 
 (defun kubernetes-configmaps--format-detail (configmap)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) configmap]
-    `((key-value 12 "Namespace" ,ns)
+    `((section (namespace nil)
+               (nav-prop (:namespace-name ,ns)
+                         (key-value 12 "Namespace" ,(propertize ns 'face 'kubernetes-namespace))))
       (key-value 12 "Created" ,time))))
 
 (defun kubernetes-configmaps--format-line (state configmap)

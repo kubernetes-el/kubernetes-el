@@ -43,7 +43,10 @@
        `(section (selector nil)
                  (nav-prop (:selector ,selector) ,(funcall detail "Selector" (propertize selector 'face 'kubernetes-selector)))))
      (funcall detail "Label" label)
-     (funcall detail "Namespace" ns)
+     (when ns
+       `(section (namespace nil)
+                 (nav-prop (:namespace-name ,ns)
+                           ,(funcall detail "Namespace" (propertize ns 'face 'kubernetes-namespace)))))
      (funcall detail "Created" created-time)
      (funcall detail "Internal IP" internal-ip)
      (when-let (ips (append ips nil))

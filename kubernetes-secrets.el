@@ -19,7 +19,9 @@
 
 (defun kubernetes-secrets--format-detail (secret)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) secret]
-    `((key-value 12 "Namespace" ,ns)
+    `((section (namespace nil)
+               (nav-prop (:namespace-name ,ns)
+                         (key-value 12 "Namespace" ,(propertize ns 'face 'kubernetes-namespace))))
       (key-value 12 "Created" ,time))))
 
 (defun kubernetes-secrets--format-line (state secret)
