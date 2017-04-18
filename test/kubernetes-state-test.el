@@ -35,10 +35,10 @@
 
 (ert-deftest kubernetes-state-test--updating-and-retrieving-state ()
   (test-helper-with-empty-state
-   (let ((updated (kubernetes-state-update :update-last-error 'test)))
-     (should kubernetes-state--current-state)
-     (should (equal updated kubernetes-state--current-state))
-     (should (equal updated (kubernetes-state))))))
+    (let ((updated (kubernetes-state-update :update-last-error 'test)))
+      (should kubernetes-state--current-state)
+      (should (equal updated kubernetes-state--current-state))
+      (should (equal updated (kubernetes-state))))))
 
 
 ;; Test basic sanitisation of state transformations.
@@ -62,9 +62,9 @@
         (get-fname (intern (format "kubernetes-state-%s" attr))))
     `(ert-deftest ,test-name ()
        (test-helper-with-empty-state
-        (let* ((value '("foo" "bar" "baz"))
-               (state (list (cons (quote ,attr) value))))
-          (should (equal value (,get-fname state))))))))
+         (let* ((value '("foo" "bar" "baz"))
+                (state (list (cons (quote ,attr) value))))
+           (should (equal value (,get-fname state))))))))
 
 (kubernetes-state-test-getter marked-configmaps)
 (kubernetes-state-test-getter configmaps-pending-deletion)
@@ -93,12 +93,12 @@
 
     `(ert-deftest ,test-name ()
        (test-helper-with-empty-state
-        (let ((update-result ,update)
-              (get-result (,get-fname (kubernetes-state))))
-          (should (kubernetes-state))
-          (should update-result)
-          (should get-result)
-          (should (equal update-result get-result)))))))
+         (let ((update-result ,update)
+               (get-result (,get-fname (kubernetes-state))))
+           (should (kubernetes-state))
+           (should update-result)
+           (should get-result)
+           (should (equal update-result get-result)))))))
 
 (kubernetes-state-test-accessor current-namespace
   (kubernetes-state-update-current-namespace "example-ns"))
@@ -171,46 +171,46 @@
 
        (ert-deftest ,(intern (format "kubernetes-state-test--mark-%s" resource)) ()
          (test-helper-with-empty-state
-          (,mark-fn "foo")
-          (,mark-fn "bar")
-          (,mark-fn "bar")
-          (should (-same-items? '("foo" "bar") (,get-marks-fn (kubernetes-state))))
-          (let ((sans-marked (delq (assoc (quote ,marks-state-key) kubernetes-state--current-state) kubernetes-state--current-state)))
-            (should (null sans-marked)))))
+           (,mark-fn "foo")
+           (,mark-fn "bar")
+           (,mark-fn "bar")
+           (should (-same-items? '("foo" "bar") (,get-marks-fn (kubernetes-state))))
+           (let ((sans-marked (delq (assoc (quote ,marks-state-key) kubernetes-state--current-state) kubernetes-state--current-state)))
+             (should (null sans-marked)))))
 
        (ert-deftest ,(intern (format "kubernetes-state-test--unmark-%s" resource)) ()
          (test-helper-with-empty-state
-          (,mark-fn "foo")
-          (,mark-fn "bar")
-          (,unmark-fn "bar")
-          (should (-same-items? '("foo") (,get-marks-fn (kubernetes-state))))))
+           (,mark-fn "foo")
+           (,mark-fn "bar")
+           (,unmark-fn "bar")
+           (should (-same-items? '("foo") (,get-marks-fn (kubernetes-state))))))
 
        (ert-deftest ,(intern (format "kubernetes-state-test--delete-%s" resource)) ()
          (test-helper-with-empty-state
-          (,mark-fn "foo")
-          (,mark-fn "bar")
-          (,delete-fn "foo")
-          (,delete-fn "baz")
-          (should (equal '("bar") (,get-marks-fn (kubernetes-state))))
-          (should (-same-items? '("foo" "baz") (,get-pending-deletion-fn (kubernetes-state))))))
+           (,mark-fn "foo")
+           (,mark-fn "bar")
+           (,delete-fn "foo")
+           (,delete-fn "baz")
+           (should (equal '("bar") (,get-marks-fn (kubernetes-state))))
+           (should (-same-items? '("foo" "baz") (,get-pending-deletion-fn (kubernetes-state))))))
 
        (ert-deftest ,(intern (format "kubernetes-state-test--updating-%ss-cleans-stale-marks" resource)) ()
          (test-helper-with-empty-state
-          (,mark-fn "foo")
-          (,mark-fn "bar")
-          (,mark-fn "baz")
-          (,update-fn `((items . [((metadata . ((name . "bar"))))
-                                  ((metadata . ((name . "baz"))))])))
-          (should (-same-items? '("bar" "baz") (,get-marks-fn (kubernetes-state))))))
+           (,mark-fn "foo")
+           (,mark-fn "bar")
+           (,mark-fn "baz")
+           (,update-fn `((items . [((metadata . ((name . "bar"))))
+                                   ((metadata . ((name . "baz"))))])))
+           (should (-same-items? '("bar" "baz") (,get-marks-fn (kubernetes-state))))))
 
        (ert-deftest ,(intern (format "kubernetes-state-test--updating-%ss-cleans-stale-deletions" resource)) ()
          (test-helper-with-empty-state
-          (,delete-fn "foo")
-          (,delete-fn "bar")
-          (,delete-fn "baz")
-          (,update-fn `((items . [((metadata . ((name . "bar"))))
-                                  ((metadata . ((name . "baz"))))])))
-          (should (-same-items? '("bar" "baz") (,get-pending-deletion-fn (kubernetes-state)))))))))
+           (,delete-fn "foo")
+           (,delete-fn "bar")
+           (,delete-fn "baz")
+           (,update-fn `((items . [((metadata . ((name . "bar"))))
+                                   ((metadata . ((name . "baz"))))])))
+           (should (-same-items? '("bar" "baz") (,get-pending-deletion-fn (kubernetes-state)))))))))
 
 (kubernetes-state-marking-tests pod)
 (kubernetes-state-marking-tests configmap)
@@ -240,14 +240,14 @@
 
 (ert-deftest kubernetes-state-test--clear-error-if-stale--stale ()
   (test-helper-with-empty-state
-   (let* ((time (time-subtract (current-time) (time-to-seconds 10)))
-          (kubernetes-state--current-state `((last-error . ((time . ,time))))))
-     (kubernetes-state-clear-error-if-stale 5)
-     (should (null (kubernetes-state-last-error (kubernetes-state)))))))
+    (let* ((time (time-subtract (current-time) (time-to-seconds 10)))
+           (kubernetes-state--current-state `((last-error . ((time . ,time))))))
+      (kubernetes-state-clear-error-if-stale 5)
+      (should (null (kubernetes-state-last-error (kubernetes-state)))))))
 
 (ert-deftest kubernetes-state-test--lookup-pod--no-such-pod ()
   (test-helper-with-empty-state
-   (should (not (kubernetes-state-lookup-pod "example" (kubernetes-state))))))
+    (should (not (kubernetes-state-lookup-pod "example" (kubernetes-state))))))
 
 (ert-deftest kubernetes-state-test--lookup-pod--existing-pod ()
   (test-helper-with-empty-state
@@ -298,6 +298,16 @@
   (test-helper-with-empty-state
     (kubernetes-state-update-config sample-get-config-response)
     (should (kubernetes-state-current-context (kubernetes-state)))))
+
+(ert-deftest kubernetes-state-test--lookup-namespace--no-such-namespace ()
+  (test-helper-with-empty-state
+    (should (not (kubernetes-state-lookup-namespace "example" (kubernetes-state))))))
+
+(ert-deftest kubernetes-state-test--lookup-namespace--existing-namespace ()
+  (test-helper-with-empty-state
+    (kubernetes-state-update-namespaces sample-get-namespaces-response)
+    (should (kubernetes-state-lookup-namespace "ns2" (kubernetes-state)))))
+
 
 (provide 'kubernetes-state-test)
 

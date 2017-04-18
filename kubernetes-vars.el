@@ -97,6 +97,11 @@ balance interface stuttering with update frequency."
   "Face for labels used as selectors."
   :group 'kubernetes)
 
+(defface kubernetes-namespace
+  '((t :inherit magit-tag))
+  "Face for namespace references."
+  :group 'kubernetes)
+
 
 (defconst kubernetes-display-pods-buffer-name "*kubernetes pods*")
 
@@ -109,6 +114,8 @@ balance interface stuttering with update frequency."
 (defconst kubernetes-display-service-buffer-name "*kubernetes service*")
 
 (defconst kubernetes-display-configmaps-buffer-name "*kubernetes configmaps*")
+
+(defconst kubernetes-display-namespace-buffer-name "*kubernetes namespace*")
 
 (defconst kubernetes-display-secret-buffer-name "*kubernetes secret*")
 

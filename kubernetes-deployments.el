@@ -26,7 +26,9 @@
          deployment]
     `((section (selector nil)
                (nav-prop (:selector ,selector) (key-value 12 "Selector" ,(propertize selector 'face 'kubernetes-selector))))
-      (key-value 12 "Namespace" ,ns)
+      (section (namespace nil)
+               (nav-prop (:namespace-name ,ns)
+                         (key-value 12 "Namespace" ,(propertize ns 'face 'kubernetes-namespace))))
       (key-value 12 "Created" ,time))))
 
 (defun kubernetes-deployments--format-line (state deployment)

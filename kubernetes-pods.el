@@ -32,7 +32,10 @@
       (section (selector nil)
                (nav-prop (:selector ,label-name)
                          ,(funcall detail "Label" (propertize label-name 'face 'kubernetes-selector))))
-      ,(funcall detail "Namespace" ns)
+      ,(when ns
+         `(section (namespace nil)
+                   (nav-prop (:namespace-name ,ns)
+                             (key-value 12 "Namespace" ,(propertize ns 'face 'kubernetes-namespace)))))
       ,(funcall detail "Image" image)
       ,(funcall detail "Host IP" host-ip)
       ,(funcall detail "Pod IP" pod-ip)
