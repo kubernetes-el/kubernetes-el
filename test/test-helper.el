@@ -46,7 +46,8 @@
 
 (defmacro test-helper-with-empty-state (&rest body)
   (declare (indent 0))
-  `(let ((kubernetes-state--current-state nil))
+  `(let ((kubernetes-state--current-state nil)
+         (kubernetes-kubectl-flags))
      ,@body))
 
 

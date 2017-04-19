@@ -35,6 +35,8 @@
        (setf (alist-get 'namespaces next) args))
       (:update-current-namespace
        (setf (alist-get 'current-namespace next) args))
+      (:update-kubectl-flags
+       (setf (alist-get 'kubectl-flags next) args))
 
       (:update-config
        (setf (alist-get 'config next) args)
@@ -270,27 +272,30 @@
   `(defun ,(intern (format "kubernetes-state-%s" attr)) (state)
      (alist-get (quote ,attr) state)))
 
-(defmacro kubernetes-state--define-accessors (attr arglist &rest assertions)
+(defmacro kubernetes-state--define-setter (attr arglist &rest forms-before-update)
   (declare (indent 2))
   (let ((getter (intern (format "kubernetes-state-%s" attr)))
         (arg
          (pcase arglist
            (`(,x) x)
            (xs `(list ,@xs)))))
-    `(progn
-       (kubernetes-state--define-getter ,attr)
+    `(defun ,(intern (format "kubernetes-state-update-%s" attr)) ,arglist
+       ,@forms-before-update
+       (let ((prev (,getter (kubernetes-state)))
+             (arg ,arg))
+         (kubernetes-state-update ,(intern (format ":update-%s" attr)) ,arg)
 
-       (defun ,(intern (format "kubernetes-state-update-%s" attr)) ,arglist
-         ,@assertions
-         (let ((prev (,getter (kubernetes-state)))
-               (arg ,arg))
-           (kubernetes-state-update ,(intern (format ":update-%s" attr)) ,arg)
+         ;; Redraw immediately if this value was previously unset.
+         (unless prev
+           (kubernetes-state-trigger-redraw))
 
-           ;; Redraw immediately if this value was previously unset.
-           (unless prev
-             (kubernetes-state-trigger-redraw))
+         arg))))
 
-           arg)))))
+(defmacro kubernetes-state--define-accessors (attr arglist &rest forms-before-update)
+  (declare (indent 2))
+  `(progn
+     (kubernetes-state--define-getter ,attr)
+     (kubernetes-state--define-setter ,attr ,arglist ,@forms-before-update)))
 
 (kubernetes-state--define-accessors current-namespace (namespace)
   (cl-assert (stringp namespace)))
@@ -318,6 +323,16 @@
 
 (kubernetes-state--define-accessors label-query (label-name)
   (cl-assert (stringp label-name)))
+
+(defun kubernetes-state-kubectl-flags (state)
+  (if-let (flags (alist-get 'kubectl-flags state))
+      flags
+    (alist-get 'kubectl-flags (kubernetes-state-update :update-kubectl-flags kubernetes-kubectl-flags))))
+
+(kubernetes-state--define-setter kubectl-flags (flags)
+  (cl-assert (listp flags))
+  (cl-assert (-all? #'stringp flags))
+  (setq kubernetes-kubectl-flags flags))
 
 (kubernetes-state--define-getter marked-configmaps)
 (kubernetes-state--define-getter configmaps-pending-deletion)
