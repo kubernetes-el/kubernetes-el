@@ -22,10 +22,24 @@
 (defun kubernetes-deployments--format-detail (deployment)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
                  'spec (&alist 'selector (&alist 'matchLabels
-                                                 (&alist 'name selector))))
+                                                 (&alist 'name selector-name
+                                                         'component component-name)
+                                                 'matchExpressions match-expressions)))
          deployment]
-    `((section (selector nil)
-               (nav-prop (:selector ,selector) (key-value 12 "Selector" ,(propertize selector 'face 'kubernetes-selector))))
+    `(,(when selector-name
+         `(section (selector nil)
+                   (nav-prop (:selector ,selector-name)
+                             (key-value 12 "Selector" ,(propertize selector-name 'face 'kubernetes-selector)))))
+      ,(when component-name
+         `(section (component nil)
+                   (nav-prop (:component ,component-name)
+                             (key-value 12 "Component" ,(propertize component-name 'face 'kubernetes-component)))))
+
+      ,(when match-expressions
+         `(section (expressions nil)
+                   (heading "Match Expressions")
+                   (indent ,(kubernetes-yaml-render match-expressions))))
+
       (section (namespace nil)
                (nav-prop (:namespace-name ,ns)
                          (key-value 12 "Namespace" ,(propertize ns 'face 'kubernetes-namespace))))
