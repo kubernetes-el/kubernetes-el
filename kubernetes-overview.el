@@ -92,8 +92,12 @@ Type \\[kubernetes-refresh] to refresh the buffer.
 (defun kubernetes-overview ()
   "Display an overview buffer for Kubernetes."
   (interactive)
-  (kubernetes-commands-display-buffer (kubernetes-overview--initialize-buffer))
-  (message (substitute-command-keys "\\<kubernetes-overview-mode-map>Type \\[kubernetes-overview-popup] for usage.")))
+  (let ((dir default-directory)
+        (buf (kubernetes-overview--initialize-buffer)))
+    (kubernetes-commands-display-buffer buf)
+    (with-current-buffer buf
+      (cd dir))
+    (message (substitute-command-keys "\\<kubernetes-overview-mode-map>Type \\[kubernetes-overview-popup] for usage."))))
 
 
 (provide 'kubernetes-overview)
