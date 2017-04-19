@@ -22,20 +22,19 @@
            context)
           (context-name (propertize name 'face 'kubernetes-context-name))
           (namespace-in-use (or current-namespace context-namespace)))
-    `(nav-prop :display-config
-               (heading (key-value 12 "Context" ,context-name))
-               (key-value 12 "Cluster" ,cluster-name)
-               (section (namespace nil)
-                        (nav-prop (:namespace-name ,namespace-in-use)
-                                  (key-value 12 "Namespace" ,(propertize namespace-in-use 'face 'kubernetes-namespace)))))))
+    `((nav-prop :display-config
+                (heading (key-value 12 "Context" ,context-name))
+                (key-value 12 "Cluster" ,cluster-name))
+      (section (namespace nil)
+               (nav-prop (:namespace-name ,namespace-in-use)
+                         (key-value 12 "Namespace" ,(propertize namespace-in-use 'face 'kubernetes-namespace)))))))
 
 (defun kubernetes-contexts--render-namespace-only (current-namespace)
   (let ((none (propertize "<none>" 'face 'magit-dimmed)))
-    `(nav-prop :display-config
-               (heading (key-value 12 "Context" ,none))
-               (section (namespace nil)
-                        (nav-prop (:namespace-name ,current-namespace)
-                                  (key-value 12 "Namespace" ,(propertize current-namespace 'face 'kubernetes-namespace)))))))
+    `((heading (nav-prop :display-config (key-value 12 "Context" ,none)))
+      (section (namespace nil)
+               (nav-prop (:namespace-name ,current-namespace)
+                         (key-value 12 "Namespace" ,(propertize current-namespace 'face 'kubernetes-namespace)))))))
 
 (defun kubernetes-contexts--render-fetching ()
   (let ((fetching (propertize "Fetching..." 'face 'kubernetes-progress-indicator)))
