@@ -38,19 +38,19 @@
   "Redraws the main buffer using the current state."
   (when-let (buf (get-buffer kubernetes-overview-buffer-name))
     (with-current-buffer buf
-      ;; HACK: Only redraw the buffer if it is in the selected window.
-      ;;
-      ;; The cursor moves unpredictably in a redraw, which ruins the current
-      ;; position in the buffer if a popup window is open.
-      (when (equal (get-buffer-window buf)
-                   (selected-window))
-        (kubernetes-utils--save-window-state
-         (let ((inhibit-read-only t))
-           (erase-buffer)
-           (kubernetes-ast-eval (kubernetes-overview-render (kubernetes-state)))))
+      ;; If a region is active, a redraw would affect the region in
+      ;; unpredictable ways.
+      (unless (region-active-p)
+        ;; Suppress redrawing if the overview is not selected. This prevents
+        ;; point from jumping around when a magit popup is open.
+        (when (member (selected-window) (get-buffer-window-list buf))
+          (kubernetes-utils--save-window-state
+           (let ((inhibit-read-only t))
+             (erase-buffer)
+             (kubernetes-ast-eval (kubernetes-overview-render (kubernetes-state)))))
 
-        ;; Force the section at point to highlight.
-        (magit-section-update-highlight)))))
+          ;; Force the section at point to highlight.
+          (magit-section-update-highlight))))))
 
 (defun kubernetes-overview--poll (&optional verbose)
   (kubernetes-configmaps-refresh verbose)
