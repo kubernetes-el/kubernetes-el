@@ -37,6 +37,8 @@
        (setf (alist-get 'current-namespace next) args))
       (:update-kubectl-flags
        (setf (alist-get 'kubectl-flags next) args))
+      (:update-overview-sections
+       (setf (alist-get 'overview-sections next) args))
 
       (:update-config
        (setf (alist-get 'config next) args)
@@ -324,10 +326,26 @@
 (kubernetes-state--define-accessors label-query (label-name)
   (cl-assert (stringp label-name)))
 
+(defun kubernetes-state-overview-sections (state)
+  (or (alist-get 'overview-sections state)
+      (let* ((configurations (append kubernetes-overview-custom-views-alist kubernetes-overview-views-alist))
+             (sections (alist-get kubernetes-default-overview-view configurations))
+             (updated (kubernetes-state-update :update-overview-sections sections)))
+        (alist-get 'overview-sections updated))))
+
+(kubernetes-state--define-setter overview-sections (resources)
+  (cl-assert (--all? (member it '(context
+                                  configmaps
+                                  deployments
+                                  pods
+                                  secrets
+                                  services))
+                     resources)))
+
 (defun kubernetes-state-kubectl-flags (state)
-  (if-let (flags (alist-get 'kubectl-flags state))
-      flags
-    (alist-get 'kubectl-flags (kubernetes-state-update :update-kubectl-flags kubernetes-kubectl-flags))))
+  (or (alist-get 'kubectl-flags state)
+      (let ((updated (kubernetes-state-update :update-kubectl-flags kubernetes-kubectl-flags)))
+        (alist-get 'kubectl-flags updated))))
 
 (kubernetes-state--define-setter kubectl-flags (flags)
   (cl-assert (listp flags))
