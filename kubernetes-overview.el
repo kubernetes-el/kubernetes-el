@@ -17,6 +17,8 @@
 (require 'kubernetes-services)
 (require 'kubernetes-timers)
 
+(autoload 'kubernetes-utils-up-to-existing-dir "kubernetes-utils")
+
 ;; Component
 
 (defun kubernetes-overview-render (state)
@@ -96,7 +98,7 @@ Type \\[kubernetes-refresh] to refresh the buffer.
         (buf (kubernetes-overview--initialize-buffer)))
     (kubernetes-commands-display-buffer buf)
     (with-current-buffer buf
-      (cd dir))
+      (cd (kubernetes-utils-up-to-existing-dir dir)))
     (message (substitute-command-keys "\\<kubernetes-overview-mode-map>Type \\[kubernetes-overview-popup] for usage."))))
 
 

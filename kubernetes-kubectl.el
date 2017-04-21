@@ -10,6 +10,7 @@
 (require 'kubernetes-vars)
 
 (autoload 'json-read-from-string "json")
+(autoload 'kubernetes-utils-up-to-existing-dir "kubernetes-utils")
 
 (defun kubernetes-kubectl--default-error-handler (props status)
   (unless (kubernetes-props-overview-buffer-selected-p props)
@@ -49,6 +50,10 @@ Returns the process object for this execution of kubectl."
   (let* ((buf (generate-new-buffer " kubectl"))
          (err-buf (generate-new-buffer " kubectl-err"))
          (command (append (list kubernetes-kubectl-executable) args (kubernetes-kubectl--flags-from-state state)))
+
+         ;; `default-directory' must exist, otherwise `make-process' raises an
+         ;; error.
+         (default-directory (kubernetes-utils-up-to-existing-dir default-directory))
          (proc (make-process
                 :name "kubectl"
                 :buffer buf

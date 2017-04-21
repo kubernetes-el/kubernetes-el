@@ -171,6 +171,10 @@ window state."
      (move-to-column col)
      (set-window-start (selected-window) window-start-line)))
 
+(defun kubernetes-utils-up-to-existing-dir (dir)
+  (while (not (file-directory-p dir))
+    (setq dir (file-name-directory (directory-file-name dir))))
+  dir)
 
 (provide 'kubernetes-utils)
 
