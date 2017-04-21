@@ -343,9 +343,9 @@
                      resources)))
 
 (defun kubernetes-state-kubectl-flags (state)
-  (if-let (flags (alist-get 'kubectl-flags state))
-      flags
-    (alist-get 'kubectl-flags (kubernetes-state-update :update-kubectl-flags kubernetes-kubectl-flags))))
+  (or (alist-get 'kubectl-flags state)
+      (let ((updated (kubernetes-state-update :update-kubectl-flags kubernetes-kubectl-flags)))
+        (alist-get 'kubectl-flags updated))))
 
 (kubernetes-state--define-setter kubectl-flags (flags)
   (cl-assert (listp flags))
