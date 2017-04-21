@@ -129,8 +129,7 @@ what to copy."
           (setq n-lines (1+ n-lines))))
       (let ((ellipsized (kubernetes-utils-ellipsize first-line 70)))
         (if (< 1 n-lines)
-            (message "Copied %s line%s, starting with: %s" n-lines (if (= 1 n-lines) "" "s")
-                     ellipsized)
+            (message "Copied %s lines, starting with: %s" n-lines ellipsized)
           (message "Copied: %s" ellipsized))))))
 
 ;;;###autoload
