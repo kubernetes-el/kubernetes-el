@@ -80,11 +80,34 @@
       (add-hook 'kill-buffer-hook (kubernetes-utils-make-cleanup-fn buf) nil t))
     buf))
 
+(defun kubernetes-overview-set-sections (sections)
+  "Set which sections are displayed in the overview.
+
+SECTIONS is a list of sections to display.  See
+`kubernetes-overview-custom-views-alist' and
+`kubernetes-overview-views-alist' for possible values."
+  (interactive
+   (let* ((views (append kubernetes-overview-custom-views-alist kubernetes-overview-views-alist))
+          (names (-uniq (--map (symbol-name (car it)) views)))
+          (choice (intern (completing-read "Overview view: " names nil t))))
+     (list (alist-get choice views))))
+
+  (kubernetes-state-update-overview-sections sections)
+  (kubernetes-state-trigger-redraw))
+
+(defvar kubernetes-overview-mode-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "v") #'kubernetes-overview-set-sections)
+    keymap)
+  "Keymap for `kubernetes-overview-mode'.")
+
 ;;;###autoload
 (define-derived-mode kubernetes-overview-mode kubernetes-mode "Kubernetes Overview"
   "Mode for working with Kubernetes overview.
 
 \\<kubernetes-overview-mode-map>\
+Type \\[kubernetes-overview-set-sections] to choose which resources to display.
+
 Type \\[kubernetes-mark-for-delete] to mark an object for deletion, and \\[kubernetes-execute-marks] to execute.
 Type \\[kubernetes-unmark] to unmark the object at point, or \\[kubernetes-unmark-all] to unmark all objects.
 
@@ -106,7 +129,7 @@ Type \\[kubernetes-refresh] to refresh the buffer.
     (kubernetes-commands-display-buffer buf)
     (with-current-buffer buf
       (cd (kubernetes-utils-up-to-existing-dir dir)))
-    (message (substitute-command-keys "\\<kubernetes-overview-mode-map>Type \\[kubernetes-overview-popup] for usage."))))
+    (message (substitute-command-keys "\\<kubernetes-overview-mode-map>Type \\[kubernetes-overview-set-sections] to switch between resources, and \\[kubernetes-overview-popup] for usage."))))
 
 
 (provide 'kubernetes-overview)

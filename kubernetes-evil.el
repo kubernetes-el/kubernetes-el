@@ -70,6 +70,9 @@
   (kbd "l") #'kubernetes-logs-popup
   (kbd "L") #'kubernetes-labels-popup)
 
+(evil-define-key 'motion kubernetes-overview-mode-map
+  (kbd "v") #'kubernetes-overview-set-sections)
+
 (evil-define-key 'motion kubernetes-logs-mode-map
   (kbd "n") #'kubernetes-logs-forward-line
   (kbd "p") #'kubernetes-logs-previous-line
