@@ -118,7 +118,20 @@ what to copy."
   (interactive "d")
   (when-let (s (get-text-property point 'kubernetes-copy))
     (kill-new s)
-    (message "Copied: %s" s)))
+
+    ;; Print a user-friendly message for feedback.
+    (let ((n-lines 1) (first-line nil))
+      (with-temp-buffer
+        (insert s)
+        (goto-char (point-min))
+        (setq first-line (buffer-substring (line-beginning-position) (line-end-position)))
+        (while (search-forward "\n" nil t)
+          (setq n-lines (1+ n-lines))))
+      (let ((ellipsized (kubernetes-utils-ellipsize first-line 70)))
+        (if (< 1 n-lines)
+            (message "Copied %s line%s, starting with: %s" n-lines (if (= 1 n-lines) "" "s")
+                     ellipsized)
+          (message "Copied: %s" ellipsized))))))
 
 ;;;###autoload
 (defun kubernetes-refresh (&optional verbose)
