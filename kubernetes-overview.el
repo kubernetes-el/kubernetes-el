@@ -22,14 +22,21 @@
 ;; Component
 
 (defun kubernetes-overview-render (state)
-  `(section (root nil)
-            ,(kubernetes-errors-render state)
-            ,(kubernetes-contexts-render state)
-            ,(kubernetes-configmaps-render state t)
-            ,(kubernetes-deployments-render state t)
-            ,(kubernetes-pods-render state t)
-            ,(kubernetes-secrets-render state t)
-            ,(kubernetes-services-render state t)))
+  (let ((sections (kubernetes-state-overview-sections state)))
+    `(section (root nil)
+              ,(kubernetes-errors-render state)
+              ,(when (member 'context sections)
+                 (kubernetes-contexts-render state))
+              ,(when (member 'configmaps sections)
+                 (kubernetes-configmaps-render state))
+              ,(when (member 'deployments sections)
+                 (kubernetes-deployments-render state))
+              ,(when (member 'pods sections)
+                 (kubernetes-pods-render state))
+              ,(when (member 'secrets sections)
+                 (kubernetes-secrets-render state))
+              ,(when (member 'services sections)
+                 (kubernetes-services-render state)))))
 
 
 ;; Overview buffer.
