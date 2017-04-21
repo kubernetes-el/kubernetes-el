@@ -130,6 +130,9 @@
 (kubernetes-state-test-accessor kubectl-flags
   (kubernetes-state-update-kubectl-flags '("--key=value")))
 
+(kubernetes-state-test-accessor overview-sections
+  (kubernetes-state-update-overview-sections '(configmaps)))
+
 (ert-deftest kubernetes-state-test--error-is-alist ()
   (test-helper-with-empty-state
     (let ((time (current-time)))
@@ -174,6 +177,18 @@
     (test-helper-with-empty-state
       (kubernetes-state-update-kubectl-flags flags)
       (should (equal kubernetes-kubectl-flags flags)))))
+
+(ert-deftest kubernetes-state-test--overview-sections-initialized-using-default-view-variable ()
+  (let ((kubernetes-default-overview-view 'configmaps))
+    (test-helper-with-empty-state
+      (should (equal '(context configmaps) (kubernetes-state-overview-sections nil))))))
+
+(ert-deftest kubernetes-state-test--overview-sections-not-reinitialized-if-present ()
+  (let ((sections '(context)))
+    (test-helper-with-empty-state
+      (kubernetes-state-update-overview-sections sections)
+      (should (equal sections (kubernetes-state-overview-sections (kubernetes-state)))))))
+
 
 ;; Test marking/unmarking/deleting actions
 
