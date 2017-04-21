@@ -12,6 +12,43 @@
   :group 'kubernetes
   :type 'string)
 
+(defconst kubernetes-overview-views-alist
+  '((all . (context configmaps deployments pods secrets services))
+    (configmaps . (context configmaps))
+    (deployments . (context deployments))
+    (pods . (context pods))
+    (secrets . (context secrets))
+    (services . (context services)))
+  "Enumerates the different views that can be displayed in the overview.
+
+Each element is a cons-cell of the form (SYMBOL . LIST), where
+SYMBOL is a name for the view, and LIST is a list of resource
+types that should be displayed.")
+
+(defcustom kubernetes-overview-custom-views-alist nil
+  "Enumerates the different views that can be displayed in the overview.
+
+Each element is a cons-cell of the form (SYMBOL . LIST), where
+SYMBOL is a name for the view, and LIST is a list of resource
+types that should be displayed."
+  :group 'kubernetes
+  :type '(alist :key-type symbol
+                :value-type (set (const context)
+                                 (const configmaps)
+                                 (const deployments)
+                                 (const pods)
+                                 (const secrets)
+                                 (const services))))
+
+(defcustom kubernetes-default-overview-view 'deployments
+  "The view to use when first opening the overview.
+
+It should be one of the keys defined in
+`kubernetes-overview-views-alist' or
+`kubernetes-overview-custom-views-alist'."
+  :group 'kubernetes
+  :type 'symbol)
+
 (defcustom kubernetes-commands-display-buffer-select t
   "Whether to select Kubernetes buffers automatically."
   :group 'kubernetes
