@@ -13,7 +13,7 @@
   :type 'string)
 
 (defconst kubernetes-overview-views-alist
-  '((all . (context configmaps deployments pods secrets services))
+  '((overview . (context overview))
     (configmaps . (context configmaps))
     (deployments . (context deployments))
     (pods . (context pods))
@@ -36,11 +36,12 @@ types that should be displayed."
                 :value-type (set (const context)
                                  (const configmaps)
                                  (const deployments)
+                                 (const overview)
                                  (const pods)
                                  (const secrets)
                                  (const services))))
 
-(defcustom kubernetes-default-overview-view 'deployments
+(defcustom kubernetes-default-overview-view 'overview
   "The view to use when first opening the overview.
 
 It should be one of the keys defined in

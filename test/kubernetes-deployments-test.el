@@ -64,7 +64,7 @@ Deployments (0)
 Deployments (2)
   Name                                            Replicas   UpToDate  Available    Age
   deployment-1                                         1/1          1          1    44d
-    Selector:   deployment-1
+    Selector:   example-pod-v3
     Namespace:  example-ns
     Created:    2017-02-17T02:23:30Z
 

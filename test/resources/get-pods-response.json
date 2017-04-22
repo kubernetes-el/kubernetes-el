@@ -42,7 +42,7 @@
                 "valueFrom": {
                   "configMapKeyRef": {
                     "key": "var2",
-                    "name": "app-config"
+                    "name": "example-configmap-1"
                   }
                 }
               },
@@ -51,7 +51,7 @@
                 "valueFrom": {
                   "secretKeyRef": {
                     "key": "secret1",
-                    "name": "app-secret"
+                    "name": "example-secret-1"
                   }
                 }
               },
@@ -132,7 +132,7 @@
                   "path": "application.conf"
                 }
               ],
-              "name": "app-config"
+              "name": "example-configmap-2"
             },
             "name": "app-config"
           },
@@ -153,7 +153,7 @@
             "name": "default-token-vnequ",
             "secret": {
               "defaultMode": 420,
-              "secretName": "default-token-vnequ"
+              "secretName": "example-secret-2"
             }
           }
         ]

@@ -148,8 +148,8 @@ With optional argument VERBOSE, log status changes."
 STATE is the current application state.
 
 Inspecs the `kubernetes-nav' text property at POINT to determine
-how to navigate.  If that property is not found, no action is
-taken."
+how to navigate.  If that property is not found, attempt to toggle
+the magit section at point."
   (interactive (list (point) (kubernetes-state)))
   (pcase (get-text-property point 'kubernetes-nav)
     (:display-config
@@ -167,7 +167,10 @@ taken."
     (`(:pod-name ,pod-name)
      (kubernetes-display-pod pod-name state))
     (`(:selector ,selector)
-     (kubernetes-show-pods-for-label selector))))
+     (kubernetes-show-pods-for-label selector))
+    (_
+     (when-let (section (get-text-property (point) 'magit-section))
+       (magit-section-toggle section)))))
 
 (defun kubernetes--describable-thing-at-pt ()
   (save-excursion

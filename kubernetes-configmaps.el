@@ -61,8 +61,8 @@
                       ,@(kubernetes-configmaps--format-detail configmap)
                       (padding)))))
 
-(defun kubernetes-configmaps-render (state &optional hidden)
-  (-let [(state-set-p &as &alist 'items configmaps) (kubernetes-state-configmaps state)]
+(defun kubernetes-configmaps-render-configmaps (state configmaps &optional hidden)
+  (let ((state-set-p (kubernetes-state-configmaps state)))
     `(section (configmaps-container ,hidden)
               ,(cond
                 ;; If the state is set and there are no configmaps, write "None".
@@ -87,6 +87,10 @@
                     (section (configmaps-list nil)
                              (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
               (padding))))
+
+(defun kubernetes-configmaps-render (state &optional hidden)
+  (-let [(&alist 'items configmaps) (kubernetes-state-configmaps state)]
+    (kubernetes-configmaps-render-configmaps state configmaps hidden)))
 
 
 ;; Requests and state management
