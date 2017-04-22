@@ -60,12 +60,12 @@
                       ,@(kubernetes-secrets--format-detail secret)
                       (padding)))))
 
-(defun kubernetes-secrets-render (state &optional hidden)
-  (-let [(secrets-response &as &alist 'items secrets) (kubernetes-state-secrets state)]
+(defun kubernetes-secrets-render-secrets (state secrets &optional hidden)
+  (let ((secrets-set-p (kubernetes-state-secrets state)))
     `(section (secrets-container ,hidden)
               ,(cond
                 ;; If the state is set and there are no secrets, write "None".
-                ((and secrets-response (seq-empty-p secrets))
+                ((and secrets-set-p (seq-empty-p secrets))
                  `((heading ,(concat (propertize "Secrets" 'face 'magit-header-line) " (0)"))
                    (indent
                     (section (secrets-list nil)
@@ -86,6 +86,10 @@
                     (section (secrets-list nil)
                              (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
               (padding))))
+
+(defun kubernetes-secrets-render (state &optional hidden)
+  (-let [(&alist 'items secrets) (kubernetes-state-secrets state)]
+    (kubernetes-secrets-render-secrets state secrets hidden)))
 
 
 ;; Requests and state management

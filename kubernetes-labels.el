@@ -12,16 +12,12 @@
 
 ;; Component
 
-(defun kubernetes-labels--resource-label (pod)
-  (-let [(&alist 'metadata (&alist 'labels (&alist 'name label))) pod]
-    label))
-
 (defun kubernetes-labels-render (state)
   (-let* ((query (kubernetes-state-label-query state))
           ((state-set-p &as &alist 'items pods) (kubernetes-state-pods state))
           (matches (nreverse (seq-reduce
                               (lambda (acc pod)
-                                (if (equal query (kubernetes-labels--resource-label pod))
+                                (if (equal query (kubernetes-state-resource-label pod))
                                     (cons (kubernetes-pods-render-pod state pod) acc)
                                   acc))
                               pods
@@ -79,7 +75,7 @@
 LABEL-QUERY is a string used to match pods."
   (interactive
    (-let* (((&alist 'items pods) (kubernetes-state-pods (kubernetes-state)))
-           (labels (-non-nil (-uniq (seq-map #'kubernetes-labels--resource-label pods)))))
+           (labels (-non-nil (-uniq (seq-map #'kubernetes-state-resource-label pods)))))
      (list (completing-read "Label: " labels))))
 
   (kubernetes-state-update-label-query label-query)

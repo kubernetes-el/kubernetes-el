@@ -24,7 +24,7 @@
         "replicas": 1,
         "selector": {
           "matchLabels": {
-            "name": "deployment-1"
+            "name": "example-pod-v3"
           }
         },
         "strategy": {

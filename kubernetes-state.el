@@ -336,6 +336,7 @@
 (kubernetes-state--define-setter overview-sections (resources)
   (cl-assert (--all? (member it '(context
                                   configmaps
+                                  overview
                                   deployments
                                   pods
                                   secrets
@@ -426,6 +427,14 @@ RESOURCE is the parsed representation an API resource, such a
 pod, secret, configmap, etc."
   (-let [(&alist 'metadata (&alist 'name name)) resource]
     name))
+
+(defun kubernetes-state-resource-label (resource)
+  "Get the label of RESOURCE from its metadata.
+
+RESOURCE is the parsed representation an API resource, such a
+pod, secret, configmap, etc."
+  (-let [(&alist 'metadata (&alist 'labels (&alist 'name label))) resource]
+    label))
 
 (defun kubernetes-state-current-context (state)
   (when-let (config (kubernetes-state-config state))

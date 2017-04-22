@@ -115,12 +115,12 @@
                       ,@(kubernetes-pods--format-detail pod)
                       (padding)))))
 
-(defun kubernetes-pods-render (state &optional hidden)
-  (-let [(pods-response &as &alist 'items pods) (kubernetes-state-pods state)]
+(defun kubernetes-pods-render-pods (state pods &optional hidden)
+  (let ((pods-set-p (kubernetes-state-pods state)))
     `(section (pods-container ,hidden)
               ,(cond
                 ;; If the state is set and there are no pods, write "None".
-                ((and pods-response (seq-empty-p pods))
+                ((and pods-set-p (seq-empty-p pods))
                  (let ((none (propertize "None." 'face 'magit-dimmed))
                        (heading (concat (propertize "Pods" 'face 'magit-header-line) " (0)")))
                    `((heading ,heading)
@@ -145,6 +145,10 @@
                                (line ,kubernetes-pods-column-heading)
                                (line ,fetching)))))))
               (padding))))
+
+(defun kubernetes-pods-render (state &optional hidden)
+  (-let [(&alist 'items pods) (kubernetes-state-pods state)]
+    (kubernetes-pods-render-pods state pods hidden)))
 
 
 ;; Requests and state management
