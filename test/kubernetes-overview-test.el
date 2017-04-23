@@ -73,7 +73,10 @@ Deployments (2)
 (ert-deftest kubernetes-overview-test--aggregated-overview--no-pods-set ()
   (test-helper-with-empty-state
     (kubernetes-state-update-deployments kubernetes-overview-test--sample-deployments-response)
-    (kubernetes-ast-eval (kubernetes-overview-render-aggregated-view (kubernetes-state)))
+    (let ((state (cons `(current-time . ,(date-to-time "2017-04-23 00:00Z"))
+                       (kubernetes-state))))
+      (kubernetes-ast-eval (kubernetes-overview-render-aggregated-view state)))
+
     (should (equal kubernetes-overview-test--expected-overview--only-deployments-set
                    (string-trim (substring-no-properties (buffer-string)))))))
 
@@ -118,7 +121,9 @@ Deployments (2)
     (kubernetes-state-update-deployments kubernetes-overview-test--sample-deployments-response)
     (kubernetes-state-update-pods kubernetes-overview-test--sample-pods-response)
     (kubernetes-state-update-secrets kubernetes-overview-test--sample-secrets-response)
-    (kubernetes-ast-eval (kubernetes-overview-render-aggregated-view (kubernetes-state)))
+    (let ((state (cons `(current-time . ,(date-to-time "2017-04-23 00:00Z"))
+                       (kubernetes-state))))
+      (kubernetes-ast-eval (kubernetes-overview-render-aggregated-view state)))
     (should (equal kubernetes-overview-test--expected-overview--populated-state
                    (string-trim (substring-no-properties (buffer-string)))))))
 
