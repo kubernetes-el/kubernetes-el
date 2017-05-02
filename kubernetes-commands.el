@@ -19,6 +19,7 @@
 (autoload 'kubernetes-display-pod "kubernetes-pods")
 (autoload 'kubernetes-display-secret "kubernetes-secrets")
 (autoload 'kubernetes-display-service "kubernetes-services")
+(autoload 'kubernetes-jobs-delete-marked "kubernetes-jobs")
 (autoload 'kubernetes-pods-delete-marked "kubernetes-pods")
 (autoload 'kubernetes-secrets-delete-marked "kubernetes-secrets")
 (autoload 'kubernetes-services-delete-marked "kubernetes-services")
