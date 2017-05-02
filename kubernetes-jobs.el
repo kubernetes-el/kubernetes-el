@@ -33,7 +33,8 @@
 (defun kubernetes-jobs--format-detail (job)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
                  'spec (&alist 'template
-                               (&alist 'spec (&alist 'containers containers)))
+                               (&alist 'spec (&alist 'containers containers
+                                                     'restartPolicy restart-policy)))
                  'status (&alist
                           'startTime start-time
                           'completionTime completion-time))
@@ -41,15 +42,17 @@
     `((section (namespace nil)
                (nav-prop (:namespace-name ,ns)
                          (key-value 12 "Namespace" ,(propertize ns 'face 'kubernetes-namespace))))
-      (key-value 12 "Created" ,time)
+      ,(when restart-policy
+         `(key-value 12 "RestartPolicy" ,restart-policy))
+      (padding)
 
+      (key-value 12 "Created" ,time)
       ,(when start-time
          `(key-value 12 "Started" ,start-time))
-
       ,(when completion-time
          `(key-value 12 "Completed" ,completion-time))
-
       (padding)
+
       ,(when-let (cs (seq-map #'kubernetes-jobs--format-container (append containers nil)))
          `(section (containers nil)
                    (heading "Containers")
