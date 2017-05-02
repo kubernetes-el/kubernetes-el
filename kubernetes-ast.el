@@ -130,6 +130,8 @@ Warning: This could blow the stack if the AST gets too deep."
            (mark-str (concat (apply #'propertize "D" props)
                              (apply #'propertize " " existing-props))))
       (cond
+       ((member 'kubernetes-delete-mark existing-props)
+        nil)
        ((looking-at-p (rx bol space space))
         (delete-char 2)
         (insert mark-str))
