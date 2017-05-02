@@ -379,6 +379,7 @@
                                   configmaps
                                   overview
                                   deployments
+                                  jobs
                                   pods
                                   secrets
                                   services))
