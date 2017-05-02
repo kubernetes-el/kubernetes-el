@@ -6,6 +6,7 @@
 
 (require 'kubernetes-kubectl)
 (require 'kubernetes-modes)
+(require 'kubernetes-pod-line)
 (require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
@@ -30,11 +31,19 @@
                    `(key-value 12 "Image" ,image))
                 (padding)))))
 
-(defun kubernetes-jobs--format-detail (job)
-  (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
+(defun kubernetes-jobs--lookup-pod-for-job (job-name state)
+  (-let [(&alist 'items items) (kubernetes-state-pods state)]
+    (seq-find (lambda (pod)
+                (let ((pod-name (kubernetes-state-resource-name pod)))
+                  (string-prefix-p job-name pod-name)))
+              items)))
+
+(defun kubernetes-jobs--format-detail (state job)
+  (-let [(&alist 'metadata (&alist 'namespace ns
+                                   'creationTimestamp time
+                                   'labels (&alist 'job-name job-name))
                  'spec (&alist 'template
-                               (&alist 'spec (&alist 'containers containers
-                                                     'restartPolicy restart-policy)))
+                               (&alist 'spec (&alist 'restartPolicy restart-policy)))
                  'status (&alist
                           'startTime start-time
                           'completionTime completion-time))
@@ -53,11 +62,19 @@
          `(key-value 12 "Completed" ,completion-time))
       (padding)
 
-      ,(when-let (cs (seq-map #'kubernetes-jobs--format-container (append containers nil)))
-         `(section (containers nil)
-                   (heading "Containers")
+      ,(when job-name
+         `(section (pod nil)
+                   (heading "Pod")
                    (indent
-                    ,cs))))))
+                    ,(let ((pod (kubernetes-jobs--lookup-pod-for-job job-name state)))
+                       (cond
+                        ((null (kubernetes-state-pods state))
+                         `(line (propertize (face kubernetes-progress-indicator) "Fetching...")))
+                        ((null pod)
+                         `(line (propertize (face kubernetes-progress-indicator) "Not found.")))
+                        (t
+                         (kubernetes-pod-line state pod)))))
+                   (padding))))))
 
 (defun kubernetes-jobs--format-line (state job)
   (-let* ((current-time (kubernetes-state-current-time state))
@@ -103,7 +120,7 @@
             (heading ,(kubernetes-jobs--format-line state job))
             (section (details nil)
                      (indent
-                      ,@(kubernetes-jobs--format-detail job)))))
+                      ,@(kubernetes-jobs--format-detail state job)))))
 
 (defun kubernetes-jobs-render (state &optional hidden)
   (-let [(state-set-p &as &alist 'items jobs) (kubernetes-state-jobs state)]

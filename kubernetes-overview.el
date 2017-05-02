@@ -13,6 +13,7 @@
 (require 'kubernetes-modes)
 (require 'kubernetes-namespaces)
 (require 'kubernetes-pods)
+(require 'kubernetes-pod-line)
 (require 'kubernetes-popups)
 (require 'kubernetes-secrets)
 (require 'kubernetes-services)
@@ -150,35 +151,6 @@
                pods
                nil))))
 
-(defun kubernetes-overview--render-pod-line (state pod)
-  (-let* ((marked-pods (kubernetes-state-marked-pods state))
-          (pending-deletion (kubernetes-state-pods-pending-deletion state))
-          ((&alist 'metadata (&alist 'name name) 'status (&alist 'containerStatuses containers 'phase phase)) pod)
-          ([(&alist 'state pod-state)] containers)
-          (pod-state (or (alist-get 'reason (alist-get 'waiting pod-state)) phase))
-          (state-face
-           (cond
-            ((member (downcase pod-state) '("running" "containercreating" "terminated"))
-             'magit-dimmed)
-            ((member (downcase pod-state) '("runcontainererror" "crashloopbackoff"))
-             'error)
-            (t
-             'warning)))
-          (line
-           (concat (propertize (format "%-11s " (kubernetes-utils-ellipsize pod-state 11)) 'face state-face)
-                   name)))
-
-    `(section (,(intern (kubernetes-state-resource-name pod)) t)
-              (nav-prop (:pod-name ,name)
-                        (copy-prop ,name
-                                   (line ,(cond
-                                           ((member name pending-deletion)
-                                            `(propertize (face kubernetes-pending-deletion) ,line))
-                                           ((member name marked-pods)
-                                            `(mark-for-delete ,line))
-                                           (t
-                                            line))))))))
-
 (defun kubernetes-overview--pods-section (state deployment pods)
   (-let [(&alist 'spec (&alist
                         'replicas replicas
@@ -209,7 +181,7 @@
                  ((null (kubernetes-state-pods state))
                   `(indent (line (propertize (face kubernetes-progress-indicator) "Fetching..."))))
                  (t
-                  (seq-map (lambda (pod) (kubernetes-overview--render-pod-line state pod)) pods))))
+                  (seq-map (lambda (pod) (kubernetes-pod-line state pod)) pods))))
 
               (padding))))
 
