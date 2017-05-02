@@ -5,6 +5,13 @@
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 
+(defun kubernetes-pod-line-ok-p (pod)
+  (-let* (((&alist 'status (&alist 'containerStatuses containers 'phase phase)) pod pod)
+          ([(&alist 'state pod-state)] containers)
+          (pod-state (or (alist-get 'reason (alist-get 'waiting pod-state)) phase)))
+    (member (downcase pod-state) '("running" "containercreating" "terminated"
+                                   "succeeded"))))
+
 (defun kubernetes-pod-line (state pod)
   (-let* ((marked-pods (kubernetes-state-marked-pods state))
           (pending-deletion (kubernetes-state-pods-pending-deletion state))
