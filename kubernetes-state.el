@@ -50,6 +50,7 @@
       (:unmark-all
        (setf (alist-get 'marked-configmaps next nil t) nil)
        (setf (alist-get 'marked-deployments next nil t) nil)
+       (setf (alist-get 'marked-jobs next nil t) nil)
        (setf (alist-get 'marked-pods next nil t) nil)
        (setf (alist-get 'marked-secrets next nil t) nil)
        (setf (alist-get 'marked-services next nil t) nil))

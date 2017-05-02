@@ -262,6 +262,7 @@
   (test-helper-with-empty-state
     (kubernetes-state-mark-configmap "configmap")
     (kubernetes-state-mark-deployment "deployment")
+    (kubernetes-state-mark-job "job")
     (kubernetes-state-mark-pod "pod")
     (kubernetes-state-mark-secret "secret")
     (kubernetes-state-mark-service "svc")
