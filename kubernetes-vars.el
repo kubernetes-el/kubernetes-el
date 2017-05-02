@@ -16,6 +16,7 @@
   '((overview . (context overview))
     (configmaps . (context configmaps))
     (deployments . (context deployments))
+    (jobs . (context jobs))
     (pods . (context pods))
     (secrets . (context secrets))
     (services . (context services)))
@@ -155,6 +156,8 @@ form \"--flag=value\" or \"-flag\"."
 (defconst kubernetes-display-config-buffer-name "*kubernetes config*")
 
 (defconst kubernetes-display-deployment-buffer-name "*kubernetes deployment*")
+
+(defconst kubernetes-display-job-buffer-name "*kubernetes job*")
 
 (defconst kubernetes-display-configmap-buffer-name "*kubernetes configmap*")
 

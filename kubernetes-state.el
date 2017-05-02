@@ -50,6 +50,7 @@
       (:unmark-all
        (setf (alist-get 'marked-configmaps next nil t) nil)
        (setf (alist-get 'marked-deployments next nil t) nil)
+       (setf (alist-get 'marked-jobs next nil t) nil)
        (setf (alist-get 'marked-pods next nil t) nil)
        (setf (alist-get 'marked-secrets next nil t) nil)
        (setf (alist-get 'marked-services next nil t) nil))
@@ -158,6 +159,31 @@
                (seq-intersection (alist-get 'services-pending-deletion next)
                                  service-names))))
 
+      ;; Jobs
+
+      (:mark-job
+       (let ((cur (alist-get 'marked-jobs state)))
+         (setf (alist-get 'marked-jobs next)
+               (delete-dups (cons args cur)))))
+      (:unmark-job
+       (setf (alist-get 'marked-jobs next)
+             (remove args (alist-get 'marked-jobs next))))
+      (:delete-job
+       (let ((updated (cons args (alist-get 'jobs-pending-deletion state))))
+         (setf (alist-get 'jobs-pending-deletion next)
+               (delete-dups updated))))
+      (:update-jobs
+       (setf (alist-get 'jobs next) args)
+
+       (-let* (((&alist 'items jobs) args)
+               (job-names (seq-map #'kubernetes-state-resource-name jobs)))
+         (setf (alist-get 'marked-jobs next)
+               (seq-intersection (alist-get 'marked-jobs next)
+                                 job-names))
+         (setf (alist-get 'jobs-pending-deletion next)
+               (seq-intersection (alist-get 'jobs-pending-deletion next)
+                                 job-names))))
+
       ;; Deployments
 
       (:mark-deployment
@@ -211,6 +237,19 @@
   (cl-assert (stringp pod-name))
   (kubernetes-state-update :delete-pod pod-name)
   (kubernetes-state-update :unmark-pod pod-name))
+
+(defun kubernetes-state-mark-job (job-name)
+  (cl-assert (stringp job-name))
+  (kubernetes-state-update :mark-job job-name))
+
+(defun kubernetes-state-unmark-job (job-name)
+  (cl-assert (stringp job-name))
+  (kubernetes-state-update :unmark-job job-name))
+
+(defun kubernetes-state-delete-job (job-name)
+  (cl-assert (stringp job-name))
+  (kubernetes-state-update :delete-job job-name)
+  (kubernetes-state-update :unmark-job job-name))
 
 (defun kubernetes-state-mark-configmap (configmap-name)
   (cl-assert (stringp configmap-name))
@@ -305,6 +344,9 @@
 (kubernetes-state--define-accessors pods (pods)
   (cl-assert (listp pods)))
 
+(kubernetes-state--define-accessors jobs (jobs)
+  (cl-assert (listp jobs)))
+
 (kubernetes-state--define-accessors configmaps (configmaps)
   (cl-assert (listp configmaps)))
 
@@ -338,6 +380,7 @@
                                   configmaps
                                   overview
                                   deployments
+                                  jobs
                                   pods
                                   secrets
                                   services))
@@ -355,6 +398,9 @@
 
 (kubernetes-state--define-getter marked-configmaps)
 (kubernetes-state--define-getter configmaps-pending-deletion)
+
+(kubernetes-state--define-getter marked-jobs)
+(kubernetes-state--define-getter jobs-pending-deletion)
 
 (kubernetes-state--define-getter marked-pods)
 (kubernetes-state--define-getter pods-pending-deletion)
@@ -413,12 +459,13 @@ If lookup fails, return nil."
          (seq-find (lambda (it) (equal (kubernetes-state-resource-name it) name))
                    items)))))
 
-(kubernetes-state-define-named-lookup pod pods)
 (kubernetes-state-define-named-lookup configmap configmaps)
+(kubernetes-state-define-named-lookup deployment deployments)
+(kubernetes-state-define-named-lookup job jobs)
+(kubernetes-state-define-named-lookup namespace namespaces)
+(kubernetes-state-define-named-lookup pod pods)
 (kubernetes-state-define-named-lookup secret secrets)
 (kubernetes-state-define-named-lookup service services)
-(kubernetes-state-define-named-lookup deployment deployments)
-(kubernetes-state-define-named-lookup namespace namespaces)
 
 (defun kubernetes-state-resource-name (resource)
   "Get the name of RESOURCE from its metadata.

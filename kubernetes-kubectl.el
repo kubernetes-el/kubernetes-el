@@ -139,6 +139,23 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
                       nil
                       cleanup-cb))
 
+(defun kubernetes-kubectl-get-jobs (props state cb &optional cleanup-cb)
+  "Get all jobs and execute callback CB with the parsed JSON.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-props'.
+
+STATE is the application state.
+
+CLEANUP-CB is a function taking no arguments used to release any resources."
+  (kubernetes-kubectl props state '("get" "jobs" "-o" "json")
+                      (lambda (buf)
+                        (let ((json (with-current-buffer buf
+                                      (json-read-from-string (buffer-string)))))
+                          (funcall cb json)))
+                      nil
+                      cleanup-cb))
+
 (defun kubernetes-kubectl-get-secrets (props state cb &optional cleanup-cb)
   "Get all secrets and execute callback CB with the parsed JSON.
 
@@ -319,6 +336,21 @@ ERROR-CB is called if an error occurred."
                           (funcall cb (match-string 1 (buffer-string)))))
                       error-cb))
 
+(defun kubernetes-kubectl-delete-job (props state job-name cb &optional error-cb)
+  "Delete JOB-NAME, then execute CB with the response buffer.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-props'.
+
+STATE is the application state.
+
+ERROR-CB is called if an error occurred."
+  (kubernetes-kubectl props state (list "delete" "job" job-name "-o" "name")
+                      (lambda (buf)
+                        (with-current-buffer buf
+                          (string-match (rx bol "job/" (group (+ nonl))) (buffer-string))
+                          (funcall cb (match-string 1 (buffer-string)))))
+                      error-cb))
 
 (defun kubernetes-kubectl-await-on-async (props state fn)
   "Turn an async function requiring a callback into a synchronous one.
