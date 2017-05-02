@@ -146,9 +146,13 @@
                                (line ,fetching)))))))
               (padding))))
 
+(defun kubernetes-pods--succeeded-job-pod-p (pod)
+  (-let [(&alist 'status (&alist 'phase phase)) pod]
+    (equal phase "Succeeded")))
+
 (defun kubernetes-pods-render (state &optional hidden)
   (-let [(&alist 'items pods) (kubernetes-state-pods state)]
-    (kubernetes-pods-render-pods state pods hidden)))
+    (kubernetes-pods-render-pods state (seq-remove #'kubernetes-pods--succeeded-job-pod-p pods) hidden)))
 
 
 ;; Requests and state management
