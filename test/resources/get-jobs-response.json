@@ -1,0 +1,163 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "annotations": {
+          "kubernetes.io/created-by": "{}"
+        },
+        "creationTimestamp": "2017-04-22T22:00:02Z",
+        "labels": {
+          "controller-uid": "09768995-26a7-11e7-aed8-12c05cb0b29d",
+          "job-name": "example-job-1"
+        },
+        "name": "example-job-1",
+        "namespace": "mm",
+        "resourceVersion": "80642407",
+        "selfLink": "/apis/batch/v1/namespaces/example-ns/jobs/example-job-1",
+        "uid": "09768996-27a7-11e7-aed8-12c06cb0b29d"
+      },
+      "spec": {
+        "completions": 1,
+        "parallelism": 1,
+        "selector": {
+          "matchLabels": {
+            "controller-uid": "09768996-27a7-11e7-aed8-12c06cb0b29d"
+          }
+        },
+        "template": {
+          "metadata": {
+            "creationTimestamp": null,
+            "labels": {
+              "controller-uid": "09768996-27a7-11e7-aed8-12c06cb0b29d",
+              "job-name": "example-job-1"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "env": [],
+                "image": "docker.example.com/example-job-1:latest",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "example-job-1",
+                "resources": {
+                  "limits": {
+                    "cpu": "600m",
+                    "memory": "200Mi"
+                  },
+                  "requests": {
+                    "cpu": "600m",
+                    "memory": "600Mi"
+                  }
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "volumeMounts": []
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "OnFailure",
+            "securityContext": {},
+            "terminationGracePeriodSeconds": 30,
+            "volumes": []
+          }
+        }
+      },
+      "status": {
+        "completionTime": "2017-04-23T00:00:05Z",
+        "conditions": [
+          {
+            "lastProbeTime": "2017-04-23T00:00:05Z",
+            "lastTransitionTime": "2017-04-23T00:00:05Z",
+            "status": "True",
+            "type": "Complete"
+          }
+        ],
+        "startTime": "2017-04-22T22:00:03Z",
+        "succeeded": 1
+      }
+    },
+    {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "annotations": {
+          "kubernetes.io/created-by": "{}"
+        },
+        "creationTimestamp": "2017-04-22T22:00:02Z",
+        "labels": {
+          "controller-uid": "09768995-26a7-11e7-aed8-12c05cb0b29d",
+          "job-name": "example-job-2"
+        },
+        "name": "example-job-2",
+        "namespace": "mm",
+        "resourceVersion": "80642407",
+        "selfLink": "/apis/batch/v1/namespaces/example-ns/jobs/example-job-2",
+        "uid": "09769005-27a7-11e7-aed8-12c06cb0b29d"
+      },
+      "spec": {
+        "completions": 1,
+        "parallelism": 1,
+        "selector": {
+          "matchLabels": {
+            "controller-uid": "09769005-27a7-11e7-aed8-12c06cb0b29d"
+          }
+        },
+        "template": {
+          "metadata": {
+            "creationTimestamp": null,
+            "labels": {
+              "controller-uid": "09769005-27a7-11e7-aed8-12c06cb0b29d",
+              "job-name": "example-job-2"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "env": [],
+                "image": "docker.example.com/example-job-2:latest",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "example-job-2",
+                "resources": {
+                  "limits": {
+                    "cpu": "600m",
+                    "memory": "200Mi"
+                  },
+                  "requests": {
+                    "cpu": "600m",
+                    "memory": "600Mi"
+                  }
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "volumeMounts": []
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "OnFailure",
+            "securityContext": {},
+            "terminationGracePeriodSeconds": 30,
+            "volumes": []
+          }
+        }
+      },
+      "status": {
+        "completionTime": "2017-04-23T00:00:05Z",
+        "conditions": [
+          {
+            "lastProbeTime": "2017-04-23T00:00:05Z",
+            "lastTransitionTime": "2017-04-23T00:00:05Z",
+            "status": "True",
+            "type": "Complete"
+          }
+        ],
+        "startTime": "2017-04-22T22:00:03Z",
+        "succeeded": 1
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {},
+  "resourceVersion": "",
+  "selfLink": ""
+}

@@ -27,6 +27,9 @@
 (defconst sample-get-deployments-response
   (test-helper-json-resource "get-deployments-response.json"))
 
+(defconst sample-get-jobs-response
+  (test-helper-json-resource "get-jobs-response.json"))
+
 (defconst sample-get-config-response
   (test-helper-json-resource "config-view-response.json"))
 
@@ -132,6 +135,9 @@
 
 (kubernetes-state-test-accessor overview-sections
   (kubernetes-state-update-overview-sections '(configmaps)))
+
+(kubernetes-state-test-accessor jobs
+  (kubernetes-state-update-jobs sample-get-jobs-response))
 
 (ert-deftest kubernetes-state-test--error-is-alist ()
   (test-helper-with-empty-state
@@ -245,9 +251,10 @@
                                    ((metadata . ((name . "baz"))))])))
            (should (-same-items? '("bar" "baz") (,get-pending-deletion-fn (kubernetes-state)))))))))
 
-(kubernetes-state-marking-tests pod)
 (kubernetes-state-marking-tests configmap)
 (kubernetes-state-marking-tests deployment)
+(kubernetes-state-marking-tests job)
+(kubernetes-state-marking-tests pod)
 (kubernetes-state-marking-tests secret)
 (kubernetes-state-marking-tests service)
 
@@ -286,6 +293,15 @@
   (test-helper-with-empty-state
     (kubernetes-state-update-pods sample-get-pods-response)
     (should (kubernetes-state-lookup-pod "example-svc-v3-1603416598-2f9lb" (kubernetes-state)))))
+
+(ert-deftest kubernetes-state-test--lookup-job--no-such-job ()
+  (test-helper-with-empty-state
+    (should (not (kubernetes-state-lookup-job "example" (kubernetes-state))))))
+
+(ert-deftest kubernetes-state-test--lookup-job--existing-job ()
+  (test-helper-with-empty-state
+    (kubernetes-state-update-jobs sample-get-jobs-response)
+    (should (kubernetes-state-lookup-job "example-job-1" (kubernetes-state)))))
 
 (ert-deftest kubernetes-state-test--lookup-configmap--no-such-configmap ()
   (test-helper-with-empty-state
