@@ -347,6 +347,49 @@ will be mocked."
     (should cleanup-callback-called)))
 
 
+;; Get jobs
+
+(ert-deftest kubernetes-kubectl-test--get-jobs-returns-parsed-json ()
+  (let* ((sample-response (test-helper-string-resource "get-jobs-response.json"))
+         (parsed-response (json-read-from-string sample-response))
+         (cleanup-callback-called))
+
+    (with-successful-response-at '("get" "jobs" "-o" "json") sample-response
+      (kubernetes-kubectl-get-jobs kubernetes-kubectl-test-props
+                 nil
+                 (lambda (response)
+                   (should (equal parsed-response response)))
+                 (lambda ()
+                   (setq cleanup-callback-called t))))
+    (should cleanup-callback-called)))
+
+
+;; Delete job
+
+(ert-deftest kubernetes-kubectl-test--deleting-job-succeeds ()
+  (let ((job-name "example-job"))
+    (with-successful-response-at '("delete" "job" "example-job" "-o" "name") "job/example-job"
+      (kubernetes-kubectl-delete-job kubernetes-kubectl-test-props
+                   nil
+                   "example-job"
+                   (lambda (result)
+                     (should (equal job-name result)))))))
+
+(ert-deftest kubernetes-kubectl-test--deleting-job-fails ()
+  (let ((on-error-called))
+    (with-error-response-at '("delete" "job" "example-job" "-o" "name") "job/example-job"
+      (kubernetes-kubectl-delete-job kubernetes-kubectl-test-props
+                   nil
+                   "example-job"
+                   (lambda (_)
+                     (error "Unexpected success response"))
+                   (lambda (_)
+                     (setq on-error-called t))))
+    (should on-error-called)))
+
+
+
+
 ;; Delete deployment
 
 (ert-deftest kubernetes-kubectl-test--deleting-deployment-succeeds ()
