@@ -212,7 +212,7 @@
          (configmaps (kubernetes-overview--configmaps-for-deployment state pods))
          (secrets (kubernetes-overview--secrets-for-deployment state pods)))
     `(section (,(intern (kubernetes-state-resource-name deployment)) t)
-              (heading ,(kubernetes-deployments--format-line state deployment))
+              (heading (deployment-line ,state ,deployment))
               (section (details nil)
                        (indent
                         ,(kubernetes-overview--aggregated-deployment-detail deployment)
@@ -245,7 +245,7 @@
               ,(when (member 'configmaps sections)
                  `(configmaps-list ,state))
               ,(when (member 'deployments sections)
-                 (kubernetes-deployments-render state))
+                 `(deployments-list ,state))
               ,(when (member 'jobs sections)
                  `(jobs-list ,state))
               ,(when (member 'overview sections)
