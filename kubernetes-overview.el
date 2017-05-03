@@ -243,7 +243,7 @@
               ,(when (member 'context sections)
                  (kubernetes-contexts-render state))
               ,(when (member 'configmaps sections)
-                 (kubernetes-configmaps-render state))
+                 `(configmaps-list ,state))
               ,(when (member 'deployments sections)
                  (kubernetes-deployments-render state))
               ,(when (member 'jobs sections)

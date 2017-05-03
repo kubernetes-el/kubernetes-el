@@ -22,7 +22,7 @@
     (let ((expected (with-temp-buffer
                       (kubernetes-ast-eval `(section (root nil)
                                                      ,(kubernetes-errors-render (kubernetes-state))
-                                                     ,(kubernetes-configmaps-render (kubernetes-state))
+                                                     (configmaps-list ,(kubernetes-state))
                                                      ,(kubernetes-secrets-render (kubernetes-state))))
                       (string-trim (substring-no-properties (buffer-string))))))
       (should (equal expected (string-trim (substring-no-properties (buffer-string))))))))
