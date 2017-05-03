@@ -104,11 +104,12 @@ Warning: This could blow the stack if the AST gets too deep."
               indent-level))
 
       (`(mark-for-delete . ,inner-ast)
-       (let ((pt (point)))
+       (let ((start (point)))
          (kubernetes-ast-eval inner-ast indent-level)
          (let ((end-line (line-number-at-pos)))
            (save-excursion
-             (goto-char pt)
+             (goto-char start)
+             (kubernetes-ast-put-delete-mark-on-line-at-pt (point))
              (while (< (line-number-at-pos) end-line)
                (kubernetes-ast-put-delete-mark-on-line-at-pt (point))
                (forward-line 1))))))
