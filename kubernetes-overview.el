@@ -10,6 +10,7 @@
 (require 'kubernetes-deployments)
 (require 'kubernetes-errors)
 (require 'kubernetes-jobs)
+(require 'kubernetes-loading-container)
 (require 'kubernetes-modes)
 (require 'kubernetes-namespaces)
 (require 'kubernetes-pods)
@@ -177,11 +178,8 @@
 
                (key-value 12 "Replicas" ,(number-to-string (or replicas 1)))
 
-               ,(cond
-                 ((null (kubernetes-state-pods state))
-                  `(indent (line (propertize (face kubernetes-progress-indicator) "Fetching..."))))
-                 (t
-                  (seq-map (lambda (pod) (kubernetes-pod-line state pod)) pods))))
+               (loading-container ,(kubernetes-state-pods state)
+                                  ,(seq-map (lambda (pod) `(pod-line ,state ,pod)) pods)))
 
               (padding))))
 
@@ -231,28 +229,11 @@
 (defun kubernetes-overview-render-aggregated-view (state &optional hidden)
   (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state)]
     `(section (overview-container ,hidden)
-              ,(cond
-                ;; If the state is set and there are no deployments, write "None".
-                ((and state-set-p (seq-empty-p deployments))
-                 `((heading ,(concat (propertize "Deployments" 'face 'magit-header-line) " (0)"))
-                   (section (deployments-list nil)
-                            (indent
-                             (propertize (face magit-dimmed) (line "None."))))))
-
-                ;; If there are deployments, write sections for each deployment.
-                (deployments
-                 `((heading ,(concat (propertize "Deployments" 'face 'magit-header-line) " " (format "(%s)" (length deployments))))
-                   (indent
-                    (line ,kubernetes-deployments--column-heading)
-                    ,@(seq-map (lambda (it) (kubernetes-overview-render-aggregated-deployment state it)) deployments))))
-
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 `((heading "Deployments")
-                   (indent
-                    (line ,kubernetes-deployments--column-heading)
-                    (section (deployments-list nil)
-                             (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
+              (header-with-count "Deployments" ,deployments)
+              (indent
+               (columnar-loading-container ,deployments
+                                           ,kubernetes-deployments--column-heading
+                                           ,@(seq-map (lambda (it) (kubernetes-overview-render-aggregated-deployment state it)) deployments)))
               (padding))))
 
 (defun kubernetes-overview-render (state)

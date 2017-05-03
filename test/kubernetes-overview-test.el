@@ -55,7 +55,7 @@ Deployments (2)
     Pods
       Selector:   example-pod-v3
       Replicas:   1
-        Fetching...
+      Fetching...
 
   deployment-2                                         1/1          1          1    59d
     Namespace:  example-ns
@@ -67,7 +67,7 @@ Deployments (2)
     Pods
       Selector:   deployment-2
       Replicas:   1
-        Fetching...
+      Fetching...
 "))
 
 (ert-deftest kubernetes-overview-test--aggregated-overview--no-pods-set ()

@@ -71,7 +71,7 @@
                   ((null pod)
                    `(line (propertize (face kubernetes-progress-indicator) "Not found.")))
                   (t
-                   (kubernetes-pod-line state pod))))
+                   `(pod-line ,state ,pod))))
                (padding)))))
 
 (defun kubernetes-jobs--format-line (state pod job)

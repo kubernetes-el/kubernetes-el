@@ -2,6 +2,7 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 'kubernetes-ast)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 
@@ -12,7 +13,7 @@
     (member (downcase pod-state) '("running" "containercreating" "terminated"
                                    "succeeded"))))
 
-(defun kubernetes-pod-line (state pod)
+(kubernetes-ast-define-component pod-line (state pod)
   (-let* ((marked-pods (kubernetes-state-marked-pods state))
           (pending-deletion (kubernetes-state-pods-pending-deletion state))
           ((&alist 'metadata (&alist 'name name) 'status (&alist 'containerStatuses containers 'phase phase)) pod)
