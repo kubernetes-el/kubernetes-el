@@ -6,6 +6,7 @@
 (require 'kubernetes-jobs)
 (declare-function test-helper-json-resource "test-helper.el")
 
+(defconst sample-get-pods-response (test-helper-json-resource "get-pods-response.json"))
 
 (defconst sample-get-jobs-response (test-helper-json-resource "get-jobs-response.json"))
 
@@ -58,7 +59,7 @@ Jobs (0)
 
 ;; Shows job lines when there are jobs.
 
-(defconst kubernetes-jobs-test--sample-result
+(defconst kubernetes-jobs-test--sample-result--pods-loading
   (s-trim-left "
 
 Jobs (2)
@@ -88,28 +89,57 @@ Jobs (2)
 
 "))
 
-(ert-deftest kubernetes-jobs-test--sample-response ()
+(ert-deftest kubernetes-jobs-test--sample-response--pods-loading ()
   (let ((state `((jobs . ,sample-get-jobs-response)
                  (current-time . ,(date-to-time "2017-05-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-jobs-section state)))
-      (should (equal kubernetes-jobs-test--sample-result
+      (should (equal kubernetes-jobs-test--sample-result--pods-loading
                      (substring-no-properties (buffer-string)))))))
 
-(ert-deftest kubernetes-jobs-test--sample-response-text-properties ()
-  (let ((state `((jobs . ,sample-get-jobs-response))))
+
+;; Show entries when pods are found in the application state.
+
+(defconst kubernetes-jobs-test--sample-result--pod-exists
+  (s-trim-left "
+
+Jobs (2)
+  Name                                          Successful    Age
+  example-job-1                                        1      10d
+    Namespace:  mm
+    RestartPolicy: OnFailure
+
+    Created:    2017-04-22T22:00:02Z
+    Started:    2017-04-22T22:00:03Z
+    Completed:  2017-04-23T00:00:05Z
+
+    Pod
+      Running     example-svc-v3-1603416598-2f9lb
+
+  example-job-2                                        1      10d
+    Namespace:  mm
+    RestartPolicy: OnFailure
+
+    Created:    2017-04-22T22:00:02Z
+    Started:    2017-04-22T22:00:03Z
+    Completed:  2017-04-23T00:00:05Z
+
+    Pod
+      Not found.
+
+
+"))
+
+(ert-deftest kubernetes-jobs-test--sample-response--pod-exists ()
+  (let ((state `((jobs . ,sample-get-jobs-response)
+                 (current-time . ,(date-to-time "2017-05-03 00:00Z"))
+                 (pods . ,sample-get-pods-response))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-jobs-section state)))
-      ;; Skip past header.
-      (forward-line 2)
-
-      (dolist (key '("Namespace"
-                     "Created"))
-        (save-excursion
-          (search-forward key)
-          (should (equal 'magit-header-line (get-text-property (point) 'face))))))))
+      (should (equal kubernetes-jobs-test--sample-result--pod-exists
+                     (substring-no-properties (buffer-string)))))))
 
 
 ;;; kubernetes-jobs-test.el ends here

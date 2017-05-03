@@ -11,7 +11,7 @@
         "creationTimestamp": "2017-04-22T22:00:02Z",
         "labels": {
           "controller-uid": "09768995-26a7-11e7-aed8-12c05cb0b29d",
-          "job-name": "example-job-1"
+          "job-name": "example-svc-v3-1603416598"
         },
         "name": "example-job-1",
         "namespace": "mm",
@@ -32,7 +32,7 @@
             "creationTimestamp": null,
             "labels": {
               "controller-uid": "09768996-27a7-11e7-aed8-12c06cb0b29d",
-              "job-name": "example-job-1"
+              "job-name": "example-svc-v3-1603416598"
             }
           },
           "spec": {
