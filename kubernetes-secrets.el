@@ -4,6 +4,8 @@
 
 (require 'dash)
 
+(require 'kubernetes-ast)
+(require 'kubernetes-loading-container)
 (require 'kubernetes-modes)
 (require 'kubernetes-props)
 (require 'kubernetes-state)
@@ -11,20 +13,20 @@
 (require 'kubernetes-yaml)
 
 
-;; Component
+;; Components
 
 (defconst kubernetes-secrets--column-heading
   (propertize (format "%-45s %6s %6s" "Name" "Data" "Age")
               'face 'magit-section-heading))
 
-(defun kubernetes-secrets--format-detail (secret)
+(kubernetes-ast-define-component secret-detail (secret)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) secret]
     `((section (namespace nil)
                (nav-prop (:namespace-name ,ns)
                          (key-value 12 "Namespace" ,(propertize ns 'face 'kubernetes-namespace))))
       (key-value 12 "Created" ,time))))
 
-(defun kubernetes-secrets--format-line (state secret)
+(kubernetes-ast-define-component secret-line (state secret)
   (-let* ((current-time (kubernetes-state-current-time state))
           (pending-deletion (kubernetes-state-secrets-pending-deletion state))
           (marked-secrets (kubernetes-state-marked-secrets state))
@@ -52,44 +54,22 @@
                             (t
                              line))))))
 
-(defun kubernetes-secrets-render-secret (state secret)
+(kubernetes-ast-define-component secret (state secret)
   `(section (,(intern (kubernetes-state-resource-name secret)) t)
-            (heading ,(kubernetes-secrets--format-line state secret))
+            (heading (secret-line ,state ,secret))
             (section (details nil)
                      (indent
-                      ,@(kubernetes-secrets--format-detail secret)
+                      (secret-detail ,secret)
                       (padding)))))
 
-(defun kubernetes-secrets-render-secrets (state secrets &optional hidden)
-  (let ((secrets-set-p (kubernetes-state-secrets state)))
-    `(section (secrets-container ,hidden)
-              ,(cond
-                ;; If the state is set and there are no secrets, write "None".
-                ((and secrets-set-p (seq-empty-p secrets))
-                 `((heading ,(concat (propertize "Secrets" 'face 'magit-header-line) " (0)"))
-                   (indent
-                    (section (secrets-list nil)
-                             (propertize (face magit-dimmed) (line "None."))))))
-
-                ;; If there are secrets, write sections for each secret.
-                (secrets
-                 `((heading ,(concat (propertize "Secrets" 'face 'magit-header-line) " " (format "(%s)" (length secrets))))
-                   (indent
-                    (line ,kubernetes-secrets--column-heading)
-                    ,@(seq-map (lambda (it) (kubernetes-secrets-render-secret state it)) secrets))))
-
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 `((heading "Secrets")
-                   (indent
-                    (line ,kubernetes-secrets--column-heading)
-                    (section (secrets-list nil)
-                             (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
-              (padding))))
-
-(defun kubernetes-secrets-render (state &optional hidden)
+(kubernetes-ast-define-component secrets-list (state &optional hidden)
   (-let [(&alist 'items secrets) (kubernetes-state-secrets state)]
-    (kubernetes-secrets-render-secrets state secrets hidden)))
+    `(section (secrets-container ,hidden)
+              (header-with-count "Secrets" ,secrets)
+              (indent
+               (columnar-loading-container ,secrets ,kubernetes-secrets--column-heading
+                                           ,(--map `(secret ,state ,it) secrets)))
+              (padding))))
 
 
 ;; Requests and state management

@@ -254,9 +254,9 @@
               ,(when (member 'pods sections)
                  `(pods-list ,state))
               ,(when (member 'secrets sections)
-                 (kubernetes-secrets-render state))
+                 `(secrets-list ,state))
               ,(when (member 'services sections)
-                 (kubernetes-services-render state)))))
+                 `(services-list ,state)))))
 
 
 ;; Overview buffer.

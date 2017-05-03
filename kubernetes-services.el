@@ -4,7 +4,9 @@
 
 (require 'dash)
 
+(require 'kubernetes-ast)
 (require 'kubernetes-kubectl)
+(require 'kubernetes-loading-container)
 (require 'kubernetes-modes)
 (require 'kubernetes-props)
 (require 'kubernetes-state)
@@ -13,13 +15,13 @@
 (require 'kubernetes-yaml)
 
 
-;; Component
+;; Components
 
 (defconst kubernetes-services--column-heading
   (propertize (format "%-30s %15s %15s %6s" "Name" "Internal IP" "External IP" "Age")
               'face 'magit-section-heading))
 
-(defun kubernetes-services--format-details (service)
+(kubernetes-ast-define-component service-details (service)
   (-let ((detail
           (lambda (key value)
             (when value
@@ -53,7 +55,7 @@
        (funcall detail "External IPs" (string-join ips ", ")))
      (funcall detail "Ports" (string-join (seq-map format-ports ports) ", ")))))
 
-(defun kubernetes-services--format-line (state service)
+(kubernetes-ast-define-component service-line (state service)
   (-let* ((current-time (kubernetes-state-current-time state))
           (pending-deletion (kubernetes-state-services-pending-deletion state))
           (marked-services (kubernetes-state-marked-services state))
@@ -86,40 +88,21 @@
                             (t
                              line))))))
 
-(defun kubernetes-services-render-service (state service)
+(kubernetes-ast-define-component service (state service)
   `(section (,(intern (kubernetes-state-resource-name service)) t)
-            (heading ,(kubernetes-services--format-line state service))
+            (heading (service-line ,state ,service))
             (indent
              (section (details nil)
-                      ,@(kubernetes-services--format-details service)
+                      (service-details ,service)
                       (padding)))))
 
-(defun kubernetes-services-render (state &optional hidden)
+(kubernetes-ast-define-component services-list (state &optional hidden)
   (-let [(services-response &as &alist 'items services) (kubernetes-state-services state)]
     `(section (services-container ,hidden)
-              ,(cond
-
-                ;; If the state is set and there are no services, write "None".
-                ((and services-response (seq-empty-p services))
-                 `((heading ,(concat (propertize "Services" 'face 'magit-header-line) " (0)"))
-                   (indent
-                    (section (services-list nil)
-                             (propertize (face magit-dimmed) (line "None."))))))
-
-                ;; If there are services, write sections for each service.
-                (services
-                 `((heading ,(concat (propertize "Services" 'face 'magit-header-line) " " (format "(%s)" (length services))))
-                   (indent
-                    (line ,kubernetes-services--column-heading)
-                    ,@(seq-map (lambda (it) (kubernetes-services-render-service state it)) services))))
-
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 `((heading "Services")
-                   (indent
-                    (line ,kubernetes-services--column-heading)
-                    (section (services-list nil)
-                             (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
+              (header-with-count "Services" ,services)
+              (indent
+               (columnar-loading-container ,services ,kubernetes-services--column-heading
+                                           ,(--map `(service ,state ,it) services)))
               (padding))))
 
 
