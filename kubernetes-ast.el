@@ -87,7 +87,7 @@ INDENT-LEVEL is the current indentation level at which to render.
 Warning: This could blow the stack if the AST gets too deep."
   (let ((indent-level (or indent-level 0))
         ;; HACK: Temporarily increase interpreter limits for recursive calls.
-        (max-lisp-eval-depth 2000)
+        (max-lisp-eval-depth 10000)
         (max-specpdl-size    4000))
 
     (pcase render-ast

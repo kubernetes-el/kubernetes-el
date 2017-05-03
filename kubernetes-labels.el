@@ -4,17 +4,19 @@
 
 (require 'dash)
 
+(require 'kubernetes-ast)
+(require 'kubernetes-commands)
+(require 'kubernetes-loading-container)
 (require 'kubernetes-pods)
 (require 'kubernetes-state)
-(require 'kubernetes-commands)
 (require 'kubernetes-utils)
 (require 'kubernetes-vars)
 
 ;; Component
 
-(defun kubernetes-labels-render (state)
+(kubernetes-ast-define-component labelled-pods-list (state)
   (-let* ((query (kubernetes-state-label-query state))
-          ((state-set-p &as &alist 'items pods) (kubernetes-state-pods state))
+          ((&alist 'items pods) (kubernetes-state-pods state))
           (matches (nreverse (seq-reduce
                               (lambda (acc pod)
                                 (if (equal query (kubernetes-state-resource-label pod))
@@ -26,19 +28,11 @@
               (section (query-header nil)
                        (key-value 10 "Label" ,(propertize query 'face 'kubernetes-selector))
                        (padding))
-              ,(cond
-                ((and state-set-p (null matches))
-                 `(propertize (face magit-dimmed) (line "No matching resources.")))
 
-                (matches
-                 `((line ,kubernetes-pods-column-heading)
-                   ,@matches))
-
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 `((line ,kubernetes-pods-column-heading)
-                   (section (pods-list nil)
-                            (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))))
+              (indent
+               (columnar-loading-container ,pods
+                                           ,kubernetes-pods-column-heading
+                                           ,matches)))))
 
 
 ;; Commands
@@ -53,7 +47,7 @@
         (kubernetes-utils--save-window-state
          (let ((inhibit-read-only t))
            (erase-buffer)
-           (kubernetes-ast-eval (kubernetes-labels-render (kubernetes-state)))))
+           (kubernetes-ast-eval `(labelled-pods-list ,(kubernetes-state)))))
 
         ;; Force the section at point to highlight.
         (magit-section-update-highlight)))))
