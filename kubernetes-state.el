@@ -72,7 +72,7 @@
        (setf (alist-get 'pods next) args)
        ;; Prune deleted pods from state.
        (-let* (((&alist 'items pods) args)
-               (pod-names (seq-map #'kubernetes-state-resource-name pods)))
+               (pod-names (seq-map #'kubernetes-state-resource-name (append pods nil))))
          (setf (alist-get 'marked-pods next)
                (seq-intersection (alist-get 'marked-pods next)
                                  pod-names))
@@ -98,7 +98,7 @@
 
        ;; Prune deleted configmaps from state.
        (-let* (((&alist 'items configmaps) args)
-               (configmap-names (seq-map #'kubernetes-state-resource-name configmaps)))
+               (configmap-names (seq-map #'kubernetes-state-resource-name (append configmaps nil))))
          (setf (alist-get 'marked-configmaps next)
                (seq-intersection (alist-get 'marked-configmaps next)
                                  configmap-names))
@@ -124,7 +124,7 @@
 
        ;; Prune deleted secrets from state.
        (-let* (((&alist 'items secrets) args)
-               (secret-names (seq-map #'kubernetes-state-resource-name secrets)))
+               (secret-names (seq-map #'kubernetes-state-resource-name (append secrets nil))))
          (setf (alist-get 'marked-secrets next)
                (seq-intersection (alist-get 'marked-secrets next)
                                  secret-names))
@@ -151,7 +151,7 @@
 
        ;; Prune deleted services from state.
        (-let* (((&alist 'items services) args)
-               (service-names (seq-map #'kubernetes-state-resource-name services)))
+               (service-names (seq-map #'kubernetes-state-resource-name (append services nil))))
          (setf (alist-get 'marked-services next)
                (seq-intersection (alist-get 'marked-services next)
                                  service-names))
@@ -176,7 +176,7 @@
        (setf (alist-get 'jobs next) args)
 
        (-let* (((&alist 'items jobs) args)
-               (job-names (seq-map #'kubernetes-state-resource-name jobs)))
+               (job-names (seq-map #'kubernetes-state-resource-name (append jobs nil))))
          (setf (alist-get 'marked-jobs next)
                (seq-intersection (alist-get 'marked-jobs next)
                                  job-names))
@@ -202,7 +202,7 @@
 
        ;; Prune deleted deployments from state.
        (-let* (((&alist 'items deployments) args)
-               (deployment-names (seq-map #'kubernetes-state-resource-name deployments)))
+               (deployment-names (seq-map #'kubernetes-state-resource-name (append deployments nil))))
          (setf (alist-get 'marked-deployments next)
                (seq-intersection (alist-get 'marked-deployments next)
                                  deployment-names))
