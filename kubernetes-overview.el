@@ -4,6 +4,7 @@
 
 (require 'subr-x)
 
+(require 'kubernetes-ast)
 (require 'kubernetes-commands)
 (require 'kubernetes-configmaps)
 (require 'kubernetes-contexts)
@@ -59,7 +60,7 @@
                    (string< (kubernetes-state-resource-name s1)
                             (kubernetes-state-resource-name s2))))))
 
-(defun kubernetes-overview--configmap-line (state configmap)
+(kubernetes-ast-define-component aggregated-configmap-line (state configmap)
   (-let* ((pending-deletion (kubernetes-state-configmaps-pending-deletion state))
           (marked-configmaps (kubernetes-state-marked-configmaps state))
           ((&alist 'metadata (&alist 'name name )) configmap)
@@ -74,10 +75,10 @@
               (nav-prop (:configmap-name ,name)
                         (copy-prop ,name (line ,line))))))
 
-(defun kubernetes-overview--configmaps-section (state configmaps)
+(kubernetes-ast-define-component aggregated-configmaps (state configmaps)
   `(section (configmaps nil)
             (heading "Configmaps")
-            (indent ,(seq-map (lambda (configmap) (kubernetes-overview--configmap-line state configmap)) configmaps))
+            (indent ,(--map `(aggregated-configmap-line ,state ,it) configmaps))
             (padding)))
 
 
@@ -117,7 +118,7 @@
                                    (kubernetes-overview--referenced-secrets secrets pod))
                                  pods)))))
 
-(defun kubernetes-overview--secret-line (state secret)
+(kubernetes-ast-define-component aggregated-secret-line (state secret)
   (-let* ((pending-deletion (kubernetes-state-secrets-pending-deletion state))
           (marked-secrets (kubernetes-state-marked-secrets state))
           ((&alist 'metadata (&alist 'name name )) secret)
@@ -132,10 +133,10 @@
               (nav-prop (:secret-name ,name)
                         (copy-prop ,name (line ,line))))))
 
-(defun kubernetes-overview--secrets-section (state secrets)
+(kubernetes-ast-define-component aggregated-secrets (state secrets)
   `(section (secrets nil)
             (heading "Secrets")
-            (indent ,(seq-map (lambda (secret) (kubernetes-overview--secret-line state secret)) secrets))
+            (indent ,(--map `(aggregated-secret-line ,state ,it) secrets))
             (padding)))
 
 
@@ -152,7 +153,7 @@
                pods
                nil))))
 
-(defun kubernetes-overview--pods-section (state deployment pods)
+(kubernetes-ast-define-component aggregated-pods (state deployment pods)
   (-let [(&alist 'spec (&alist
                         'replicas replicas
                         'selector (&alist 'matchLabels
@@ -186,7 +187,7 @@
 
 ;; Deployment
 
-(defun kubernetes-overview--aggregated-deployment-detail (deployment)
+(kubernetes-ast-define-component aggregated-deployment-detail (deployment)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
                  'spec (&alist
                         'paused paused
@@ -207,7 +208,7 @@
          `(key-value 12 "Strategy" ,strategy-type))
       (key-value 12 "Created" ,time))))
 
-(defun kubernetes-overview-render-aggregated-deployment (state deployment)
+(kubernetes-ast-define-component aggregated-deployment (state deployment)
   (let* ((pods (kubernetes-overview--pods-for-deployment state deployment))
          (configmaps (kubernetes-overview--configmaps-for-deployment state pods))
          (secrets (kubernetes-overview--secrets-for-deployment state pods)))
@@ -215,25 +216,25 @@
               (heading (deployment-line ,state ,deployment))
               (section (details nil)
                        (indent
-                        ,(kubernetes-overview--aggregated-deployment-detail deployment)
+                        (aggregated-deployment-detail ,deployment)
                         (padding)
-                        ,(kubernetes-overview--pods-section state deployment pods)
+                        (aggregated-pods ,state ,deployment ,pods)
                         ,(when configmaps
-                           (kubernetes-overview--configmaps-section state configmaps))
+                           `(aggregated-configmaps ,state ,configmaps))
                         ,(when secrets
-                           (kubernetes-overview--secrets-section state secrets)))))))
+                           `(aggregated-secrets ,state ,secrets)))))))
 
 
 ;; Main Components
 
-(defun kubernetes-overview-render-aggregated-view (state &optional hidden)
+(kubernetes-ast-define-component aggregated-view (state &optional hidden)
   (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state)]
     `(section (overview-container ,hidden)
               (header-with-count "Deployments" ,deployments)
               (indent
                (columnar-loading-container ,deployments
                                            ,kubernetes-deployments--column-heading
-                                           ,@(seq-map (lambda (it) (kubernetes-overview-render-aggregated-deployment state it)) deployments)))
+                                           ,@(--map `(aggregated-deployment ,state ,it) deployments)))
               (padding))))
 
 (defun kubernetes-overview-render (state)
@@ -249,7 +250,7 @@
               ,(when (member 'jobs sections)
                  `(jobs-list ,state))
               ,(when (member 'overview sections)
-                 (kubernetes-overview-render-aggregated-view state))
+                 `(aggregated-view ,state))
               ,(when (member 'pods sections)
                  (kubernetes-pods-render state))
               ,(when (member 'secrets sections)
