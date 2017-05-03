@@ -41,8 +41,7 @@
 
 (defun kubernetes-jobs--format-detail (state pod job)
   (-let [(&alist 'metadata (&alist 'namespace ns
-                                   'creationTimestamp time
-                                   'labels (&alist 'job-name job-name))
+                                   'creationTimestamp time)
                  'spec (&alist 'template
                                (&alist 'spec (&alist 'restartPolicy restart-policy)))
                  'status (&alist
@@ -63,18 +62,17 @@
          `(key-value 12 "Completed" ,completion-time))
       (padding)
 
-      ,(when pod
-         `(section (pod nil)
-                   (heading "Pod")
-                   (indent
-                    ,(cond
-                      ((null (kubernetes-state-pods state))
-                       `(line (propertize (face kubernetes-progress-indicator) "Fetching...")))
-                      ((null pod)
-                       `(line (propertize (face kubernetes-progress-indicator) "Not found.")))
-                      (t
-                       (kubernetes-pod-line state pod))))
-                   (padding))))))
+      (section (pod nil)
+               (heading "Pod")
+               (indent
+                ,(cond
+                  ((null (kubernetes-state-pods state))
+                   `(line (propertize (face kubernetes-progress-indicator) "Fetching...")))
+                  ((null pod)
+                   `(line (propertize (face kubernetes-progress-indicator) "Not found.")))
+                  (t
+                   (kubernetes-pod-line state pod))))
+               (padding)))))
 
 (defun kubernetes-jobs--format-line (state pod job)
   (-let* ((current-time (kubernetes-state-current-time state))

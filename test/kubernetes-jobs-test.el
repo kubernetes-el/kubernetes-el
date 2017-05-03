@@ -71,6 +71,9 @@ Jobs (2)
     Started:    2017-04-22T22:00:03Z
     Completed:  2017-04-23T00:00:05Z
 
+    Pod
+      Fetching...
+
   example-job-2                                        1      10d
     Namespace:  mm
     RestartPolicy: OnFailure
@@ -78,6 +81,9 @@ Jobs (2)
     Created:    2017-04-22T22:00:02Z
     Started:    2017-04-22T22:00:03Z
     Completed:  2017-04-23T00:00:05Z
+
+    Pod
+      Fetching...
 
 
 "))
