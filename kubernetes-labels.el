@@ -20,7 +20,7 @@
           (matches (nreverse (seq-reduce
                               (lambda (acc pod)
                                 (if (equal query (kubernetes-state-resource-label pod))
-                                    (cons (kubernetes-pods-render-pod state pod) acc)
+                                    (cons `(pod ,state ,pod) acc)
                                   acc))
                               pods
                               nil))))

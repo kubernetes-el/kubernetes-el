@@ -252,7 +252,7 @@
               ,(when (member 'overview sections)
                  `(aggregated-view ,state))
               ,(when (member 'pods sections)
-                 (kubernetes-pods-render state))
+                 `(pods-list ,state))
               ,(when (member 'secrets sections)
                  (kubernetes-secrets-render state))
               ,(when (member 'services sections)
