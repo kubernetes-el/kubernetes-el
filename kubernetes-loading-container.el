@@ -11,11 +11,34 @@
 
 (require 'kubernetes-ast)
 
-(kubernetes-ast-define-component emptiness-loading-discriminator (resource-vector &key on-loading on-empty on-populated)
+(kubernetes-ast-define-component membership-loading-discriminator (elem vector &key on-loading on-found on-not-found)
   (cond
-   ((and resource-vector (seq-empty-p resource-vector))
+   ((null vector)
+    on-loading)
+   ((and vector (seq-contains vector elem))
+    on-found)
+   (t
+    on-not-found)))
+
+(kubernetes-ast-define-component membership-loading-container (elem vector &rest loaded-content)
+  `(membership-loading-discriminator
+    ,elem ,vector
+
+    :on-loading
+    (line (propertize (face kubernetes-progress-indicator) (line "Fetching...")))
+
+    :on-found
+    ,loaded-content
+
+    :on-not-found
+    (line (propertize (face kubernetes-progress-indicator) "Not found."))))
+
+
+(kubernetes-ast-define-component emptiness-loading-discriminator (vector &key on-loading on-empty on-populated)
+  (cond
+   ((and (vectorp vector) (equal 0 (length vector)))
     on-empty)
-   (resource-vector
+   (vector
     on-populated)
    (t
     on-loading)))

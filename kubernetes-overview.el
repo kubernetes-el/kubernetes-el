@@ -247,7 +247,7 @@
               ,(when (member 'deployments sections)
                  (kubernetes-deployments-render state))
               ,(when (member 'jobs sections)
-                 (kubernetes-jobs-render state))
+                 `(jobs-list ,state))
               ,(when (member 'overview sections)
                  (kubernetes-overview-render-aggregated-view state))
               ,(when (member 'pods sections)
