@@ -177,7 +177,7 @@
                             (heading "Match Expressions")
                             (indent ,(kubernetes-yaml-render match-expressions))))
 
-               (key-value 12 "Replicas" ,(number-to-string (or replicas 1)))
+               (key-value 12 "Replicas" ,(format "%s" (or replicas 1)))
 
                (loading-container ,(kubernetes-state-pods state)
                                   ,(seq-map (lambda (pod) `(pod-line ,state ,pod)) pods)))
@@ -203,8 +203,8 @@
            `(section (strategy t)
                      (heading (key-value 12 "Strategy" ,strategy-type))
                      (indent
-                      ((key-value 12 "Max Surge" ,(number-to-string surge))
-                       (key-value 12 "Max Unavailable" ,(number-to-string unavailable)))))
+                      ((key-value 12 "Max Surge" ,(format "%s" surge))
+                       (key-value 12 "Max Unavailable" ,(format "%s" unavailable)))))
          `(key-value 12 "Strategy" ,strategy-type))
       (key-value 12 "Created" ,time))))
 
