@@ -10,7 +10,7 @@
 (defconst sample-get-secrets-response (test-helper-json-resource "get-secrets-response.json"))
 
 (defun draw-secrets-section (state)
-  (kubernetes-ast-eval (kubernetes-secrets-render state)))
+  (kubernetes-ast-eval `(secrets-list ,state)))
 
 
 ;; Shows "Fetching..." when state isn't initialized yet.

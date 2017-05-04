@@ -4,6 +4,8 @@
 
 (require 'dash)
 
+(require 'kubernetes-ast)
+(require 'kubernetes-loading-container)
 (require 'kubernetes-modes)
 (require 'kubernetes-process)
 (require 'kubernetes-props)
@@ -12,20 +14,20 @@
 (require 'kubernetes-yaml)
 
 
-;; Component
+;; Components
 
 (defconst kubernetes-configmaps--column-heading
   (propertize (format "%-45s %6s %6s" "Name" "Data" "Age")
               'face 'magit-section-heading))
 
-(defun kubernetes-configmaps--format-detail (configmap)
+(kubernetes-ast-define-component configmap-detail (configmap)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) configmap]
     `((section (namespace nil)
                (nav-prop (:namespace-name ,ns)
                          (key-value 12 "Namespace" ,(propertize ns 'face 'kubernetes-namespace))))
       (key-value 12 "Created" ,time))))
 
-(defun kubernetes-configmaps--format-line (state configmap)
+(kubernetes-ast-define-component configmap-line (state configmap)
   (-let* ((current-time (kubernetes-state-current-time state))
           (pending-deletion (kubernetes-state-configmaps-pending-deletion state))
           (marked-configmaps (kubernetes-state-marked-configmaps state))
@@ -53,44 +55,22 @@
                             (t
                              line))))))
 
-(defun kubernetes-configmaps-render-configmap (state configmap)
+(kubernetes-ast-define-component configmap (state configmap)
   `(section (,(intern (kubernetes-state-resource-name configmap)) t)
-            (heading ,(kubernetes-configmaps--format-line state configmap))
+            (heading (configmap-line ,state ,configmap))
             (section (details nil)
                      (indent
-                      ,@(kubernetes-configmaps--format-detail configmap)
+                      (configmap-detail ,configmap)
                       (padding)))))
 
-(defun kubernetes-configmaps-render-configmaps (state configmaps &optional hidden)
-  (let ((state-set-p (kubernetes-state-configmaps state)))
-    `(section (configmaps-container ,hidden)
-              ,(cond
-                ;; If the state is set and there are no configmaps, write "None".
-                ((and state-set-p (seq-empty-p configmaps))
-                 `((heading ,(concat (propertize "Configmaps" 'face 'magit-header-line) " (0)"))
-                   (section (configmaps-list nil)
-                            (indent
-                             (propertize (face magit-dimmed) (line "None."))))))
-
-                ;; If there are configmaps, write sections for each configmap.
-                (configmaps
-                 `((heading ,(concat (propertize "Configmaps" 'face 'magit-header-line) " " (format "(%s)" (length configmaps))))
-                   (indent
-                    (line ,kubernetes-configmaps--column-heading)
-                    ,@(seq-map (lambda (it) (kubernetes-configmaps-render-configmap state it)) configmaps))))
-
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 `((heading "Configmaps")
-                   (indent
-                    (line ,kubernetes-configmaps--column-heading)
-                    (section (configmaps-list nil)
-                             (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
-              (padding))))
-
-(defun kubernetes-configmaps-render (state &optional hidden)
+(kubernetes-ast-define-component configmaps-list (state &optional hidden)
   (-let [(&alist 'items configmaps) (kubernetes-state-configmaps state)]
-    (kubernetes-configmaps-render-configmaps state configmaps hidden)))
+    `(section (configmaps-container ,hidden)
+              (header-with-count "Configmaps" ,configmaps)
+              (indent
+               (columnar-loading-container ,configmaps ,kubernetes-configmaps--column-heading
+                                           ,(--map `(configmap ,state ,it) configmaps)))
+              (padding))))
 
 
 ;; Requests and state management

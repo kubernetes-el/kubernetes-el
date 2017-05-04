@@ -13,13 +13,13 @@
 (require 'kubernetes-yaml)
 
 
-;; Component
+;; Components
 
 (defconst kubernetes-deployments--column-heading
   (propertize (format "%-45s %10s %10s %10s %6s" "Name" "Replicas" "UpToDate" "Available" "Age")
               'face 'magit-section-heading))
 
-(defun kubernetes-deployments--format-detail (deployment)
+(kubernetes-ast-define-component deployment-detail (deployment)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
                  'spec (&alist 'selector (&alist 'matchLabels
                                                  (&alist 'name selector-name
@@ -45,7 +45,7 @@
                          (key-value 12 "Namespace" ,(propertize ns 'face 'kubernetes-namespace))))
       (key-value 12 "Created" ,time))))
 
-(defun kubernetes-deployments--format-line (state deployment)
+(kubernetes-ast-define-component deployment-line (state deployment)
   (-let* ((current-time (kubernetes-state-current-time state))
           (pending-deletion (kubernetes-state-deployments-pending-deletion state))
           (marked-deployments (kubernetes-state-marked-deployments state))
@@ -114,39 +114,21 @@
                             (t
                              line))))))
 
-(defun kubernetes-deployments-render-deployment (state deployment)
+(kubernetes-ast-define-component deployment (state deployment)
   `(section (,(intern (kubernetes-state-resource-name deployment)) t)
-            (heading ,(kubernetes-deployments--format-line state deployment))
+            (heading (deployment-line ,state ,deployment))
             (section (details nil)
                      (indent
-                      ,@(kubernetes-deployments--format-detail deployment)
+                      (deployment-detail ,deployment)
                       (padding)))))
 
-(defun kubernetes-deployments-render (state &optional hidden)
+(kubernetes-ast-define-component deployments-list (state &optional hidden)
   (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state)]
     `(section (deployments-container ,hidden)
-              ,(cond
-                ;; If the state is set and there are no deployments, write "None".
-                ((and state-set-p (seq-empty-p deployments))
-                 `((heading ,(concat (propertize "Deployments" 'face 'magit-header-line) " (0)"))
-                   (section (deployments-list nil)
-                            (indent
-                             (propertize (face magit-dimmed) (line "None."))))))
-
-                ;; If there are deployments, write sections for each deployment.
-                (deployments
-                 `((heading ,(concat (propertize "Deployments" 'face 'magit-header-line) " " (format "(%s)" (length deployments))))
-                   (indent
-                    (line ,kubernetes-deployments--column-heading)
-                    ,@(seq-map (lambda (it) (kubernetes-deployments-render-deployment state it)) deployments))))
-
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 `((heading "Deployments")
-                   (indent
-                    (line ,kubernetes-deployments--column-heading)
-                    (section (deployments-list nil)
-                             (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
+              (header-with-count "Deployments" ,deployments)
+              (indent
+               (columnar-loading-container ,deployments ,kubernetes-deployments--column-heading
+                                           ,(--map `(deployment ,state ,it) deployments)))
               (padding))))
 
 

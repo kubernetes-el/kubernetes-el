@@ -5,19 +5,22 @@
 (require 'dash)
 (require 'seq)
 
+(require 'kubernetes-ast)
+(require 'kubernetes-loading-container)
 (require 'kubernetes-modes)
 (require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-yaml)
 
-;; Component
+
+;; Components
 
 (defconst kubernetes-pods-column-heading
   (propertize (format "%-45s %-10s %-5s   %6s %6s" "Name" "Status" "Ready" "Restarts" "Age")
               'face 'magit-section-heading))
 
-(defun kubernetes-pods--format-detail (pod)
+(kubernetes-ast-define-component pod-view-detail (pod)
   (-let ((detail (lambda (k v)
                    (when v
                      `(key-value 12 ,k ,v))))
@@ -42,7 +45,7 @@
       ,(funcall detail "Pod IP" pod-ip)
       ,(funcall detail "Started" start-time))))
 
-(defun kubernetes-pods--format-line (state pod)
+(kubernetes-ast-define-component pod-view-line (state pod)
   (-let* ((current-time (kubernetes-state-current-time state))
           (marked-pods (kubernetes-state-marked-pods state))
           (pending-deletion (kubernetes-state-pods-pending-deletion state))
@@ -107,52 +110,27 @@
                             (t
                              line))))))
 
-(defun kubernetes-pods-render-pod (state pod)
+(kubernetes-ast-define-component pod (state pod)
   `(section (,(intern (kubernetes-state-resource-name pod)) t)
-            (heading ,(kubernetes-pods--format-line state pod))
+            (heading (pod-view-line ,state ,pod))
             (indent
              (section (details nil)
-                      ,@(kubernetes-pods--format-detail pod)
+                      (pod-view-detail ,pod)
                       (padding)))))
-
-(defun kubernetes-pods-render-pods (state pods &optional hidden)
-  (let ((pods-set-p (kubernetes-state-pods state)))
-    `(section (pods-container ,hidden)
-              ,(cond
-                ;; If the state is set and there are no pods, write "None".
-                ((and pods-set-p (seq-empty-p pods))
-                 (let ((none (propertize "None." 'face 'magit-dimmed))
-                       (heading (concat (propertize "Pods" 'face 'magit-header-line) " (0)")))
-                   `((heading ,heading)
-                     (section (pods-list nil)
-                              (indent
-                               (line ,none))))))
-
-                ;; If there are pods, write sections for each pod.
-                (pods
-                 (let ((heading (concat (propertize "Pods" 'face 'magit-header-line) " " (format "(%s)" (length pods)))))
-                   `((heading ,heading)
-                     (indent
-                      (line ,kubernetes-pods-column-heading)
-                      ,@(seq-map (lambda (it) (kubernetes-pods-render-pod state it)) pods)))))
-
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 (let ((fetching (propertize "Fetching..." 'face 'kubernetes-progress-indicator)))
-                   `((heading "Pods")
-                     (section (pods-list nil)
-                              (indent
-                               (line ,kubernetes-pods-column-heading)
-                               (line ,fetching)))))))
-              (padding))))
 
 (defun kubernetes-pods--succeeded-job-pod-p (pod)
   (-let [(&alist 'status (&alist 'phase phase)) pod]
     (equal phase "Succeeded")))
 
-(defun kubernetes-pods-render (state &optional hidden)
+(kubernetes-ast-define-component pods-list (state &optional hidden)
   (-let [(&alist 'items pods) (kubernetes-state-pods state)]
-    (kubernetes-pods-render-pods state (seq-remove #'kubernetes-pods--succeeded-job-pod-p pods) hidden)))
+    `(section (pods-container ,hidden)
+              (header-with-count "Pods" ,pods)
+              (indent
+               (columnar-loading-container ,pods ,kubernetes-pods-column-heading
+                                           ,@(--map `(pod ,state ,it)
+                                                    (-remove #'kubernetes-pods--succeeded-job-pod-p (append pods nil)))))
+              (padding))))
 
 
 ;; Requests and state management

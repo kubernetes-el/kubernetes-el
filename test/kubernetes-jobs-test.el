@@ -11,7 +11,7 @@
 (defconst sample-get-jobs-response (test-helper-json-resource "get-jobs-response.json"))
 
 (defun draw-jobs-section (state)
-  (kubernetes-ast-eval (kubernetes-jobs-render state)))
+  (kubernetes-ast-eval `(jobs-list ,state)))
 
 
 ;; Shows "Fetching..." when state isn't initialized yet.
@@ -127,7 +127,6 @@ Jobs (2)
 
     Pod
       Not found.
-
 
 "))
 

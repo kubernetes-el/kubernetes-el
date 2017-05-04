@@ -4,12 +4,14 @@
 
 (require 'subr-x)
 
+(require 'kubernetes-ast)
 (require 'kubernetes-commands)
 (require 'kubernetes-configmaps)
 (require 'kubernetes-contexts)
 (require 'kubernetes-deployments)
 (require 'kubernetes-errors)
 (require 'kubernetes-jobs)
+(require 'kubernetes-loading-container)
 (require 'kubernetes-modes)
 (require 'kubernetes-namespaces)
 (require 'kubernetes-pods)
@@ -58,7 +60,7 @@
                    (string< (kubernetes-state-resource-name s1)
                             (kubernetes-state-resource-name s2))))))
 
-(defun kubernetes-overview--configmap-line (state configmap)
+(kubernetes-ast-define-component aggregated-configmap-line (state configmap)
   (-let* ((pending-deletion (kubernetes-state-configmaps-pending-deletion state))
           (marked-configmaps (kubernetes-state-marked-configmaps state))
           ((&alist 'metadata (&alist 'name name )) configmap)
@@ -73,10 +75,10 @@
               (nav-prop (:configmap-name ,name)
                         (copy-prop ,name (line ,line))))))
 
-(defun kubernetes-overview--configmaps-section (state configmaps)
+(kubernetes-ast-define-component aggregated-configmaps (state configmaps)
   `(section (configmaps nil)
             (heading "Configmaps")
-            (indent ,(seq-map (lambda (configmap) (kubernetes-overview--configmap-line state configmap)) configmaps))
+            (indent ,(--map `(aggregated-configmap-line ,state ,it) configmaps))
             (padding)))
 
 
@@ -116,7 +118,7 @@
                                    (kubernetes-overview--referenced-secrets secrets pod))
                                  pods)))))
 
-(defun kubernetes-overview--secret-line (state secret)
+(kubernetes-ast-define-component aggregated-secret-line (state secret)
   (-let* ((pending-deletion (kubernetes-state-secrets-pending-deletion state))
           (marked-secrets (kubernetes-state-marked-secrets state))
           ((&alist 'metadata (&alist 'name name )) secret)
@@ -131,10 +133,10 @@
               (nav-prop (:secret-name ,name)
                         (copy-prop ,name (line ,line))))))
 
-(defun kubernetes-overview--secrets-section (state secrets)
+(kubernetes-ast-define-component aggregated-secrets (state secrets)
   `(section (secrets nil)
             (heading "Secrets")
-            (indent ,(seq-map (lambda (secret) (kubernetes-overview--secret-line state secret)) secrets))
+            (indent ,(--map `(aggregated-secret-line ,state ,it) secrets))
             (padding)))
 
 
@@ -151,7 +153,7 @@
                pods
                nil))))
 
-(defun kubernetes-overview--pods-section (state deployment pods)
+(kubernetes-ast-define-component aggregated-pods (state deployment pods)
   (-let [(&alist 'spec (&alist
                         'replicas replicas
                         'selector (&alist 'matchLabels
@@ -175,20 +177,17 @@
                             (heading "Match Expressions")
                             (indent ,(kubernetes-yaml-render match-expressions))))
 
-               (key-value 12 "Replicas" ,(number-to-string (or replicas 1)))
+               (key-value 12 "Replicas" ,(format "%s" (or replicas 1)))
 
-               ,(cond
-                 ((null (kubernetes-state-pods state))
-                  `(indent (line (propertize (face kubernetes-progress-indicator) "Fetching..."))))
-                 (t
-                  (seq-map (lambda (pod) (kubernetes-pod-line state pod)) pods))))
+               (loading-container ,(kubernetes-state-pods state)
+                                  ,(seq-map (lambda (pod) `(pod-line ,state ,pod)) pods)))
 
               (padding))))
 
 
 ;; Deployment
 
-(defun kubernetes-overview--aggregated-deployment-detail (deployment)
+(kubernetes-ast-define-component aggregated-deployment-detail (deployment)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
                  'spec (&alist
                         'paused paused
@@ -204,55 +203,38 @@
            `(section (strategy t)
                      (heading (key-value 12 "Strategy" ,strategy-type))
                      (indent
-                      ((key-value 12 "Max Surge" ,(number-to-string surge))
-                       (key-value 12 "Max Unavailable" ,(number-to-string unavailable)))))
+                      ((key-value 12 "Max Surge" ,(format "%s" surge))
+                       (key-value 12 "Max Unavailable" ,(format "%s" unavailable)))))
          `(key-value 12 "Strategy" ,strategy-type))
       (key-value 12 "Created" ,time))))
 
-(defun kubernetes-overview-render-aggregated-deployment (state deployment)
+(kubernetes-ast-define-component aggregated-deployment (state deployment)
   (let* ((pods (kubernetes-overview--pods-for-deployment state deployment))
          (configmaps (kubernetes-overview--configmaps-for-deployment state pods))
          (secrets (kubernetes-overview--secrets-for-deployment state pods)))
     `(section (,(intern (kubernetes-state-resource-name deployment)) t)
-              (heading ,(kubernetes-deployments--format-line state deployment))
+              (heading (deployment-line ,state ,deployment))
               (section (details nil)
                        (indent
-                        ,(kubernetes-overview--aggregated-deployment-detail deployment)
+                        (aggregated-deployment-detail ,deployment)
                         (padding)
-                        ,(kubernetes-overview--pods-section state deployment pods)
+                        (aggregated-pods ,state ,deployment ,pods)
                         ,(when configmaps
-                           (kubernetes-overview--configmaps-section state configmaps))
+                           `(aggregated-configmaps ,state ,configmaps))
                         ,(when secrets
-                           (kubernetes-overview--secrets-section state secrets)))))))
+                           `(aggregated-secrets ,state ,secrets)))))))
 
 
 ;; Main Components
 
-(defun kubernetes-overview-render-aggregated-view (state &optional hidden)
+(kubernetes-ast-define-component aggregated-view (state &optional hidden)
   (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state)]
     `(section (overview-container ,hidden)
-              ,(cond
-                ;; If the state is set and there are no deployments, write "None".
-                ((and state-set-p (seq-empty-p deployments))
-                 `((heading ,(concat (propertize "Deployments" 'face 'magit-header-line) " (0)"))
-                   (section (deployments-list nil)
-                            (indent
-                             (propertize (face magit-dimmed) (line "None."))))))
-
-                ;; If there are deployments, write sections for each deployment.
-                (deployments
-                 `((heading ,(concat (propertize "Deployments" 'face 'magit-header-line) " " (format "(%s)" (length deployments))))
-                   (indent
-                    (line ,kubernetes-deployments--column-heading)
-                    ,@(seq-map (lambda (it) (kubernetes-overview-render-aggregated-deployment state it)) deployments))))
-
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 `((heading "Deployments")
-                   (indent
-                    (line ,kubernetes-deployments--column-heading)
-                    (section (deployments-list nil)
-                             (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
+              (header-with-count "Deployments" ,deployments)
+              (indent
+               (columnar-loading-container ,deployments
+                                           ,kubernetes-deployments--column-heading
+                                           ,@(--map `(aggregated-deployment ,state ,it) deployments)))
               (padding))))
 
 (defun kubernetes-overview-render (state)
@@ -262,19 +244,19 @@
               ,(when (member 'context sections)
                  (kubernetes-contexts-render state))
               ,(when (member 'configmaps sections)
-                 (kubernetes-configmaps-render state))
+                 `(configmaps-list ,state))
               ,(when (member 'deployments sections)
-                 (kubernetes-deployments-render state))
+                 `(deployments-list ,state))
               ,(when (member 'jobs sections)
-                 (kubernetes-jobs-render state))
+                 `(jobs-list ,state))
               ,(when (member 'overview sections)
-                 (kubernetes-overview-render-aggregated-view state))
+                 `(aggregated-view ,state))
               ,(when (member 'pods sections)
-                 (kubernetes-pods-render state))
+                 `(pods-list ,state))
               ,(when (member 'secrets sections)
-                 (kubernetes-secrets-render state))
+                 `(secrets-list ,state))
               ,(when (member 'services sections)
-                 (kubernetes-services-render state)))))
+                 `(services-list ,state)))))
 
 
 ;; Overview buffer.

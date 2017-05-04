@@ -16,23 +16,9 @@
     (kubernetes-state-update-label-query "test")
 
     (with-temp-buffer
-      (kubernetes-ast-eval (kubernetes-labels-render (kubernetes-state)))
+      (kubernetes-ast-eval `(labelled-pods-list ,(kubernetes-state)))
       (let ((result (substring-no-properties (buffer-string))))
         (should (string-match-p "Fetching..." result))))))
-
-
-;; Render "No matching resources" if there are no pods with a particular label.
-
-(ert-deftest kubernetes-labels-test--no-matching-pods ()
-  (test-helper-with-empty-state
-    (kubernetes-state-update-label-query "test")
-    (kubernetes-state-update-pods sample-get-pods-response)
-
-    (with-temp-buffer
-      (kubernetes-ast-eval (kubernetes-labels-render (kubernetes-state)))
-      (let ((result (substring-no-properties (buffer-string))))
-        (should (string-match-p "No matching resources." result))))))
-
 
 ;; Render just the matches for the label query.
 
@@ -42,7 +28,7 @@
     (kubernetes-state-update-pods sample-get-pods-response)
 
     (with-temp-buffer
-      (kubernetes-ast-eval (kubernetes-labels-render (kubernetes-state)))
+      (kubernetes-ast-eval `(labelled-pods-list ,(kubernetes-state)))
       (let ((result (substring-no-properties (buffer-string))))
         (should (string-match-p "example-pod-v3" result))
         (should-not (string-match-p "example-pod-v4" result))))))

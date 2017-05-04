@@ -10,7 +10,7 @@
 (defconst sample-get-configmaps-response (test-helper-json-resource "get-configmaps-response.json"))
 
 (defun draw-configmaps-section (state)
-  (kubernetes-ast-eval (kubernetes-configmaps-render state)))
+  (kubernetes-ast-eval `(configmaps-list ,state)))
 
 
 ;; Shows "Fetching..." when state isn't initialized yet.

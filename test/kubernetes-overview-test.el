@@ -16,16 +16,16 @@
 
 (ert-deftest kubernetes-overview-test--renders-selected-sections-from-state ()
   (test-helper-with-empty-state
-    (kubernetes-state-update-overview-sections '(configmaps secrets))
-    (kubernetes-ast-eval (kubernetes-overview-render (kubernetes-state)))
+   (kubernetes-state-update-overview-sections '(configmaps secrets))
+   (kubernetes-ast-eval (kubernetes-overview-render (kubernetes-state)))
 
-    (let ((expected (with-temp-buffer
-                      (kubernetes-ast-eval `(section (root nil)
-                                                     ,(kubernetes-errors-render (kubernetes-state))
-                                                     ,(kubernetes-configmaps-render (kubernetes-state))
-                                                     ,(kubernetes-secrets-render (kubernetes-state))))
-                      (string-trim (substring-no-properties (buffer-string))))))
-      (should (equal expected (string-trim (substring-no-properties (buffer-string))))))))
+   (let ((expected (with-temp-buffer
+                     (kubernetes-ast-eval `(section (root nil)
+                                                    ,(kubernetes-errors-render (kubernetes-state))
+                                                    (configmaps-list ,(kubernetes-state))
+                                                    (secrets-list ,(kubernetes-state))))
+                     (string-trim (substring-no-properties (buffer-string))))))
+     (should (equal expected (string-trim (substring-no-properties (buffer-string))))))))
 
 
 ;; Aggregated overview component
@@ -38,7 +38,7 @@ Deployments
 
 (ert-deftest kubernetes-overview-test--aggregated-overview--shows-pending-when-state-is-empty ()
   (test-helper-with-empty-state
-    (kubernetes-ast-eval (kubernetes-overview-render-aggregated-view (kubernetes-state)))
+    (kubernetes-ast-eval `(aggregated-view ,(kubernetes-state)))
     (should (equal kubernetes-overview-test--expected-overview--empty-state (string-trim (substring-no-properties (buffer-string)))))))
 
 
@@ -55,7 +55,7 @@ Deployments (2)
     Pods
       Selector:   example-pod-v3
       Replicas:   1
-        Fetching...
+      Fetching...
 
   deployment-2                                         1/1          1          1    59d
     Namespace:  example-ns
@@ -67,7 +67,7 @@ Deployments (2)
     Pods
       Selector:   deployment-2
       Replicas:   1
-        Fetching...
+      Fetching...
 "))
 
 (ert-deftest kubernetes-overview-test--aggregated-overview--no-pods-set ()
@@ -75,7 +75,7 @@ Deployments (2)
     (kubernetes-state-update-deployments kubernetes-overview-test--sample-deployments-response)
     (let ((state (cons `(current-time . ,(date-to-time "2017-04-23 00:00Z"))
                        (kubernetes-state))))
-      (kubernetes-ast-eval (kubernetes-overview-render-aggregated-view state)))
+      (kubernetes-ast-eval `(aggregated-view ,state)))
 
     (should (equal kubernetes-overview-test--expected-overview--only-deployments-set
                    (string-trim (substring-no-properties (buffer-string)))))))
@@ -123,7 +123,7 @@ Deployments (2)
     (kubernetes-state-update-secrets kubernetes-overview-test--sample-secrets-response)
     (let ((state (cons `(current-time . ,(date-to-time "2017-04-23 00:00Z"))
                        (kubernetes-state))))
-      (kubernetes-ast-eval (kubernetes-overview-render-aggregated-view state)))
+      (kubernetes-ast-eval `(aggregated-view ,state)))
     (should (equal kubernetes-overview-test--expected-overview--populated-state
                    (string-trim (substring-no-properties (buffer-string)))))))
 

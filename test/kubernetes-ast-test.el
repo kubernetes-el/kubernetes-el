@@ -21,6 +21,11 @@
       (kubernetes-ast-eval ast)
       (should (equal "\n" (buffer-string))))))
 
+(ert-deftest kubernetes-ast-test--padding-errors-if-applied-to-arguments ()
+  (let ((ast '(padding foo)))
+    (with-temp-buffer
+      (should-error (kubernetes-ast-eval ast)))))
+
 
 ;; line
 
@@ -35,6 +40,7 @@
     (with-temp-buffer
       (kubernetes-ast-eval ast)
       (should (equal "foo\n" (buffer-string))))))
+
 
 ;; list
 
@@ -79,6 +85,7 @@
     (with-temp-buffer
       (kubernetes-ast-eval ast)
       (should (equal expected (buffer-string))))))
+
 
 ;; propertize
 

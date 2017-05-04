@@ -4,6 +4,7 @@
 
 (require 'dash)
 
+(require 'kubernetes-ast)
 (require 'kubernetes-kubectl)
 (require 'kubernetes-modes)
 (require 'kubernetes-pod-line)
@@ -14,40 +15,23 @@
 (require 'kubernetes-yaml)
 
 
-;; Component
+;; Components
 
 (defconst kubernetes-jobs--column-heading
   (propertize (format "%-45s %10s %6s" "Name" "Successful" "Age")
               'face 'magit-section-heading))
 
-(defun kubernetes-jobs--format-container (container)
-  (-let [(&alist 'image image 'name name) container]
-    (when name
-      `(section (container nil)
-                (section (selector nil)
-                         (nav-prop (:selector ,name)
-                                   (key-value 12 "Name" ,(propertize name 'face 'kubernetes-selector))))
-                ,(when image
-                   `(key-value 12 "Image" ,image))
-                (padding)))))
+(kubernetes-ast-define-component job-detail (state pod job)
+  (-let* (((&alist 'metadata (&alist 'namespace ns
+                                     'creationTimestamp time)
+                   'spec (&alist 'template
+                                 (&alist 'spec (&alist 'restartPolicy restart-policy)))
+                   'status (&alist
+                            'startTime start-time
+                            'completionTime completion-time))
+           job)
+          ((&alist 'items pods) (kubernetes-state-pods state)))
 
-(defun kubernetes-jobs--lookup-pod-for-job (job state)
-  (-let* (((&alist 'metadata (&alist 'labels (&alist 'job-name job-name))) job)
-          ((&alist 'items items) (kubernetes-state-pods state)))
-    (seq-find (lambda (pod)
-                (let ((pod-name (kubernetes-state-resource-name pod)))
-                  (string-prefix-p job-name pod-name)))
-              items)))
-
-(defun kubernetes-jobs--format-detail (state pod job)
-  (-let [(&alist 'metadata (&alist 'namespace ns
-                                   'creationTimestamp time)
-                 'spec (&alist 'template
-                               (&alist 'spec (&alist 'restartPolicy restart-policy)))
-                 'status (&alist
-                          'startTime start-time
-                          'completionTime completion-time))
-         job]
     `((section (namespace nil)
                (nav-prop (:namespace-name ,ns)
                          (key-value 12 "Namespace" ,(propertize ns 'face 'kubernetes-namespace))))
@@ -65,16 +49,11 @@
       (section (pod nil)
                (heading "Pod")
                (indent
-                ,(cond
-                  ((null (kubernetes-state-pods state))
-                   `(line (propertize (face kubernetes-progress-indicator) "Fetching...")))
-                  ((null pod)
-                   `(line (propertize (face kubernetes-progress-indicator) "Not found.")))
-                  (t
-                   (kubernetes-pod-line state pod))))
-               (padding)))))
+                (membership-loading-container ,pod ,pods
+                                              (pod-line ,state ,pod)
+                                              (padding)))))))
 
-(defun kubernetes-jobs--format-line (state pod job)
+(kubernetes-ast-define-component job-line (state pod job)
   (-let* ((current-time (kubernetes-state-current-time state))
           (pending-deletion (kubernetes-state-jobs-pending-deletion state))
           (marked-jobs (kubernetes-state-marked-jobs state))
@@ -113,39 +92,29 @@
                                   (t
                                    line)))))))
 
-(defun kubernetes-jobs-render-job (state job)
+(defun kubernetes-jobs--lookup-pod-for-job (job state)
+  (-let* (((&alist 'metadata (&alist 'labels (&alist 'job-name job-name))) job)
+          ((&alist 'items items) (kubernetes-state-pods state)))
+    (seq-find (lambda (pod)
+                (let ((pod-name (kubernetes-state-resource-name pod)))
+                  (string-prefix-p job-name pod-name)))
+              items)))
+
+(kubernetes-ast-define-component job (state job)
   (let ((pod (kubernetes-jobs--lookup-pod-for-job job state)))
     `(section (,(intern (kubernetes-state-resource-name job)) t)
-              (heading ,(kubernetes-jobs--format-line state pod job))
+              (heading (job-line ,state ,pod ,job))
               (section (details nil)
                        (indent
-                        ,@(kubernetes-jobs--format-detail state pod job))))))
+                        (job-detail ,state ,pod ,job))))))
 
-(defun kubernetes-jobs-render (state &optional hidden)
+(kubernetes-ast-define-component jobs-list (state &optional hidden)
   (-let [(state-set-p &as &alist 'items jobs) (kubernetes-state-jobs state)]
     `(section (jobs-container ,hidden)
-              ,(cond
-                ;; If the state is set and there are no jobs, write "None".
-                ((and state-set-p (null (append jobs nil)))
-                 `((heading ,(concat (propertize "Jobs" 'face 'magit-header-line) " (0)"))
-                   (section (jobs-list nil)
-                            (indent
-                             (propertize (face magit-dimmed) (line "None."))))))
-
-                ;; If there are jobs, write sections for each job.
-                (jobs
-                 `((heading ,(concat (propertize "Jobs" 'face 'magit-header-line) " " (format "(%s)" (length jobs))))
-                   (indent
-                    (line ,kubernetes-jobs--column-heading)
-                    ,@(seq-map (lambda (it) (kubernetes-jobs-render-job state it)) jobs))))
-
-                ;; If there's no state, assume requests are in progress.
-                (t
-                 `((heading "Jobs")
-                   (indent
-                    (line ,kubernetes-jobs--column-heading)
-                    (section (jobs-list nil)
-                             (propertize (face kubernetes-progress-indicator) (line "Fetching...")))))))
+              (header-with-count "Jobs" ,jobs)
+              (indent
+               (columnar-loading-container ,jobs ,kubernetes-jobs--column-heading
+                                           ,(--map `(job ,state ,it) jobs)))
               (padding))))
 
 
