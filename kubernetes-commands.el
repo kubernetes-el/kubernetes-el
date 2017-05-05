@@ -315,14 +315,16 @@ STATE is the current application state."
    (let ((state (kubernetes-state)))
      (list (completing-read "Use namespace: " (kubernetes--namespace-names state) nil t)
            state)))
-  ;; The context is safe to preserve, but everything else should be reset.
-  (let ((config (kubernetes-state-config state)))
-    (kubernetes-process-kill-polling-processes)
-    (kubernetes-state-clear)
-    (goto-char (point-min))
-    (kubernetes-state-update-config config)
-    (kubernetes-state-update-current-namespace ns)
-    (kubernetes-state-trigger-redraw)))
+  (kubernetes-process-kill-polling-processes)
+  (kubernetes-state-clear)
+  (goto-char (point-min))
+
+  ;; State for the context and view should be preserved.
+  (kubernetes-state-update-config (kubernetes-state-config state))
+  (kubernetes-state-update-current-namespace ns)
+  (kubernetes-state-update-overview-sections (kubernetes-state-overview-sections state))
+
+  (kubernetes-state-trigger-redraw))
 
 (defun kubernetes--namespace-names (state)
   (-let* ((config (or (kubernetes-state-namespaces state) (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-namespaces)))
@@ -335,8 +337,13 @@ STATE is the current application state."
 CONTEXT is the name of a context as a string."
   (interactive (list (completing-read "Context: " (kubernetes--context-names (kubernetes-state)) nil t)))
   (kubernetes-process-kill-polling-processes)
-  (kubernetes-state-clear)
+
+  (let ((state (kubernetes-state)))
+    (kubernetes-state-clear)
+    (kubernetes-state-update-overview-sections (kubernetes-state-overview-sections state)))
+
   (kubernetes-state-trigger-redraw)
+
   (goto-char (point-min))
   (kubernetes-kubectl-config-use-context kubernetes-props
                                          (kubernetes-state)
