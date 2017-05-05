@@ -132,44 +132,10 @@ Rendering the overview buffer is divided into two stages:
 Future optimizations could include dirty checking to only update certain parts
 of the buffer.
 
-*** Core AST
-
-The core AST is represented as a list with the following simple grammar:
-
-#+BEGIN_EXAMPLE
-hiddenp = t | nil
-
-properties = SYMBOL SEXP
-
-ast = STRING
-    | ( line STRING* )
-    | ( heading ast )
-    | ( indent ast* )
-    | ( list ast* )
-    | ( propertize ( properties* ) ast* )
-    | ( section ( SYMBOL hiddenp ) ast* )
-    | ( mark-for-delete ast* )
-    | ( padding )
-    | ( ast* )
-#+END_EXAMPLE
-
-*** Sugar AST
-
-For convenience, the AST provides extra forms that desugar into the core
-forms above.
-
-#+BEGIN_EXAMPLE
-
-navtype = KEYWORD
-
-keywidth = INTEGER
-
-sugared
-    = ast
-    | ( nav-prop ( navtype SEXP+ ) ast* )
-    | ( copy-prop STRING ast* )
-    | ( key-value keywidth STRING STRING )
-#+END_EXAMPLE
+[[file:kubernetes-ast.el][kubernetes-ast.el]] contains the implementation of the interpreter for the AST. It
+implements the core forms and provides a macro, [[file:kubernetes-ast.el::(defmacro%20kubernetes-ast-define-component%20(name%20arglist%20&rest%20body)][kubernetes-ast-define-component]],
+that allows the interpreter to be extended with custom components implemented in
+terms of the AST.
 
 ** Feature dependencies
 
