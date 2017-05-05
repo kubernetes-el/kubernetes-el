@@ -28,6 +28,7 @@
 
 (defun kubernetes-overview--referenced-configmaps (state pod)
   (-let* (((&alist 'items configmaps) (kubernetes-state-configmaps state))
+          (configmaps (append configmaps nil))
           ((&alist 'spec (&alist 'volumes volumes 'containers containers)) pod)
 
           (names-in-volumes
@@ -113,7 +114,8 @@
               matches)))
 
 (defun kubernetes-overview--secrets-for-deployment (state pods)
-  (-let [(&alist 'items secrets) (kubernetes-state-secrets state)]
+  (-let* (((&alist 'items secrets) (kubernetes-state-secrets state))
+          (secrets (append secrets nil)))
     (-non-nil (-uniq (seq-mapcat (lambda (pod)
                                    (kubernetes-overview--referenced-secrets secrets pod))
                                  pods)))))
@@ -144,7 +146,8 @@
 
 (defun kubernetes-overview--pods-for-deployment (state deployment)
   (-let* (((&alist 'spec (&alist 'selector (&alist 'matchLabels (&alist 'name selector-name)))) deployment)
-          ((&alist 'items pods) (kubernetes-state-pods state)))
+          ((&alist 'items pods) (kubernetes-state-pods state))
+          (pods (append pods nil)))
     (nreverse (seq-reduce
                (lambda (acc pod)
                  (if (equal selector-name (kubernetes-state-resource-label pod))
