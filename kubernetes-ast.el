@@ -32,17 +32,17 @@ ARGLIST is the arguments that must be supplied to construct the
 component.
 
 BODY is the definition of the component."
-          (declare (indent 2))
-          (cl-assert (symbolp name))
-          (cl-assert (listp arglist))
-          (let ((fname (intern (format "kubernetes-ast--generated--%s" name)))
-                (docstring (format "Auto-generated component constructor function.
+  (declare (indent 2))
+  (cl-assert (symbolp name))
+  (cl-assert (listp arglist))
+  (let ((fname (intern (format "kubernetes-ast--generated--%s" name)))
+        (docstring (format "Auto-generated component constructor function.
 
 Creates instances of %s components, which may be referred to as
 such in rendering ASTs." name)))
-            `(progn
-               (cl-defun ,fname ,arglist ,docstring ,@body)
-               (puthash ',name #',fname kubernetes-ast--components))))
+    `(progn
+        (cl-defun ,fname ,arglist ,docstring ,@body)
+        (puthash ',name #',fname kubernetes-ast--components))))
 
 (kubernetes-ast-define-component line (inner-ast)
   `(,inner-ast
