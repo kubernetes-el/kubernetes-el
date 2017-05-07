@@ -277,9 +277,10 @@ such in rendering ASTs." name)))
 
         ;; Custom components
         ;;
-        ;; If the current instruction is a list and its head is a symbol, look it
-        ;; up in the component definition table. If the lookup succeeds, push it
-        ;; onto the stack.
+        ;; If the current instruction is a list and its head is a symbol, look
+        ;; it up in the component definition table. If the lookup succeeds,
+        ;; evaluate the component's constructor function to derive an AST, and
+        ;; push that AST onto the stack.
 
         ((and `(,component . ,args)
               (guard component)
