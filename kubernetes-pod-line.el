@@ -36,13 +36,13 @@
     `(section (,(intern (kubernetes-state-resource-name pod)) t)
               (nav-prop (:pod-name ,name)
                         (copy-prop ,name
-                                   ,(cond
-                                     ((member name pending-deletion)
-                                      `(propertize (face kubernetes-pending-deletion) (line ,line)))
-                                     ((member name marked-pods)
-                                      `(mark-for-delete (line ,line)))
-                                     (t
-                                      `(line ,line))))))))
+                                   (line ,(cond
+                                           ((member name pending-deletion)
+                                            `(propertize (face kubernetes-pending-deletion) ,line))
+                                           ((member name marked-pods)
+                                            (mark-for-delete ,line))
+                                           (t
+                                            line))))))))
 
 
 (provide 'kubernetes-pod-line)
