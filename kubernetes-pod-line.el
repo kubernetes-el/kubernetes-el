@@ -40,7 +40,7 @@
                                            ((member name pending-deletion)
                                             `(propertize (face kubernetes-pending-deletion) ,line))
                                            ((member name marked-pods)
-                                            (mark-for-delete ,line))
+                                            `(mark-for-delete ,line))
                                            (t
                                             line))))))))
 
