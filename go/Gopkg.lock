@@ -1,0 +1,49 @@
+memo = "20903a9af27a26c52014f508abbaefcf8dca817f35f6083e63e305cebbedda79"
+
+[[projects]]
+  name = "github.com/ericchiang/k8s"
+  packages = [".","api/resource","api/unversioned","api/v1","apis/apps/v1alpha1","apis/apps/v1beta1","apis/authentication/v1","apis/authentication/v1beta1","apis/authorization/v1","apis/authorization/v1beta1","apis/autoscaling/v1","apis/autoscaling/v2alpha1","apis/batch/v1","apis/batch/v2alpha1","apis/certificates/v1alpha1","apis/certificates/v1beta1","apis/extensions/v1beta1","apis/imagepolicy/v1alpha1","apis/meta/v1","apis/policy/v1alpha1","apis/policy/v1beta1","apis/rbac/v1alpha1","apis/rbac/v1beta1","apis/settings/v1alpha1","apis/storage/v1","apis/storage/v1beta1","runtime","runtime/schema","util/intstr","watch/versioned"]
+  revision = "bd3351b0ceb817083a3226c152e3a2c9bb2849c9"
+  version = "v0.3.0"
+
+[[projects]]
+  name = "github.com/ghodss/yaml"
+  packages = ["."]
+  revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
+  version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/golang/protobuf"
+  packages = ["proto"]
+  revision = "b50ceb1fa9818fa4d78b016c2d4ae025593a7ce3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/mitchellh/go-homedir"
+  packages = ["."]
+  revision = "b8bc1bf767474819792c23f32d8286a45736f1c6"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/net"
+  packages = ["http2","http2/hpack","idna","lex/httplex"]
+  revision = "c9b681d35165f1995d6f3034e61f8761d4b90c99"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/text"
+  packages = ["internal/gen","internal/triegen","internal/ucd","secure/bidirule","transform","unicode/bidi","unicode/cldr","unicode/norm","unicode/rangetable"]
+  revision = "470f45bf29f4147d6fbd7dfd0a02a848e49f5bf4"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/tools"
+  packages = ["go/ast/astutil","go/buildutil","go/loader"]
+  revision = "aaeb897338ad8befb681a567765b40c7052adf5a"
+
+[[projects]]
+  branch = "v2"
+  name = "gopkg.in/yaml.v2"
+  packages = ["."]
+  revision = "cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b"

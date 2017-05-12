@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 )
 
@@ -11,14 +12,14 @@ type client struct {
 }
 
 func (c client) run() int {
-	r := bufio.NewReader(c.in)
-	command, err := r.ReadString('|')
-	if err != nil {
-		panic(err)
+	s := bufio.NewScanner(c.in)
+	for s.Scan() {
+		command := s.Text()
+		fmt.Printf("go command: %s\n", command)
 	}
 
 	w := bufio.NewWriter(c.out)
-	_, err = w.WriteString(command)
+	_, err := w.WriteString("some stuff\n")
 	if err != nil {
 		panic(err)
 	}
