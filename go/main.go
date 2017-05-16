@@ -8,7 +8,7 @@ import (
 func main() {
 	flag.Parse()
 
-	c := client{os.Stdout, os.Stdin}
+	c := newClient(os.Stdout, os.Stdin)
 	exitCode := c.run()
 	os.Exit(exitCode)
 }

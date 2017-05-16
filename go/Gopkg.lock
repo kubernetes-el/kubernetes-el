@@ -1,4 +1,10 @@
-memo = "20903a9af27a26c52014f508abbaefcf8dca817f35f6083e63e305cebbedda79"
+memo = "ced695902fcd2d420f59e3508bfcdbad7c11afd5b533fe7fdc1306c64a19c262"
+
+[[projects]]
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
+  version = "v1.1.0"
 
 [[projects]]
   name = "github.com/ericchiang/k8s"
@@ -23,6 +29,18 @@ memo = "20903a9af27a26c52014f508abbaefcf8dca817f35f6083e63e305cebbedda79"
   name = "github.com/mitchellh/go-homedir"
   packages = ["."]
   revision = "b8bc1bf767474819792c23f32d8286a45736f1c6"
+
+[[projects]]
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
+
+[[projects]]
+  name = "github.com/stretchr/testify"
+  packages = ["assert"]
+  revision = "69483b4bd14f5845b5a1e55bca19e954e827f1d0"
+  version = "v1.1.4"
 
 [[projects]]
   branch = "master"
