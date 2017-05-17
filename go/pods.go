@@ -26,7 +26,7 @@ func listPods(w io.Writer, client *k8s.Client) error {
 			panic("FIXME")
 		}
 	}
-	fmt.Fprintf(w, "])")
+	fmt.Fprintf(w, "]))")
 	return nil
 }
 
