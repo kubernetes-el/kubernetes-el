@@ -48,21 +48,25 @@ func podSexpr(w io.Writer, p *v1.Pod) error {
 	startTime := ""
 
 	fmt.Fprintf(w, "(")
+
 	// MetaData
-	fmt.Fprintf(w, "(metaData . ")
+	fmt.Fprintf(w, "(metaData . (")
 	fmt.Fprintf(w, "(name . \"%s\") ", *p.Metadata.Name)
 	fmt.Fprintf(w, "(namespace . \"%s\") ", *p.Metadata.Namespace)
 	fmt.Fprintf(w, "(labels . (%s))", strings.TrimSpace(labels.String()))
-	fmt.Fprintf(w, ") ")
+	fmt.Fprintf(w, ")) ")
+
 	// Status
-	fmt.Fprintf(w, "(status . ")
+	fmt.Fprintf(w, "(status . (")
 	// ContainerStatuses
 	fmt.Fprintf(w, "(containerStatuses . [%s]) ", strings.TrimSpace(containerStatuses.String()))
 	fmt.Fprintf(w, "(hostIP . \"%s\") ", *p.Status.HostIP)
 	fmt.Fprintf(w, "(podIP . \"%s\") ", *p.Status.PodIP)
 	fmt.Fprintf(w, "(startTime . \"%s\") ", startTime)
 	fmt.Fprintf(w, "(phase . \"%s\")", *p.Status.Phase)
-	fmt.Fprintf(w, ")")
+	// End status
+	fmt.Fprintf(w, "))")
+
 	fmt.Fprintf(w, ")")
 	return nil
 }
