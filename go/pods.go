@@ -57,7 +57,7 @@ func podSexpr(w io.Writer, p *v1.Pod) error {
 	// Status
 	fmt.Fprintf(w, "(status . ")
 	// ContainerStatuses
-	fmt.Fprintf(w, "(containerStatuses . (%s)) ", strings.TrimSpace(containerStatuses.String()))
+	fmt.Fprintf(w, "(containerStatuses . [%s]) ", strings.TrimSpace(containerStatuses.String()))
 	fmt.Fprintf(w, "(hostIP . \"%s\") ", *p.Status.HostIP)
 	fmt.Fprintf(w, "(podIP . \"%s\") ", *p.Status.PodIP)
 	fmt.Fprintf(w, "(startTime . \"%s\") ", startTime)
