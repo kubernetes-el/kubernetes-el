@@ -344,7 +344,10 @@ CONTEXT is the name of a context as a string."
 
   (kubernetes-state-trigger-redraw)
 
-  (goto-char (point-min))
+  (when-let (buf (get-buffer kubernetes-overview-buffer-name))
+    (with-current-buffer buf
+      (goto-char (point-min))))
+
   (kubernetes-kubectl-config-use-context kubernetes-props
                                          (kubernetes-state)
                                          context
