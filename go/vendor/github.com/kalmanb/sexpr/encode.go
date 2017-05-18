@@ -753,7 +753,7 @@ func (ae *arrayEncoder) encode(e *encodeState, v reflect.Value, opts encOpts) {
 	n := v.Len()
 	for i := 0; i < n; i++ {
 		if i > 0 {
-			e.WriteByte(',')
+			e.WriteByte(' ')
 		}
 		ae.elemEnc(e, v.Index(i), opts)
 	}

@@ -205,10 +205,10 @@ func stateBeginValue(s *scanner, c byte) int {
 		return scanSkipSpace
 	}
 	switch c {
-	case '{':
+	case '(':
 		s.step = stateBeginStringOrEmpty
 		s.pushParseState(parseObjectKey)
-		return scanBeginObject
+		return scanObjectKey
 	case '[':
 		s.step = stateBeginValueOrEmpty
 		s.pushParseState(parseArrayValue)
@@ -244,7 +244,7 @@ func stateBeginStringOrEmpty(s *scanner, c byte) int {
 	if c <= ' ' && isSpace(c) {
 		return scanSkipSpace
 	}
-	if c == '}' {
+	if c == ')' {
 		n := len(s.parseState)
 		s.parseState[n-1] = parseObjectValue
 		return stateEndValue(s, c)
@@ -257,7 +257,7 @@ func stateBeginString(s *scanner, c byte) int {
 	if c <= ' ' && isSpace(c) {
 		return scanSkipSpace
 	}
-	if c == '"' {
+	if c == '(' {
 		s.step = stateInString
 		return scanBeginLiteral
 	}
@@ -281,7 +281,7 @@ func stateEndValue(s *scanner, c byte) int {
 	ps := s.parseState[n-1]
 	switch ps {
 	case parseObjectKey:
-		if c == ':' {
+		if c == '.' {
 			s.parseState[n-1] = parseObjectValue
 			s.step = stateBeginValue
 			return scanObjectKey
@@ -293,7 +293,7 @@ func stateEndValue(s *scanner, c byte) int {
 			s.step = stateBeginString
 			return scanObjectValue
 		}
-		if c == '}' {
+		if c == ')' {
 			s.popParseState()
 			return scanEndObject
 		}

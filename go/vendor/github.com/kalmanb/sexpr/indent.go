@@ -1,6 +1,9 @@
 package sexpr
 
-import "bytes"
+import (
+	"bytes"
+	"fmt"
+)
 
 // Compact appends to dst the JSON-encoded src with
 // insignificant space characters elided.
@@ -84,7 +87,10 @@ func Indent(dst *bytes.Buffer, src []byte, prefix, indent string) error {
 		if v == scanSkipSpace {
 			continue
 		}
+
 		if v == scanError {
+			fmt.Println(c)
+			fmt.Println("bbbbbbbbbbbbbbbbbbb")
 			break
 		}
 		if needIndent && v != scanEndObject && v != scanEndArray {
@@ -102,20 +108,12 @@ func Indent(dst *bytes.Buffer, src []byte, prefix, indent string) error {
 
 		// Add spacing around real punctuation.
 		switch c {
-		case '{', '[':
+		case '(', '[':
 			// delay indent so that empty object and array are formatted as {} and [].
 			needIndent = true
 			dst.WriteByte(c)
 
-		case ',':
-			dst.WriteByte(c)
-			newline(dst, prefix, indent, depth)
-
-		case ':':
-			dst.WriteByte(c)
-			dst.WriteByte(' ')
-
-		case '}', ']':
+		case ')', ']':
 			if needIndent {
 				// suppress indent in empty object/array
 				needIndent = false

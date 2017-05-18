@@ -39,17 +39,17 @@ type Optionals struct {
 	Sto struct{} `json:"sto,omitempty"`
 }
 
-var optionalsExpected = `{
- "sr": "",
- "omitempty": 0,
- "slr": null,
- "mr": {},
- "fr": 0,
- "br": false,
- "ur": 0,
- "str": {},
- "sto": {}
-}`
+var optionalsExpected = `(
+ (sr . "")
+ (omitempty . 0)
+ (slr . nil)
+ (mr . ())
+ (fr . 0)
+ (br . false)
+ (ur . 0)
+ (str . ())
+ (sto . ())
+)`
 
 func TestOmitEmpty(t *testing.T) {
 	var o Optionals
@@ -204,6 +204,27 @@ func TestRefValMarshal(t *testing.T) {
 		V3: new(ValText),
 	}
 	const want = `((R0 . "ref")(R1 . "ref")(R2 . "\"ref\"")(R3 . "\"ref\"")(V0 . "val")(V1 . "val")(V2 . "\"val\"")(V3 . "\"val\""))`
+	b, err := Marshal(&s)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if got := string(b); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+type Names struct {
+	Names []Named
+}
+type Named struct {
+	Name string
+}
+
+func TestListMarshal(t *testing.T) {
+	var s = Names{
+		Names: []Named{Named{"a"}, Named{"b"}},
+	}
+	const want = `((Names . [((Name . "a")) ((Name . "b"))]))`
 	b, err := Marshal(&s)
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
@@ -585,17 +606,17 @@ func TestEncodeBytekind(t *testing.T) {
 		want string
 	}{
 		{byte(7), "7"},
-		{jsonbyte(7), `{"JB":7}`},
-		{textbyte(4), `"TB:4"`},
-		{jsonint(5), `{"JI":5}`},
-		{textint(1), `"TI:1"`},
-		{[]byte{0, 1}, `"AAE="`},
-		{[]jsonbyte{0, 1}, `[{"JB":0},{"JB":1}]`},
-		{[][]jsonbyte{{0, 1}, {3}}, `[[{"JB":0},{"JB":1}],[{"JB":3}]]`},
-		{[]textbyte{2, 3}, `["TB:2","TB:3"]`},
-		{[]jsonint{5, 4}, `[{"JI":5},{"JI":4}]`},
-		{[]textint{9, 3}, `["TI:9","TI:3"]`},
-		{[]int{9, 3}, `[9,3]`},
+		{jsonbyte(7), `((JB . 7))`},
+		{textbyte(4), `(TB . 4)`},
+		{jsonint(5), `((JI . 5))`},
+		// {textint(1), `"TI:1"`},
+		// {[]byte{0, 1}, `"AAE="`},
+		{[]jsonbyte{0, 1}, `[((JB . 0)),((JB . 1))]`},
+		// {[][]jsonbyte{{0, 1}, {3}}, `[[{"JB":0},{"JB":1}],[{"JB":3}]]`},
+		// {[]textbyte{2, 3}, `["TB:2","TB:3"]`},
+		// {[]jsonint{5, 4}, `[{"JI":5},{"JI":4}]`},
+		// {[]textint{9, 3}, `["TI:9","TI:3"]`},
+		// {[]int{9, 3}, `[9,3]`},
 	}
 	for _, d := range testdata {
 		js, err := Marshal(d.data)

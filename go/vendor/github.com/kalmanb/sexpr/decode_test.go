@@ -394,7 +394,7 @@ var unmarshalTests = []unmarshalTest{
 	{in: `"http:\/\/"`, ptr: new(string), out: "http://"},
 	{in: `"g-clef: \uD834\uDD1E"`, ptr: new(string), out: "g-clef: \U0001D11E"},
 	{in: `"invalid: \uD834x\uDD1E"`, ptr: new(string), out: "invalid: \uFFFDx\uFFFD"},
-	{in: "null", ptr: new(interface{}), out: nil},
+	{in: "nil", ptr: new(interface{}), out: nil},
 	{in: `{"X": [1,2,3], "Y": 4}`, ptr: new(T), out: T{Y: 4}, err: &UnmarshalTypeError{"array", reflect.TypeOf(""), 7, "T", "X"}},
 	{in: `{"x": 1}`, ptr: new(tx), out: tx{}},
 	{in: `{"F1":1,"F2":2,"F3":3}`, ptr: new(V), out: V{F1: float64(1), F2: int32(2), F3: Number("3")}},
@@ -432,15 +432,15 @@ var unmarshalTests = []unmarshalTest{
 	{in: " \"string\" \x01", err: &SyntaxError{"invalid character '\\x01' after top-level value", 11}},
 
 	// array tests
-	{in: `[1, 2, 3]`, ptr: new([3]int), out: [3]int{1, 2, 3}},
-	{in: `[1, 2, 3]`, ptr: new([1]int), out: [1]int{1}},
-	{in: `[1, 2, 3]`, ptr: new([5]int), out: [5]int{1, 2, 3, 0, 0}},
+	{in: `[1 2 3]`, ptr: new([3]int), out: [3]int{1, 2, 3}},
+	{in: `[1 2 3]`, ptr: new([1]int), out: [1]int{1}},
+	{in: `[1 2 3]`, ptr: new([5]int), out: [5]int{1, 2, 3, 0, 0}},
 
 	// empty array to interface test
 	{in: `[]`, ptr: new([]interface{}), out: []interface{}{}},
-	{in: `null`, ptr: new([]interface{}), out: []interface{}(nil)},
-	{in: `{"T":[]}`, ptr: new(map[string]interface{}), out: map[string]interface{}{"T": []interface{}{}}},
-	{in: `{"T":null}`, ptr: new(map[string]interface{}), out: map[string]interface{}{"T": interface{}(nil)}},
+	{in: `nil`, ptr: new([]interface{}), out: []interface{}(nil)},
+	{in: `((T . []))`, ptr: new(map[string]interface{}), out: map[string]interface{}{"T": []interface{}{}}},
+	{in: `((T . nil))`, ptr: new(map[string]interface{}), out: map[string]interface{}{"T": interface{}(nil)}},
 
 	// composite tests
 	{in: allValueIndent, ptr: new(All), out: allValue},
@@ -758,7 +758,7 @@ var unmarshalTests = []unmarshalTest{
 	{in: `9007199254740993`, ptr: new(float64), out: 9007199254740992.0, golden: false},
 
 	{
-		in:  `{"V": {"F2": "hello"}}`,
+		in:  `((V . ((F2 . "hello"))))`,
 		ptr: new(VOuter),
 		err: &UnmarshalTypeError{
 			Value:  "string",
@@ -782,13 +782,13 @@ var unmarshalTests = []unmarshalTest{
 
 	// issue 15146.
 	// invalid inputs in wrongStringTests below.
-	{in: `{"B":"true"}`, ptr: new(B), out: B{true}, golden: true},
-	{in: `{"B":"false"}`, ptr: new(B), out: B{false}, golden: true},
-	{in: `{"B": "maybe"}`, ptr: new(B), err: errors.New(`json: invalid use of ,string struct tag, trying to unmarshal "maybe" into bool`)},
-	{in: `{"B": "tru"}`, ptr: new(B), err: errors.New(`json: invalid use of ,string struct tag, trying to unmarshal "tru" into bool`)},
-	{in: `{"B": "False"}`, ptr: new(B), err: errors.New(`json: invalid use of ,string struct tag, trying to unmarshal "False" into bool`)},
-	{in: `{"B": "null"}`, ptr: new(B), out: B{false}},
-	{in: `{"B": "nul"}`, ptr: new(B), err: errors.New(`json: invalid use of ,string struct tag, trying to unmarshal "nul" into bool`)},
+	{in: `((B . "true"))`, ptr: new(B), out: B{true}, golden: true},
+	{in: `((B . "false"))`, ptr: new(B), out: B{false}, golden: true},
+	{in: `((B .  "maybe"))`, ptr: new(B), err: errors.New(`json: invalid use of ,string struct tag, trying to unmarshal "maybe" into bool`)},
+	{in: `((B .  "tru"))`, ptr: new(B), err: errors.New(`json: invalid use of ,string struct tag, trying to unmarshal "tru" into bool`)},
+	{in: `((B .  "False"))`, ptr: new(B), err: errors.New(`json: invalid use of ,string struct tag, trying to unmarshal "False" into bool`)},
+	{in: `((B .  "nil"))`, ptr: new(B), out: B{false}},
+	{in: `((B .  "nil"))`, ptr: new(B), err: errors.New(`json: invalid use of ,string struct tag, trying to unmarshal "nul" into bool`)},
 }
 
 func TestMarshal(t *testing.T) {
@@ -1246,22 +1246,22 @@ var allValueIndent = `{
 	"bar": "foo",
 	"bar2": "foo2",
 	"IntStr": "42",
-	"PBool": null,
-	"PInt": null,
-	"PInt8": null,
-	"PInt16": null,
-	"PInt32": null,
-	"PInt64": null,
-	"PUint": null,
-	"PUint8": null,
-	"PUint16": null,
-	"PUint32": null,
-	"PUint64": null,
-	"PUintptr": null,
-	"PFloat32": null,
-	"PFloat64": null,
+	"PBool": nil,
+	"PInt": nil,
+	"PInt8": nil,
+	"PInt16": nil,
+	"PInt32": nil,
+	"PInt64": nil,
+	"PUint": nil,
+	"PUint8": nil,
+	"PUint16": nil,
+	"PUint32": nil,
+	"PUint64": nil,
+	"PUintptr": nil,
+	"PFloat32": nil,
+	"PFloat64": nil,
 	"String": "16",
-	"PString": null,
+	"PString": nil,
 	"Map": {
 		"17": {
 			"Tag": "tag17"
@@ -1274,12 +1274,12 @@ var allValueIndent = `{
 		"19": {
 			"Tag": "tag19"
 		},
-		"20": null
+		"20": nil
 	},
-	"PMap": null,
-	"PMapP": null,
+	"PMap": nil,
+	"PMapP": nil,
 	"EmptyMap": {},
-	"NilMap": null,
+	"NilMap": nil,
 	"Slice": [
 		{
 			"Tag": "tag20"
@@ -1292,15 +1292,15 @@ var allValueIndent = `{
 		{
 			"Tag": "tag22"
 		},
-		null,
+		nil,
 		{
 			"Tag": "tag23"
 		}
 	],
-	"PSlice": null,
-	"PSliceP": null,
+	"PSlice": nil,
+	"PSliceP": nil,
 	"EmptySlice": [],
-	"NilSlice": null,
+	"NilSlice": nil,
 	"StringSlice": [
 		"str24",
 		"str25",
@@ -1313,9 +1313,9 @@ var allValueIndent = `{
 	"PSmall": {
 		"Tag": "tag31"
 	},
-	"PPSmall": null,
+	"PPSmall": nil,
 	"Interface": 5.2,
-	"PInterface": null
+	"PInterface": nil
 }`
 
 var allValueCompact = strings.Map(noSpace, allValueIndent)
@@ -1354,8 +1354,8 @@ var pallValueIndent = `{
 	"PFloat64": 15.1,
 	"String": "",
 	"PString": "16",
-	"Map": null,
-	"MapP": null,
+	"Map": nil,
+	"MapP": nil,
 	"PMap": {
 		"17": {
 			"Tag": "tag17"
@@ -1368,12 +1368,12 @@ var pallValueIndent = `{
 		"19": {
 			"Tag": "tag19"
 		},
-		"20": null
+		"20": nil
 	},
-	"EmptyMap": null,
-	"NilMap": null,
-	"Slice": null,
-	"SliceP": null,
+	"EmptyMap": nil,
+	"NilMap": nil,
+	"Slice": nil,
+	"SliceP": nil,
 	"PSlice": [
 		{
 			"Tag": "tag20"
@@ -1386,23 +1386,23 @@ var pallValueIndent = `{
 		{
 			"Tag": "tag22"
 		},
-		null,
+		nil,
 		{
 			"Tag": "tag23"
 		}
 	],
-	"EmptySlice": null,
-	"NilSlice": null,
-	"StringSlice": null,
-	"ByteSlice": null,
+	"EmptySlice": nil,
+	"NilSlice": nil,
+	"StringSlice": nil,
+	"ByteSlice": nil,
 	"Small": {
 		"Tag": ""
 	},
-	"PSmall": null,
+	"PSmall": nil,
 	"PPSmall": {
 		"Tag": "tag31"
 	},
-	"Interface": null,
+	"Interface": nil,
 	"PInterface": 5.2
 }`
 
@@ -1461,7 +1461,7 @@ func TestNullString(t *testing.T) {
 		B int  `json:",string"`
 		C *int `json:",string"`
 	}
-	data := []byte(`{"A": "1", "B": null, "C": null}`)
+	data := []byte(`{"A": "1", "B": nil, "C": nil}`)
 	var s T
 	s.B = 1
 	s.C = new(int)
@@ -1495,16 +1495,16 @@ var interfaceSetTests = []struct {
 	{"foo", `"bar"`, "bar"},
 	{"foo", `2`, 2.0},
 	{"foo", `true`, true},
-	{"foo", `null`, nil},
+	{"foo", `nil`, nil},
 
-	{nil, `null`, nil},
-	{new(int), `null`, nil},
-	{(*int)(nil), `null`, nil},
-	{new(*int), `null`, new(*int)},
-	{(**int)(nil), `null`, nil},
-	{intp(1), `null`, nil},
-	{intpp(nil), `null`, intpp(nil)},
-	{intpp(intp(1)), `null`, intpp(nil)},
+	{nil, `nil`, nil},
+	{new(int), `nil`, nil},
+	{(*int)(nil), `nil`, nil},
+	{new(*int), `nil`, new(*int)},
+	{(**int)(nil), `nil`, nil},
+	{intp(1), `nil`, nil},
+	{intpp(nil), `nil`, intpp(nil)},
+	{intpp(intp(1)), `nil`, intpp(nil)},
 }
 
 func TestInterfaceSet(t *testing.T) {
@@ -1600,38 +1600,38 @@ func TestUnmarshalNulls(t *testing.T) {
 	// ``not present,'' unmarshaling a JSON null into any other Go type has no effect
 	// on the value and produces no error.
 
-	jsonData := []byte(`{
-				"Bool"    : null,
-				"Int"     : null,
-				"Int8"    : null,
-				"Int16"   : null,
-				"Int32"   : null,
-				"Int64"   : null,
-				"Uint"    : null,
-				"Uint8"   : null,
-				"Uint16"  : null,
-				"Uint32"  : null,
-				"Uint64"  : null,
-				"Float32" : null,
-				"Float64" : null,
-				"String"  : null,
-				"PBool": null,
-				"Map": null,
-				"Slice": null,
-				"Interface": null,
-				"PRaw": null,
-				"PTime": null,
-				"PBigInt": null,
-				"PText": null,
-				"PBuffer": null,
-				"PStruct": null,
-				"Raw": null,
-				"Time": null,
-				"BigInt": null,
-				"Text": null,
-				"Buffer": null,
-				"Struct": null
-			}`)
+	jsonData := []byte(`(
+				(Bool . nil)
+				(Int  . nil)
+				(Int8 . nil)
+				(Int16 . nil)
+				(Int32 . nil)
+				(Int64 . nil)
+				(Uint . nil)
+				(Uint8 . nil)
+				(Uint16 . nil)
+				(Uint32 . nil)
+				(Uint64 . nil)
+				(Float32 . nil)
+				(Float64 . nil)
+				(String . nil)
+				(PBool . nil)
+				(Map . nil)
+				(Slice . nil)
+				(Interface . nil)
+				(PRaw . nil)
+				(PTime . nil)
+				(PBigInt . nil)
+				(PText . nil)
+				(PBuffer . nil)
+				(PStruct . nil)
+				(Raw . nil)
+				(Time . nil)
+				(BigInt . nil)
+				(Text . nil)
+				(Buffer . nil)
+				(Struct . nil)
+			)`)
 	nulls := NullTest{
 		Bool:      true,
 		Int:       2,
@@ -1705,7 +1705,7 @@ func TestUnmarshalNulls(t *testing.T) {
 		t.Errorf("Unmarshal of null did not clear nulls.PStruct")
 	}
 
-	if string(nulls.Raw) != "null" {
+	if string(nulls.Raw) != "nil" {
 		t.Errorf("Unmarshal of RawMessage null did not record null: %v", string(nulls.Raw))
 	}
 	if nulls.Time.String() != before {
@@ -1846,7 +1846,7 @@ type unexportedFields struct {
 }
 
 func TestUnmarshalUnexported(t *testing.T) {
-	input := `{"Name": "Bob", "m": {"x": 123}, "m2": {"y": 456}, "abcd": {"z": 789}}`
+	input := `((Name . "Bob"), (m . (x . 123)) (m2 . (y . 456)) (abcd . (z . 789)))`
 	want := &unexportedFields{Name: "Bob"}
 
 	out := &unexportedFields{}

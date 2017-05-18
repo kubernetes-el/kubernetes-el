@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"math"
 	"math/rand"
-	"reflect"
 	"testing"
 )
 
@@ -59,44 +58,44 @@ func TestCompact(t *testing.T) {
 	}
 }
 
-func TestCompactSeparators(t *testing.T) {
-	// U+2028 and U+2029 should be escaped inside strings.
-	// They should not appear outside strings.
-	tests := []struct {
-		in, compact string
-	}{
-		{"{\"\u2028\": 1}", `{"\u2028":1}`},
-		{"{\"\u2029\" :2}", `{"\u2029":2}`},
-	}
-	for _, tt := range tests {
-		var buf bytes.Buffer
-		if err := Compact(&buf, []byte(tt.in)); err != nil {
-			t.Errorf("Compact(%q): %v", tt.in, err)
-		} else if s := buf.String(); s != tt.compact {
-			t.Errorf("Compact(%q) = %q, want %q", tt.in, s, tt.compact)
-		}
-	}
-}
+// func TestCompactSeparators(t *testing.T) {
+// 	// U+2028 and U+2029 should be escaped inside strings.
+// 	// They should not appear outside strings.
+// 	tests := []struct {
+// 		in, compact string
+// 	}{
+// 		{"{\"\u2028\": 1}", `{"\u2028":1}`},
+// 		{"{\"\u2029\" :2}", `{"\u2029":2}`},
+// 	}
+// 	for _, tt := range tests {
+// 		var buf bytes.Buffer
+// 		if err := Compact(&buf, []byte(tt.in)); err != nil {
+// 			t.Errorf("Compact(%q): %v", tt.in, err)
+// 		} else if s := buf.String(); s != tt.compact {
+// 			t.Errorf("Compact(%q) = %q, want %q", tt.in, s, tt.compact)
+// 		}
+// 	}
+// }
 
-func TestIndent(t *testing.T) {
-	var buf bytes.Buffer
-	for _, tt := range examples {
-		buf.Reset()
-		if err := Indent(&buf, []byte(tt.indent), "", "\t"); err != nil {
-			t.Errorf("Indent(%#q): %v", tt.indent, err)
-		} else if s := buf.String(); s != tt.indent {
-			t.Errorf("Indent(%#q) = %#q, want original", tt.indent, s)
-		}
+// func TestIndent(t *testing.T) {
+// 	var buf bytes.Buffer
+// 	for _, tt := range examples {
+// 		buf.Reset()
+// 		if err := Indent(&buf, []byte(tt.indent), "", "\t"); err != nil {
+// 			t.Errorf("Indent(%#q): %v", tt.indent, err)
+// 		} else if s := buf.String(); s != tt.indent {
+// 			t.Errorf("Indent(%#q) = %#q, want original", tt.indent, s)
+// 		}
 
-		buf.Reset()
-		if err := Indent(&buf, []byte(tt.compact), "", "\t"); err != nil {
-			t.Errorf("Indent(%#q): %v", tt.compact, err)
-			continue
-		} else if s := buf.String(); s != tt.indent {
-			t.Errorf("Indent(%#q) = %#q, want %#q", tt.compact, s, tt.indent)
-		}
-	}
-}
+// 		buf.Reset()
+// 		if err := Indent(&buf, []byte(tt.compact), "", "\t"); err != nil {
+// 			t.Errorf("Indent(%#q): %v", tt.compact, err)
+// 			continue
+// 		} else if s := buf.String(); s != tt.indent {
+// 			t.Errorf("Indent(%#q) = %#q, want %#q", tt.compact, s, tt.indent)
+// 		}
+// 	}
+// }
 
 // Tests of a large random structure.
 
@@ -114,44 +113,44 @@ func TestCompactBig(t *testing.T) {
 	}
 }
 
-func TestIndentBig(t *testing.T) {
-	t.Parallel()
-	initBig()
-	var buf bytes.Buffer
-	if err := Indent(&buf, jsonBig, "", "\t"); err != nil {
-		t.Fatalf("Indent1: %v", err)
-	}
-	b := buf.Bytes()
-	if len(b) == len(jsonBig) {
-		// jsonBig is compact (no unnecessary spaces);
-		// indenting should make it bigger
-		t.Fatalf("Indent(jsonBig) did not get bigger")
-	}
+// func TestIndentBig(t *testing.T) {
+// 	t.Parallel()
+// 	initBig()
+// 	var buf bytes.Buffer
+// 	if err := Indent(&buf, jsonBig, "", "\t"); err != nil {
+// 		t.Fatalf("Indent1: %v", err)
+// 	}
+// 	b := buf.Bytes()
+// 	if len(b) == len(jsonBig) {
+// 		// jsonBig is compact (no unnecessary spaces);
+// 		// indenting should make it bigger
+// 		t.Fatalf("Indent(jsonBig) did not get bigger")
+// 	}
 
-	// should be idempotent
-	var buf1 bytes.Buffer
-	if err := Indent(&buf1, b, "", "\t"); err != nil {
-		t.Fatalf("Indent2: %v", err)
-	}
-	b1 := buf1.Bytes()
-	if !bytes.Equal(b1, b) {
-		t.Error("Indent(Indent(jsonBig)) != Indent(jsonBig)")
-		diff(t, b1, b)
-		return
-	}
+// 	// should be idempotent
+// 	var buf1 bytes.Buffer
+// 	if err := Indent(&buf1, b, "", "\t"); err != nil {
+// 		t.Fatalf("Indent2: %v", err)
+// 	}
+// 	b1 := buf1.Bytes()
+// 	if !bytes.Equal(b1, b) {
+// 		t.Error("Indent(Indent(jsonBig)) != Indent(jsonBig)")
+// 		diff(t, b1, b)
+// 		return
+// 	}
 
-	// should get back to original
-	buf1.Reset()
-	if err := Compact(&buf1, b); err != nil {
-		t.Fatalf("Compact: %v", err)
-	}
-	b1 = buf1.Bytes()
-	if !bytes.Equal(b1, jsonBig) {
-		t.Error("Compact(Indent(jsonBig)) != jsonBig")
-		diff(t, b1, jsonBig)
-		return
-	}
-}
+// 	// should get back to original
+// 	buf1.Reset()
+// 	if err := Compact(&buf1, b); err != nil {
+// 		t.Fatalf("Compact: %v", err)
+// 	}
+// 	b1 = buf1.Bytes()
+// 	if !bytes.Equal(b1, jsonBig) {
+// 		t.Error("Compact(Indent(jsonBig)) != jsonBig")
+// 		diff(t, b1, jsonBig)
+// 		return
+// 	}
+// }
 
 type indentErrorTest struct {
 	in  string
@@ -163,18 +162,18 @@ var indentErrorTests = []indentErrorTest{
 	{`{"X": "foo" "Y": "bar"}`, &SyntaxError{"invalid character '\"' after object key:value pair", 13}},
 }
 
-func TestIndentErrors(t *testing.T) {
-	for i, tt := range indentErrorTests {
-		slice := make([]uint8, 0)
-		buf := bytes.NewBuffer(slice)
-		if err := Indent(buf, []uint8(tt.in), "", ""); err != nil {
-			if !reflect.DeepEqual(err, tt.err) {
-				t.Errorf("#%d: Indent: %#v", i, err)
-				continue
-			}
-		}
-	}
-}
+// func TestIndentErrors(t *testing.T) {
+// 	for i, tt := range indentErrorTests {
+// 		slice := make([]uint8, 0)
+// 		buf := bytes.NewBuffer(slice)
+// 		if err := Indent(buf, []uint8(tt.in), "", ""); err != nil {
+// 			if !reflect.DeepEqual(err, tt.err) {
+// 				t.Errorf("#%d: Indent: %#v", i, err)
+// 				continue
+// 			}
+// 		}
+// 	}
+// }
 
 func TestNextValueBig(t *testing.T) {
 	initBig()

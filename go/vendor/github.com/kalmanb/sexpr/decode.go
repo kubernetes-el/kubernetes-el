@@ -324,8 +324,8 @@ func (d *decodeState) next() []byte {
 	// Our scanner has seen the opening brace/bracket
 	// and thinks we're still in the middle of the object.
 	// invent a closing brace/bracket to get it out.
-	if c == '{' {
-		d.scan.step(&d.scan, '}')
+	if c == '(' {
+		d.scan.step(&d.scan, ')')
 	} else {
 		d.scan.step(&d.scan, ']')
 	}
@@ -378,7 +378,7 @@ func (d *decodeState) value(v reflect.Value) {
 		n := len(d.scan.parseState)
 		if n > 0 && d.scan.parseState[n-1] == parseObjectKey {
 			// d.scan thinks we just read an object key; finish the object
-			d.scan.step(&d.scan, ':')
+			d.scan.step(&d.scan, 'i')
 			d.scan.step(&d.scan, '"')
 			d.scan.step(&d.scan, '"')
 			d.scan.step(&d.scan, '}')
