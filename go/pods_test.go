@@ -6,6 +6,7 @@ import (
 
 	api "github.com/ericchiang/k8s/api/v1"
 	meta "github.com/ericchiang/k8s/apis/meta/v1"
+	"github.com/kalmanb/sexpr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,8 +30,11 @@ func TestPodSexpr(t *testing.T) {
 			Phase:     strPtr("Starting"),
 		},
 	}
-	var result bytes.Buffer
-	err := podSexpr(&result, &pod)
+	// var result bytes.Buffer
+	// err := podSexpr(&result, &pod)
+
+	result, err := sexpr.Marshal(&pod)
+
 	if err != nil {
 		t.Error(err)
 	}
@@ -38,26 +42,28 @@ func TestPodSexpr(t *testing.T) {
 	var b bytes.Buffer
 	b.WriteString("(")
 	// Meta Data
-	b.WriteString("(metaData . ")
+	b.WriteString("(metaData . (")
 	b.WriteString("(name . \"aname\")")
-	b.WriteString(" (namespace . \"space\")")
-	b.WriteString(" (labels . ((\"t1\" . \"v1\")))")
-	b.WriteString(") ")
+	b.WriteString("(namespace . \"space\")")
+	b.WriteString("(labels . ((\"t1\" . \"v1\")))")
+	b.WriteString("))")
 	// Status
-	b.WriteString("(status . ")
+	b.WriteString("(status . (")
 	// Container Status
-	b.WriteString("(containerStatuses . ((")
+	b.WriteString("(containerStatuses . [(")
 	b.WriteString("(name . \"thename\")")
-	b.WriteString(" (image . \"aimage\")")
-	b.WriteString(" (restartCount . 10)")
-	b.WriteString("))) ")
+	b.WriteString("(image . \"aimage\")")
+	b.WriteString("(restartCount . 10)")
+	b.WriteString(")])")
 	b.WriteString("(hostIP . \"123\")")
-	b.WriteString(" (podIP . \"456\")")
-	b.WriteString(" (startTime . \"\")")
-	b.WriteString(" (phase . \"Starting\")")
+	b.WriteString("(podIP . \"456\")")
+	b.WriteString("(startTime . \"\")")
+	b.WriteString("(phase . \"Starting\")")
 	b.WriteString(")")
 	b.WriteString(")")
-	assert.Equal(t, b.String(), result.String())
+	b.WriteString(")")
+	assert.Equal(t, b.String(), string(result))
+	// assert.Equal(t, b.String(), result.String())
 }
 
 func strPtr(s string) *string { return &s }
