@@ -2,12 +2,19 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log"
 
 	"github.com/ericchiang/k8s"
+	api "github.com/ericchiang/k8s/api/v1"
+	"github.com/kalmanb/sexpr"
 )
+
+type podsUpdate struct {
+	Type      string     `json:"type"`
+	Operation string     `json:"operation"`
+	Data      []*api.Pod `json:"data"`
+}
 
 func listPods(w io.Writer, client *k8s.Client) error {
 	ctx := context.TODO()
@@ -16,13 +23,12 @@ func listPods(w io.Writer, client *k8s.Client) error {
 		log.Fatal(err)
 	}
 
-	fmt.Fprintf(w, "((type . \"pod\") (operation . \"upsert\") (data . [")
-	for _, item := range pods.Items {
-		err := podSexpr(w, item)
-		if err != nil {
-			panic("FIXME")
-		}
+	p := podsUpdate{
+		Type:      "pod",
+		Operation: "upsert",
+		Data:      pods.Items,
 	}
-	fmt.Fprintf(w, "]))")
-	return nil
+
+	e := sexpr.NewEncoder(w)
+	return e.Encode(p)
 }
