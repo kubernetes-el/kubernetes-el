@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"testing"
 
 	api "github.com/ericchiang/k8s/api/v1"
@@ -30,40 +29,12 @@ func TestPodSexpr(t *testing.T) {
 			Phase:     strPtr("Starting"),
 		},
 	}
-	// var result bytes.Buffer
-	// err := podSexpr(&result, &pod)
-
 	result, err := sexpr.Marshal(&pod)
-
 	if err != nil {
 		t.Error(err)
 	}
-
-	var b bytes.Buffer
-	b.WriteString("(")
-	// Meta Data
-	b.WriteString("(metaData . (")
-	b.WriteString("(name . \"aname\")")
-	b.WriteString("(namespace . \"space\")")
-	b.WriteString("(labels . ((\"t1\" . \"v1\")))")
-	b.WriteString("))")
-	// Status
-	b.WriteString("(status . (")
-	// Container Status
-	b.WriteString("(containerStatuses . [(")
-	b.WriteString("(name . \"thename\")")
-	b.WriteString("(image . \"aimage\")")
-	b.WriteString("(restartCount . 10)")
-	b.WriteString(")])")
-	b.WriteString("(hostIP . \"123\")")
-	b.WriteString("(podIP . \"456\")")
-	b.WriteString("(startTime . \"\")")
-	b.WriteString("(phase . \"Starting\")")
-	b.WriteString(")")
-	b.WriteString(")")
-	b.WriteString(")")
-	assert.Equal(t, b.String(), string(result))
-	// assert.Equal(t, b.String(), result.String())
+	expected := "((metadata . ((name . \"aname\")(namespace . \"space\")(labels . ((\"t1\" . \"v1\")))))(status . ((phase . \"Starting\")(hostIP . \"123\")(podIP . \"456\")(startTime . \"1970-01-01T12:00:00+12:00\")(containerStatuses . [((name . \"thename\")(restartCount . 10)(image . \"aimage\"))]))))"
+	assert.Equal(t, expected, string(result))
 }
 
 func strPtr(s string) *string { return &s }
