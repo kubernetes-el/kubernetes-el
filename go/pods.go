@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"log"
+	"sync"
+	"time"
 
 	"github.com/ericchiang/k8s"
 	api "github.com/ericchiang/k8s/api/v1"
@@ -16,9 +19,45 @@ type podsUpdate struct {
 	Data      []*api.Pod `json:"data"`
 }
 
-func listPods(w io.Writer, client *k8s.Client) error {
+type podClient struct {
+	k8sClient *k8s.Client
+	m         *sync.Mutex
+	w         io.Writer
+	items     []api.Pod
+}
+
+func newPodClient(k *k8s.Client, m *sync.Mutex, w io.Writer) podClient {
+	return podClient{
+		k, m, w, []api.Pod{},
+	}
+}
+
+func (c podClient) sched() {
+	go func() {
+		for {
+			var b bytes.Buffer
+			err := c.listPods()
+			if err != nil {
+				panic("FIXME")
+			}
+
+			c.m.Lock()
+			_, err = b.WriteTo(c.w)
+			if err != nil {
+				panic("FIXME")
+			}
+			c.m.Unlock()
+
+			// Run again later
+			timer := time.NewTimer(time.Second * 10)
+			<-timer.C
+		}
+	}()
+}
+
+func (c podClient) listPods() error {
 	ctx := context.TODO()
-	pods, err := client.CoreV1().ListPods(ctx, client.Namespace) // k8s.AllNamespaces for all
+	pods, err := c.k8sClient.CoreV1().ListPods(ctx, c.k8sClient.Namespace) // k8s.AllNamespaces for all
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -29,6 +68,6 @@ func listPods(w io.Writer, client *k8s.Client) error {
 		Data:      pods.Items,
 	}
 
-	e := sexpr.NewEncoder(w)
+	e := sexpr.NewEncoder(c.w)
 	return e.Encode(p)
 }

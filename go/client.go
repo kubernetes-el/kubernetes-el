@@ -1,23 +1,20 @@
 package main
 
 import (
-	"bytes"
 	"io"
 	"sync"
-	"time"
-
-	"github.com/ericchiang/k8s"
 )
 
 type client struct {
-	out io.Writer
-	in  io.Reader
-	wg  sync.WaitGroup
-	m   sync.Mutex
+	w         io.Writer
+	r         io.Reader
+	wg        sync.WaitGroup
+	m         sync.Mutex
+	podClient podClient
 }
 
 func newClient(out io.Writer, in io.Reader) *client {
-	return &client{out, in, sync.WaitGroup{}, sync.Mutex{}}
+	return &client{out, in, sync.WaitGroup{}, sync.Mutex{}, podClient{}}
 }
 
 func (c *client) run() int {
@@ -33,29 +30,9 @@ func (c *client) run() int {
 	if err != nil {
 		panic("FIXME")
 	}
-	go listPodsSched(client, c.out, &c.m)
+	podClient := newPodClient(client, &c.m, c.w)
+	podClient.sched()
 
 	c.wg.Wait()
 	return -1
-}
-
-func listPodsSched(client *k8s.Client, w io.Writer, m *sync.Mutex) {
-	for {
-		var b bytes.Buffer
-		err := listPods(&b, client)
-		if err != nil {
-			panic("FIXME")
-		}
-
-		m.Lock()
-		_, err = b.WriteTo(w)
-		if err != nil {
-			panic("FIXME")
-		}
-		m.Unlock()
-
-		// Run again later
-		timer := time.NewTimer(time.Second * 10)
-		<-timer.C
-	}
 }
