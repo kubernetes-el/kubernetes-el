@@ -1,0 +1,33 @@
+{
+  "kind": "Config",
+  "apiVersion": "v1",
+  "preferences": {},
+  "clusters": [
+    {
+      "name": "example-prod",
+      "cluster": {
+        "server": "https://example.com:8443",
+        "certificate-authority": "/Users/johndoe/.keys/prod-ca.pem"
+      }
+    }
+  ],
+  "users": [
+    {
+      "name": "example-prod-admin",
+      "user": {
+        "client-certificate": "/Users/johndoe/.keys/johndoe@example.com.pem",
+        "client-key": "/Users/johndoe/.keys/chris-kube.pem"
+      }
+    }
+  ],
+  "contexts": [
+    {
+      "name": "example-prod",
+      "context": {
+        "cluster": "example-prod-cluster",
+        "user": "example-user"
+      }
+    }
+  ],
+  "current-context": "example-prod"
+}

@@ -101,5 +101,27 @@ Namespace:  example-ns
       (search-forward "Cluster:")
       (should (equal "example-prod-cluster" (get-text-property (point) 'kubernetes-copy))))))
 
+;; When there is no namespace in the context, uses the default namespace.
+
+(defconst sample-config-view-response-no-namespace (test-helper-json-resource "config-view-response-no-namespace.json"))
+
+
+(defconst kubernetes-contexts-test--expected-result-when-no-namespace
+  (s-trim-left "
+
+Context:    example-prod
+Cluster:    example-prod-cluster
+Namespace:  default
+
+"))
+
+(ert-deftest kubernetes-contexts-test--with-example-response--no-namespace ()
+  (let ((input-state `((current-namespace . nil)
+                       (config . ,sample-config-view-response-no-namespace))))
+    (with-temp-buffer
+      (save-excursion (magit-insert-section (root)
+                        (draw-context-section input-state)))
+      (should (equal kubernetes-contexts-test--expected-result-when-no-namespace
+                     (substring-no-properties (buffer-string)))))))
 
 ;;; kubernetes-contexts-test.el ends here

@@ -21,7 +21,7 @@
                                     'namespace context-namespace))
            context)
           (context-name (propertize name 'face 'kubernetes-context-name))
-          (namespace-in-use (or current-namespace context-namespace)))
+          (namespace-in-use (or current-namespace context-namespace "default")))
     `((nav-prop :display-config
                 (heading (key-value 12 "Context" ,context-name))
                 (key-value 12 "Cluster" ,cluster-name))
