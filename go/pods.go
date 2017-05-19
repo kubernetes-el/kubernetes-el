@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"log"
 	"sync"
 	"time"
 
@@ -38,13 +37,15 @@ func (c podClient) sched() {
 			var b bytes.Buffer
 			err := c.listPods()
 			if err != nil {
-				panic("FIXME")
+				writeError(c.w, "Could not get pods", err)
 			}
+
+			// Diff
 
 			c.m.Lock()
 			_, err = b.WriteTo(c.w)
 			if err != nil {
-				panic("FIXME")
+				panic("could not write to std out")
 			}
 			c.m.Unlock()
 
@@ -59,7 +60,7 @@ func (c podClient) listPods() error {
 	ctx := context.TODO()
 	pods, err := c.k8sClient.CoreV1().ListPods(ctx, c.k8sClient.Namespace) // k8s.AllNamespaces for all
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	p := podsUpdate{

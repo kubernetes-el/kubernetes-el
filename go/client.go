@@ -6,15 +6,14 @@ import (
 )
 
 type client struct {
-	w         io.Writer
-	r         io.Reader
-	wg        sync.WaitGroup
-	m         sync.Mutex
-	podClient podClient
+	w  io.Writer
+	r  io.Reader
+	wg sync.WaitGroup
+	m  sync.Mutex
 }
 
 func newClient(out io.Writer, in io.Reader) *client {
-	return &client{out, in, sync.WaitGroup{}, sync.Mutex{}, podClient{}}
+	return &client{out, in, sync.WaitGroup{}, sync.Mutex{}}
 }
 
 func (c *client) run() int {
@@ -28,8 +27,10 @@ func (c *client) run() int {
 
 	client, err := loadDefaultClient()
 	if err != nil {
-		panic("FIXME")
+		writeError(c.w, "could not load k8s client", err)
+		return -1
 	}
+
 	podClient := newPodClient(client, &c.m, c.w)
 	podClient.sched()
 
