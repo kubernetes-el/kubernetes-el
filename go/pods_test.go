@@ -9,6 +9,28 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestSched(t *testing.T) {
+	// var b bytes.Buffer
+	// c := newPodClient(k, &sync.Mutex{}, &b)
+	t.Fail()
+}
+func TestDiffDeletes(t *testing.T) {
+	c := newPodClient(nil, nil, nil)
+	c.pods["a"] = &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("a")}}
+	c.pods["b"] = &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("b")}}
+	c.pods["c"] = &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("c")}}
+
+	p := []*api.Pod{
+		&api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("b")}},
+		&api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("d")}},
+	}
+
+	diff := c.podDeletes(p)
+
+	assert.Contains(t, diff, "a", "c")
+	assert.NotContains(t, diff, "b", "d")
+}
+
 func TestPodSexpr(t *testing.T) {
 	pod := api.Pod{
 		Metadata: &meta.ObjectMeta{

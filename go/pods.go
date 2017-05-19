@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"sync"
@@ -17,35 +16,61 @@ type podsUpdate struct {
 	Operation string     `json:"operation"`
 	Data      []*api.Pod `json:"data"`
 }
+type podsDeletes struct {
+	Type      string   `json:"type"`
+	Operation string   `json:"operation"`
+	Data      []string `json:"data"`
+}
 
 type podClient struct {
 	k8sClient *k8s.Client
 	m         *sync.Mutex
 	w         io.Writer
-	items     []api.Pod
+	pods      map[string]*api.Pod
 }
 
 func newPodClient(k *k8s.Client, m *sync.Mutex, w io.Writer) podClient {
 	return podClient{
-		k, m, w, []api.Pod{},
+		k, m, w, map[string]*api.Pod{},
 	}
 }
 
 func (c podClient) sched() {
 	go func() {
 		for {
-			var b bytes.Buffer
-			err := c.listPods()
+			// var b bytes.Buffer
+			e := sexpr.NewEncoder(c.w)
+
+			currentPods, err := c.listPods()
 			if err != nil {
 				writeError(c.w, "Could not get pods", err)
 			}
 
 			// Diff
-
+			upserts := c.podUpserts(currentPods)
+			p := podsUpdate{
+				Type:      "pod",
+				Operation: "upsert",
+				Data:      upserts,
+			}
 			c.m.Lock()
-			_, err = b.WriteTo(c.w)
+			err = e.Encode(p)
 			if err != nil {
-				panic("could not write to std out")
+				// FIXME
+			}
+			c.m.Unlock()
+
+			// Delete
+			deletes := c.podDeletes(currentPods)
+			pd := podsDeletes{
+				Type:      "pod",
+				Operation: "delete",
+				Data:      deletes,
+			}
+			c.m.Lock()
+			err = e.Encode(pd)
+			if err != nil {
+				// FIXME
 			}
 			c.m.Unlock()
 
@@ -56,19 +81,30 @@ func (c podClient) sched() {
 	}()
 }
 
-func (c podClient) listPods() error {
+func (c podClient) listPods() ([]*api.Pod, error) {
 	ctx := context.TODO()
-	pods, err := c.k8sClient.CoreV1().ListPods(ctx, c.k8sClient.Namespace) // k8s.AllNamespaces for all
+	l, err := c.k8sClient.CoreV1().ListPods(ctx, c.k8sClient.Namespace) // k8s.AllNamespaces for all
 	if err != nil {
-		return err
+		return nil, err
+	}
+	return l.Items, nil
+}
+
+func (c podClient) podUpserts(p []*api.Pod) []*api.Pod {
+	return p
+}
+
+func (c podClient) podDeletes(pods []*api.Pod) []string {
+	podsIds := make(map[string]bool)
+	for _, p := range pods {
+		podsIds[*p.Metadata.Uid] = true
 	}
 
-	p := podsUpdate{
-		Type:      "pod",
-		Operation: "upsert",
-		Data:      pods.Items,
+	var ids []string
+	for i, p := range c.pods {
+		if !podsIds[i] {
+			ids = append(ids, *p.Metadata.Uid)
+		}
 	}
-
-	e := sexpr.NewEncoder(c.w)
-	return e.Encode(p)
+	return ids
 }
