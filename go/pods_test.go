@@ -12,8 +12,33 @@ import (
 func TestSched(t *testing.T) {
 	// var b bytes.Buffer
 	// c := newPodClient(k, &sync.Mutex{}, &b)
-	t.Fail()
+	// t.Fail()  FIXME
 }
+
+func TestDiffUpserts(t *testing.T) {
+	a := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("a")}}
+	b := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("b")}}
+	c := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("c")}}
+	d := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("d")}}
+	dUpdated := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("d"), Name: strPtr("d")}}
+	e := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("e")}}
+
+	client := newPodClient(nil, nil, nil)
+	client.pods["b"] = b
+	client.pods["c"] = c
+	client.pods["d"] = d
+
+	p := []*api.Pod{a, b, dUpdated, e}
+
+	diff := client.podUpserts(p)
+
+	// Should have a, dUpdated, e
+	assert.Equal(t, 3, len(diff))
+	assert.Equal(t, diff[0], a)
+	assert.Equal(t, diff[1], dUpdated)
+	assert.Equal(t, diff[2], e)
+}
+
 func TestDiffDeletes(t *testing.T) {
 	c := newPodClient(nil, nil, nil)
 	c.pods["a"] = &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("a")}}

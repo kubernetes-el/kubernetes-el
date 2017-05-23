@@ -24,8 +24,8 @@ type podsDeletes struct {
 
 type podClient struct {
 	k8sClient *k8s.Client
-	m         *sync.Mutex
-	w         io.Writer
+	m         *sync.Mutex // FIXME remove - use channel instead
+	w         io.Writer   // FIXME - remove
 	pods      map[string]*api.Pod
 }
 
@@ -91,7 +91,24 @@ func (c podClient) listPods() ([]*api.Pod, error) {
 }
 
 func (c podClient) podUpserts(p []*api.Pod) []*api.Pod {
-	return p
+	podsIds := make(map[string]bool)
+	for _, p := range c.pods {
+		podsIds[*p.Metadata.Uid] = true
+	}
+
+	var pods []*api.Pod
+	for _, pod := range p {
+		lookup := c.pods[*pod.Metadata.Uid]
+
+		if lookup == nil {
+			// Not Present
+			pods = append(pods, pod)
+		} else if lookup != pod {
+			// Updated
+			pods = append(pods, pod)
+		}
+	}
+	return pods
 }
 
 func (c podClient) podDeletes(pods []*api.Pod) []string {
