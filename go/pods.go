@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	"github.com/ericchiang/k8s"
@@ -55,6 +56,10 @@ func (c podClient) sched() {
 			c.writer <- res
 			c.writer <- []byte("\n")
 
+			for _, pod := range upserts {
+				c.pods[*pod.Metadata.Uid] = pod
+			}
+
 			// Delete
 			deletes := c.podDeletes(currentPods)
 			pd := podsDeletes{
@@ -68,6 +73,10 @@ func (c podClient) sched() {
 			}
 			c.writer <- res
 			c.writer <- []byte("\n")
+
+			for _, uid := range deletes {
+				delete(c.pods, uid)
+			}
 
 			// Run again later
 			timer := time.NewTimer(time.Second * 10)
@@ -98,7 +107,7 @@ func (c podClient) podUpserts(p []*api.Pod) []*api.Pod {
 		if lookup == nil {
 			// Not Present
 			pods = append(pods, pod)
-		} else if lookup != pod {
+		} else if !reflect.DeepEqual(lookup, pod) {
 			// Updated
 			pods = append(pods, pod)
 		}
