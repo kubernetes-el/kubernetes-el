@@ -7,7 +7,7 @@ import (
 
 	"github.com/ericchiang/k8s"
 	api "github.com/ericchiang/k8s/api/v1"
-	"github.com/kalmanb/sexpr"
+	"github.com/kalmanb/sexp"
 )
 
 type podsUpdate struct {
@@ -49,7 +49,7 @@ func (c podClient) sched() {
 				Operation: "upsert",
 				Data:      upserts,
 			}
-			res, err := sexpr.Marshal(p)
+			res, err := sexp.Marshal(p)
 			if err != nil {
 				// FIXME
 			}
@@ -67,7 +67,7 @@ func (c podClient) sched() {
 				Operation: "delete",
 				Data:      deletes,
 			}
-			res, err = sexpr.Marshal(pd)
+			res, err = sexp.Marshal(pd)
 			if err != nil {
 				// FIXME
 			}

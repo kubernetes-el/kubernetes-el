@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/kalmanb/sexpr"
+	"github.com/kalmanb/sexp"
 )
 
 type errorMsg struct {
@@ -19,7 +19,7 @@ func writeError(msg string, e error) []byte {
 		Error: fmt.Sprint(e),
 	}
 
-	ret, err := sexpr.Marshal(res)
+	ret, err := sexp.Marshal(res)
 	if err != nil {
 		panic("Error could not encode error message, exiting")
 	}

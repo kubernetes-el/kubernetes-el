@@ -1,4 +1,4 @@
-package sexpr
+package sexp
 
 // JSON value parser state machine.
 // Just about at the limit of what is reasonable to write by hand.

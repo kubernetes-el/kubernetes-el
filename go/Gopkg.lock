@@ -1,4 +1,4 @@
-memo = "ced695902fcd2d420f59e3508bfcdbad7c11afd5b533fe7fdc1306c64a19c262"
+memo = "dbf5f1b540ffcaac353537a76e46ddaf35440014320f3f802fa4165429255dce"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -23,6 +23,12 @@ memo = "ced695902fcd2d420f59e3508bfcdbad7c11afd5b533fe7fdc1306c64a19c262"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   revision = "b50ceb1fa9818fa4d78b016c2d4ae025593a7ce3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/kalmanb/sexp"
+  packages = ["."]
+  revision = "13d7227ead6744dce2161ffcda175fabd1bf8512"
 
 [[projects]]
   branch = "master"

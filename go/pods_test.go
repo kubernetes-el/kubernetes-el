@@ -5,7 +5,7 @@ import (
 
 	api "github.com/ericchiang/k8s/api/v1"
 	meta "github.com/ericchiang/k8s/apis/meta/v1"
-	"github.com/kalmanb/sexpr"
+	"github.com/kalmanb/sexp"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -56,7 +56,7 @@ func TestDiffDeletes(t *testing.T) {
 	assert.NotContains(t, diff, "b", "d")
 }
 
-func TestPodSexpr(t *testing.T) {
+func TestPodSexp(t *testing.T) {
 	pod := api.Pod{
 		Metadata: &meta.ObjectMeta{
 			Name:      strPtr("aname"),
@@ -76,7 +76,7 @@ func TestPodSexpr(t *testing.T) {
 			Phase:     strPtr("Starting"),
 		},
 	}
-	result, err := sexpr.Marshal(&pod)
+	result, err := sexp.Marshal(&pod)
 	if err != nil {
 		t.Error(err)
 	}

@@ -1,4 +1,4 @@
-package sexpr
+package sexp
 
 import "unicode/utf8"
 
