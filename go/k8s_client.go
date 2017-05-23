@@ -10,7 +10,11 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
-func loadDefaultClient() (*k8s.Client, error) {
+type k8sClient interface {
+	CoreV1() *k8s.CoreV1
+}
+
+func loadDefaultClient() (k8sClient, error) {
 	home, err := homedir.Dir()
 	if err != nil {
 		panic(err)

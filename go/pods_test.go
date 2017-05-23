@@ -7,6 +7,7 @@ import (
 	meta "github.com/ericchiang/k8s/apis/meta/v1"
 	"github.com/kalmanb/sexp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestSched(t *testing.T) {
@@ -54,6 +55,23 @@ func TestDiffDeletes(t *testing.T) {
 
 	assert.Contains(t, diff, "a", "c")
 	assert.NotContains(t, diff, "b", "d")
+}
+
+type k8sMock struct {
+	mock.Mock
+}
+type coreV1Mock struct {
+	mock.Mock
+}
+
+func TestListPodError(t *testing.T) {
+	k8s := new(k8sMock)
+	k8s.On("CoreV1")
+	c := newPodClient(nil, nil)
+	c.listPods = func() ([]*api.Pod, error) {
+		return nil, nil
+	}
+
 }
 
 func TestPodSexp(t *testing.T) {
