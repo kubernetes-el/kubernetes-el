@@ -1,19 +1,13 @@
 package main
 
-import (
-	"io"
-	"sync"
-)
+import "sync"
 
 type client struct {
-	w  io.Writer
-	r  io.Reader
-	wg sync.WaitGroup
-	m  sync.Mutex
+	writer chan []byte
 }
 
-func newClient(out io.Writer, in io.Reader) *client {
-	return &client{out, in, sync.WaitGroup{}, sync.Mutex{}}
+func newClient(writer chan []byte) *client {
+	return &client{writer}
 }
 
 func (c *client) run() int {
@@ -23,17 +17,18 @@ func (c *client) run() int {
 	//	fmt.Printf("go command: %s\n", command)
 	// }
 
-	c.wg.Add(1)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 
 	client, err := loadDefaultClient()
 	if err != nil {
-		writeError(c.w, "could not load k8s client", err)
+		c.writer <- writeError("could not load k8s client", err)
 		return -1
 	}
 
-	podClient := newPodClient(client, &c.m, c.w)
+	podClient := newPodClient(client, c.writer)
 	podClient.sched()
 
-	c.wg.Wait()
+	wg.Wait()
 	return -1
 }

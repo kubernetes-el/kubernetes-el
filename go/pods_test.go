@@ -23,7 +23,7 @@ func TestDiffUpserts(t *testing.T) {
 	dUpdated := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("d"), Name: strPtr("d")}}
 	e := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("e")}}
 
-	client := newPodClient(nil, nil, nil)
+	client := newPodClient(nil, nil)
 	client.pods["b"] = b
 	client.pods["c"] = c
 	client.pods["d"] = d
@@ -40,7 +40,7 @@ func TestDiffUpserts(t *testing.T) {
 }
 
 func TestDiffDeletes(t *testing.T) {
-	c := newPodClient(nil, nil, nil)
+	c := newPodClient(nil, nil)
 	c.pods["a"] = &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("a")}}
 	c.pods["b"] = &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("b")}}
 	c.pods["c"] = &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("c")}}

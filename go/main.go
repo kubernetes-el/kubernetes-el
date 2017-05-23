@@ -8,7 +8,15 @@ import (
 func main() {
 	flag.Parse()
 
-	c := newClient(os.Stdout, os.Stdin)
+	writer := make(chan []byte)
+	go func() {
+		for {
+			b := <-writer
+			os.Stdout.Write(b)
+		}
+	}()
+
+	c := newClient(writer)
 	exitCode := c.run()
 	os.Exit(exitCode)
 }

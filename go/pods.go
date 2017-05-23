@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"io"
-	"sync"
 	"time"
 
 	"github.com/ericchiang/k8s"
@@ -24,26 +22,23 @@ type podsDeletes struct {
 
 type podClient struct {
 	k8sClient *k8s.Client
-	m         *sync.Mutex // FIXME remove - use channel instead
-	w         io.Writer   // FIXME - remove
+	writer    chan []byte
 	pods      map[string]*api.Pod
 }
 
-func newPodClient(k *k8s.Client, m *sync.Mutex, w io.Writer) podClient {
+func newPodClient(k *k8s.Client, writer chan []byte) podClient {
 	return podClient{
-		k, m, w, map[string]*api.Pod{},
+		k, writer, map[string]*api.Pod{},
 	}
 }
 
 func (c podClient) sched() {
 	go func() {
 		for {
-			// var b bytes.Buffer
-			e := sexpr.NewEncoder(c.w)
-
 			currentPods, err := c.listPods()
 			if err != nil {
-				writeError(c.w, "Could not get pods", err)
+				c.writer <- writeError("Could not get pods", err)
+				// FIXME - return?
 			}
 
 			// Diff
@@ -53,12 +48,12 @@ func (c podClient) sched() {
 				Operation: "upsert",
 				Data:      upserts,
 			}
-			c.m.Lock()
-			err = e.Encode(p)
+			res, err := sexpr.Marshal(p)
 			if err != nil {
 				// FIXME
 			}
-			c.m.Unlock()
+			c.writer <- res
+			c.writer <- []byte("\n")
 
 			// Delete
 			deletes := c.podDeletes(currentPods)
@@ -67,12 +62,12 @@ func (c podClient) sched() {
 				Operation: "delete",
 				Data:      deletes,
 			}
-			c.m.Lock()
-			err = e.Encode(pd)
+			res, err = sexpr.Marshal(pd)
 			if err != nil {
 				// FIXME
 			}
-			c.m.Unlock()
+			c.writer <- res
+			c.writer <- []byte("\n")
 
 			// Run again later
 			timer := time.NewTimer(time.Second * 10)
