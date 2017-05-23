@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"testing"
+	"time"
 
+	"github.com/ericchiang/k8s"
 	api "github.com/ericchiang/k8s/api/v1"
 	meta "github.com/ericchiang/k8s/apis/meta/v1"
 	"github.com/kalmanb/sexp"
@@ -60,18 +64,23 @@ func TestDiffDeletes(t *testing.T) {
 type k8sMock struct {
 	mock.Mock
 }
-type coreV1Mock struct {
-	mock.Mock
+
+func (c *k8sMock) ListPods(ctx context.Context, n string, options ...k8s.Option) (*api.PodList, error) {
+	args := c.Called(ctx, n)
+	return nil, args.Error(1)
 }
 
 func TestListPodError(t *testing.T) {
 	k8s := new(k8sMock)
-	k8s.On("CoreV1")
-	c := newPodClient(nil, nil)
-	c.listPods = func() ([]*api.Pod, error) {
-		return nil, nil
-	}
-
+	k8s.On("ListPods", mock.Anything, mock.Anything).Return(nil, errors.New("oh no"))
+	w := make(chan []byte)
+	c := newPodClient(k8s, w)
+	c.setInterval(time.Millisecond)
+	c.sched()
+	res := <-w
+	assert.Contains(t, string(res), "Could not get pods")
+	res = <-w
+	assert.Contains(t, string(res), "Could not get pods", "should not send upsert on failure")
 }
 
 func TestPodSexp(t *testing.T) {

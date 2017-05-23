@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/ericchiang/k8s"
 	api "github.com/ericchiang/k8s/api/v1"
 	"github.com/kalmanb/sexp"
 )
@@ -22,24 +21,32 @@ type podsDeletes struct {
 }
 
 type podClient struct {
-	k8sClient *k8s.Client
+	k8sClient k8sClient
 	writer    chan []byte
+	interval  time.Duration
 	pods      map[string]*api.Pod
 }
 
-func newPodClient(k *k8s.Client, writer chan []byte) podClient {
+func newPodClient(k k8sClient, writer chan []byte) podClient {
 	return podClient{
-		k, writer, map[string]*api.Pod{},
+		k8sClient: k,
+		writer:    writer,
+		interval:  time.Second * 10,
+		pods:      map[string]*api.Pod{},
 	}
+}
+
+func (c *podClient) setInterval(d time.Duration) {
+	c.interval = d
 }
 
 func (c podClient) sched() {
 	go func() {
 		for {
-			currentPods, err := c.listPods()
+			currentPods, err := c.listPods("namespace") // FIXME
 			if err != nil {
 				c.writer <- writeError("Could not get pods", err)
-				// FIXME - return?
+				continue
 			}
 
 			// Diff
@@ -79,15 +86,15 @@ func (c podClient) sched() {
 			}
 
 			// Run again later
-			timer := time.NewTimer(time.Second * 10)
+			timer := time.NewTimer(c.interval)
 			<-timer.C
 		}
 	}()
 }
 
-func (c podClient) listPods() ([]*api.Pod, error) {
+func (c podClient) listPods(namespace string) ([]*api.Pod, error) {
 	ctx := context.TODO()
-	l, err := c.k8sClient.CoreV1().ListPods(ctx, c.k8sClient.Namespace) // k8s.AllNamespaces for all
+	l, err := c.k8sClient.ListPods(ctx, namespace)
 	if err != nil {
 		return nil, err
 	}

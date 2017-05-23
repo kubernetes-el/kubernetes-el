@@ -1,17 +1,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 
 	"github.com/ericchiang/k8s"
+	api "github.com/ericchiang/k8s/api/v1"
 	"github.com/ghodss/yaml"
 	"github.com/mitchellh/go-homedir"
 )
 
 type k8sClient interface {
-	CoreV1() *k8s.CoreV1
+	ListPods(ctx context.Context, namespace string, options ...k8s.Option) (*api.PodList, error)
 }
 
 func loadDefaultClient() (k8sClient, error) {
@@ -33,7 +35,7 @@ func loadDefaultClient() (k8sClient, error) {
 	return loadClient(home + "/.kube/config")
 }
 
-func loadClient(kubeconfigPath string) (*k8s.Client, error) {
+func loadClient(kubeconfigPath string) (k8sClient, error) {
 	data, err := ioutil.ReadFile(kubeconfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("read kubeconfig: %v", err)
@@ -43,5 +45,9 @@ func loadClient(kubeconfigPath string) (*k8s.Client, error) {
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("unmarshal kubeconfig: %v", err)
 	}
-	return k8s.NewClient(&config)
+	c, err := k8s.NewClient(&config)
+	if err != nil {
+		return nil, err
+	}
+	return c.CoreV1(), nil
 }
