@@ -24,26 +24,32 @@ type podClient struct {
 	k8sClient k8sClient
 	writer    chan []byte
 	interval  time.Duration
+	namespace string
 	pods      map[string]*api.Pod
 }
 
-func newPodClient(k k8sClient, writer chan []byte) podClient {
+func newPodClient(k k8sClient, writer chan []byte, namespace string, interval int) podClient {
 	return podClient{
 		k8sClient: k,
 		writer:    writer,
-		interval:  time.Second * 10,
+		interval:  time.Second * time.Duration(interval),
+		namespace: namespace,
 		pods:      map[string]*api.Pod{},
 	}
+}
+
+func (c *podClient) setNamespace(n string) {
+	c.namespace = n
 }
 
 func (c *podClient) setInterval(d time.Duration) {
 	c.interval = d
 }
 
-func (c podClient) sched() {
+func (c *podClient) sched() {
 	go func() {
 		for {
-			currentPods, err := c.listPods("namespace") // FIXME
+			currentPods, err := c.listPods(c.namespace)
 			if err != nil {
 				c.writer <- writeError("Could not get pods", err)
 				continue

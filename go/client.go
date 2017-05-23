@@ -10,7 +10,7 @@ func newClient(writer chan []byte) *client {
 	return &client{writer}
 }
 
-func (c *client) run() int {
+func (c *client) run(namespace string, interval int) int {
 	// s := bufio.NewScanner(c.in)
 	// for s.Scan() {
 	//	command := s.Text()
@@ -26,7 +26,7 @@ func (c *client) run() int {
 		return -1
 	}
 
-	podClient := newPodClient(client, c.writer)
+	podClient := newPodClient(client, c.writer, namespace, interval)
 	podClient.sched()
 
 	wg.Wait()

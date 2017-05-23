@@ -28,7 +28,7 @@ func TestDiffUpserts(t *testing.T) {
 	dUpdated := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("d"), Name: strPtr("d")}}
 	e := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("e")}}
 
-	client := newPodClient(nil, nil)
+	client := newPodClient(nil, nil, "", 0)
 	client.pods["b"] = b
 	client.pods["c"] = c
 	client.pods["d"] = d
@@ -45,7 +45,7 @@ func TestDiffUpserts(t *testing.T) {
 }
 
 func TestDiffDeletes(t *testing.T) {
-	c := newPodClient(nil, nil)
+	c := newPodClient(nil, nil, "", 0)
 	c.pods["a"] = &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("a")}}
 	c.pods["b"] = &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("b")}}
 	c.pods["c"] = &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("c")}}
@@ -74,7 +74,7 @@ func TestListPodError(t *testing.T) {
 	k8s := new(k8sMock)
 	k8s.On("ListPods", mock.Anything, mock.Anything).Return(nil, errors.New("oh no"))
 	w := make(chan []byte)
-	c := newPodClient(k8s, w)
+	c := newPodClient(k8s, w, "", 0)
 	c.setInterval(time.Millisecond)
 	c.sched()
 	res := <-w
