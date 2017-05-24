@@ -12,6 +12,11 @@
 ;; rejection
 
 (ert-deftest kubernetes-ast-test--rejects-invalid-ast ()
+  (let ((ast [hello]))
+    (with-temp-buffer
+      (should-error (kubernetes-ast-eval ast)))))
+
+(ert-deftest kubernetes-ast-test--rejects-undefined-component ()
   (let ((ast '(foo "bar")))
     (with-temp-buffer
       (should-error (kubernetes-ast-eval ast)))))
