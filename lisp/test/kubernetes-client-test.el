@@ -15,7 +15,8 @@
 
 (ert-deftest kubernetes-client-test--start--raises-error-if-already-running ()
   (let ((props `((message . ignore)
-                 (get-client-process . (lambda () t)))))
+                 (get-client-process . (lambda () t))
+                 (set-client-process) (get-namespace) (make-process))))
     (should-error (kubernetes-client-start props)
                   :type 'user-error)))
 
@@ -32,7 +33,8 @@
             (get-namespace . ,(lambda () "foo"))
             (get-client-process . ,(lambda () nil))
             (set-client-process . ,(lambda (proc)
-                                     (setq process-set-in-state proc)))))
+                                     (setq process-set-in-state proc)))
+            (process-buffer) (process-mark) (handle-line)))
          (process (kubernetes-client-start props)))
 
     (should process-started)
@@ -45,7 +47,8 @@
 
 (ert-deftest kubernetes-client-test--stop--raises-error-if-not-running ()
   (let ((props `((message . ignore)
-                 (get-client-process . (lambda () nil)))))
+                 (get-client-process . (lambda () nil))
+                 (set-client-process))))
     (should-error (kubernetes-client-stop props)
                   :type 'user-error)))
 
