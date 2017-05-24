@@ -63,73 +63,73 @@ of a program in the Emacs `exec-path'."
   "Start the kubernetes-el background process.
 
 PROPS is an alist of functions to be injected."
-       (interactive (list kubernetes-client-props))
-       (let ((props (or props kubernetes-client-props)))
-         (kubernetes-props-bind ([get-client-process set-client-process get-namespace message make-process]
-                                 props)
-           (if (funcall get-client-process)
-               (user-error "Kubernetes client already running")
-             (funcall message "Starting Kubernetes client")
-             (let* ((buf (generate-new-buffer " emacs-k8s"))
-                    (err-buf (generate-new-buffer " emacs-k8s-err"))
-                    (command
-                     (list kubernetes-client-executable
-                           "-namespace" (funcall get-namespace)
-                           "-interval" (number-to-string kubernetes-client-polling-interval)))
+  (interactive (list kubernetes-client-props))
+  (let ((props (or props kubernetes-client-props)))
+  (kubernetes-props-bind ([get-client-process set-client-process get-namespace message make-process]
+                          props)
+    (if (funcall get-client-process)
+        (user-error "Kubernetes client already running")
+      (funcall message "Starting Kubernetes client")
+      (let* ((buf (generate-new-buffer " emacs-k8s"))
+             (err-buf (generate-new-buffer " emacs-k8s-err"))
+             (command
+              (list kubernetes-client-executable
+                    "-namespace" (funcall get-namespace)
+                    "-interval" (number-to-string kubernetes-client-polling-interval)))
 
-                    (process
-                     (funcall make-process
-                              :name "emacs-k8s"
-                              :buffer buf
-                              :stderr err-buf
-                              :command command
-                              :noquery t
-                              :filter (kubernetes-client--make-line-handler-filter props)
-                              :sentinel
-                              (lambda (process _status)
-                                (let ((kill-buffer-query-functions nil)
-                                      (exit-code (process-exit-status process)))
-                                  (cond
-                                   ;; Shut down gracefully.
-                                   ((= 0 exit-code))
-                                   ;; Killed by Emacs.
-                                   ((= 9 exit-code))
-                                   ;; Unknown failure.
-                                   (t
-                                    (with-current-buffer err-buf
-                                      (funcall message "Kubernetes client exited unexpectedly: %s" (buffer-string)))))
-                                  (kill-buffer buf)
-                                  (ignore-errors (kill-buffer err-buf)))))))
+             (process
+              (funcall make-process
+                       :name "emacs-k8s"
+                       :buffer buf
+                       :stderr err-buf
+                       :command command
+                       :noquery t
+                       :filter (kubernetes-client--make-line-handler-filter props)
+                       :sentinel
+                       (lambda (process _status)
+                         (let ((kill-buffer-query-functions nil)
+                               (exit-code (process-exit-status process)))
+                           (cond
+                            ;; Shut down gracefully.
+                            ((= 0 exit-code))
+                            ;; Killed by Emacs.
+                            ((= 9 exit-code))
+                            ;; Unknown failure.
+                            (t
+                             (with-current-buffer err-buf
+                               (funcall message "Kubernetes client exited unexpectedly: %s" (buffer-string)))))
+                           (kill-buffer buf)
+                           (ignore-errors (kill-buffer err-buf)))))))
 
-               (funcall set-client-process process)
+        (funcall set-client-process process)
 
-               ;; Clean up process if the process buffer is killed.
-               (with-current-buffer buf
-                 (add-hook 'kill-buffer-hook #'kubernetes-client-stop nil t))
+        ;; Clean up process if the process buffer is killed.
+        (with-current-buffer buf
+          (add-hook 'kill-buffer-hook #'kubernetes-client-stop nil t))
 
-               process)))))
+        process)))))
 
 (defun kubernetes-client-stop (&optional props)
   "Stop the kubernetes-el background process.
 
 PROPS is an alist of functions to be injected."
-       (interactive (list kubernetes-client-props))
-       (let ((props (or props kubernetes-client-props)))
-         (kubernetes-props-bind ([get-client-process set-client-process message]
-                                 props)
-           (let ((process (funcall get-client-process)))
-             (cond
-              (process
-               (set-process-query-on-exit-flag process nil)
-               (let ((kill-buffer-query-functions nil)
-                     (buf (process-buffer process)))
-                 (ignore-errors (kill-process process))
-                 (ignore-errors (delete-process process))
-                 (ignore-errors (kill-buffer buf)))
-               (funcall set-client-process nil)
-               (funcall message "Kubernetes client stopped"))
-              (t
-               (user-error "Kubernetes client not running")))))))
+  (interactive (list kubernetes-client-props))
+  (let ((props (or props kubernetes-client-props)))
+    (kubernetes-props-bind ([get-client-process set-client-process message]
+                            props)
+      (let ((process (funcall get-client-process)))
+        (cond
+         (process
+          (set-process-query-on-exit-flag process nil)
+          (let ((kill-buffer-query-functions nil)
+                (buf (process-buffer process)))
+            (ignore-errors (kill-process process))
+            (ignore-errors (delete-process process))
+            (ignore-errors (kill-buffer buf)))
+          (funcall set-client-process nil)
+          (funcall message "Kubernetes client stopped"))
+         (t
+          (user-error "Kubernetes client not running")))))))
 
 (provide 'kubernetes-client)
 
