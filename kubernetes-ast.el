@@ -41,8 +41,8 @@ BODY is the definition of the component."
 Creates instances of %s components, which may be referred to as
 such in rendering ASTs." name)))
     `(progn
-        (cl-defun ,fname ,arglist ,docstring ,@body)
-        (puthash ',name #',fname kubernetes-ast--components))))
+       (cl-defun ,fname ,arglist ,docstring ,@body)
+       (puthash ',name #',fname kubernetes-ast--components))))
 
 (kubernetes-ast-define-component line (inner-ast)
   `(,inner-ast
