@@ -7,6 +7,7 @@
 
 (defconst kubernetes-overview-props
   '((client-start . kubernetes-client-start)
+    (client-stop . kubernetes-client-stop)
     (client-process . kubernetes-state-client-process)
     (state . kubernetes-state)
     (ast-eval . kubernetes-ast-eval)
@@ -34,12 +35,16 @@ PROPS is an alist of functions to inject.
 NAMESPACE is the namespace to use."
   (interactive (list kubernetes-overview-props
                      (read-string "Namespace: " nil 'kubernetes-namespace)))
-  (kubernetes-props-bind ([set-namespace client-process client-start display-buffer] props)
+  (kubernetes-props-bind ([set-namespace client-stop client-process client-start display-buffer] props)
     (unless (funcall client-process)
       (funcall set-namespace namespace)
       (funcall client-start))
 
     (let ((buffer (get-buffer-create kubernetes-overview-buffer)))
+      ;; Stop the polling process if the overview buffer is deleted.
+      (with-current-buffer buffer
+        (add-hook 'kill-buffer-hook client-stop nil t))
+
       ;; Redraw buffer whenever the client state is updated.
       (add-hook 'kubernetes-state-client-message-processed-functions
                 (lambda (_)
