@@ -12,7 +12,7 @@ type errorMsg struct {
 	Error string `json:"error"`
 }
 
-func writeError(msg string, e error) []byte {
+func errorSexp(msg string, e error) []byte {
 	res := errorMsg{
 		Type:  "error",
 		Msg:   msg,

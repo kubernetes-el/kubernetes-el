@@ -14,6 +14,15 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+type k8sMock struct {
+	mock.Mock
+}
+
+func (c *k8sMock) ListPods(ctx context.Context, n string, options ...k8s.Option) (*api.PodList, error) {
+	args := c.Called(ctx, n)
+	return nil, args.Error(1)
+}
+
 func TestSched(t *testing.T) {
 	// var b bytes.Buffer
 	// c := newPodClient(k, &sync.Mutex{}, &b)
@@ -59,15 +68,6 @@ func TestDiffDeletes(t *testing.T) {
 
 	assert.Contains(t, diff, "a", "c")
 	assert.NotContains(t, diff, "b", "d")
-}
-
-type k8sMock struct {
-	mock.Mock
-}
-
-func (c *k8sMock) ListPods(ctx context.Context, n string, options ...k8s.Option) (*api.PodList, error) {
-	args := c.Called(ctx, n)
-	return nil, args.Error(1)
 }
 
 func TestListPodError(t *testing.T) {
