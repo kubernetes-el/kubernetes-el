@@ -109,7 +109,7 @@ PROPS is an alist of functions to be injected."
 
                process)))))
 
-(defun kubernetes-client-stop (props)
+(defun kubernetes-client-stop (&optional props)
   "Stop the kubernetes-el background process.
 
 PROPS is an alist of functions to be injected."
