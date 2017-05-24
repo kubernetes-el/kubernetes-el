@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/ericchiang/k8s"
 	api "github.com/ericchiang/k8s/api/v1"
@@ -73,14 +72,19 @@ func TestDiffDeletes(t *testing.T) {
 func TestListPodError(t *testing.T) {
 	k8s := new(k8sMock)
 	k8s.On("ListPods", mock.Anything, mock.Anything).Return(nil, errors.New("oh no"))
-	w := make(chan []byte)
+	w := make(chan []byte, 10)
 	c := newPodClient(k8s, w, "", 0)
-	c.setInterval(time.Millisecond)
-	c.sched()
-	res := <-w
-	assert.Contains(t, string(res), "Could not get pods")
-	res = <-w
-	assert.Contains(t, string(res), "Could not get pods", "should not send upsert on failure")
+	c.run()
+
+	m := <-w
+	assert.Contains(t, string(m), "Could not get pods")
+	select {
+	case _ = <-w:
+		assert.Fail(t, "should only get an error message, no other messages")
+		break
+	default:
+		break
+	}
 }
 
 func TestPodSexp(t *testing.T) {

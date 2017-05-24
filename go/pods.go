@@ -49,53 +49,55 @@ func (c *podClient) setInterval(d time.Duration) {
 func (c *podClient) sched() {
 	go func() {
 		for {
-			currentPods, err := c.listPods(c.namespace)
-			if err != nil {
-				c.writer <- errorSexp("Could not get pods", err)
-				continue
-			}
-
-			// Diff
-			upserts := c.podUpserts(currentPods)
-			p := podsUpdate{
-				Type:      "pod",
-				Operation: "upsert",
-				Data:      upserts,
-			}
-			res, err := sexp.Marshal(p)
-			if err != nil {
-				c.writer <- errorSexp("Could not not marshal pod upserts", err)
-				continue
-			}
-			c.writer <- res
-
-			for _, pod := range upserts {
-				c.pods[*pod.Metadata.Uid] = pod
-			}
-
-			// Delete
-			deletes := c.podDeletes(currentPods)
-			pd := podsDeletes{
-				Type:      "pod",
-				Operation: "delete",
-				Data:      deletes,
-			}
-			res, err = sexp.Marshal(pd)
-			if err != nil {
-				c.writer <- errorSexp("Could not not marshal pod deletes", err)
-				continue
-			}
-			c.writer <- res
-
-			for _, uid := range deletes {
-				delete(c.pods, uid)
-			}
-
-			// Run again later
+			c.run()
 			timer := time.NewTimer(c.interval)
 			<-timer.C
 		}
 	}()
+}
+
+func (c *podClient) run() {
+	currentPods, err := c.listPods(c.namespace)
+	if err != nil {
+		c.writer <- errorSexp("Could not get pods", err)
+		return
+	}
+
+	// Diff
+	upserts := c.podUpserts(currentPods)
+	p := podsUpdate{
+		Type:      "pod",
+		Operation: "upsert",
+		Data:      upserts,
+	}
+	res, err := sexp.Marshal(p)
+	if err != nil {
+		c.writer <- errorSexp("Could not not marshal pod upserts", err)
+		return
+	}
+	c.writer <- res
+
+	for _, pod := range upserts {
+		c.pods[*pod.Metadata.Uid] = pod
+	}
+
+	// Delete
+	deletes := c.podDeletes(currentPods)
+	pd := podsDeletes{
+		Type:      "pod",
+		Operation: "delete",
+		Data:      deletes,
+	}
+	res, err = sexp.Marshal(pd)
+	if err != nil {
+		c.writer <- errorSexp("Could not not marshal pod deletes", err)
+		return
+	}
+	c.writer <- res
+
+	for _, uid := range deletes {
+		delete(c.pods, uid)
+	}
 }
 
 func (c podClient) listPods(namespace string) ([]*api.Pod, error) {
