@@ -103,6 +103,12 @@
 
 ;; Accessors.
 
+(ert-deftest kubernetes-state-test--defaccessors--validates-args ()
+  (should-error (eval '(kubernetes-state-defaccessors)))
+  (should-error (eval '(kubernetes-state-defaccessors "invalid" ())))
+  (should-error (eval '(kubernetes-state-defaccessors --test "invalid")))
+  (should-error (eval '(kubernetes-state-defaccessors --test ()))))
+
 (ert-deftest kubernetes-state-test--client-process-accessors ()
   (kubernetes-state--with-empty-state
     (let ((process 'p)
