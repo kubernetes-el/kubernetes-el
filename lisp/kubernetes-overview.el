@@ -8,8 +8,8 @@
 (defconst kubernetes-overview-props
   '((client-start . kubernetes-client-start)
     (client-stop . kubernetes-client-stop)
-    (client-process . kubernetes-state-client-process)
-    (state . kubernetes-state)
+    (get-client-process . kubernetes-state-client-process)
+    (get-state . kubernetes-state)
     (ast-eval . kubernetes-ast-eval)
     (set-namespace . kubernetes-state-set-namespace)
     (display-buffer . display-buffer))
@@ -19,13 +19,13 @@
 
 
 (defun kubernetes-overview--redraw (buffer props)
-  (kubernetes-props-bind ([ast-eval state] props)
+  (kubernetes-props-bind ([ast-eval get-state] props)
     (with-current-buffer buffer
       (read-only-mode +1)
       (let ((inhibit-read-only t))
         (erase-buffer)
-        (funcall ast-eval `(section (root nil)
-                                    (pods-list ,(funcall state))))))))
+        (ast-eval `(section (root nil)
+                            (pods-list ,(get-state))))))))
 
 (defun kubernetes-overview (props namespace)
   "Show the overview buffer.
@@ -35,10 +35,10 @@ PROPS is an alist of functions to inject.
 NAMESPACE is the namespace to use."
   (interactive (list kubernetes-overview-props
                      (read-string "Namespace: " nil 'kubernetes-namespace)))
-  (kubernetes-props-bind ([set-namespace client-stop client-process client-start display-buffer] props)
-    (unless (funcall client-process)
-      (funcall set-namespace namespace)
-      (funcall client-start))
+  (kubernetes-props-bind ([set-namespace client-start client-stop get-client-process display-buffer] props)
+    (unless (get-client-process)
+      (set-namespace namespace)
+      (client-start))
 
     (let ((buffer (get-buffer-create kubernetes-overview-buffer)))
       ;; Stop the polling process if the overview buffer is deleted.
@@ -52,7 +52,7 @@ NAMESPACE is the namespace to use."
                     (kubernetes-overview--redraw buffer props))))
 
       (kubernetes-overview--redraw buffer props)
-      (funcall display-buffer buffer))))
+      (display-buffer buffer))))
 
 
 (provide 'kubernetes-overview)
