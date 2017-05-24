@@ -51,7 +51,7 @@ func (c *podClient) sched() {
 		for {
 			currentPods, err := c.listPods(c.namespace)
 			if err != nil {
-				c.writer <- writeError("Could not get pods", err)
+				c.writer <- errorSexp("Could not get pods", err)
 				continue
 			}
 
@@ -64,10 +64,10 @@ func (c *podClient) sched() {
 			}
 			res, err := sexp.Marshal(p)
 			if err != nil {
-				// FIXME
+				c.writer <- errorSexp("Could not not marshal pod upserts", err)
+				continue
 			}
 			c.writer <- res
-			c.writer <- []byte("\n")
 
 			for _, pod := range upserts {
 				c.pods[*pod.Metadata.Uid] = pod
@@ -82,10 +82,10 @@ func (c *podClient) sched() {
 			}
 			res, err = sexp.Marshal(pd)
 			if err != nil {
-				// FIXME
+				c.writer <- errorSexp("Could not not marshal pod deletes", err)
+				continue
 			}
 			c.writer <- res
-			c.writer <- []byte("\n")
 
 			for _, uid := range deletes {
 				delete(c.pods, uid)
@@ -99,8 +99,7 @@ func (c *podClient) sched() {
 }
 
 func (c podClient) listPods(namespace string) ([]*api.Pod, error) {
-	ctx := context.TODO()
-	l, err := c.k8sClient.ListPods(ctx, namespace)
+	l, err := c.k8sClient.ListPods(context.Background(), namespace)
 	if err != nil {
 		return nil, err
 	}
