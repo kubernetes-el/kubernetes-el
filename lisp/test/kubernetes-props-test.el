@@ -10,7 +10,7 @@
 
 (ert-deftest kubernetes-props-test--bind--validates-args ()
   (should-error (eval '(kubernetes-props-bind)))
-  (should-error (eval '(kubernetes-props-bind 'foo)))
+  (should-error (eval '(kubernetes-props-bind invalid)))
   (should-error (eval '(kubernetes-props-bind ())))
   (should-error (eval '(kubernetes-props-bind ((foo bar) ()))))
   (should-error (eval '(kubernetes-props-bind ([1 2] ()))))
