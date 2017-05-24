@@ -97,17 +97,16 @@ func TestPodSexp(t *testing.T) {
 					Image:        strPtr("aimage"),
 					RestartCount: &[]int32{10}[0],
 				}},
-			HostIP:    strPtr("123"),
-			PodIP:     strPtr("456"),
-			StartTime: &meta.Time{},
-			Phase:     strPtr("Starting"),
+			HostIP: strPtr("123"),
+			PodIP:  strPtr("456"),
+			Phase:  strPtr("Starting"),
 		},
 	}
 	result, err := sexp.Marshal(&pod)
 	if err != nil {
 		t.Error(err)
 	}
-	expected := "((metadata . ((name . \"aname\")(namespace . \"space\")(labels . ((\"t1\" . \"v1\")))))(status . ((phase . \"Starting\")(hostIP . \"123\")(podIP . \"456\")(startTime . \"1970-01-01T12:00:00+12:00\")(containerStatuses . [((name . \"thename\")(restartCount . 10)(image . \"aimage\"))]))))"
+	expected := "((metadata . ((name . \"aname\")(namespace . \"space\")(labels . ((\"t1\" . \"v1\")))))(status . ((phase . \"Starting\")(hostIP . \"123\")(podIP . \"456\")(containerStatuses . [((name . \"thename\")(restartCount . 10)(image . \"aimage\"))]))))"
 	assert.Equal(t, expected, string(result))
 }
 
