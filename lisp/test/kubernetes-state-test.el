@@ -12,7 +12,8 @@
 
 (defmacro kubernetes-state--with-empty-state (&rest body)
   (declare (indent 0))
-  `(let ((kubernetes-state (kubernetes-state-empty)))
+  `(let ((kubernetes-state (kubernetes-state-empty))
+         (kubernetes-state-client-message-processed-functions nil))
      ,@body))
 
 ;; Clearing state
@@ -98,6 +99,7 @@
         (should pods)
         (should (hash-table-p pods))
         (should (equal 2 (hash-table-count pods)))))))
+
 
 ;; Accessors.
 
