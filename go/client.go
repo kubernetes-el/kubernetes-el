@@ -22,7 +22,7 @@ func (c *client) run(namespace string, interval int) int {
 
 	client, err := loadDefaultClient()
 	if err != nil {
-		c.writer <- writeError("could not load k8s client", err)
+		c.writer <- errorSexp("could not load k8s client", err)
 		return -1
 	}
 

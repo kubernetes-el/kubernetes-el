@@ -14,6 +14,7 @@ func main() {
 	go func() {
 		for {
 			b := <-writer
+			b = append(b, byte('\n'))
 			_, err := os.Stdout.Write(b)
 			if err != nil {
 				panic("Could not write to stdout")
