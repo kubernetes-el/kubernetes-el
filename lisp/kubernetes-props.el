@@ -6,6 +6,9 @@
 (require 'dash)
 (require 'subr-x)
 
+(defun kubernetes-props--missing-keys (expected props)
+ (-map #'symbol-name (-difference expected (-map #'car props))))
+
 (defmacro kubernetes-props-bind (varlist &rest body)
   "Bind functions from a props alist for direct use in BODY.
 
@@ -40,8 +43,9 @@ called directly.
       `(let ((,props ,alist))
          (unless (listp ,props)
            (error "Attempted to bind props on a non-list object: %s" ,props))
-         (-when-let (,missing-keys (-map #'symbol-name (-difference (quote ,keys) (-map #'car ,props))))
+         (-when-let (,missing-keys (kubernetes-props--missing-keys (quote ,keys) ,props))
            (error "Props were missing the following keys: [%s]" (string-join ,missing-keys " ")))
+
          (-let [,alist-binder ,props]
            (cl-flet ,flet-binders
              ,@body))))))
