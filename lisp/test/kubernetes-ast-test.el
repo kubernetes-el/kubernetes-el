@@ -135,13 +135,14 @@
 ;; section
 
 (ert-deftest kubernetes-ast-test--inserting-sections ()
-  (let ((ast '(section (test nil)
-                       (line "foo"))))
+  (let ((ast '(section (root nil)
+                       (section (test-line nil)
+                                (line "foo")))))
     (with-temp-buffer
       (save-excursion (kubernetes-ast-eval ast))
       (should (equal "foo\n" (substring-no-properties (buffer-string))))
       (should (magit-current-section))
-      (should (equal 'test (magit-section-type (magit-current-section))))
+      (should (equal 'test-line (magit-section-type (magit-current-section))))
       (should (not (magit-section-hidden (magit-current-section)))))))
 
 
