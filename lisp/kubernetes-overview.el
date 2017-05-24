@@ -6,11 +6,13 @@
 (require 'kubernetes-pods-list)
 
 (defconst kubernetes-overview-props
-  '((client-start . kubernetes-client-start)
-    (client-stop . kubernetes-client-stop)
+  '((start-client . kubernetes-client-start)
+    (stop-client . kubernetes-client-stop)
     (get-client-process . kubernetes-state-client-process)
     (get-state . kubernetes-state)
+    (clear-state . kubernetes-state-clear)
     (ast-eval . kubernetes-ast-eval)
+    (get-namespace . kubernetes-state-namespace)
     (set-namespace . kubernetes-state-set-namespace)
     (display-buffer . display-buffer))
   "Functions to inject for isolation and testing.")
@@ -34,16 +36,32 @@ PROPS is an alist of functions to inject.
 
 NAMESPACE is the namespace to use."
   (interactive (list kubernetes-overview-props
-                     (read-string "Namespace: " nil 'kubernetes-namespace)))
-  (kubernetes-props-bind ([set-namespace client-start client-stop get-client-process display-buffer] props)
-    (unless (get-client-process)
+                     (kubernetes-props-bind ([get-namespace] kubernetes-overview-props)
+                       (read-string "Namespace: " (get-namespace) 'kubernetes-namespace))))
+  (kubernetes-props-bind ([clear-state set-namespace get-namespace start-client stop-client get-client-process display-buffer] props)
+    (cond
+     ;; Restart the process if the configuration has changed.
+     ((and (get-client-process)
+           (not (equal (get-namespace) namespace)))
+      (clear-state)
       (set-namespace namespace)
-      (client-start))
+      (stop-client)
+      (start-client))
+
+     ;; Process is running with current configuration.
+     ((get-client-process))
+
+     (t
+      (set-namespace namespace)
+      (start-client)))
 
     (let ((buffer (get-buffer-create kubernetes-overview-buffer)))
       ;; Stop the polling process if the overview buffer is deleted.
       (with-current-buffer buffer
-        (add-hook 'kill-buffer-hook client-stop nil t))
+        (add-hook 'kill-buffer-hook (lambda ()
+                                      (stop-client)
+                                      (clear-state))
+                  nil t))
 
       ;; Redraw buffer whenever the client state is updated.
       (add-hook 'kubernetes-state-client-message-processed-functions

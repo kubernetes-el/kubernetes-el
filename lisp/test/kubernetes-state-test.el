@@ -15,6 +15,17 @@
   `(let ((kubernetes-state (kubernetes-state-empty)))
      ,@body))
 
+;; Clearing state
+
+(ert-deftest kubernetes-state-test--clearing-state ()
+  (kubernetes-state--with-empty-state
+    (puthash 'namespace 'bar (kubernetes-state))
+    (let ((pods-table (kubernetes-state-pods)))
+      (puthash 'foo 'bar pods-table))
+    (kubernetes-state-clear)
+    (should (hash-table-empty-p (kubernetes-state-pods)))
+    (should-not (gethash 'namespace (kubernetes-state)))))
+
 
 ;; Subprocess messages.
 
