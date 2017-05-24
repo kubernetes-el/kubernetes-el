@@ -9,6 +9,13 @@
 (require 'magit)
 (require 'subr-x)
 
+(require 'kubernetes-props)
+
+(defconst kubernetes-ast-props
+  '((message . message))
+  "Alist of functions to inject for isolation and testing.")
+
+
 ;; Derived component support.
 
 (defconst kubernetes-ast--components (make-hash-table :test #'eq)
@@ -138,174 +145,179 @@ such in rendering ASTs." name)))
 (defun kubernetes-ast--append-sentinel (instructions sentinel)
   (append (list instructions) (list sentinel)))
 
-(defun kubernetes-ast-eval (ast &optional indent-level)
-  "Evaluate AST as a set of instructions for inserting text into the current buffer."
+(defun kubernetes-ast-eval (ast &optional indent-level props)
+  "Evaluate a rendering AST in the current buffer.
 
-  ;; The evaluator is implemented as a loop over an instruction stack. The
-  ;; `instruction-stack' variable is a stack of AST instructions, the head of
-  ;; which is the instruction to interpret. Its initial value is set to the
-  ;; input to this function. After an instruction is interpreted, the item at
-  ;; the top of the stack is popped. The loop ends when there are no more
-  ;; instructions on the stack.
-  ;;
-  ;; If nested instructions are encountered in the AST, they are pushed onto the
-  ;; stack, generally with a sentinel instruction to restore previous
-  ;; interpreter state.
+INDENT-LEVEL is the current indentation level.  It defaults to 0.
 
-  (let ((instruction-stack (list ast))
-        (indent-level (or indent-level 0)))
+PROPS is an alist of functions to inject."
+  (kubernetes-props-bind ([message] (or props kubernetes-ast-props))
 
-    (while instruction-stack
-      (pcase (car instruction-stack)
+    ;; The evaluator is implemented as a loop over an instruction stack. The
+    ;; `instruction-stack' variable is a stack of AST instructions, the head of
+    ;; which is the instruction to interpret. Its initial value is set to the
+    ;; input to this function. After an instruction is interpreted, the item at
+    ;; the top of the stack is popped. The loop ends when there are no more
+    ;; instructions on the stack.
+    ;;
+    ;; If nested instructions are encountered in the AST, they are pushed onto the
+    ;; stack, generally with a sentinel instruction to restore previous
+    ;; interpreter state.
 
-        ;; Strings are inserted directly, possibly with indentation.
+    (let ((instruction-stack (list ast))
+          (indent-level (or indent-level 0)))
 
-        ((and (pred stringp) s)
-         (kubernetes-ast--eval-string s indent-level)
-         (!cdr instruction-stack))
+      (while instruction-stack
+        (pcase (car instruction-stack)
 
-        ;; Padding gets some special error checking to make sure it has no inner
-        ;; AST, since I get `padding' and `indent' mixed up all the time.
+          ;; Strings are inserted directly, possibly with indentation.
 
-        ((and `(padding . ,_rest) (guard _rest))
-         (error "Padding takes no arguments"))
-        (`(padding)
-         (newline)
-         (!cdr instruction-stack))
+          ((and (pred stringp) s)
+           (kubernetes-ast--eval-string s indent-level)
+           (!cdr instruction-stack))
 
-        ;; Indentation
-        ;;
-        ;; The current indentation level is tracked by the interpreter. When an
-        ;; `indent' directive is encountered, the indent level is incremented
-        ;; and the inner AST is pushed to the stack with a sentinel appended.
-        ;; When the sentinel is encountered, the indentation level is decreased.
+          ;; Padding gets some special error checking to make sure it has no inner
+          ;; AST, since I get `padding' and `indent' mixed up all the time.
 
-        (`(indent . ,inner-ast)
-         (let ((next (kubernetes-ast--append-sentinel inner-ast 'kubernetes-ast--indent-sentinel)))
-           (setq indent-level (1+ indent-level))
+          ((and `(padding . ,_rest) (guard _rest))
+           (error "Padding takes no arguments"))
+          (`(padding)
+           (newline)
+           (!cdr instruction-stack))
+
+          ;; Indentation
+          ;;
+          ;; The current indentation level is tracked by the interpreter. When an
+          ;; `indent' directive is encountered, the indent level is incremented
+          ;; and the inner AST is pushed to the stack with a sentinel appended.
+          ;; When the sentinel is encountered, the indentation level is decreased.
+
+          (`(indent . ,inner-ast)
+           (let ((next (kubernetes-ast--append-sentinel inner-ast 'kubernetes-ast--indent-sentinel)))
+             (setq indent-level (1+ indent-level))
+             (!cdr instruction-stack)
+             (!cons next instruction-stack)))
+
+          (`kubernetes-ast--indent-sentinel
+           (setq indent-level (1- indent-level))
+           (!cdr instruction-stack))
+
+          ;; Properties
+          ;;
+          ;; To propertize some inserted text, the inner AST is pushed to the
+          ;; stack with a sentinel appended. The sentinel records the properties
+          ;; to apply and the start position of the span. Once the sentinel is
+          ;; encountered, the end position of the span is known and properties can
+          ;; be applied.
+
+          (`(propertize ,spec . ,inner-ast)
+           (let ((next (kubernetes-ast--append-sentinel inner-ast `(kubernetes-ast--propertize-sentinel ,(point) ,spec))))
+             (!cdr instruction-stack)
+             (!cons next instruction-stack)))
+
+          (`(kubernetes-ast--propertize-sentinel ,start ,spec)
+           (add-text-properties start (point) spec)
+           (!cdr instruction-stack))
+
+          ;; Deletion marks
+          ;;
+          ;; Deletion marks are applied to every line of the inner AST, so the
+          ;; inner AST is pushed to the stack with a sentinel that records the
+          ;; start position. Once the sentinel is encountered, the range of lines
+          ;; that must be modified is known and the marks are written.
+
+          (`(mark-for-delete . ,inner-ast)
+           (let ((next (kubernetes-ast--append-sentinel inner-ast `(kubernetes-ast--mark-for-delete-sentinel . ,(point)))))
+             (!cdr instruction-stack)
+             (!cons next instruction-stack)))
+
+          (`(kubernetes-ast--mark-for-delete-sentinel . ,start)
+           (kubernetes-ast--finalize-delete-marks start)
+           (!cdr instruction-stack))
+
+          ;; Bulleted lists
+          ;;
+          ;; A bulleted list is decomposed into a sequence of instructions, each
+          ;; of which tracks its buffer positions using sentinel values.
+          ;;
+          ;; The bullet group is indented, and each item's start position is
+          ;; recorded in a sentinel value. When an item's sentinel is encountered,
+          ;; the item's dash is written to the buffer.
+
+          (`(list . ,items)
+           (let ((next `(indent ,@(--map `(kubernetes-ast--list-item . ,it) items))))
+             (!cdr instruction-stack)
+             (!cons next instruction-stack)))
+
+          (`(kubernetes-ast--list-item . ,inner-ast)
+           (let ((next (kubernetes-ast--append-sentinel inner-ast `(kubernetes-ast--list-item-sentinel . ,(point)))))
+             (!cdr instruction-stack)
+             (!cons next instruction-stack)))
+
+          (`(kubernetes-ast--list-item-sentinel . ,start)
+           (kubernetes-ast--finalize-list-item start)
+           (!cdr instruction-stack))
+
+          ;; Headings
+          ;;
+          ;; Heading insertion requires interpretation of an inner AST to build
+          ;; the heading text. A special sentinel is appended to the inner AST
+          ;; that tells the interpreter to finalise the heading after interpreting
+          ;; the inner value.
+
+          (`(heading ,inner-ast)
+           (unless magit-insert-section--current (error "Eval AST: Inserting a heading, but not in a section"))
+           (let ((next (kubernetes-ast--append-sentinel inner-ast `(kubernetes-ast--heading-sentinel . ,(point)))))
+             (!cdr instruction-stack)
+             (!cons next instruction-stack)))
+
+          (`(kubernetes-ast--heading-sentinel . ,start-pos)
+           (kubernetes-ast--finalize-heading start-pos)
+           (!cdr instruction-stack))
+
+          ;; Sections
+          ;;
+          ;; KLUDGE: The section insertion logic in magit has complex state. It's
+          ;; easier just to evaluate recursively than try to reproduce that logic
+          ;; in the interpreter. This is safe so long as section nesting doesn't
+          ;; approach `max-lisp-eval-depth'.
+
+          (`(section (,sym ,hide) . ,inner)
            (!cdr instruction-stack)
-           (!cons next instruction-stack)))
+           (eval `(magit-insert-section (,sym nil ,hide)
+                    (kubernetes-ast-eval ',inner ,indent-level ,props))))
 
-        (`kubernetes-ast--indent-sentinel
-         (setq indent-level (1- indent-level))
-         (!cdr instruction-stack))
+          ;; Custom components
+          ;;
+          ;; If the current instruction is a list and its head is a symbol, look
+          ;; it up in the component definition table. If the lookup succeeds,
+          ;; evaluate the component's constructor function to derive an AST, and
+          ;; push that AST onto the stack.
 
-        ;; Properties
-        ;;
-        ;; To propertize some inserted text, the inner AST is pushed to the
-        ;; stack with a sentinel appended. The sentinel records the properties
-        ;; to apply and the start position of the span. Once the sentinel is
-        ;; encountered, the end position of the span is known and properties can
-        ;; be applied.
-
-        (`(propertize ,spec . ,inner-ast)
-         (let ((next (kubernetes-ast--append-sentinel inner-ast `(kubernetes-ast--propertize-sentinel ,(point) ,spec))))
+          ((and `(,component . ,args)
+                (guard component)
+                (guard (symbolp component)))
            (!cdr instruction-stack)
-           (!cons next instruction-stack)))
 
-        (`(kubernetes-ast--propertize-sentinel ,start ,spec)
-         (add-text-properties start (point) spec)
-         (!cdr instruction-stack))
+           (if-let (constructor (gethash component kubernetes-ast--components))
+               (!cons (apply constructor args) instruction-stack)
+             (error "Component not defined: %s" component)))
 
-        ;; Deletion marks
-        ;;
-        ;; Deletion marks are applied to every line of the inner AST, so the
-        ;; inner AST is pushed to the stack with a sentinel that records the
-        ;; start position. Once the sentinel is encountered, the range of lines
-        ;; that must be modified is known and the marks are written.
+          ;; Lists of instructions
+          ;;
+          ;; If the list being scrutinised does not begin with a symbol, it is
+          ;; assumed to be a sequence of instructions. The items are pushed to the
+          ;; stack.
 
-        (`(mark-for-delete . ,inner-ast)
-         (let ((next (kubernetes-ast--append-sentinel inner-ast `(kubernetes-ast--mark-for-delete-sentinel . ,(point)))))
+          ((and (pred listp) actions)
            (!cdr instruction-stack)
-           (!cons next instruction-stack)))
+           (setq instruction-stack (append actions instruction-stack)))
 
-        (`(kubernetes-ast--mark-for-delete-sentinel . ,start)
-         (kubernetes-ast--finalize-delete-marks start)
-         (!cdr instruction-stack))
+          ;; Heck, you've done the interpreter a frighten.
 
-        ;; Bulleted lists
-        ;;
-        ;; A bulleted list is decomposed into a sequence of instructions, each
-        ;; of which tracks its buffer positions using sentinel values.
-        ;;
-        ;; The bullet group is indented, and each item's start position is
-        ;; recorded in a sentinel value. When an item's sentinel is encountered,
-        ;; the item's dash is written to the buffer.
-
-        (`(list . ,items)
-         (let ((next `(indent ,@(--map `(kubernetes-ast--list-item . ,it) items))))
-           (!cdr instruction-stack)
-           (!cons next instruction-stack)))
-
-        (`(kubernetes-ast--list-item . ,inner-ast)
-         (let ((next (kubernetes-ast--append-sentinel inner-ast `(kubernetes-ast--list-item-sentinel . ,(point)))))
-           (!cdr instruction-stack)
-           (!cons next instruction-stack)))
-
-        (`(kubernetes-ast--list-item-sentinel . ,start)
-         (kubernetes-ast--finalize-list-item start)
-         (!cdr instruction-stack))
-
-        ;; Headings
-        ;;
-        ;; Heading insertion requires interpretation of an inner AST to build
-        ;; the heading text. A special sentinel is appended to the inner AST
-        ;; that tells the interpreter to finalise the heading after interpreting
-        ;; the inner value.
-
-        (`(heading ,inner-ast)
-         (unless magit-insert-section--current (error "Eval AST: Inserting a heading, but not in a section"))
-         (let ((next (kubernetes-ast--append-sentinel inner-ast `(kubernetes-ast--heading-sentinel . ,(point)))))
-           (!cdr instruction-stack)
-           (!cons next instruction-stack)))
-
-        (`(kubernetes-ast--heading-sentinel . ,start-pos)
-         (kubernetes-ast--finalize-heading start-pos)
-         (!cdr instruction-stack))
-
-        ;; Sections
-        ;;
-        ;; KLUDGE: The section insertion logic in magit has complex state. It's
-        ;; easier just to evaluate recursively than try to reproduce that logic
-        ;; in the interpreter. This is safe so long as section nesting doesn't
-        ;; approach `max-lisp-eval-depth'.
-
-        (`(section (,sym ,hide) . ,inner)
-         (!cdr instruction-stack)
-         (eval `(magit-insert-section (,sym nil ,hide)
-                  (kubernetes-ast-eval ',inner ,indent-level))))
-
-        ;; Custom components
-        ;;
-        ;; If the current instruction is a list and its head is a symbol, look
-        ;; it up in the component definition table. If the lookup succeeds,
-        ;; evaluate the component's constructor function to derive an AST, and
-        ;; push that AST onto the stack.
-
-        ((and `(,component . ,args)
-              (guard component)
-              (guard (symbolp component)))
-         (!cdr instruction-stack)
-
-         (if-let (constructor (gethash component kubernetes-ast--components))
-             (!cons (apply constructor args) instruction-stack)
-           (error "Component not defined: %s" component)))
-
-        ;; Lists of instructions
-        ;;
-        ;; If the list being scrutinised does not begin with a symbol, it is
-        ;; assumed to be a sequence of instructions. The items are pushed to the
-        ;; stack.
-
-        ((and (pred listp) actions)
-         (!cdr instruction-stack)
-         (setq instruction-stack (append actions instruction-stack)))
-
-        ;; Heck, you've done the interpreter a frighten.
-
-        (other
-         (message "Stack: %s" instruction-stack)
-         (error "Unknown AST instruction: %s" other))))))
+          (other
+           (message "Stack: %s" instruction-stack)
+           (error "Unknown AST instruction: %s" other)))))))
 
 
 (provide 'kubernetes-ast)
