@@ -4,9 +4,6 @@ EMACS_BATCH = ${CASK} exec ${EMACS} -Q --batch -l package
 
 REPO = github.com/chrisbarrett/kubernetes-el
 
-DEPS_SCRIPT = assets/project-deps.el
-DEPS_PNG = assets/project-deps.png
-
 CASKDIR = .cask
 SRCS = $(wildcard *.el)
 TARGETS = $(SRCS:.el=.elc)
@@ -24,7 +21,7 @@ TAR     := dist/kubernetes-$(VERSION).tar
 	git-release github-browse-release
 
 
-build : $(TARGETS) $(DEPS_PNG)
+build : $(TARGETS)
 
 $(TARGETS) : $(SRCS) $(CASKDIR)
 	${CASK} clean-elc
@@ -124,11 +121,6 @@ github-browse-release :
 
 $(CASKDIR) :
 	${CASK} install
-
-
-$(DEPS_PNG) : $(DEPS_SCRIPT) $(SRCS)
-	$(EMACS_BATCH) -f package-initialize -l $(DEPS_SCRIPT) -f project-deps-generate
-
 
 
 # Assert cask is installed
