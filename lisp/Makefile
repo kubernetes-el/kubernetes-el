@@ -2,8 +2,6 @@ CASK ?= cask
 EMACS ?= emacs
 EMACS_BATCH = ${CASK} exec ${EMACS} -Q --batch -l package
 
-REPO = github.com/chrisbarrett/kubernetes-el
-
 CASKDIR = .cask
 SRCS = $(wildcard *.el)
 TARGETS = $(SRCS:.el=.elc)
@@ -17,8 +15,7 @@ TAR     := dist/kubernetes-$(VERSION).tar
 
 
 .PHONY: build dist install help test clean clean-all release \
-	set-package-version assert-on-master assert-clean-worktree \
-	git-release github-browse-release
+	set-package-version git-release
 
 
 build : $(TARGETS)
@@ -71,19 +68,7 @@ clean-all: clean
 	rm -rf $(CASKDIR) "~/.emacs.d/elpa/kubernetes-$(VERSION)"
 
 
-release : assert-clean-worktree assert-on-master clean test set-package-version dist git-release github-browse-release
-	@echo 'Release successful.'
-
-
-assert-on-master :
-	@if [ "$$(git rev-parse --abbrev-ref HEAD)" != master ]; then \
-		echo "Attempting to deploy non-master branch to production."; exit 1; \
-	fi
-
-assert-clean-worktree :
-	@if ! git diff-index --quiet HEAD -- ; then \
-		echo "Work tree is dirty. Aborting release."; exit 1; \
-	fi
+release : clean test set-package-version dist
 
 
 set-package-version :
@@ -103,20 +88,7 @@ git-release :
 	@git add "$(MAIN_PACKAGE_FILE)"
 	@git add "$(EVIL_PACKAGE_FILE)"
 	@export TAG="$$(EMACS=${EMACS} ${CASK} version)"; \
-	git commit --quiet -m "Release $${TAG}" && \
-	git tag "$${TAG}" && \
-	while true; do \
-		read -p "Push to GitHub? [Yn]: " CHOICE; \
-		case $$CHOICE in \
-			[Yy]|"") git push --quiet origin master "$${TAG}"; break;; \
-			[Nn]   ) echo "Remember to push the tag with your changes."; exit;; \
-		esac \
-	done
-
-
-github-browse-release :
-	@export TAG="$$(git describe --abbrev=0 --tags)"; \
-	python -mwebbrowser "https://$(REPO)/releases/tag/$$TAG"
+	git commit --quiet -m "Release $${TAG}" && git tag "$${TAG}"
 
 
 $(CASKDIR) :
