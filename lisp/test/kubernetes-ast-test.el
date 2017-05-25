@@ -7,6 +7,7 @@
     (load (concat default-directory "test-helper.el"))))
 
 (require 'kubernetes-ast)
+(require 'magit-section)
 
 
 ;; rejection
