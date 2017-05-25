@@ -57,14 +57,14 @@ func (c *podClient) sched() {
 }
 
 func (c *podClient) run() {
-	currentPods, err := c.listPods(c.namespace)
+	currentPods, err := c.k8sClient.ListPods(context.Background(), c.namespace)
 	if err != nil {
 		c.writer <- errorSexp("Could not get pods", err)
 		return
 	}
 
 	// Diff
-	upserts := c.podUpserts(currentPods)
+	upserts := c.podUpserts(currentPods.Items)
 	p := podsUpdate{
 		Type:      "pod",
 		Operation: "upsert",
@@ -82,7 +82,7 @@ func (c *podClient) run() {
 	}
 
 	// Delete
-	deletes := c.podDeletes(currentPods)
+	deletes := c.podDeletes(currentPods.Items)
 	pd := podsDeletes{
 		Type:      "pod",
 		Operation: "delete",
@@ -98,14 +98,6 @@ func (c *podClient) run() {
 	for _, uid := range deletes {
 		delete(c.pods, uid)
 	}
-}
-
-func (c podClient) listPods(namespace string) ([]*api.Pod, error) {
-	l, err := c.k8sClient.ListPods(context.Background(), namespace)
-	if err != nil {
-		return nil, err
-	}
-	return l.Items, nil
 }
 
 func (c podClient) podUpserts(p []*api.Pod) []*api.Pod {
