@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/ericchiang/k8s"
 	api "github.com/ericchiang/k8s/api/v1"
@@ -20,22 +19,19 @@ type k8sMock struct {
 
 func (c *k8sMock) ListPods(ctx context.Context, n string, options ...k8s.Option) (*api.PodList, error) {
 	args := c.Called(ctx, n)
-	return nil, args.Error(1)
-}
-
-func TestSched(t *testing.T) {
-	// var b bytes.Buffer
-	// c := newPodClient(k, &sync.Mutex{}, &b)
-	// t.Fail()  FIXME
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*api.PodList), args.Error(1)
 }
 
 func TestDiffUpserts(t *testing.T) {
-	a := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("a")}}
-	b := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("b")}}
-	c := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("c")}}
-	d := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("d")}}
+	a := createPod("a")
+	b := createPod("b")
+	c := createPod("c")
+	d := createPod("d")
 	dUpdated := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("d"), Name: strPtr("d")}}
-	e := &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("e")}}
+	e := createPod("e")
 
 	client := newPodClient(nil, nil, "", 0)
 	client.pods["b"] = b
@@ -55,13 +51,13 @@ func TestDiffUpserts(t *testing.T) {
 
 func TestDiffDeletes(t *testing.T) {
 	c := newPodClient(nil, nil, "", 0)
-	c.pods["a"] = &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("a")}}
-	c.pods["b"] = &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("b")}}
-	c.pods["c"] = &api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("c")}}
+	c.pods["a"] = createPod("a")
+	c.pods["b"] = createPod("b")
+	c.pods["c"] = createPod("c")
 
 	p := []*api.Pod{
-		&api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("b")}},
-		&api.Pod{Metadata: &meta.ObjectMeta{Uid: strPtr("d")}},
+		createPod("b"),
+		createPod("d"),
 	}
 
 	diff := c.podDeletes(p)
@@ -73,14 +69,52 @@ func TestDiffDeletes(t *testing.T) {
 func TestListPodError(t *testing.T) {
 	k8s := new(k8sMock)
 	k8s.On("ListPods", mock.Anything, mock.Anything).Return(nil, errors.New("oh no"))
-	w := make(chan []byte)
+	w := make(chan []byte, 10)
 	c := newPodClient(k8s, w, "", 0)
-	c.setInterval(time.Millisecond)
-	c.sched()
-	res := <-w
-	assert.Contains(t, string(res), "Could not get pods")
-	res = <-w
-	assert.Contains(t, string(res), "Could not get pods", "should not send upsert on failure")
+	c.run()
+
+	m := <-w
+	assert.Contains(t, string(m), "Could not get pods")
+	select {
+	case _ = <-w:
+		assert.Fail(t, "should only get an error message, no other messages")
+		break
+	default:
+		break
+	}
+}
+
+func TestFullRun(t *testing.T) {
+	k8s := new(k8sMock)
+	podsA := &api.PodList{
+		Items: []*api.Pod{createPod("a")},
+	}
+	podsB := &api.PodList{
+		Items: []*api.Pod{createPod("b")},
+	}
+
+	w := make(chan []byte, 10)
+	c := newPodClient(k8s, w, "", 0)
+
+	mockCall := k8s.On("ListPods", mock.Anything, mock.Anything).Return(podsA, nil)
+	c.run()
+
+	m := <-w
+	assert.Contains(t, string(m), "operation . \"upsert\"")
+	assert.Contains(t, string(m), "uid . \"a\"")
+	m = <-w
+	assert.Contains(t, string(m), "operation . \"delete\"")
+	assert.Contains(t, string(m), "data . nil")
+
+	mockCall.ReturnArguments = mock.Arguments{podsB, nil}
+	c.run()
+
+	m = <-w
+	assert.Contains(t, string(m), "operation . \"upsert\"")
+	assert.Contains(t, string(m), "uid . \"b\"")
+	m = <-w
+	assert.Contains(t, string(m), "operation . \"delete\"")
+	assert.Contains(t, string(m), "data . [\"a\"]")
 }
 
 func TestPodSexp(t *testing.T) {
@@ -111,3 +145,11 @@ func TestPodSexp(t *testing.T) {
 }
 
 func strPtr(s string) *string { return &s }
+
+func createPod(uid string) *api.Pod {
+	return &api.Pod{
+		Metadata: &meta.ObjectMeta{
+			Uid: strPtr(uid),
+		},
+	}
+}
