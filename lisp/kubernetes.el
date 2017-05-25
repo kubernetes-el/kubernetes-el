@@ -24,6 +24,7 @@
 ;;; Commentary:
 
 (require 'kubernetes-ast)
+(require 'kubernetes-config)
 (require 'kubernetes-client)
 (require 'kubernetes-overview)
 (require 'kubernetes-state)
