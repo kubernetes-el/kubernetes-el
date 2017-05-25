@@ -30,7 +30,9 @@ of a program in the Emacs `exec-path'."
     (handle-line . kubernetes-state-handle-client-line)
     (get-namespace . kubernetes-state-namespace)
     (get-client-process . kubernetes-state-client-process)
-    (set-client-process . kubernetes-state-set-client-process))
+    (set-client-process . kubernetes-state-set-client-process)
+    (start-client . kubernetes-client-start)
+    (stop-client . kubernetes-client-stop))
   "Functions to inject for isolation and testing.")
 
 (defun kubernetes-client--make-line-handler-filter (props)
@@ -129,6 +131,17 @@ PROPS is an alist of functions to be injected."
           (message "Kubernetes client stopped"))
          (t
           (user-error "Kubernetes client not running")))))))
+
+(defun kubernetes-client-restart (&optional props)
+  "Restart the kubernetes-el background process.
+
+PROPS is an alist of functions to be injected."
+  (interactive (list kubernetes-client-props))
+  (let ((props (or props kubernetes-client-props)))
+    (kubernetes-props-bind ([start-client stop-client get-client-process] props)
+      (when (get-client-process)
+        (stop-client props))
+      (start-client props))))
 
 (provide 'kubernetes-client)
 

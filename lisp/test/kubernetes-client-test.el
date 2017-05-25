@@ -71,6 +71,27 @@
       (should-not (process-live-p process)))))
 
 
+;; Restarting the client process.
+
+(ert-deftest kubernetes-client-test--restart--starts-if-not-running ()
+  (let* ((client-running)
+         (props
+          `((get-client-process . ,(lambda () nil))
+            (start-client . ,(lambda (_) (setq client-running t)))
+            (stop-client . ,(lambda (_) (setq client-running nil))))))
+    (kubernetes-client-restart props)
+    (should client-running)))
+
+(ert-deftest kubernetes-client-test--restart--stops-client-if-running ()
+  (let* ((client-running)
+         (props
+          `((get-client-process . ,(lambda () t))
+            (start-client . ,(lambda (_) (setq client-running t)))
+            (stop-client . ,(lambda (_) (setq client-running nil))))))
+    (kubernetes-client-restart props)
+    (should client-running)))
+
+
 ;; Processing client output
 
 (ert-deftest kubernetes-client-test--process-filter--handles-lines ()
