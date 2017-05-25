@@ -2,8 +2,9 @@
 ;;; Commentary:
 ;;; Code:
 
-(require 'kubernetes-props)
+(require 'kubernetes-mode)
 (require 'kubernetes-pods-list)
+(require 'kubernetes-props)
 
 (defconst kubernetes-overview-props
   '((start-client . kubernetes-client-start)
@@ -58,6 +59,7 @@ NAMESPACE is the namespace to use."
     (let ((buffer (get-buffer-create kubernetes-overview-buffer)))
       ;; Stop the polling process if the overview buffer is deleted.
       (with-current-buffer buffer
+        (kubernetes-mode)
         (add-hook 'kill-buffer-hook (lambda ()
                                       (stop-client)
                                       (clear-state))
