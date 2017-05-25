@@ -5,6 +5,8 @@
 (require 'magit)
 (require 'kubernetes-props)
 
+(autoload 'kubernetes-config-popup "kubernetes-config")
+
 (defconst kubernetes-mode-props
   '((linum-mode . linum-mode)
     (nlinum-mode . nlinum-mode))
@@ -26,6 +28,8 @@
 
     (define-key keymap (kbd "q") #'quit-window)
     (define-key keymap (kbd "h") #'describe-mode)
+
+    (define-key keymap (kbd "c") #'kubernetes-config-popup)
 
     keymap)
   "Keymap for `kubernetes-mode'.")

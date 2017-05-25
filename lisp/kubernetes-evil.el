@@ -50,7 +50,9 @@
   [remap evil-previous-visual-line] #'previous-line
 
   (kbd "q") #'quit-window
-  (kbd "h") #'describe-mode)
+  (kbd "h") #'describe-mode
+
+  (kbd "c") #'kubernetes-config-popup)
 
 (provide 'kubernetes-evil)
 
