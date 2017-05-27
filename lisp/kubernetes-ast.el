@@ -118,11 +118,11 @@ such in rendering ASTs." name)))
   (setf (magit-section-content magit-insert-section--current) (point-marker)))
 
 (defsubst kubernetes-ast--finalize-delete-marks (start-pos)
-  (let ((end-line (line-number-at-pos)))
+  (let ((current-line (line-number-at-pos)))
     (save-excursion
       (goto-char start-pos)
       (kubernetes-ast-put-delete-mark-on-line-at-pt (point))
-      (while (< (line-number-at-pos) end-line)
+      (while (< (line-number-at-pos) current-line)
         (kubernetes-ast-put-delete-mark-on-line-at-pt (point))
         (forward-line 1)))))
 
