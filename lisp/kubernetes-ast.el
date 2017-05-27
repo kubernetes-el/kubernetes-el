@@ -270,10 +270,11 @@ such in rendering ASTs." name)))
         ;; in the interpreter. This is safe so long as section nesting doesn't
         ;; approach `max-lisp-eval-depth'.
 
-        (`(section (,sym ,hide) . ,inner)
+        (`(section (,sym . ,args) . ,inner)
          (!cdr instruction-stack)
-         (eval `(magit-insert-section (,sym nil ,hide)
-                  (kubernetes-ast-eval ',inner ,indent-level))))
+         (let ((hiddenp (car args)))
+           (eval `(magit-insert-section (,sym nil ,hiddenp)
+                    (kubernetes-ast-eval ',inner ,indent-level)))))
 
         ;; Custom components
         ;;
