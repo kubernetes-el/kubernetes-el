@@ -118,11 +118,11 @@ such in rendering ASTs." name)))
   (setf (magit-section-content magit-insert-section--current) (point-marker)))
 
 (defsubst kubernetes-ast--finalize-delete-marks (start-pos)
-  (let ((end-line (line-number-at-pos)))
+  (let ((current-line (line-number-at-pos)))
     (save-excursion
       (goto-char start-pos)
       (kubernetes-ast-put-delete-mark-on-line-at-pt (point))
-      (while (< (line-number-at-pos) end-line)
+      (while (< (line-number-at-pos) current-line)
         (kubernetes-ast-put-delete-mark-on-line-at-pt (point))
         (forward-line 1)))))
 
@@ -270,10 +270,11 @@ such in rendering ASTs." name)))
         ;; in the interpreter. This is safe so long as section nesting doesn't
         ;; approach `max-lisp-eval-depth'.
 
-        (`(section (,sym ,hide) . ,inner)
+        (`(section (,sym . ,args) . ,inner)
          (!cdr instruction-stack)
-         (eval `(magit-insert-section (,sym nil ,hide)
-                  (kubernetes-ast-eval ',inner ,indent-level))))
+         (let ((hiddenp (car args)))
+           (eval `(magit-insert-section (,sym nil ,hiddenp)
+                    (kubernetes-ast-eval ',inner ,indent-level)))))
 
         ;; Custom components
         ;;
@@ -306,6 +307,33 @@ such in rendering ASTs." name)))
         (other
          (message "Stack: %s" instruction-stack)
          (error "Unknown AST instruction: %s" other))))))
+
+
+;; Rendering
+
+(defmacro kubernetes-ast--save-window-state (&rest body)
+  "Restore window state after executing BODY.
+
+This is useful if the buffer is erased and repopulated in BODY,
+in which case `save-excursion' is insufficient to restore the
+window state."
+          `(let ((pos (point))
+                 (col (current-column))
+                 (window-start-line (window-start))
+                 (inhibit-redisplay t))
+             (save-excursion
+               ,@body)
+             (goto-char pos)
+             (move-to-column col)
+             (set-window-start (selected-window) window-start-line)))
+
+
+(defun kubernetes-ast-render (buffer ast)
+  (with-current-buffer buffer
+    (kubernetes-ast--save-window-state
+     (erase-buffer)
+     (kubernetes-ast-eval ast))
+    (magit-section-update-highlight)))
 
 
 (provide 'kubernetes-ast)

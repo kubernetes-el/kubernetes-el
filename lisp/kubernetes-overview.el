@@ -20,15 +20,16 @@
 
 (defvar kubernetes-overview-buffer "*kubernetes-overview*")
 
-
 (defun kubernetes-overview--redraw (buffer props)
   (kubernetes-props-bind ([ast-eval get-state] props)
     (with-current-buffer buffer
-      (read-only-mode +1)
       (let ((inhibit-read-only t))
-        (erase-buffer)
-        (ast-eval `(section (root nil)
-                            (pods-list ,(get-state))))))))
+        ;; If a region is active, a redraw would affect the region in
+        ;; unpredictable ways.
+        (unless (region-active-p)
+          (kubernetes-ast-render buffer
+                                 `(section (root nil)
+                                           (pods-list ,(get-state)))))))))
 
 (defun kubernetes-overview (props namespace)
   "Show the overview buffer.
