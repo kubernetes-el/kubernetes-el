@@ -309,6 +309,33 @@ such in rendering ASTs." name)))
          (error "Unknown AST instruction: %s" other))))))
 
 
+;; Rendering
+
+(defmacro kubernetes-ast--save-window-state (&rest body)
+  "Restore window state after executing BODY.
+
+This is useful if the buffer is erased and repopulated in BODY,
+in which case `save-excursion' is insufficient to restore the
+window state."
+          `(let ((pos (point))
+                 (col (current-column))
+                 (window-start-line (window-start))
+                 (inhibit-redisplay t))
+             (save-excursion
+               ,@body)
+             (goto-char pos)
+             (move-to-column col)
+             (set-window-start (selected-window) window-start-line)))
+
+
+(defun kubernetes-ast-render (buffer ast)
+  (with-current-buffer buffer
+    (kubernetes-ast--save-window-state
+     (erase-buffer)
+     (kubernetes-ast-eval ast))
+    (magit-section-update-highlight)))
+
+
 (provide 'kubernetes-ast)
 
 ;;; kubernetes-ast.el ends here

@@ -8,6 +8,7 @@
 
 (require 'kubernetes-ast)
 (require 'magit-section)
+(require 'subr-x)
 
 
 ;; rejection
@@ -279,6 +280,77 @@
       (save-excursion (kubernetes-ast-eval ast))
       (should (equal "D foo\nD bar\nD baz\nfrotz\n" (buffer-string))))))
 
+
+;; Test rendering function's point restoration.
+
+(ert-deftest kubernetes-ast-test--render--no-err-if-empty-buffer ()
+  (with-temp-buffer
+    (kubernetes-ast-render (current-buffer) nil)
+    (should (string-empty-p (buffer-string)))))
+
+(ert-deftest kubernetes-ast-test--render--restores-point--1 ()
+  (let ((ast nil))
+    (with-temp-buffer
+      (kubernetes-ast-render (current-buffer) ast))))
+
+(ert-deftest kubernetes-ast-test--render--restores-point--2 ()
+  (let ((expected-column) (expected-line)
+        (ast '(line "foo")))
+    (with-temp-buffer
+
+      (kubernetes-ast-render (current-buffer) ast)
+      (goto-char (point-min))
+      (search-forward "o")
+
+      (setq expected-column (current-column))
+      (setq expected-line (line-number-at-pos))
+
+      (kubernetes-ast-render (current-buffer) ast)
+
+      (should (equal (current-column) expected-column))
+      (should (equal (line-number-at-pos) expected-line)))))
+
+(ert-deftest kubernetes-ast-test--render--restores-point--3 ()
+  (let ((expected-column) (expected-line)
+        (ast '((section (line1) (line "foo"))
+               (section (line2) (line "bar"))
+               (section (line3) (line "baz")))))
+    (with-temp-buffer
+
+      (kubernetes-ast-render (current-buffer) ast)
+      (goto-char (point-min))
+      (search-forward "ba")
+
+      (setq expected-column (current-column))
+      (setq expected-line (line-number-at-pos))
+
+      (kubernetes-ast-render (current-buffer) ast)
+
+      (should (equal (current-column) expected-column))
+      (should (equal (line-number-at-pos) expected-line)))))
+
+(defun kubernetes-ast-test--line-has-highlight-p ()
+  (let ((overlay-faces-at-pt
+         (--map (plist-get (overlay-properties it) 'face)
+                (overlays-at (point)))))
+    (memq 'magit-section-highlight overlay-faces-at-pt)))
+
+(ert-deftest kubernetes-ast-test--render--updates-highlight ()
+  (let ((ast '((section (line1) (line "foo"))
+               (section (line2) (line "bar"))
+               (section (line3) (line "baz")))))
+    (with-temp-buffer
+      (kubernetes-ast-render (current-buffer) ast)
+      (should (kubernetes-ast-test--line-has-highlight-p))
+
+      (goto-char (point-min))
+      (search-forward "ba")
+      (kubernetes-ast-render (current-buffer) ast)
+
+      (should (kubernetes-ast-test--line-has-highlight-p))
+      (should-not (save-excursion
+                    (goto-char (point-min))
+                    (kubernetes-ast-test--line-has-highlight-p))))))
 
 (provide 'kubernetes-ast-test)
 
