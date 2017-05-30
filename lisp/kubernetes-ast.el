@@ -11,7 +11,7 @@
 
 ;; Derived component support.
 
-(defconst kubernetes-ast--components (make-hash-table :test #'eq)
+(defvar kubernetes-ast--components (make-hash-table :test #'eq)
   "A mapping from the name of a component to its interpretation function.
 
 When traversing a rendering AST, any list beginning with a symbol
