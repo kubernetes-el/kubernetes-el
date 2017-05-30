@@ -195,9 +195,10 @@
   (with-temp-buffer
     (should-assert (kubernetes-ast-eval '(key-value 10 nil "Value")))))
 
-(ert-deftest kubernetes-ast-test--key-value--validates-value-as-string ()
+(ert-deftest kubernetes-ast-test--key-value--empty-output-if-value-is-nil ()
   (with-temp-buffer
-    (should-assert (kubernetes-ast-eval '(key-value 10 "Key" 1)))))
+    (kubernetes-ast-eval '(key-value 10 "Key" nil))
+    (should (string-empty-p (buffer-string)))))
 
 (ert-deftest kubernetes-ast-test--key-value--ensures-values-are-inserted-on-new-lines ()
   (let ((ast '("foo" (key-value 10 "Key" "Value"))))
