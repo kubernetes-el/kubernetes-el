@@ -24,6 +24,7 @@ of a program in the Emacs `exec-path'."
 
 (defconst kubernetes-client-props
   '((message . message)
+    (called-interactively-p . called-interactively-p)
     (make-process . make-process)
     (process-buffer . process-buffer)
     (process-mark . process-mark)
@@ -116,7 +117,10 @@ PROPS is an alist of functions to be injected."
 PROPS is an alist of functions to be injected."
   (interactive (list kubernetes-client-props))
   (let ((props (or props kubernetes-client-props)))
-    (kubernetes-props-bind ([get-client-process set-client-process message]
+    (kubernetes-props-bind ([get-client-process
+                             set-client-process
+                             called-interactively-p
+                             message]
                             props)
       (let ((process (get-client-process)))
         (cond
@@ -129,7 +133,7 @@ PROPS is an alist of functions to be injected."
             (ignore-errors (kill-buffer buf)))
           (set-client-process nil)
           (message "Kubernetes client stopped"))
-         (t
+         ((called-interactively-p t)
           (user-error "Kubernetes client not running")))))))
 
 (defun kubernetes-client-restart (&optional props)

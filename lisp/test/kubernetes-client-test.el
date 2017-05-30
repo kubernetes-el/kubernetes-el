@@ -45,9 +45,10 @@
 
 ;; Stopping the client process
 
-(ert-deftest kubernetes-client-test--stop--raises-error-if-not-running ()
+(ert-deftest kubernetes-client-test--stop--command-raises-error-if-not-running ()
   (let ((props `((message . ignore)
                  (get-client-process . (lambda () nil))
+                 (called-interactively-p . (lambda (_) t))
                  (set-client-process))))
     (should-error (kubernetes-client-stop props)
                   :type 'user-error)))
@@ -60,6 +61,7 @@
     (let* ((process-deleted-from-state)
            (props
             `((message . ignore)
+              (called-interactively-p . (lambda (_) t))
               (get-client-process . ,(lambda () process))
               (set-client-process . ,(lambda (_)
                                        (setq process-deleted-from-state t))))))
