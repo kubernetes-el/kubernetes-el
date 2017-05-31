@@ -65,7 +65,7 @@ func (c *podClient) run() {
 	}
 
 	// Diff
-	upserts := c.podUpserts(currentPods.Items)
+	upserts := c.upserts(currentPods.Items)
 	c.removeUnusedData(upserts)
 	p := podsUpdate{
 		Type:      "pod",
@@ -84,7 +84,7 @@ func (c *podClient) run() {
 	}
 
 	// Delete
-	deletes := c.podDeletes(currentPods.Items)
+	deletes := c.deletes(currentPods.Items)
 	pd := podsDeletes{
 		Type:      "pod",
 		Operation: "delete",
@@ -102,7 +102,7 @@ func (c *podClient) run() {
 	}
 }
 
-func (c podClient) podUpserts(p []*api.Pod) []*api.Pod {
+func (c podClient) upserts(p []*api.Pod) []*api.Pod {
 	podsIds := make(map[string]bool)
 	for _, p := range c.pods {
 		podsIds[*p.Metadata.Uid] = true
@@ -123,7 +123,7 @@ func (c podClient) podUpserts(p []*api.Pod) []*api.Pod {
 	return pods
 }
 
-func (c podClient) podDeletes(pods []*api.Pod) []string {
+func (c podClient) deletes(pods []*api.Pod) []string {
 	podsIds := make(map[string]bool)
 	for _, p := range pods {
 		podsIds[*p.Metadata.Uid] = true
