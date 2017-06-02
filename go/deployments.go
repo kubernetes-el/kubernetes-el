@@ -5,14 +5,14 @@ import (
 	"reflect"
 	"time"
 
-	apps "github.com/ericchiang/k8s/apis/apps/v1beta1"
+	extns "github.com/ericchiang/k8s/apis/extensions/v1beta1"
 	"github.com/kalmanb/sexp"
 )
 
 type deploymentUpdate struct {
-	Type      string             `json:"type"`
-	Operation string             `json:"operation"`
-	Data      []*apps.Deployment `json:"data"`
+	Type      string              `json:"type"`
+	Operation string              `json:"operation"`
+	Data      []*extns.Deployment `json:"data"`
 }
 
 type deploymentDeletes struct {
@@ -22,20 +22,20 @@ type deploymentDeletes struct {
 }
 
 type deploymentClient struct {
-	appsClient  appsClient
+	extnsClient extnsClient
 	writer      chan []byte
 	interval    time.Duration
 	namespace   string
-	deployments map[string]*apps.Deployment
+	deployments map[string]*extns.Deployment
 }
 
-func newDeploymentClient(c appsClient, writer chan []byte, namespace string, interval int) deploymentClient {
+func newDeploymentClient(c extnsClient, writer chan []byte, namespace string, interval int) deploymentClient {
 	return deploymentClient{
-		appsClient:  c,
+		extnsClient: c,
 		writer:      writer,
 		interval:    time.Second * time.Duration(interval),
 		namespace:   namespace,
-		deployments: map[string]*apps.Deployment{},
+		deployments: map[string]*extns.Deployment{},
 	}
 }
 
@@ -58,7 +58,7 @@ func (c *deploymentClient) sched() {
 }
 
 func (c *deploymentClient) run() {
-	current, err := c.appsClient.ListDeployments(context.Background(), c.namespace)
+	current, err := c.extnsClient.ListDeployments(context.Background(), c.namespace)
 	if err != nil {
 		c.writer <- errorSexp("Could not get deployments", err)
 		return
@@ -102,13 +102,13 @@ func (c *deploymentClient) run() {
 	}
 }
 
-func (c deploymentClient) upserts(deployments []*apps.Deployment) []*apps.Deployment {
+func (c deploymentClient) upserts(deployments []*extns.Deployment) []*extns.Deployment {
 	ids := make(map[string]bool)
 	for _, v := range c.deployments {
 		ids[*v.Metadata.Uid] = true
 	}
 
-	var res []*apps.Deployment
+	var res []*extns.Deployment
 	for _, v := range deployments {
 		lookup := c.deployments[*v.Metadata.Uid]
 
@@ -123,7 +123,7 @@ func (c deploymentClient) upserts(deployments []*apps.Deployment) []*apps.Deploy
 	return res
 }
 
-func (c deploymentClient) deletes(deployments []*apps.Deployment) []string {
+func (c deploymentClient) deletes(deployments []*extns.Deployment) []string {
 	ids := make(map[string]bool)
 	for _, v := range deployments {
 		ids[*v.Metadata.Uid] = true
@@ -138,26 +138,26 @@ func (c deploymentClient) deletes(deployments []*apps.Deployment) []string {
 	return res
 }
 
-func (c deploymentClient) removeUnusedData(deployments []*apps.Deployment) []*apps.Deployment {
+func (c deploymentClient) removeUnusedData(deployments []*extns.Deployment) []*extns.Deployment {
 	// Option 1 - remove data
 	// for _, pod := range pods {
-	// 	pod.Spec = nil
-	// 	pod.Metadata.GenerateName = nil
+	//	pod.Spec = nil
+	//	pod.Metadata.GenerateName = nil
 	// }
 	// return pods
 	return deployments
 
 	// FIXME - use this
 	// Option 2 - create new pod with data
-	// var res []*apps.Deployment
+	// var res []*extns.Deployment
 	// for _, pod := range pods {
-	//	new := &apps.Deployment{
+	//	new := &extns.Deployment{
 	//		Metadata: &meta.ObjectMeta{
 	//			Name:      pod.Metadata.Name,
 	//			Namespace: pod.Metadata.Namespace,
 	//          ...
 	//		},
-	//		Status: &apps.DeploymentStatus{
+	//		Status: &extns.DeploymentStatus{
 	//			Phase: pod.Status.Phase,
 	//          ...
 	//		},

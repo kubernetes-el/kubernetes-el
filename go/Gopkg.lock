@@ -1,4 +1,4 @@
-memo = "45e87893d504fd029e284c3860aafd012fd022b48a18435a005d8468359884ec"
+memo = "fd5bb3136ee450ff6cc729453d904d1b630948e559b8e1412bdcd17aab5ea1c4"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -35,12 +35,6 @@ memo = "45e87893d504fd029e284c3860aafd012fd022b48a18435a005d8468359884ec"
   name = "github.com/mitchellh/go-homedir"
   packages = ["."]
   revision = "b8bc1bf767474819792c23f32d8286a45736f1c6"
-
-[[projects]]
-  name = "github.com/pkg/errors"
-  packages = ["."]
-  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
-  version = "v0.8.0"
 
 [[projects]]
   name = "github.com/pmezard/go-difflib"

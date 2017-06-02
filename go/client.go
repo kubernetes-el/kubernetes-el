@@ -20,22 +20,22 @@ func (c *client) run(namespace string, interval int) int {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 
-	// client, err := loadDefaultClient()
-	// if err != nil {
-	// 	c.writer <- errorSexp("could not load k8s client", err)
-	// 	return -1
-	// }
-
-	// podClient := newPodClient(client, c.writer, namespace, interval)
-	// podClient.sched()
-
-	appsClient, err := loadDefaultAppsClient()
+	client, err := loadDefaultClient()
 	if err != nil {
 		c.writer <- errorSexp("could not load k8s client", err)
 		return -1
 	}
 
-	deploymentClient := newDeploymentClient(appsClient, c.writer, namespace, interval)
+	podClient := newPodClient(client, c.writer, namespace, interval)
+	podClient.sched()
+
+	extnsClient, err := loadDefaultExtnsClient()
+	if err != nil {
+		c.writer <- errorSexp("could not load k8s client", err)
+		return -1
+	}
+
+	deploymentClient := newDeploymentClient(extnsClient, c.writer, namespace, interval)
 	deploymentClient.sched()
 
 	wg.Wait()

@@ -9,6 +9,7 @@ import (
 	"github.com/ericchiang/k8s"
 	api "github.com/ericchiang/k8s/api/v1"
 	apps "github.com/ericchiang/k8s/apis/apps/v1beta1"
+	extns "github.com/ericchiang/k8s/apis/extensions/v1beta1"
 	"github.com/ghodss/yaml"
 	"github.com/mitchellh/go-homedir"
 )
@@ -19,6 +20,9 @@ type k8sClient interface {
 
 type appsClient interface {
 	ListDeployments(ctx context.Context, namespace string, options ...k8s.Option) (*apps.DeploymentList, error)
+}
+type extnsClient interface {
+	ListDeployments(ctx context.Context, namespace string, options ...k8s.Option) (*extns.DeploymentList, error)
 }
 
 func loadDefaultClient() (k8sClient, error) {
@@ -91,4 +95,40 @@ func loadAppsClient(kubeconfigPath string) (appsClient, error) {
 		return nil, err
 	}
 	return c.AppsV1Beta1(), nil
+}
+
+func loadDefaultExtnsClient() (extnsClient, error) {
+	home, err := homedir.Dir()
+	if err != nil {
+		panic(err)
+	}
+
+	// Change to HOME/.kube so that relative key files work in k8s config
+	kubeDir, err := os.Open(home + "/.kube")
+	if err != nil {
+		panic(err)
+	}
+	err = kubeDir.Chdir()
+	if err != nil {
+		panic(err)
+	}
+
+	return loadExtnsClient(home + "/.kube/config")
+}
+
+func loadExtnsClient(kubeconfigPath string) (extnsClient, error) {
+	data, err := ioutil.ReadFile(kubeconfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("read kubeconfig: %v", err)
+	}
+
+	var config k8s.Config
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("unmarshal kubeconfig: %v", err)
+	}
+	c, err := k8s.NewClient(&config)
+	if err != nil {
+		return nil, err
+	}
+	return c.ExtensionsV1Beta1(), nil
 }

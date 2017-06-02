@@ -6,22 +6,22 @@ import (
 	"testing"
 
 	"github.com/ericchiang/k8s"
-	apps "github.com/ericchiang/k8s/apis/apps/v1beta1"
+	extns "github.com/ericchiang/k8s/apis/extensions/v1beta1"
 	meta "github.com/ericchiang/k8s/apis/meta/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-type appsClientMock struct {
+type extnsClientMock struct {
 	mock.Mock
 }
 
-func (c *appsClientMock) ListDeployments(ctx context.Context, n string, options ...k8s.Option) (*apps.DeploymentList, error) {
+func (c *extnsClientMock) ListDeployments(ctx context.Context, n string, options ...k8s.Option) (*extns.DeploymentList, error) {
 	args := c.Called(ctx, n)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*apps.DeploymentList), args.Error(1)
+	return args.Get(0).(*extns.DeploymentList), args.Error(1)
 }
 
 func TestDeployementDiffUpserts(t *testing.T) {
@@ -29,7 +29,7 @@ func TestDeployementDiffUpserts(t *testing.T) {
 	b := createDeployment("b")
 	c := createDeployment("c")
 	d := createDeployment("d")
-	dUpdated := &apps.Deployment{Metadata: &meta.ObjectMeta{Uid: strPtr("d"), Name: strPtr("d")}}
+	dUpdated := &extns.Deployment{Metadata: &meta.ObjectMeta{Uid: strPtr("d"), Name: strPtr("d")}}
 	e := createDeployment("e")
 
 	client := newDeploymentClient(nil, nil, "", 0)
@@ -37,7 +37,7 @@ func TestDeployementDiffUpserts(t *testing.T) {
 	client.deployments["c"] = c
 	client.deployments["d"] = d
 
-	p := []*apps.Deployment{a, b, dUpdated, e}
+	p := []*extns.Deployment{a, b, dUpdated, e}
 
 	diff := client.upserts(p)
 
@@ -54,7 +54,7 @@ func TestDeployementDiffDeletes(t *testing.T) {
 	c.deployments["b"] = createDeployment("b")
 	c.deployments["c"] = createDeployment("c")
 
-	p := []*apps.Deployment{
+	p := []*extns.Deployment{
 		createDeployment("b"),
 		createDeployment("d"),
 	}
@@ -66,7 +66,7 @@ func TestDeployementDiffDeletes(t *testing.T) {
 }
 
 func TestDeployementListError(t *testing.T) {
-	client := new(appsClientMock)
+	client := new(extnsClientMock)
 	client.On("ListDeployments", mock.Anything, mock.Anything).Return(nil, errors.New("oh no"))
 	w := make(chan []byte, 10)
 	c := newDeploymentClient(client, w, "", 0)
@@ -84,12 +84,12 @@ func TestDeployementListError(t *testing.T) {
 }
 
 func TestDeployementFullRun(t *testing.T) {
-	client := new(appsClientMock)
-	a := &apps.DeploymentList{
-		Items: []*apps.Deployment{createDeployment("a")},
+	client := new(extnsClientMock)
+	a := &extns.DeploymentList{
+		Items: []*extns.Deployment{createDeployment("a")},
 	}
-	b := &apps.DeploymentList{
-		Items: []*apps.Deployment{createDeployment("b")},
+	b := &extns.DeploymentList{
+		Items: []*extns.Deployment{createDeployment("b")},
 	}
 
 	w := make(chan []byte, 10)
@@ -116,8 +116,8 @@ func TestDeployementFullRun(t *testing.T) {
 	assert.Contains(t, string(m), "data . [\"a\"]")
 }
 
-func createDeployment(uid string) *apps.Deployment {
-	return &apps.Deployment{
+func createDeployment(uid string) *extns.Deployment {
+	return &extns.Deployment{
 		Metadata: &meta.ObjectMeta{
 			Uid: strPtr(uid),
 		},
