@@ -22,10 +22,12 @@
   kubernetes-state)
 
 (defun kubernetes-state-clear ()
-  (remhash 'namespace (kubernetes-state))
-  (let ((pods-list (kubernetes-state-pods)))
-    (dolist (key (hash-table-keys pods-list))
-      (remhash key pods-list))))
+  (let ((state (kubernetes-state)))
+    (--each (hash-table-keys state)
+      (let ((value (gethash it state)))
+        (if (hash-table-p value)
+            (--each (hash-table-keys value) (remhash it value))
+          (remhash it (kubernetes-state)))))))
 
 (defvar kubernetes-state-client-message-processed-functions nil
   "Hook functions run when an update is received from the subprocess.
