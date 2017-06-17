@@ -46,16 +46,8 @@
         (set-overview-populated-p t)
         t))))
 
-(defun kubernetes-overview (props namespace)
-  "Show the overview buffer.
-
-PROPS is an alist of functions to inject.
-
-NAMESPACE is the namespace to use."
-  (interactive (list kubernetes-overview-props
-                     (kubernetes-props-bind ([get-namespace] kubernetes-overview-props)
-                       (read-string "Namespace: " (get-namespace) 'kubernetes-namespace))))
-  (kubernetes-props-bind ([clear-state set-namespace get-namespace start-client stop-client get-client-process display-buffer] props)
+(defun kubernetes-overview--initialize-client (props namespace)
+  (kubernetes-props-bind ([clear-state set-namespace get-namespace start-client stop-client get-client-process] props)
     (cond
      ;; Restart the process if the configuration has changed.
      ((and (get-client-process)
@@ -65,12 +57,24 @@ NAMESPACE is the namespace to use."
       (stop-client)
       (start-client))
 
-     ;; Process is running with current configuration.
+     ;; Process already running with current configuration.
      ((get-client-process))
 
      (t
       (set-namespace namespace)
-      (start-client)))
+      (start-client)))))
+
+(defun kubernetes-overview (props namespace)
+  "Show the overview buffer.
+
+PROPS is an alist of functions to inject.
+
+NAMESPACE is the namespace to use."
+  (interactive (list kubernetes-overview-props
+                     (kubernetes-props-bind ([get-namespace] kubernetes-overview-props)
+                       (read-string "Namespace: " (get-namespace) 'kubernetes-namespace))))
+  (kubernetes-props-bind ([clear-state stop-client display-buffer] props)
+    (kubernetes-overview--initialize-client props namespace)
 
     (let ((buffer (get-buffer-create kubernetes-overview-buffer)))
       ;; Stop the polling process if the overview buffer is deleted.
