@@ -2,6 +2,7 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 'kubernetes-custom)
 (require 'kubernetes-mode)
 (require 'kubernetes-pods-list)
 (require 'kubernetes-props)
@@ -15,7 +16,10 @@
     (ast-eval . kubernetes-ast-eval)
     (get-namespace . kubernetes-state-namespace)
     (set-namespace . kubernetes-state-set-namespace)
-    (display-buffer . display-buffer))
+    (overview-populated-p . kubernetes-state-overview-populated-p)
+    (set-overview-populated-p . kubernetes-state-set-overview-populated-p)
+    (display-buffer . display-buffer)
+    (buffer-live-p . buffer-live-p))
   "Functions to inject for isolation and testing.")
 
 (defvar kubernetes-overview-buffer "*kubernetes-overview*")
@@ -30,6 +34,15 @@
           (kubernetes-ast-render buffer
                                  `(section (root nil)
                                            (pods-list ,(get-state)))))))))
+
+(defun kubernetes-overview--mk-client-message-handler (props overview-buffer)
+  (kubernetes-props-bind ([overview-populated-p set-overview-populated-p buffer-live-p] props)
+    (lambda (_msg)
+      (when (and (buffer-live-p overview-buffer)
+                 (or kubernetes-redraw-on-updates
+                     (not (overview-populated-p))))
+        (kubernetes-overview--redraw overview-buffer props)
+        (set-overview-populated-p t)))))
 
 (defun kubernetes-overview (props namespace)
   "Show the overview buffer.
@@ -68,13 +81,10 @@ NAMESPACE is the namespace to use."
 
       ;; Redraw buffer whenever the client state is updated.
       (add-hook 'kubernetes-state-client-message-processed-functions
-                (lambda (_)
-                  (when (buffer-live-p buffer)
-                    (kubernetes-overview--redraw buffer props))))
+                (kubernetes-overview--mk-client-message-handler props buffer))
 
       (kubernetes-overview--redraw buffer props)
       (display-buffer buffer))))
-
 
 (provide 'kubernetes-overview)
 
