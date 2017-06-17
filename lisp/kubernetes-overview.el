@@ -19,7 +19,8 @@
     (overview-populated-p . kubernetes-state-overview-populated-p)
     (set-overview-populated-p . kubernetes-state-set-overview-populated-p)
     (display-buffer . display-buffer)
-    (buffer-live-p . buffer-live-p))
+    (buffer-live-p . buffer-live-p)
+    (kubernetes-overview--redraw . kubernetes-overview--redraw))
   "Functions to inject for isolation and testing.")
 
 (defvar kubernetes-overview-buffer "*kubernetes-overview*")
@@ -36,13 +37,14 @@
                                            (pods-list ,(get-state)))))))))
 
 (defun kubernetes-overview--mk-client-message-handler (props overview-buffer)
-  (kubernetes-props-bind ([overview-populated-p set-overview-populated-p buffer-live-p] props)
+  (kubernetes-props-bind ([overview-populated-p set-overview-populated-p buffer-live-p kubernetes-overview--redraw] props)
     (lambda (_msg)
       (when (and (buffer-live-p overview-buffer)
                  (or kubernetes-redraw-on-updates
                      (not (overview-populated-p))))
         (kubernetes-overview--redraw overview-buffer props)
-        (set-overview-populated-p t)))))
+        (set-overview-populated-p t)
+        t))))
 
 (defun kubernetes-overview (props namespace)
   "Show the overview buffer.
