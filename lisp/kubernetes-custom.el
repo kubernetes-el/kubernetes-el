@@ -12,6 +12,11 @@
   :group 'kubernetes
   :type 'boolean)
 
+(defface kubernetes-loading
+  '((t (:inherit font-lock-comment-face)))
+  "Face for loading indicators."
+  :group 'kubernetes)
+
 (provide 'kubernetes-custom)
 
 ;;; kubernetes-custom.el ends here

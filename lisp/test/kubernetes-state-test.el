@@ -136,6 +136,12 @@
 
       (should (equal pods result)))))
 
+(ert-deftest kubernetes-state-test--updates-received-p-accessors ()
+  (kubernetes-state--with-empty-state
+    (should-not (kubernetes-state-updates-received-p))
+    (kubernetes-state-set-updates-received-p t)
+    (should (kubernetes-state-updates-received-p))))
+
 (provide 'kubernetes-state-test)
 
 ;;; kubernetes-state-test.el ends here

@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 'subr-x)
 
 (provide 'kubernetes-state)
 
@@ -88,5 +89,6 @@ the parsed s-expression message.")
 
 (kubernetes-state-defaccessors pods (pods))
 
+(kubernetes-state-defaccessors updates-received-p (flag))
 
 ;;; kubernetes-state.el ends here

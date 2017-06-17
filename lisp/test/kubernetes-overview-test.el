@@ -16,12 +16,10 @@
          (props
           `((buffer-live-p
              . (lambda (_) nil))
-            (kubernetes-overview--redraw
-             . (lambda (&rest _) (error "Unexpected: kubernetes-overview--redraw")))
-            (set-overview-populated-p
-             . (lambda (_) (error "Unexpected: overview-populated-p")))
-            (overview-populated-p
-             . (lambda () (error "Unexpected: overview-populated-p")))))
+            (kubernetes-overview-redraw
+             . (lambda (&rest _) (error "Unexpected: kubernetes-overview-redraw")))
+            (updates-received-p
+             . (lambda () (error "Unexpected: updates-received-p")))))
 
          (handler (kubernetes-overview--mk-client-message-handler
                    props
@@ -34,12 +32,10 @@
          (props
           `((buffer-live-p
              . (lambda (_) t))
-            (overview-populated-p
+            (updates-received-p
              . (lambda () t))
-            (kubernetes-overview--redraw
-             . (lambda (&rest _) (error "Unexpected: kubernetes-overview--redraw")))
-            (set-overview-populated-p
-             . (lambda (_) (error "Unexpected: overview-populated-p")))))
+            (kubernetes-overview-redraw
+             . (lambda (&rest _) (error "Unexpected: kubernetes-overview-redraw")))))
 
          (handler (kubernetes-overview--mk-client-message-handler
                    props
@@ -50,46 +46,38 @@
 (ert-deftest kubernetes-overview-test--update-handler--redraws-if-updates-enabled ()
   (let* ((kubernetes-redraw-on-updates t)
          (buffer-redrawn-p nil)
-         (state-updated-p nil)
          (props
           `((buffer-live-p
              . (lambda (_) t))
-            (overview-populated-p
+            (updates-received-p
              . (lambda () t))
-            (kubernetes-overview--redraw
-             . ,(lambda (&rest _) (setq buffer-redrawn-p t)))
-            (set-overview-populated-p
-             . ,(lambda (value) (setq state-updated-p value)))))
+            (kubernetes-overview-redraw
+             . ,(lambda (&rest _) (setq buffer-redrawn-p t)))))
 
          (handler (kubernetes-overview--mk-client-message-handler
                    props
                    (current-buffer))))
 
     (should (funcall handler nil))
-    (should buffer-redrawn-p)
-    (should state-updated-p)))
+    (should buffer-redrawn-p)))
 
 (ert-deftest kubernetes-overview-test--update-handler--initial-redraw-on-updates-disabled ()
   (let* ((kubernetes-redraw-on-updates nil)
          (buffer-redrawn-p nil)
-         (state-updated-p nil)
          (props
           `((buffer-live-p
              . (lambda (_) t))
-            (overview-populated-p
+            (updates-received-p
              . (lambda () nil))
-            (kubernetes-overview--redraw
-             . ,(lambda (&rest _) (setq buffer-redrawn-p t)))
-            (set-overview-populated-p
-             . ,(lambda (value) (setq state-updated-p value)))))
+            (kubernetes-overview-redraw
+             . ,(lambda (&rest _) (setq buffer-redrawn-p t)))))
 
          (handler (kubernetes-overview--mk-client-message-handler
                    props
                    (current-buffer))))
 
     (should (funcall handler nil))
-    (should buffer-redrawn-p)
-    (should state-updated-p)))
+    (should buffer-redrawn-p)))
 
 
 ;; Initializing clients and handling configuration changes

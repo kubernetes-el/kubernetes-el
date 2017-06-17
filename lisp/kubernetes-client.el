@@ -29,6 +29,7 @@ of a program in the Emacs `exec-path'."
     (process-buffer . process-buffer)
     (process-mark . process-mark)
     (handle-line . kubernetes-state-handle-client-line)
+    (set-updates-received-p . kubernetes-state-set-updates-received-p)
     (get-namespace . kubernetes-state-namespace)
     (get-client-process . kubernetes-state-client-process)
     (set-client-process . kubernetes-state-set-client-process)
@@ -37,8 +38,10 @@ of a program in the Emacs `exec-path'."
   "Functions to inject for isolation and testing.")
 
 (defun kubernetes-client--make-line-handler-filter (props)
-  (kubernetes-props-bind ([process-buffer process-mark handle-line] props)
+  (kubernetes-props-bind ([set-updates-received-p process-buffer process-mark handle-line] props)
     (lambda (process str)
+      (set-updates-received-p t)
+
       (let ((buf (process-buffer process))
             (marker (process-mark process)))
 

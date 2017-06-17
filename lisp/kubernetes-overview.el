@@ -2,6 +2,7 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 'kubernetes-ast)
 (require 'kubernetes-custom)
 (require 'kubernetes-mode)
 (require 'kubernetes-pods-list)
@@ -16,16 +17,19 @@
     (ast-eval . kubernetes-ast-eval)
     (get-namespace . kubernetes-state-namespace)
     (set-namespace . kubernetes-state-set-namespace)
-    (overview-populated-p . kubernetes-state-overview-populated-p)
-    (set-overview-populated-p . kubernetes-state-set-overview-populated-p)
+    (updates-received-p . kubernetes-state-updates-received-p)
     (display-buffer . display-buffer)
     (buffer-live-p . buffer-live-p)
-    (kubernetes-overview--redraw . kubernetes-overview--redraw))
+    (kubernetes-overview-redraw . kubernetes-overview-redraw))
   "Functions to inject for isolation and testing.")
 
 (defvar kubernetes-overview-buffer "*kubernetes-overview*")
 
-(defun kubernetes-overview--redraw (buffer props)
+(defun kubernetes-overview-redraw (buffer props)
+  "Redraw the overview buffer."
+  (interactive (list (get-buffer kubernetes-overview-buffer) kubernetes-overview-props))
+  (unless buffer
+    (user-error "Overview buffer not active"))
   (kubernetes-props-bind ([ast-eval get-state] props)
     (with-current-buffer buffer
       (let ((inhibit-read-only t))
@@ -37,13 +41,12 @@
                                            (pods-list ,(get-state)))))))))
 
 (defun kubernetes-overview--mk-client-message-handler (props overview-buffer)
-  (kubernetes-props-bind ([overview-populated-p set-overview-populated-p buffer-live-p kubernetes-overview--redraw] props)
+  (kubernetes-props-bind ([updates-received-p buffer-live-p kubernetes-overview-redraw] props)
     (lambda (_msg)
       (when (and (buffer-live-p overview-buffer)
                  (or kubernetes-redraw-on-updates
-                     (not (overview-populated-p))))
-        (kubernetes-overview--redraw overview-buffer props)
-        (set-overview-populated-p t)
+                     (not (updates-received-p))))
+        (kubernetes-overview-redraw overview-buffer props)
         t))))
 
 (defun kubernetes-overview--initialize-client (props namespace)
@@ -70,27 +73,27 @@
 PROPS is an alist of functions to inject.
 
 NAMESPACE is the namespace to use."
-  (interactive (list kubernetes-overview-props
-                     (kubernetes-props-bind ([get-namespace] kubernetes-overview-props)
-                       (read-string "Namespace: " (get-namespace) 'kubernetes-namespace))))
-  (kubernetes-props-bind ([clear-state stop-client display-buffer] props)
-    (kubernetes-overview--initialize-client props namespace)
+       (interactive (list kubernetes-overview-props
+                          (kubernetes-props-bind ([get-namespace] kubernetes-overview-props)
+                            (read-string "Namespace: " (get-namespace) 'kubernetes-namespace))))
+       (kubernetes-props-bind ([clear-state stop-client display-buffer] props)
+         (kubernetes-overview--initialize-client props namespace)
 
-    (let ((buffer (get-buffer-create kubernetes-overview-buffer)))
-      ;; Stop the polling process if the overview buffer is deleted.
-      (with-current-buffer buffer
-        (kubernetes-mode)
-        (add-hook 'kill-buffer-hook (lambda ()
-                                      (stop-client)
-                                      (clear-state))
-                  nil t))
+         (let ((buffer (get-buffer-create kubernetes-overview-buffer)))
+           ;; Stop the polling process if the overview buffer is deleted.
+           (with-current-buffer buffer
+             (kubernetes-mode)
+             (add-hook 'kill-buffer-hook (lambda ()
+                                           (stop-client)
+                                           (clear-state))
+                       nil t))
 
-      ;; Redraw buffer whenever the client state is updated.
-      (add-hook 'kubernetes-state-client-message-processed-functions
-                (kubernetes-overview--mk-client-message-handler props buffer))
+           ;; Redraw buffer whenever the client state is updated.
+           (add-hook 'kubernetes-state-client-message-processed-functions
+                     (kubernetes-overview--mk-client-message-handler props buffer))
 
-      (kubernetes-overview--redraw buffer props)
-      (display-buffer buffer))))
+           (kubernetes-overview-redraw buffer props)
+           (display-buffer buffer))))
 
 (provide 'kubernetes-overview)
 

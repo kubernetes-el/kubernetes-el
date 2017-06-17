@@ -5,6 +5,7 @@
 (require 'dash)
 
 (require 'kubernetes-ast)
+(require 'kubernetes-state)
 
 (kubernetes-ast-define-component pod-container (container-spec container-status)
   (-let* (((&alist 'name name 'image image) container-spec)
@@ -71,13 +72,19 @@
                (pod-container-list ,containers ,container-statuses))
               (padding))))
 
+(kubernetes-ast-define-component loading-indicator ()
+  `(propertize (face kubernetes-loading) "Loading..."))
+
 (kubernetes-ast-define-component pods-list (state)
-  (-let [(&hash 'pods pods) state]
+  (let ((updated-p (kubernetes-state-updates-received-p state))
+        (pods (kubernetes-state-pods state)))
     `(section (pods-list nil)
               (heading "Pods")
               (indent
-               ,(--map `(pod ,(gethash it pods))
-                       (kubernetes-pods-list--sorted-keys pods)))
+               ,(if updated-p
+                    (--map `(pod ,(gethash it pods))
+                           (kubernetes-pods-list--sorted-keys pods))
+                  `(loading-indicator)))
               (padding))))
 
 (defun kubernetes-pods-list--sorted-keys (ht)
