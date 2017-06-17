@@ -17,7 +17,8 @@
   `((set-namespace . kubernetes-state-set-namespace)
     (get-namespace . kubernetes-state-namespace)
     (clear-state . kubernetes-state-clear)
-    (restart-client . kubernetes-client-restart))
+    (restart-client . kubernetes-client-restart)
+    (context . kubernetes-state-context))
   "Functions to inject for isolation and testing.")
 
 (magit-define-popup kubernetes-config-popup
@@ -42,9 +43,16 @@ PROPS is an alist of functions to inject."
 (kubernetes-ast-define-component namespace (value)
   `(propertize (face kubernetes-namespace) ,value))
 
+(kubernetes-ast-define-component context (value)
+  `(propertize (face kubernetes-context) ,value))
+
 (kubernetes-ast-define-component config (state)
-  (let ((namespace (kubernetes-state-namespace state)))
+  (let ((namespace (kubernetes-state-namespace state))
+        (context (kubernetes-state-context state)))
     `(section (config)
+              ,(when context
+                 `(section (context)
+                           (key-value 12 "Context" (context ,context))))
               ,(when namespace
                  `(section (namespace)
                            (key-value 12 "Namespace" (namespace ,namespace))))

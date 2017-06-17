@@ -12,6 +12,12 @@
   :group 'kubernetes
   :type 'boolean)
 
+(defface kubernetes-context
+  '((((class color) (background light)) :foreground "SkyBlue4")
+    (((class color) (background  dark)) :foreground "LightSkyBlue1"))
+  "Face for loading indicators."
+  :group 'kubernetes)
+
 (defface kubernetes-loading
   '((t (:inherit font-lock-comment-face)))
   "Face for loading indicators."
