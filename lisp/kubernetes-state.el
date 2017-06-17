@@ -89,6 +89,10 @@ the parsed s-expression message.")
   (unless (stringp ns)
     (error "Namespace was not a string: %S" ns)))
 
+(kubernetes-state-defaccessors context (value)
+  (unless (stringp value)
+    (error "Context was not a string: %S" value)))
+
 (kubernetes-state-defaccessors pods (pods))
 
 (kubernetes-state-defaccessors updates-received-p (flag))

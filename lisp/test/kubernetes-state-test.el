@@ -127,6 +127,16 @@
       (should (equal namespace result))
       (should-error (kubernetes-state-set-namespace 'symbol)))))
 
+(ert-deftest kubernetes-state-test--context-accessors ()
+  (kubernetes-state--with-empty-state
+    (let ((context "ns")
+          (result))
+      (kubernetes-state-set-context context)
+      (setq result (kubernetes-state-context))
+
+      (should (equal context result))
+      (should-error (kubernetes-state-set-context 'symbol)))))
+
 (ert-deftest kubernetes-state-test--pods-accessors ()
   (kubernetes-state--with-empty-state
     (let ((pods 'pods)
