@@ -75,8 +75,8 @@ the parsed s-expression message.")
   (unless (listp arglist) (error "ARGLIST must be a list"))
   (unless (equal 1 (length arglist)) (error "ARGLIST must contain a single binding"))
   `(progn
-     (defun ,(intern (format "kubernetes-state-%s" name)) ()
-       (gethash (quote ,name) (kubernetes-state)))
+     (defun ,(intern (format "kubernetes-state-%s" name)) (&optional state)
+       (gethash (quote ,name) (or state (kubernetes-state))))
 
      (defun ,(intern (format "kubernetes-state-set-%s" name)) ,arglist
        ,@assertions
