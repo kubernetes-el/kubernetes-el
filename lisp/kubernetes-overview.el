@@ -36,9 +36,11 @@
         ;; If a region is active, a redraw would affect the region in
         ;; unpredictable ways.
         (unless (region-active-p)
-          (kubernetes-ast-render buffer
-                                 `(section (root nil)
-                                           (pods-list ,(get-state)))))))))
+          (let ((state (get-state)))
+            (kubernetes-ast-render buffer
+                                   `(section (root nil)
+                                             (config ,state)
+                                             (pods-list ,state)))))))))
 
 (defun kubernetes-overview--mk-client-message-handler (props overview-buffer)
   (kubernetes-props-bind ([updates-received-p buffer-live-p kubernetes-overview-redraw] props)

@@ -3,8 +3,10 @@
 
 ;;; Code:
 
-(require 'magit-popup)
+(require 'kubernetes-ast)
 (require 'kubernetes-props)
+(require 'kubernetes-state)
+(require 'magit-popup)
 
 (defgroup kubernetes nil
   "Emacs porcelain for Kubernetes."
@@ -36,6 +38,17 @@ PROPS is an alist of functions to inject."
         (clear-state)
         (set-namespace ns)
         (restart-client)))))
+
+(kubernetes-ast-define-component namespace (value)
+  `(propertize (face kubernetes-namespace) ,value))
+
+(kubernetes-ast-define-component config (state)
+  (let ((namespace (kubernetes-state-namespace state)))
+    `(section (config)
+              ,(when namespace
+                 `(section (namespace)
+                           (key-value 12 "Namespace" (namespace ,namespace))))
+              (padding))))
 
 (provide 'kubernetes-config)
 

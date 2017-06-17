@@ -17,6 +17,12 @@
   "Face for loading indicators."
   :group 'kubernetes)
 
+(defface kubernetes-namespace
+  '((((class color) (background light)) :foreground "Goldenrod4")
+    (((class color) (background  dark)) :foreground "LightGoldenrod2"))
+  "Face for namespace references."
+  :group 'kubernetes)
+
 (provide 'kubernetes-custom)
 
 ;;; kubernetes-custom.el ends here
