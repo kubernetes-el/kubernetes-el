@@ -137,6 +137,26 @@
       (should (equal context result))
       (should-error (kubernetes-state-set-context 'symbol)))))
 
+(ert-deftest kubernetes-state-test--cluster-accessors ()
+  (kubernetes-state--with-empty-state
+    (let ((cluster "ns")
+          (result))
+      (kubernetes-state-set-cluster cluster)
+      (setq result (kubernetes-state-cluster))
+
+      (should (equal cluster result))
+      (should-error (kubernetes-state-set-cluster 'symbol)))))
+
+(ert-deftest kubernetes-state-test--user-accessors ()
+  (kubernetes-state--with-empty-state
+    (let ((user "ns")
+          (result))
+      (kubernetes-state-set-user user)
+      (setq result (kubernetes-state-user))
+
+      (should (equal user result))
+      (should-error (kubernetes-state-set-user 'symbol)))))
+
 (ert-deftest kubernetes-state-test--pods-accessors ()
   (kubernetes-state--with-empty-state
     (let ((pods 'pods)
@@ -151,6 +171,23 @@
     (should-not (kubernetes-state-updates-received-p))
     (kubernetes-state-set-updates-received-p t)
     (should (kubernetes-state-updates-received-p))))
+
+
+;; Importing state from kubeconfig.
+
+(ert-deftest kubernetes-state-test--marshalling--updates-state ()
+  (kubernetes-state--with-empty-state
+    (let ((props `((kubeconfig-settings
+                    . (lambda ()
+                        '((user . "user")
+                          (context . "context")
+                          (cluster . "cluster")
+                          (namespace . "ns")))))))
+      (kubernetes-state-marshal-from-kubectl props)
+      (should (equal (kubernetes-state-namespace) "ns"))
+      (should (equal (kubernetes-state-context) "context"))
+      (should (equal (kubernetes-state-cluster) "cluster"))
+      (should (equal (kubernetes-state-user) "user")))))
 
 (provide 'kubernetes-state-test)
 

@@ -2,8 +2,15 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 'kubernetes-kubectl)
+(require 'kubernetes-props)
+
 (require 'dash)
 (require 'subr-x)
+
+(defconst kubernetes-state-props
+  '((kubeconfig-settings . kubernetes-kubectl-kubeconfig-settings))
+  "Functions to inject for isolation and testing.")
 
 (defvar kubernetes-state-client-message-processed-functions nil
   "Hook functions run when an update is received from the subprocess.
@@ -54,6 +61,14 @@ the parsed s-expression message.")
   (unless (stringp value)
     (error "Context was not a string: %S" value)))
 
+(kubernetes-state-defaccessors user (value)
+  (unless (stringp value)
+    (error "User was not a string: %S" value)))
+
+(kubernetes-state-defaccessors cluster (value)
+  (unless (stringp value)
+    (error "Cluster was not a string: %S" value)))
+
 (kubernetes-state-defaccessors pods (pods))
 
 (kubernetes-state-defaccessors updates-received-p (flag))
@@ -69,6 +84,17 @@ the parsed s-expression message.")
             (--each (hash-table-keys value) (remhash it value))
           (remhash it (kubernetes-state)))))))
 
+(defun kubernetes-state-marshal-from-kubectl (&optional props)
+  (kubernetes-props-bind ([kubeconfig-settings] (or props kubernetes-state-props))
+    (let ((settings (kubeconfig-settings)))
+      (-when-let ((&alist 'context context) settings)
+        (kubernetes-state-set-context context))
+      (-when-let ((&alist 'cluster cluster) settings)
+        (kubernetes-state-set-cluster cluster))
+      (-when-let ((&alist 'user user) settings)
+        (kubernetes-state-set-user user))
+      (-when-let ((&alist 'namespace namespace) settings)
+        (kubernetes-state-set-namespace namespace)))))
 
 
 ;; Handle messages from subprocess.

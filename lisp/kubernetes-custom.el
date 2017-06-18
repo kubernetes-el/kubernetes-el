@@ -12,6 +12,11 @@
   :group 'kubernetes
   :type 'boolean)
 
+(defcustom kubernetes-kubectl-program "kubectl"
+  "The path to kubectl."
+  :group 'kubernetes-kubectl
+  :type 'stringp)
+
 (defface kubernetes-context
   '((((class color) (background light)) :foreground "SkyBlue4")
     (((class color) (background  dark)) :foreground "LightSkyBlue1"))
