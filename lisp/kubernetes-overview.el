@@ -19,7 +19,6 @@
     (get-namespace . kubernetes-state-namespace)
     (set-namespace . kubernetes-state-set-namespace)
     (updates-received-p . kubernetes-state-updates-received-p)
-    (display-buffer . display-buffer)
     (buffer-live-p . buffer-live-p)
     (kubernetes-overview-redraw . kubernetes-overview-redraw))
   "Functions to inject for isolation and testing.")
@@ -74,6 +73,24 @@
       (set-namespace namespace)
       (start-client)))))
 
+(defun kubernetes-overview--setup-buffer (props)
+  (kubernetes-props-bind ([clear-state stop-client] props)
+    (let ((buffer (get-buffer-create kubernetes-overview-buffer)))
+      ;; Stop the polling process if the overview buffer is deleted.
+      (with-current-buffer buffer
+        (kubernetes-mode)
+        (add-hook 'kill-buffer-hook (lambda ()
+                                      (stop-client)
+                                      (clear-state))
+                  nil t))
+
+      ;; Redraw buffer whenever the client state is updated.
+      (add-hook 'kubernetes-state-client-message-processed-functions
+                (kubernetes-overview--mk-client-message-handler props buffer))
+
+      (kubernetes-overview-redraw buffer props)
+      buffer)))
+
 (defun kubernetes-overview (props namespace)
   "Show the overview buffer.
 
@@ -85,24 +102,9 @@ NAMESPACE is the namespace to use."
               (or (kubernetes-state-namespace)
                   (kubernetes-kubectl-current-namespace)
                   (completing-read "Namespace: " (kubernetes-kubectl-known-namespaces) 'kubernetes-namespace))))
-       (kubernetes-props-bind ([clear-state stop-client display-buffer] props)
-         (kubernetes-overview--initialize-client props namespace)
-
-         (let ((buffer (get-buffer-create kubernetes-overview-buffer)))
-           ;; Stop the polling process if the overview buffer is deleted.
-           (with-current-buffer buffer
-             (kubernetes-mode)
-             (add-hook 'kill-buffer-hook (lambda ()
-                                           (stop-client)
-                                           (clear-state))
-                       nil t))
-
-           ;; Redraw buffer whenever the client state is updated.
-           (add-hook 'kubernetes-state-client-message-processed-functions
-                     (kubernetes-overview--mk-client-message-handler props buffer))
-
-           (kubernetes-overview-redraw buffer props)
-           (display-buffer buffer))))
+       (kubernetes-overview--initialize-client props namespace)
+       (let ((buffer (or (get-buffer kubernetes-overview-buffer) (kubernetes-overview--setup-buffer props))))
+         (kubernetes-display-buffer buffer)))
 
 (provide 'kubernetes-overview)
 
