@@ -313,9 +313,10 @@
 
 (ert-deftest kubernetes-ast-test--render--restores-point--3 ()
   (let ((expected-column) (expected-line)
-        (ast '((section (line1) (line "foo"))
-               (section (line2) (line "bar"))
-               (section (line3) (line "baz")))))
+        (ast '(section (root)
+                       (section (line1) (line "foo"))
+                       (section (line2) (line "bar"))
+                       (section (line3) (line "baz")))))
     (with-temp-buffer
 
       (kubernetes-ast-render (current-buffer) ast)
@@ -337,9 +338,10 @@
     (memq 'magit-section-highlight overlay-faces-at-pt)))
 
 (ert-deftest kubernetes-ast-test--render--updates-highlight ()
-  (let ((ast '((section (line1) (line "foo"))
-               (section (line2) (line "bar"))
-               (section (line3) (line "baz")))))
+  (let ((ast '(section (root)
+                       (section (line1) (line "foo"))
+                       (section (line2) (line "bar"))
+                       (section (line3) (line "baz")))))
     (with-temp-buffer
       (kubernetes-ast-render (current-buffer) ast)
       (should (kubernetes-ast-test--line-has-highlight-p))
