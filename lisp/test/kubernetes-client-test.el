@@ -80,7 +80,7 @@
   (let* ((client-running)
          (props
           `((get-client-process . ,(lambda () nil))
-            (start-client . ,(lambda (_) (setq client-running t)))
+            (start-client . ,(lambda (&rest _) (setq client-running t)))
             (stop-client . ,(lambda (_) (setq client-running nil))))))
     (kubernetes-client-restart props)
     (should client-running)))
@@ -89,7 +89,7 @@
   (let* ((client-running)
          (props
           `((get-client-process . ,(lambda () t))
-            (start-client . ,(lambda (_) (setq client-running t)))
+            (start-client . ,(lambda (&rest _) (setq client-running t)))
             (stop-client . ,(lambda (_) (setq client-running nil))))))
     (kubernetes-client-restart props)
     (should client-running)))
