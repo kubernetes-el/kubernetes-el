@@ -32,9 +32,11 @@
              (propertize (alist-get 'reason waiting) 'face 'warning))
             (t
              (message "Unknown state: %s" (prin1-to-string state))
-             (propertize "Warn" 'face 'warning)))))
+             (propertize "Warn" 'face 'warning))))
 
-    `(section (pod-container t)
+          (section-name (intern (format "pod-container-%s" name))))
+
+    `(section (,section-name t)
               (heading ,(concat state " " name))
               (key-value 12 "Image" ,image)
               (key-value 12 "Restarts" ,(when restart-count (number-to-string restart-count)))
@@ -60,9 +62,10 @@
                    'status (&alist 'containerStatuses container-statuses))
            pod)
           ((_ . label) (--first (equal "name" (car it)) labels))
-          ((_ . job-name) (--first (equal "job-name" (car it)) labels)))
+          ((_ . job-name) (--first (equal "job-name" (car it)) labels))
+          (section-name (intern (format "pod-entry-%s" name))))
 
-    `(section (pod-entry t)
+    `(section (,section-name t)
               (heading ,name)
               (indent
                (section (label) (key-value 12 "Label" ,label))
