@@ -13,7 +13,7 @@
 (defmacro kubernetes-state--with-empty-state (&rest body)
   (declare (indent 0))
   `(let ((kubernetes-state (kubernetes-state-empty))
-         (kubernetes-state-client-message-processed-functions nil))
+         (kubernetes-state-should-redraw-functions nil))
      ,@body))
 
 ;; Clearing state
@@ -51,8 +51,7 @@
 (ert-deftest kubernetes-state-test--handle-client-line--handles-empty-pod-upserts ()
   (kubernetes-state--with-empty-state
     (let* ((hook-run-p)
-           (kubernetes-state-client-message-processed-functions (list (lambda (_)
-                                                        (setq hook-run-p t))))
+           (kubernetes-state-should-redraw-functions (list (lambda (_) (setq hook-run-p t))))
            (message '((type . "pod")
                       (operation . "upsert")
                       (data))))
@@ -63,8 +62,7 @@
 (ert-deftest kubernetes-state-test--handle-client-line--handles-nonempty-pod-upserts ()
   (kubernetes-state--with-empty-state
     (let* ((hook-run-p)
-           (kubernetes-state-client-message-processed-functions (list (lambda (_)
-                                                        (setq hook-run-p t))))
+           (kubernetes-state-should-redraw-functions (list (lambda (_) (setq hook-run-p t))))
            (message '((type . "pod")
                       (operation . "upsert")
                       (data . [((metadata (name . "A")))
@@ -81,8 +79,7 @@
 (ert-deftest kubernetes-state-test--handle-client-line--handles-empty-pod-deletes ()
   (kubernetes-state--with-empty-state
     (let* ((hook-run-p)
-           (kubernetes-state-client-message-processed-functions (list (lambda (_)
-                                                        (setq hook-run-p t))))
+           (kubernetes-state-should-redraw-functions (list (lambda (_) (setq hook-run-p t))))
            (message '((type . "pod")
                       (operation . "delete")
                       (data))))
@@ -102,8 +99,7 @@
 
     ;; Test that individual pods are deleted from the state.
     (let* ((hook-run-p)
-           (kubernetes-state-client-message-processed-functions (list (lambda (_)
-                                                        (setq hook-run-p t))))
+           (kubernetes-state-should-redraw-functions (list (lambda (_) (setq hook-run-p t))))
            (message '((type . "pod")
                       (operation . "delete")
                       (data . [((metadata (name . "B")))

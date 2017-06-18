@@ -86,7 +86,7 @@
         (add-hook 'kill-buffer-hook #'kubernetes-overview--tear-down-overview nil t))
 
       ;; Redraw buffer whenever the client state is updated.
-      (add-hook 'kubernetes-state-client-message-processed-functions
+      (add-hook 'kubernetes-state-should-redraw-functions
                 #'kubernetes-overview--handle-client-message)
 
       (kubernetes-overview-redraw buffer props)

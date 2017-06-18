@@ -12,7 +12,7 @@
   '((kubeconfig-settings . kubernetes-kubectl-kubeconfig-settings))
   "Functions to inject for isolation and testing.")
 
-(defvar kubernetes-state-client-message-processed-functions nil
+(defvar kubernetes-state-should-redraw-functions nil
   "Hook functions run when an update is received from the subprocess.
 
 Each entry must be a function taking a single argument, which is
@@ -136,7 +136,7 @@ the parsed s-expression message.")
          (error "Unknown type and operation: %s" (prin1-to-string x))))
 
       (when changed-p
-        (run-hook-with-args 'kubernetes-state-client-message-processed-functions message)))))
+        (run-hook-with-args 'kubernetes-state-should-redraw-functions message)))))
 
 (defun kubernetes-state--resource-name (resource)
   (-let [(&alist 'metadata (&alist 'name name)) resource]
