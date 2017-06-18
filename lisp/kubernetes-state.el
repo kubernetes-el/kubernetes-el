@@ -5,6 +5,14 @@
 (require 'dash)
 (require 'subr-x)
 
+(defvar kubernetes-state-client-message-processed-functions nil
+  "Hook functions run when an update is received from the subprocess.
+
+Each entry must be a function taking a single argument, which is
+the parsed s-expression message.")
+
+;; Main state lifecycle.
+
 (defun kubernetes-state-empty ()
   (let ((ht
          (make-hash-table
@@ -18,51 +26,6 @@
 
 (defun kubernetes-state ()
   kubernetes-state)
-
-(defun kubernetes-state-clear ()
-  (let ((state (kubernetes-state)))
-    (--each (hash-table-keys state)
-      (let ((value (gethash it state)))
-        (if (hash-table-p value)
-            (--each (hash-table-keys value) (remhash it value))
-          (remhash it (kubernetes-state)))))))
-
-(defvar kubernetes-state-client-message-processed-functions nil
-  "Hook functions run when an update is received from the subprocess.
-
-Each entry must be a function taking a single argument, which is
-the parsed s-expression message.")
-
-
-;; Handle messages from subprocess.
-
-(defun kubernetes-state-handle-client-line (line)
-  (-let [(message &as &alist 'type type 'operation operation 'data data)
-         (condition-case _
-             (read line)
-           (error
-            (error "Malformed sexp from backend: %s" line)))]
-
-    (pcase (list (intern type) (intern operation))
-      (`(pod upsert)
-       (let ((pods-table (kubernetes-state-pods)))
-         (--each (append data nil)
-           (let ((key (intern (kubernetes-state--resource-name it))))
-             (puthash key it pods-table)))))
-
-      (`(pod delete)
-       (let ((pods-table (kubernetes-state-pods)))
-         (--each (append data nil)
-           (let ((key (intern (kubernetes-state--resource-name it))))
-             (remhash key pods-table)))))
-
-      (x
-       (error "Unknown type and operation: %s" (prin1-to-string x))))
-    (run-hook-with-args 'kubernetes-state-client-message-processed-functions message)))
-
-(defun kubernetes-state--resource-name (resource)
-  (-let [(&alist 'metadata (&alist 'name name)) resource]
-    name))
 
 
 ;; Accessors
@@ -94,6 +57,49 @@ the parsed s-expression message.")
 (kubernetes-state-defaccessors pods (pods))
 
 (kubernetes-state-defaccessors updates-received-p (flag))
+
+
+;; Lifecycle management.
+
+(defun kubernetes-state-clear ()
+  (let ((state (kubernetes-state)))
+    (--each (hash-table-keys state)
+      (let ((value (gethash it state)))
+        (if (hash-table-p value)
+            (--each (hash-table-keys value) (remhash it value))
+          (remhash it (kubernetes-state)))))))
+
+
+
+;; Handle messages from subprocess.
+
+(defun kubernetes-state-handle-client-line (line)
+  (-let [(message &as &alist 'type type 'operation operation 'data data)
+         (condition-case _
+             (read line)
+           (error
+            (error "Malformed sexp from backend: %s" line)))]
+
+    (pcase (list (intern type) (intern operation))
+      (`(pod upsert)
+       (let ((pods-table (kubernetes-state-pods)))
+         (--each (append data nil)
+           (let ((key (intern (kubernetes-state--resource-name it))))
+             (puthash key it pods-table)))))
+
+      (`(pod delete)
+       (let ((pods-table (kubernetes-state-pods)))
+         (--each (append data nil)
+           (let ((key (intern (kubernetes-state--resource-name it))))
+             (remhash key pods-table)))))
+
+      (x
+       (error "Unknown type and operation: %s" (prin1-to-string x))))
+    (run-hook-with-args 'kubernetes-state-client-message-processed-functions message)))
+
+(defun kubernetes-state--resource-name (resource)
+  (-let [(&alist 'metadata (&alist 'name name)) resource]
+    name))
 
 
 (provide 'kubernetes-state)
