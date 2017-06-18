@@ -84,7 +84,7 @@ the parsed s-expression message.")
             (--each (hash-table-keys value) (remhash it value))
           (remhash it (kubernetes-state)))))))
 
-(defun kubernetes-state-marshal-from-kubectl (&optional props)
+(defun kubernetes-state--marshal-from-kubectl (&optional props)
   (kubernetes-props-bind ([kubeconfig-settings] (or props kubernetes-state-props))
     (let ((settings (kubeconfig-settings)))
       (-when-let ((&alist 'context context) settings)
@@ -95,6 +95,10 @@ the parsed s-expression message.")
         (kubernetes-state-set-user user))
       (-when-let ((&alist 'namespace namespace) settings)
         (kubernetes-state-set-namespace namespace)))))
+
+(defun kubernetes-state-reset (&optional props)
+  (kubernetes-state-clear)
+  (kubernetes-state--marshal-from-kubectl props))
 
 
 ;; Handle messages from subprocess.

@@ -85,7 +85,7 @@
 (ert-deftest kubernetes-overview-test--initialize-client--restarts-on-namespace-changed ()
   (let* ((client-started-p)
          (client-stopped-p)
-         (state-cleared-p)
+         (state-reset-p)
          (client-running-p t)
          (namespace-state "initial-namespace")
          (props
@@ -101,13 +101,13 @@
              . ,(lambda ()
                   (setq client-stopped-p t)
                   (setq client-running-p nil)))
-            (clear-state
-             . ,(lambda () (setq state-cleared-p t)))
+            (reset-state
+             . ,(lambda () (setq state-reset-p t)))
             (set-namespace
              . ,(lambda (ns) (setq namespace-state ns))))))
 
     (kubernetes-overview--initialize-client props "updated-namespace")
-    (should state-cleared-p)
+    (should state-reset-p)
     (should client-stopped-p)
     (should client-started-p)
     (should client-running-p)
@@ -116,7 +116,7 @@
 (ert-deftest kubernetes-overview-test--initialize-client--namespace-unchanged ()
   (let* ((client-started-p)
          (client-stopped-p)
-         (state-cleared-p)
+         (state-reset-p)
          (client-running-p t)
          (namespace-state "initial-namespace")
          (props
@@ -132,13 +132,13 @@
              . ,(lambda ()
                   (setq client-stopped-p t)
                   (setq client-running-p nil)))
-            (clear-state
-             . ,(lambda () (setq state-cleared-p t)))
+            (reset-state
+             . ,(lambda () (setq state-reset-p t)))
             (set-namespace
              . ,(lambda (ns) (setq namespace-state ns))))))
 
     (kubernetes-overview--initialize-client props namespace-state)
-    (should-not state-cleared-p)
+    (should-not state-reset-p)
     (should-not client-stopped-p)
     (should-not client-started-p)
     (should client-running-p)
@@ -147,7 +147,7 @@
 (ert-deftest kubernetes-overview-test--initialize-client--client-not-running ()
   (let* ((client-started-p)
          (client-stopped-p)
-         (state-cleared-p)
+         (state-reset-p)
          (client-running-p)
          (namespace-state "initial-namespace")
          (props
@@ -163,14 +163,14 @@
              . ,(lambda ()
                   (setq client-stopped-p t)
                   (setq client-running-p nil)))
-            (clear-state
-             . ,(lambda () (setq state-cleared-p t)))
+            (reset-state
+             . ,(lambda () (setq state-reset-p t)))
             (set-namespace
              . ,(lambda (ns) (setq namespace-state ns))))))
 
     (kubernetes-overview--initialize-client props "updated-namespace")
-    (should-not state-cleared-p)
     (should-not client-stopped-p)
+    (should state-reset-p)
     (should client-started-p)
     (should client-running-p)
     (should (equal namespace-state "updated-namespace"))))

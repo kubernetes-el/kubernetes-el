@@ -13,6 +13,7 @@
     (stop-client . kubernetes-client-stop)
     (get-client-process . kubernetes-state-client-process)
     (get-state . kubernetes-state)
+    (reset-state . kubernetes-state-reset)
     (clear-state . kubernetes-state-clear)
     (ast-eval . kubernetes-ast-eval)
     (get-namespace . kubernetes-state-namespace)
@@ -52,12 +53,15 @@
         t))))
 
 (defun kubernetes-overview--initialize-client (props namespace)
-  (kubernetes-props-bind ([clear-state set-namespace get-namespace start-client stop-client get-client-process] props)
+  (kubernetes-props-bind ([reset-state
+                           set-namespace get-namespace
+                           start-client stop-client
+                           get-client-process] props)
     (cond
      ;; Restart the process if the configuration has changed.
      ((and (get-client-process)
            (not (equal (get-namespace) namespace)))
-      (clear-state)
+      (reset-state)
       (set-namespace namespace)
       (stop-client)
       (start-client))
@@ -66,6 +70,7 @@
      ((get-client-process))
 
      (t
+      (reset-state)
       (set-namespace namespace)
       (start-client)))))
 

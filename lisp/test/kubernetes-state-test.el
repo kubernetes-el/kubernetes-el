@@ -173,9 +173,9 @@
     (should (kubernetes-state-updates-received-p))))
 
 
-;; Importing state from kubeconfig.
+;; Resetting state to kubeconfig defaults
 
-(ert-deftest kubernetes-state-test--marshalling--updates-state ()
+(ert-deftest kubernetes-state-test--resetting ()
   (kubernetes-state--with-empty-state
     (let ((props `((kubeconfig-settings
                     . (lambda ()
@@ -183,7 +183,8 @@
                           (context . "context")
                           (cluster . "cluster")
                           (namespace . "ns")))))))
-      (kubernetes-state-marshal-from-kubectl props)
+      (kubernetes-state-set-namespace "before")
+      (kubernetes-state-reset props)
       (should (equal (kubernetes-state-namespace) "ns"))
       (should (equal (kubernetes-state-context) "context"))
       (should (equal (kubernetes-state-cluster) "cluster"))
