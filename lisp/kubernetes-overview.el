@@ -81,10 +81,10 @@ PROPS is an alist of functions to inject.
 
 NAMESPACE is the namespace to use."
        (interactive
-        (progn
-          (kubernetes-state-marshal-from-kubectl)
-          (list kubernetes-overview-props
-                (or (kubernetes-state-namespace) (read-string "Namespace: " nil 'kubernetes-namespace)))))
+        (list kubernetes-overview-props
+              (or (kubernetes-state-namespace)
+                  (kubernetes-kubectl-current-namespace)
+                  (completing-read "Namespace: " (kubernetes-kubectl-known-namespaces) 'kubernetes-namespace))))
        (kubernetes-props-bind ([clear-state stop-client display-buffer] props)
          (kubernetes-overview--initialize-client props namespace)
 
