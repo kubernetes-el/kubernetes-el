@@ -246,11 +246,6 @@
         (should (equal (list 'kubernetes-copy "foo")
                        (text-properties-at end (buffer-string))))))))
 
-(ert-deftest kubernetes-ast-test--copy-prop-error-if-copy-value-not-a-string ()
-  (let ((ast '(copy-prop 1 (line "Test"))))
-    (with-temp-buffer
-      (should-assert (kubernetes-ast-eval ast)))))
-
 
 ;; mark-for-delete
 

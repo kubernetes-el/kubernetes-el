@@ -4,6 +4,7 @@
 ;;; Code:
 
 (require 'kubernetes-ast)
+(require 'kubernetes-kubectl)
 (require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'magit-popup)
@@ -16,7 +17,7 @@
 (defconst kubernetes-config-props
   `((set-namespace . kubernetes-state-set-namespace)
     (get-namespace . kubernetes-state-namespace)
-    (clear-state . kubernetes-state-clear)
+    (reset-state . kubernetes-state-reset)
     (restart-client . kubernetes-client-restart)
     (context . kubernetes-state-context))
   "Functions to inject for isolation and testing.")
@@ -31,12 +32,12 @@
   "Set the namespace to NS and restart the client process.
 
 PROPS is an alist of functions to inject."
-  (interactive (list (read-string "Namespace: " nil 'read-namespace)
+  (interactive (list (completing-read "Namespace: " (kubernetes-kubectl-known-namespaces) 'kubernetes-namespace)
                      kubernetes-config-props))
   (let ((props (or props kubernetes-config-props)))
-    (kubernetes-props-bind ([set-namespace get-namespace restart-client clear-state] props)
+    (kubernetes-props-bind ([set-namespace get-namespace restart-client reset-state] props)
       (unless (equal ns (get-namespace))
-        (clear-state)
+        (reset-state)
         (set-namespace ns)
         (restart-client)))))
 

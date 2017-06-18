@@ -67,7 +67,6 @@ such in rendering ASTs." name)))
                ,inner-ast))
 
 (kubernetes-ast-define-component copy-prop (copy-str &rest inner-ast)
-  (cl-assert (stringp copy-str) t)
   `(propertize (kubernetes-copy ,copy-str)
                ,inner-ast))
 
