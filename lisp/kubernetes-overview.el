@@ -15,41 +15,43 @@
     (get-state . kubernetes-state)
     (reset-state . kubernetes-state-reset)
     (clear-state . kubernetes-state-clear)
-    (ast-eval . kubernetes-ast-eval)
+    (ast-render . kubernetes-ast-render)
     (get-namespace . kubernetes-state-namespace)
     (set-namespace . kubernetes-state-set-namespace)
     (updates-received-p . kubernetes-state-updates-received-p)
+    (region-active-p . region-active-p)
     (buffer-live-p . buffer-live-p)
     (kubernetes-overview-redraw . kubernetes-overview-redraw))
   "Functions to inject for isolation and testing.")
 
 (defvar kubernetes-overview-buffer "*kubernetes-overview*")
 
+(kubernetes-ast-define-component overview (state)
+  `(section (root nil)
+            (config ,state)
+            (pods-list ,state)))
+
 (defun kubernetes-overview-redraw (buffer props)
   "Redraw the overview buffer."
   (interactive (list (get-buffer kubernetes-overview-buffer) kubernetes-overview-props))
   (unless buffer
     (user-error "Overview buffer not active"))
-  (kubernetes-props-bind ([ast-eval get-state] props)
+  (kubernetes-props-bind ([ast-render get-state region-active-p] props)
     (with-current-buffer buffer
       (let ((inhibit-read-only t))
         ;; If a region is active, a redraw would affect the region in
         ;; unpredictable ways.
         (unless (region-active-p)
-          (let ((state (get-state)))
-            (kubernetes-ast-render buffer
-                                   `(section (root nil)
-                                             (config ,state)
-                                             (pods-list ,state)))))))))
+          (ast-render buffer `(overview ,(get-state))))))))
 
-(defun kubernetes-overview--mk-client-message-handler (props overview-buffer)
-  (kubernetes-props-bind ([updates-received-p buffer-live-p kubernetes-overview-redraw] props)
-    (lambda (_msg)
-      (when (and (buffer-live-p overview-buffer)
-                 (or kubernetes-redraw-on-updates
-                     (not (updates-received-p))))
-        (kubernetes-overview-redraw overview-buffer props)
-        t))))
+(defun kubernetes-overview--handle-client-message (_msg &optional props)
+  (let ((props (or props kubernetes-overview-props)))
+    (kubernetes-props-bind ([updates-received-p buffer-live-p kubernetes-overview-redraw] props)
+      (when-let (buf (get-buffer kubernetes-overview-buffer))
+        (when (and (buffer-live-p buf)
+                   (or kubernetes-redraw-on-updates
+                       (not (updates-received-p))))
+          (kubernetes-overview-redraw buf props))))))
 
 (defun kubernetes-overview--initialize-client (props namespace)
   (kubernetes-props-bind ([reset-state
@@ -73,20 +75,21 @@
       (set-namespace namespace)
       (start-client)))))
 
+(defun kubernetes-overview--tear-down-overview (&optional props)
+  (kubernetes-props-bind ([clear-state stop-client] (or props kubernetes-overview-props))
+    (stop-client)
+    (clear-state)))
+
 (defun kubernetes-overview--setup-buffer (props)
-  (kubernetes-props-bind ([clear-state stop-client] props)
+  (kubernetes-props-bind ([kubernetes-overview-redraw] props)
     (let ((buffer (get-buffer-create kubernetes-overview-buffer)))
-      ;; Stop the polling process if the overview buffer is deleted.
       (with-current-buffer buffer
         (kubernetes-mode)
-        (add-hook 'kill-buffer-hook (lambda ()
-                                      (stop-client)
-                                      (clear-state))
-                  nil t))
+        (add-hook 'kill-buffer-hook #'kubernetes-overview--tear-down-overview nil t))
 
       ;; Redraw buffer whenever the client state is updated.
       (add-hook 'kubernetes-state-client-message-processed-functions
-                (kubernetes-overview--mk-client-message-handler props buffer))
+                #'kubernetes-overview--handle-client-message)
 
       (kubernetes-overview-redraw buffer props)
       buffer)))

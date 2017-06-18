@@ -13,35 +13,31 @@
 
 (ert-deftest kubernetes-overview-test--update-handler--no-redraw-if-overview-killed ()
   (let* ((kubernetes-redraw-on-updates t)
+         (buffer-redrawn-p)
          (props
           `((buffer-live-p
              . (lambda (_) nil))
             (kubernetes-overview-redraw
-             . (lambda (&rest _) (error "Unexpected: kubernetes-overview-redraw")))
+             . (lambda (&rest _) (setq buffer-redrawn-p t)))
             (updates-received-p
-             . (lambda () (error "Unexpected: updates-received-p")))))
+             . (lambda () (error "Unexpected: updates-received-p"))))))
 
-         (handler (kubernetes-overview--mk-client-message-handler
-                   props
-                   (current-buffer))))
-
-    (should-not (funcall handler nil))))
+    (kubernetes-overview--handle-client-message nil props)
+    (should-not buffer-redrawn-p)))
 
 (ert-deftest kubernetes-overview-test--update-handler--no-redraw-if-overview-populated-and-redraws-disabled ()
   (let* ((kubernetes-redraw-on-updates nil)
+         (buffer-redrawn-p)
          (props
           `((buffer-live-p
              . (lambda (_) t))
             (updates-received-p
              . (lambda () t))
             (kubernetes-overview-redraw
-             . (lambda (&rest _) (error "Unexpected: kubernetes-overview-redraw")))))
+             . (lambda (&rest _) (setq buffer-redrawn-p t))))))
 
-         (handler (kubernetes-overview--mk-client-message-handler
-                   props
-                   (current-buffer))))
-
-    (should-not (funcall handler nil))))
+    (kubernetes-overview--handle-client-message nil props)
+    (should-not buffer-redrawn-p)))
 
 (ert-deftest kubernetes-overview-test--update-handler--redraws-if-updates-enabled ()
   (let* ((kubernetes-redraw-on-updates t)
@@ -52,13 +48,9 @@
             (updates-received-p
              . (lambda () t))
             (kubernetes-overview-redraw
-             . ,(lambda (&rest _) (setq buffer-redrawn-p t)))))
+             . ,(lambda (&rest _) (setq buffer-redrawn-p t))))))
 
-         (handler (kubernetes-overview--mk-client-message-handler
-                   props
-                   (current-buffer))))
-
-    (should (funcall handler nil))
+    (kubernetes-overview--handle-client-message nil props)
     (should buffer-redrawn-p)))
 
 (ert-deftest kubernetes-overview-test--update-handler--initial-redraw-on-updates-disabled ()
@@ -70,13 +62,9 @@
             (updates-received-p
              . (lambda () nil))
             (kubernetes-overview-redraw
-             . ,(lambda (&rest _) (setq buffer-redrawn-p t)))))
+             . ,(lambda (&rest _) (setq buffer-redrawn-p t))))))
 
-         (handler (kubernetes-overview--mk-client-message-handler
-                   props
-                   (current-buffer))))
-
-    (should (funcall handler nil))
+    (kubernetes-overview--handle-client-message nil props)
     (should buffer-redrawn-p)))
 
 
@@ -174,6 +162,62 @@
     (should client-started-p)
     (should client-running-p)
     (should (equal namespace-state "updated-namespace"))))
+
+
+;; Redrawing
+
+(ert-deftest kubernetes-overview-test--redraw--raises-error-if-no-buffer ()
+  (should-error (kubernetes-overview-redraw nil nil)))
+
+(ert-deftest kubernetes-overview-test--redraw--suppressed-when-region-is-active ()
+  (with-temp-buffer
+    (let* ((buffer-redrawn-p)
+           (props `((ast-render
+                     . ,(lambda (&rest _) (setq buffer-redrawn-p t)))
+                    (region-active-p
+                     . (lambda () t))
+                    (get-state
+                     . (lambda () (error "Unexpeced: get-state"))))))
+      (kubernetes-overview-redraw (current-buffer) props)
+      (should-not buffer-redrawn-p))))
+
+(ert-deftest kubernetes-overview-test--redraw--draws-overview ()
+  (with-temp-buffer
+    (let* ((component)
+           (props `((ast-render
+                     . ,(lambda (_ c) (setq component c)))
+                    (region-active-p
+                     . (lambda () nil))
+                    (get-state
+                     . (lambda () nil)))))
+      (kubernetes-overview-redraw (current-buffer) props)
+      (should (equal 'overview (car component))))))
+
+
+;; Killing overview
+
+(ert-deftest kubernetes-overview-test--tear-down-overview ()
+  (let* ((client-stopped-p)
+         (state-cleared-p)
+         (props
+          `((stop-client . ,(lambda () (setq client-stopped-p t)))
+            (clear-state . ,(lambda () (setq state-cleared-p t))))))
+    (kubernetes-overview--tear-down-overview props)
+    (should client-stopped-p)
+    (should state-cleared-p)))
+
+
+;; Setting up the overview buffer
+
+(ert-deftest kubernetes-overview-test--setup-buffer ()
+  (let* ((kubernetes-overview-buffer (generate-new-buffer-name " test setup buffer"))
+         (buffer-redrawn-p)
+         (props `((kubernetes-overview-redraw
+                   . ,(lambda (&rest _) (setq buffer-redrawn-p t))))))
+    (with-current-buffer (kubernetes-overview--setup-buffer props)
+      (should buffer-redrawn-p)
+      (should (member #'kubernetes-overview--tear-down-overview kill-buffer-hook)))))
+
 
 (provide 'kubernetes-overview-test)
 
