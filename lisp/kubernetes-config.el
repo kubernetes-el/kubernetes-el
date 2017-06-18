@@ -61,17 +61,24 @@
 (kubernetes-ast-define-component context (value)
   `(propertize (face kubernetes-context) ,value))
 
+(kubernetes-ast-define-component cluster (value)
+  `(propertize (face kubernetes-cluster) ,value))
+
 (kubernetes-ast-define-component config (state)
-  (let ((namespace (kubernetes-state-namespace state))
-        (context (kubernetes-state-context state)))
-    `(section (config)
-              ,(when context
-                 `(section (context)
-                           (key-value 12 "Context" (context ,context))))
-              ,(when namespace
-                 `(section (namespace)
-                           (key-value 12 "Namespace" (namespace ,namespace))))
-              (padding))))
+  `(section (config)
+            ,(when-let (context (kubernetes-state-context state))
+               `(section (context)
+                         (key-value 12 "Context" (context ,context))))
+
+            ,(when-let (cluster (kubernetes-state-cluster state))
+               `(section (cluster)
+                         (key-value 12 "Cluster" (cluster ,cluster))))
+
+            ,(when-let (namespace (kubernetes-state-namespace state))
+               `(section (namespace)
+                         (key-value 12 "Namespace" (namespace ,namespace))))
+
+            (padding)))
 
 (provide 'kubernetes-config)
 

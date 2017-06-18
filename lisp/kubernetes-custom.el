@@ -47,7 +47,12 @@ The function must take a single argument, which is the buffer to display."
 (defface kubernetes-context
   '((((class color) (background light)) :foreground "SkyBlue4")
     (((class color) (background  dark)) :foreground "LightSkyBlue1"))
-  "Face for loading indicators."
+  "Face for symbols referring to Kubernetes contexts."
+  :group 'kubernetes)
+
+(defface kubernetes-cluster
+  '((t (:inherit default)))
+  "Face for symbols referring to Kubernetes clusters."
   :group 'kubernetes)
 
 (defface kubernetes-loading
