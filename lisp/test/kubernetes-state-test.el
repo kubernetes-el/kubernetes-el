@@ -113,6 +113,19 @@
         (should (hash-table-p pods))
         (should (equal 2 (hash-table-count pods)))))))
 
+(ert-deftest kubernetes-state-test--handle-client-line--handles-error-messages ()
+  (kubernetes-state--with-empty-state
+    (let* ((hook-run-p)
+           (kubernetes-state-should-redraw-functions (list (lambda (_) (setq hook-run-p t))))
+           (message
+            '((type . "error")
+              (msg . "Could not get pods")
+              (error . "Get https://example.com:8443/api/v1/namespaces/mm/pods: read tcp 10.0.0.0:0->10.0.0.0:0: read: operation timed out"))))
+
+      (kubernetes-state-handle-client-line (prin1-to-string message))
+      (should hook-run-p)
+      (should (equal message (kubernetes-state-error))))))
+
 
 ;; Accessors.
 
@@ -184,6 +197,15 @@
     (should-not (kubernetes-state-data-received-p))
     (kubernetes-state-set-data-received-p t)
     (should (kubernetes-state-data-received-p))))
+
+(ert-deftest kubernetes-state-test--error-accessors ()
+  (kubernetes-state--with-empty-state
+    (let ((err "nope")
+          (result))
+      (kubernetes-state-set-error err)
+      (setq result (kubernetes-state-error))
+
+      (should (equal err result)))))
 
 
 ;; Resetting state to kubeconfig defaults

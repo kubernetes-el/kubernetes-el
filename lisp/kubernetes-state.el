@@ -69,6 +69,8 @@ the parsed s-expression message.")
   (unless (stringp value)
     (error "Cluster was not a string: %S" value)))
 
+(kubernetes-state-defaccessors error (err))
+
 (kubernetes-state-defaccessors pods (pods))
 
 (kubernetes-state-defaccessors data-received-p (flag))
@@ -121,26 +123,32 @@ the parsed s-expression message.")
                (read line)
              (error
               (error "Malformed sexp from backend: %s" line)))]
+      (pcase (intern type)
+        ('error
+         (kubernetes-state-set-error message)
+         (setq changed-p t))
+        (type
+         (pcase (list type (intern operation))
+           (`(pod upsert)
+            (let ((pods-table (kubernetes-state-pods))
+                  (upserts (append data nil)))
+              (when upserts (setq changed-p t))
+              (--each upserts
+                (let ((key (intern (kubernetes-state--resource-name it))))
+                  (puthash key it pods-table))))
+            (kubernetes-state-set-error nil))
 
-      (pcase (list (intern type) (intern operation))
-        (`(pod upsert)
-         (let ((pods-table (kubernetes-state-pods))
-               (upserts (append data nil)))
-           (when upserts (setq changed-p t))
-           (--each upserts
-             (let ((key (intern (kubernetes-state--resource-name it))))
-               (puthash key it pods-table)))))
+           (`(pod delete)
+            (let ((pods-table (kubernetes-state-pods))
+                  (deletes (append data nil)))
+              (when deletes (setq changed-p t))
+              (--each deletes
+                (let ((key (intern (kubernetes-state--resource-name it))))
+                  (remhash key pods-table))))
+            (kubernetes-state-set-error nil))
 
-        (`(pod delete)
-         (let ((pods-table (kubernetes-state-pods))
-               (deletes (append data nil)))
-           (when deletes (setq changed-p t))
-           (--each deletes
-             (let ((key (intern (kubernetes-state--resource-name it))))
-               (remhash key pods-table)))))
-
-        (x
-         (error "Unknown type and operation: %s" (prin1-to-string x))))
+           (x
+            (error "Unknown type and operation: %s" (prin1-to-string x))))))
 
       (when changed-p
         (run-hook-with-args 'kubernetes-state-should-redraw-functions message)))))

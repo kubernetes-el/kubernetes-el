@@ -26,8 +26,18 @@
 
 (defvar kubernetes-overview-buffer "*kubernetes-overview*")
 
+(kubernetes-ast-define-component errors (state)
+  (-when-let ((&alist 'msg msg 'error err) (kubernetes-state-error state))
+    `(section (errors)
+              (heading (propertize (face error) "Error"))
+              (indent
+               ,msg
+               (key-value 12 "Reason" ,err))
+              (padding))))
+
 (kubernetes-ast-define-component overview (state)
   `(section (root nil)
+            (errors ,state)
             (config ,state)
             (pods-list ,state)))
 
