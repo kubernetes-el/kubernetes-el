@@ -104,28 +104,36 @@ the parsed s-expression message.")
 ;; Handle messages from subprocess.
 
 (defun kubernetes-state-handle-client-line (line)
-  (-let [(message &as &alist 'type type 'operation operation 'data data)
-         (condition-case _
-             (read line)
-           (error
-            (error "Malformed sexp from backend: %s" line)))]
+  (let ((changed-p))
 
-    (pcase (list (intern type) (intern operation))
-      (`(pod upsert)
-       (let ((pods-table (kubernetes-state-pods)))
-         (--each (append data nil)
-           (let ((key (intern (kubernetes-state--resource-name it))))
-             (puthash key it pods-table)))))
+    (-let [(message &as &alist 'type type 'operation operation 'data data)
+           (condition-case _
+               (read line)
+             (error
+              (error "Malformed sexp from backend: %s" line)))]
 
-      (`(pod delete)
-       (let ((pods-table (kubernetes-state-pods)))
-         (--each (append data nil)
-           (let ((key (intern (kubernetes-state--resource-name it))))
-             (remhash key pods-table)))))
+      (pcase (list (intern type) (intern operation))
+        (`(pod upsert)
+         (let ((pods-table (kubernetes-state-pods))
+               (upserts (append data nil)))
+           (when upserts (setq changed-p t))
+           (--each upserts
+             (let ((key (intern (kubernetes-state--resource-name it))))
+               (puthash key it pods-table)))))
 
-      (x
-       (error "Unknown type and operation: %s" (prin1-to-string x))))
-    (run-hook-with-args 'kubernetes-state-client-message-processed-functions message)))
+        (`(pod delete)
+         (let ((pods-table (kubernetes-state-pods))
+               (deletes (append data nil)))
+           (when deletes (setq changed-p t))
+           (--each deletes
+             (let ((key (intern (kubernetes-state--resource-name it))))
+               (remhash key pods-table)))))
+
+        (x
+         (error "Unknown type and operation: %s" (prin1-to-string x))))
+
+      (when changed-p
+        (run-hook-with-args 'kubernetes-state-client-message-processed-functions message)))))
 
 (defun kubernetes-state--resource-name (resource)
   (-let [(&alist 'metadata (&alist 'name name)) resource]
