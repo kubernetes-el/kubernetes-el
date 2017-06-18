@@ -12,11 +12,6 @@
 
 ;; Custom variables
 
-(defcustom kubernetes-redraw-on-updates t
-  "Whether to automatically redraw the overview when an update is received from the backend."
-  :group 'kubernetes
-  :type 'boolean)
-
 (defcustom kubernetes-kubectl-program "kubectl"
   "The path to kubectl."
   :group 'kubernetes-kubectl

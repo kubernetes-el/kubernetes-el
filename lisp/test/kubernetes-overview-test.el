@@ -11,12 +11,13 @@
 
 ;; Handling updates from the backend
 
-(ert-deftest kubernetes-overview-test--update-handler--no-redraw-if-overview-killed ()
-  (let* ((kubernetes-redraw-on-updates t)
-         (buffer-redrawn-p)
+(ert-deftest kubernetes-overview-test--handle-client-message--no-redraw-if-overview-killed ()
+  (let* ((buffer-redrawn-p)
          (props
           `((buffer-live-p
              . (lambda (_) nil))
+            (get-buffer
+             . (lambda (_) t))
             (kubernetes-overview-redraw
              . (lambda (&rest _) (setq buffer-redrawn-p t)))
             (updates-received-p
@@ -25,42 +26,15 @@
     (kubernetes-overview--handle-client-message nil props)
     (should-not buffer-redrawn-p)))
 
-(ert-deftest kubernetes-overview-test--update-handler--no-redraw-if-overview-populated-and-redraws-disabled ()
-  (let* ((kubernetes-redraw-on-updates nil)
-         (buffer-redrawn-p)
+(ert-deftest kubernetes-overview-test--handle-client-message--redraws ()
+  (let* ((buffer-redrawn-p)
          (props
           `((buffer-live-p
+             . (lambda (_) t))
+            (get-buffer
              . (lambda (_) t))
             (updates-received-p
              . (lambda () t))
-            (kubernetes-overview-redraw
-             . (lambda (&rest _) (setq buffer-redrawn-p t))))))
-
-    (kubernetes-overview--handle-client-message nil props)
-    (should-not buffer-redrawn-p)))
-
-(ert-deftest kubernetes-overview-test--update-handler--redraws-if-updates-enabled ()
-  (let* ((kubernetes-redraw-on-updates t)
-         (buffer-redrawn-p nil)
-         (props
-          `((buffer-live-p
-             . (lambda (_) t))
-            (updates-received-p
-             . (lambda () t))
-            (kubernetes-overview-redraw
-             . ,(lambda (&rest _) (setq buffer-redrawn-p t))))))
-
-    (kubernetes-overview--handle-client-message nil props)
-    (should buffer-redrawn-p)))
-
-(ert-deftest kubernetes-overview-test--update-handler--initial-redraw-on-updates-disabled ()
-  (let* ((kubernetes-redraw-on-updates nil)
-         (buffer-redrawn-p nil)
-         (props
-          `((buffer-live-p
-             . (lambda (_) t))
-            (updates-received-p
-             . (lambda () nil))
             (kubernetes-overview-redraw
              . ,(lambda (&rest _) (setq buffer-redrawn-p t))))))
 

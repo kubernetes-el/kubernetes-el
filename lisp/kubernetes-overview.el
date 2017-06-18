@@ -18,8 +18,8 @@
     (ast-render . kubernetes-ast-render)
     (get-namespace . kubernetes-state-namespace)
     (set-namespace . kubernetes-state-set-namespace)
-    (updates-received-p . kubernetes-state-updates-received-p)
     (region-active-p . region-active-p)
+    (get-buffer . get-buffer)
     (buffer-live-p . buffer-live-p)
     (kubernetes-overview-redraw . kubernetes-overview-redraw))
   "Functions to inject for isolation and testing.")
@@ -46,11 +46,9 @@
 
 (defun kubernetes-overview--handle-client-message (_msg &optional props)
   (let ((props (or props kubernetes-overview-props)))
-    (kubernetes-props-bind ([updates-received-p buffer-live-p kubernetes-overview-redraw] props)
+    (kubernetes-props-bind ([get-buffer buffer-live-p kubernetes-overview-redraw] props)
       (when-let (buf (get-buffer kubernetes-overview-buffer))
-        (when (and (buffer-live-p buf)
-                   (or kubernetes-redraw-on-updates
-                       (not (updates-received-p))))
+        (when (buffer-live-p buf)
           (kubernetes-overview-redraw buf props))))))
 
 (defun kubernetes-overview--initialize-client (props namespace)
