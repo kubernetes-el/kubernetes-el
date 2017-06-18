@@ -36,7 +36,7 @@
 
           (section-name (intern (format "pod-container-%s" name))))
 
-    `(section (,section-name t)
+    `(section (,section-name)
               (heading ,(concat state " " name))
               (key-value 12 "Image" ,image)
               (key-value 12 "Restarts" ,(when restart-count (number-to-string restart-count)))
