@@ -17,16 +17,22 @@
 (defconst kubernetes-config-props
   `((set-namespace . kubernetes-state-set-namespace)
     (get-namespace . kubernetes-state-namespace)
+    (get-context . kubernetes-state-context)
+    (clear-state . kubernetes-state-clear)
+    (lookup-kubectl-settings . kubernetes-kubectl-kubeconfig-lookup-settings)
+    (populate-from-kubectl-settings . kubernetes-state-populate-from-kubectl-settings)
     (reset-resources . kubernetes-state-reset-resources)
-    (restart-client . kubernetes-client-restart)
-    (context . kubernetes-state-context))
+    (restart-client . kubernetes-client-restart))
   "Functions to inject for isolation and testing.")
+
+;; Popup
 
 (magit-define-popup kubernetes-config-popup
   "Popup console for configuration."
   :group 'kubernetes
   :actions
-  '((?n "Set namespace" kubernetes-config-set-namespace)))
+  '((?c "Set context" kubernetes-config-set-context)
+    (?n "Set namespace" kubernetes-config-set-namespace)))
 
 (defun kubernetes-config-set-namespace (ns &optional props)
   "Set the namespace to NS and restart the client process. PROPS is an alist of functions to inject."
@@ -37,6 +43,22 @@
         (reset-resources)
         (set-namespace ns)
         (restart-client)))))
+
+(defun kubernetes-config-set-context (ctx &optional props)
+  "Set the context to CTX and restart the client process. PROPS is an alist of functions to inject."
+  (interactive (list (kubernetes-kubectl-read-context)))
+  (let ((props (or props kubernetes-config-props)))
+    (kubernetes-props-bind ([restart-client
+                             get-context
+                             clear-state
+                             lookup-kubectl-settings populate-from-kubectl-settings] props)
+      (unless (equal ctx (get-context))
+        (clear-state)
+        (populate-from-kubectl-settings (lookup-kubectl-settings ctx))
+        (restart-client)))))
+
+
+;; Components
 
 (kubernetes-ast-define-component namespace (value)
   `(propertize (face kubernetes-namespace) ,value))
