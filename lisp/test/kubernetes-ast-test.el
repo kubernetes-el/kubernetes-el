@@ -195,9 +195,10 @@
   (with-temp-buffer
     (should-assert (kubernetes-ast-eval '(key-value 10 nil "Value")))))
 
-(ert-deftest kubernetes-ast-test--key-value--validates-value-as-string ()
+(ert-deftest kubernetes-ast-test--key-value--empty-output-if-value-is-nil ()
   (with-temp-buffer
-    (should-assert (kubernetes-ast-eval '(key-value 10 "Key" 1)))))
+    (kubernetes-ast-eval '(key-value 10 "Key" nil))
+    (should (string-empty-p (buffer-string)))))
 
 (ert-deftest kubernetes-ast-test--key-value--ensures-values-are-inserted-on-new-lines ()
   (let ((ast '("foo" (key-value 10 "Key" "Value"))))
@@ -244,11 +245,6 @@
       (let ((end (1- (line-end-position))))
         (should (equal (list 'kubernetes-copy "foo")
                        (text-properties-at end (buffer-string))))))))
-
-(ert-deftest kubernetes-ast-test--copy-prop-error-if-copy-value-not-a-string ()
-  (let ((ast '(copy-prop 1 (line "Test"))))
-    (with-temp-buffer
-      (should-assert (kubernetes-ast-eval ast)))))
 
 
 ;; mark-for-delete
@@ -312,9 +308,10 @@
 
 (ert-deftest kubernetes-ast-test--render--restores-point--3 ()
   (let ((expected-column) (expected-line)
-        (ast '((section (line1) (line "foo"))
-               (section (line2) (line "bar"))
-               (section (line3) (line "baz")))))
+        (ast '(section (root)
+                       (section (line1) (line "foo"))
+                       (section (line2) (line "bar"))
+                       (section (line3) (line "baz")))))
     (with-temp-buffer
 
       (kubernetes-ast-render (current-buffer) ast)
@@ -336,9 +333,10 @@
     (memq 'magit-section-highlight overlay-faces-at-pt)))
 
 (ert-deftest kubernetes-ast-test--render--updates-highlight ()
-  (let ((ast '((section (line1) (line "foo"))
-               (section (line2) (line "bar"))
-               (section (line3) (line "baz")))))
+  (let ((ast '(section (root)
+                       (section (line1) (line "foo"))
+                       (section (line2) (line "bar"))
+                       (section (line3) (line "baz")))))
     (with-temp-buffer
       (kubernetes-ast-render (current-buffer) ast)
       (should (kubernetes-ast-test--line-has-highlight-p))

@@ -31,6 +31,7 @@
                                (setq command (plist-get args :command))
                                (setq process-started t)))
             (get-namespace . ,(lambda () "foo"))
+            (set-updates-received-p . (lambda (_) nil))
             (get-client-process . ,(lambda () nil))
             (set-client-process . ,(lambda (proc)
                                      (setq process-set-in-state proc)))
@@ -79,7 +80,7 @@
   (let* ((client-running)
          (props
           `((get-client-process . ,(lambda () nil))
-            (start-client . ,(lambda (_) (setq client-running t)))
+            (start-client . ,(lambda (&rest _) (setq client-running t)))
             (stop-client . ,(lambda (_) (setq client-running nil))))))
     (kubernetes-client-restart props)
     (should client-running)))
@@ -88,7 +89,7 @@
   (let* ((client-running)
          (props
           `((get-client-process . ,(lambda () t))
-            (start-client . ,(lambda (_) (setq client-running t)))
+            (start-client . ,(lambda (&rest _) (setq client-running t)))
             (stop-client . ,(lambda (_) (setq client-running nil))))))
     (kubernetes-client-restart props)
     (should client-running)))
@@ -98,10 +99,12 @@
 
 (ert-deftest kubernetes-client-test--process-filter--handles-lines ()
   (let* ((processed-lines)
+         (state-updated-p)
          (buf (generate-new-buffer " test"))
          (marker (set-marker (make-marker) 0 buf))
          (props
           `((process-buffer . ,(lambda (_) buf))
+            (set-updates-received-p . ,(lambda (_) (setq state-updated-p t)))
             (process-mark . ,(lambda (_) marker))
             (handle-line . ,(lambda (line)
                               (let ((updated (-snoc processed-lines line)))
@@ -112,6 +115,7 @@
     (funcall process-filter nil "foo\nb")
     (funcall process-filter nil "ar\nbaz\n")
 
+    (should state-updated-p)
     (should (equal '("foo" "bar" "baz") processed-lines))))
 
 

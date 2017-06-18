@@ -11,7 +11,7 @@
 
 ;; Derived component support.
 
-(defconst kubernetes-ast--components (make-hash-table :test #'eq)
+(defvar kubernetes-ast--components (make-hash-table :test #'eq)
   "A mapping from the name of a component to its interpretation function.
 
 When traversing a rendering AST, any list beginning with a symbol
@@ -52,20 +52,21 @@ such in rendering ASTs." name)))
   (cl-assert (numberp width) t)
   (cl-assert (<= 0 width) t)
   (cl-assert (stringp key) t)
-  (cl-assert (stringp value) t)
-  (let* ((fmt-string (concat "%-" (number-to-string width) "s"))
-         (str (concat (propertize (format fmt-string (concat key ": ")) 'face 'magit-header-line)
-                      value)))
-    (unless (string-blank-p (buffer-substring (line-beginning-position) (line-end-position)))
-      (newline))
-    `(copy-prop ,value (line ,str))))
+  (when value
+    (let* ((fmt-string (concat "%-" (number-to-string width) "s"))
+           (str (with-temp-buffer
+                  (kubernetes-ast-eval value)
+                  (concat (propertize (format fmt-string (concat key ": ")) 'face 'magit-header-line)
+                          (buffer-string)))))
+      (unless (string-blank-p (buffer-substring (line-beginning-position) (line-end-position)))
+        (newline))
+      `(copy-prop ,value (line ,str)))))
 
 (kubernetes-ast-define-component nav-prop (spec &rest inner-ast)
   `(propertize (kubernetes-nav ,spec)
                ,inner-ast))
 
 (kubernetes-ast-define-component copy-prop (copy-str &rest inner-ast)
-  (cl-assert (stringp copy-str) t)
   `(propertize (kubernetes-copy ,copy-str)
                ,inner-ast))
 
@@ -317,23 +318,37 @@ such in rendering ASTs." name)))
 This is useful if the buffer is erased and repopulated in BODY,
 in which case `save-excursion' is insufficient to restore the
 window state."
-          `(let ((pos (point))
-                 (col (current-column))
-                 (window-start-line (window-start))
+          `(let ((window-start-line (window-start))
                  (inhibit-redisplay t))
-             (save-excursion
-               ,@body)
-             (goto-char pos)
-             (move-to-column col)
-             (set-window-start (selected-window) window-start-line)))
-
+             (prog1 (progn ,@body)
+               (set-window-start (selected-window) window-start-line))))
 
 (defun kubernetes-ast-render (buffer ast)
   (with-current-buffer buffer
-    (kubernetes-ast--save-window-state
-     (erase-buffer)
-     (kubernetes-ast-eval ast))
-    (magit-section-update-highlight)))
+    (let* ((initial-col (current-column))
+           (initial-line (line-number-at-pos))
+           (section-restoration-args
+            (when-let (section (magit-current-section))
+              (nconc (list section)
+                     (magit-refresh-get-relative-position)))))
+
+      (deactivate-mark)
+      (setq magit-section-highlight-overlays nil)
+      (setq magit-section-highlighted-section nil)
+      (setq magit-section-highlighted-sections nil)
+      (setq magit-section-unhighlight-sections nil)
+
+      (kubernetes-ast--save-window-state
+       (erase-buffer)
+       (kubernetes-ast-eval ast)
+
+       (if section-restoration-args
+           (apply #'magit-section-goto-successor section-restoration-args)
+         (goto-char (point-min))
+         (forward-line (1- initial-line)))
+
+       (move-to-column initial-col)
+       (magit-section-update-highlight)))))
 
 
 (provide 'kubernetes-ast)

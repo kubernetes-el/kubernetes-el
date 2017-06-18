@@ -49,6 +49,7 @@
   [remap evil-next-visual-line] #'next-line
   [remap evil-previous-visual-line] #'previous-line
 
+  (kbd "gr") #'kubernetes-overview-redraw
   (kbd "q") #'quit-window
   (kbd "h") #'describe-mode
 

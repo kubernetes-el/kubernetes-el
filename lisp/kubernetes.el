@@ -23,13 +23,13 @@
 
 ;;; Commentary:
 
+;;; Code:
+
 (require 'kubernetes-ast)
 (require 'kubernetes-config)
 (require 'kubernetes-client)
 (require 'kubernetes-overview)
 (require 'kubernetes-state)
-
-;;; Code:
 
 (provide 'kubernetes)
 
