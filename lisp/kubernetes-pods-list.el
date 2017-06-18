@@ -79,7 +79,7 @@
   `(propertize (face kubernetes-loading) "Loading..."))
 
 (kubernetes-ast-define-component pods-list (state)
-  (let ((updated-p (kubernetes-state-updates-received-p state))
+  (let ((updated-p (kubernetes-state-data-received-p state))
         (pods (kubernetes-state-pods state)))
     `(section (pods-list nil)
               (heading "Pods")

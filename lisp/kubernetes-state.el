@@ -71,7 +71,7 @@ the parsed s-expression message.")
 
 (kubernetes-state-defaccessors pods (pods))
 
-(kubernetes-state-defaccessors updates-received-p (flag))
+(kubernetes-state-defaccessors data-received-p (flag))
 
 
 ;; Lifecycle management.
@@ -96,12 +96,19 @@ the parsed s-expression message.")
 
 (defun kubernetes-state-reset (&optional props)
   (kubernetes-props-bind ([kubeconfig-settings] (or props kubernetes-state-props))
-    (kubernetes-state-clear)
-    (kubernetes-state-populate-from-kubectl-settings (kubeconfig-settings))))
+    (kubernetes-state-reset-to (kubeconfig-settings))))
+
+(defun kubernetes-state-reset-to (settings)
+  (kubernetes-state-clear)
+  (kubernetes-state-populate-from-kubectl-settings settings)
+  (run-hook-with-args 'kubernetes-state-should-redraw-functions nil))
+
 
 (defun kubernetes-state-reset-resources ()
   (let ((pods (kubernetes-state-pods)))
-    (--each (hash-table-keys pods) (remhash it pods))))
+    (--each (hash-table-keys pods) (remhash it pods))
+    (kubernetes-state-set-data-received-p nil)
+    (run-hook-with-args 'kubernetes-state-should-redraw-functions nil)))
 
 
 ;; Handle messages from subprocess.

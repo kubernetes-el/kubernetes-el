@@ -18,10 +18,9 @@
   `((set-namespace . kubernetes-state-set-namespace)
     (get-namespace . kubernetes-state-namespace)
     (get-context . kubernetes-state-context)
-    (clear-state . kubernetes-state-clear)
     (lookup-kubectl-settings . kubernetes-kubectl-kubeconfig-lookup-settings)
-    (populate-from-kubectl-settings . kubernetes-state-populate-from-kubectl-settings)
     (reset-resources . kubernetes-state-reset-resources)
+    (reset-state-to . kubernetes-state-reset-to)
     (restart-client . kubernetes-client-restart))
   "Functions to inject for isolation and testing.")
 
@@ -48,13 +47,9 @@
   "Set the context to CTX and restart the client process. PROPS is an alist of functions to inject."
   (interactive (list (kubernetes-kubectl-read-context)))
   (let ((props (or props kubernetes-config-props)))
-    (kubernetes-props-bind ([restart-client
-                             get-context
-                             clear-state
-                             lookup-kubectl-settings populate-from-kubectl-settings] props)
+    (kubernetes-props-bind ([restart-client get-context lookup-kubectl-settings reset-state-to] props)
       (unless (equal ctx (get-context))
-        (clear-state)
-        (populate-from-kubectl-settings (lookup-kubectl-settings ctx))
+        (reset-state-to (lookup-kubectl-settings ctx))
         (restart-client)))))
 
 

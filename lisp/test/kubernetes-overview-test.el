@@ -20,8 +20,8 @@
              . (lambda (_) t))
             (kubernetes-overview-redraw
              . (lambda (&rest _) (setq buffer-redrawn-p t)))
-            (updates-received-p
-             . (lambda () (error "Unexpected: updates-received-p"))))))
+            (data-received-p
+             . (lambda () (error "Unexpected: data-received-p"))))))
 
     (kubernetes-overview--handle-client-message nil props)
     (should-not buffer-redrawn-p)))
@@ -33,7 +33,7 @@
              . (lambda (_) t))
             (get-buffer
              . (lambda (_) t))
-            (updates-received-p
+            (data-received-p
              . (lambda () t))
             (kubernetes-overview-redraw
              . ,(lambda (&rest _) (setq buffer-redrawn-p t))))))

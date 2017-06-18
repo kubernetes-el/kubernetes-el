@@ -31,7 +31,7 @@
                                (setq command (plist-get args :command))
                                (setq process-started t)))
             (get-namespace . ,(lambda () "foo"))
-            (set-updates-received-p . (lambda (_) nil))
+            (set-data-received-p . (lambda (_) nil))
             (get-client-process . ,(lambda () nil))
             (set-client-process . ,(lambda (proc)
                                      (setq process-set-in-state proc)))
@@ -104,7 +104,7 @@
          (marker (set-marker (make-marker) 0 buf))
          (props
           `((process-buffer . ,(lambda (_) buf))
-            (set-updates-received-p . ,(lambda (_) (setq state-updated-p t)))
+            (set-data-received-p . ,(lambda (_) (setq state-updated-p t)))
             (process-mark . ,(lambda (_) marker))
             (handle-line . ,(lambda (line)
                               (let ((updated (-snoc processed-lines line)))

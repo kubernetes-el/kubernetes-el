@@ -179,11 +179,11 @@
 
       (should (equal pods result)))))
 
-(ert-deftest kubernetes-state-test--updates-received-p-accessors ()
+(ert-deftest kubernetes-state-test--data-received-p-accessors ()
   (kubernetes-state--with-empty-state
-    (should-not (kubernetes-state-updates-received-p))
-    (kubernetes-state-set-updates-received-p t)
-    (should (kubernetes-state-updates-received-p))))
+    (should-not (kubernetes-state-data-received-p))
+    (kubernetes-state-set-data-received-p t)
+    (should (kubernetes-state-data-received-p))))
 
 
 ;; Resetting state to kubeconfig defaults
@@ -206,6 +206,7 @@
 (ert-deftest kubernetes-state-test--resetting-resources-only ()
   (kubernetes-state--with-empty-state
     (kubernetes-state-set-namespace "ns")
+    (kubernetes-state-set-data-received-p t)
 
     ;; Populate the state with some pods.
     (let ((pods-table (kubernetes-state-pods)))
@@ -216,6 +217,7 @@
 
     (kubernetes-state-reset-resources)
     (should (equal (kubernetes-state-namespace) "ns"))
+    (should-not (kubernetes-state-data-received-p))
     (should (hash-table-empty-p (kubernetes-state-pods)))))
 
 
