@@ -102,7 +102,7 @@ NAMESPACE is the namespace to use."
         (list kubernetes-overview-props
               (or (kubernetes-state-namespace)
                   (kubernetes-kubectl-current-namespace)
-                  (completing-read "Namespace: " (kubernetes-kubectl-known-namespaces) 'kubernetes-namespace))))
+                  (kubernetes-kubectl-read-namespace))))
        (kubernetes-overview--initialize-client props namespace)
        (let ((buffer (or (get-buffer kubernetes-overview-buffer) (kubernetes-overview--setup-buffer props))))
          (kubernetes-display-buffer buffer)))

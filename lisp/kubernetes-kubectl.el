@@ -36,6 +36,14 @@
       (cons (cons 'context context)
             context-settings))))
 
+;; Helpful routines for interactive commands.
+
+(defun kubernetes-kubectl-read-namespace ()
+  (completing-read "Namespace: " (kubernetes-kubectl-known-namespaces) nil nil nil 'kubernetes-namespaces))
+
+(defun kubernetes-kubectl-read-context ()
+  (completing-read "Context: " (kubernetes-kubectl-contexts) nil nil nil 'kubernetes-contexts))
+
 
 (provide 'kubernetes-kubectl)
 

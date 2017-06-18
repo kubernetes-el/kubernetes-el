@@ -30,7 +30,7 @@
 
 (defun kubernetes-config-set-namespace (ns &optional props)
   "Set the namespace to NS and restart the client process. PROPS is an alist of functions to inject."
-  (interactive (list (completing-read "Namespace: " (kubernetes-kubectl-known-namespaces) 'kubernetes-namespace)))
+  (interactive (list (kubernetes-kubectl-read-namespace)))
   (let ((props (or props kubernetes-config-props)))
     (kubernetes-props-bind ([set-namespace get-namespace restart-client reset-resources] props)
       (unless (equal ns (get-namespace))
