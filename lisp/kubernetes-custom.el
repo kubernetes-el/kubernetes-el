@@ -55,8 +55,13 @@ The function must take a single argument, which is the buffer to display."
   "Face for symbols referring to Kubernetes clusters."
   :group 'kubernetes)
 
-(defface kubernetes-loading
+(defface kubernetes-dimmed
   '((t (:inherit font-lock-comment-face)))
+  "Face for loading indicators."
+  :group 'kubernetes)
+
+(defface kubernetes-loading
+  '((t (:inherit kubernetes-dimmed)))
   "Face for loading indicators."
   :group 'kubernetes)
 

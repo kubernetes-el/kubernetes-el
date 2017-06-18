@@ -78,6 +78,9 @@
 (kubernetes-ast-define-component loading-indicator ()
   `(propertize (face kubernetes-loading) "Loading..."))
 
+(kubernetes-ast-define-component empty-pods-indicator ()
+  `(propertize (face kubernetes-dimmed) "None."))
+
 (kubernetes-ast-define-component pods-list (state)
   (let ((updated-p (kubernetes-state-data-received-p state))
         (pods (kubernetes-state-pods state)))
@@ -85,8 +88,8 @@
               (heading "Pods")
               (indent
                ,(if updated-p
-                    (--map `(pod ,(gethash it pods))
-                           (kubernetes-pods-list--sorted-keys pods))
+                    (or (--map `(pod ,(gethash it pods)) (kubernetes-pods-list--sorted-keys pods))
+                        `(empty-pods-indicator))
                   `(loading-indicator)))
               (padding))))
 
