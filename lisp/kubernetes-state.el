@@ -5,8 +5,6 @@
 (require 'dash)
 (require 'subr-x)
 
-(provide 'kubernetes-state)
-
 (defun kubernetes-state-empty ()
   (let ((ht
          (make-hash-table
@@ -96,5 +94,8 @@ the parsed s-expression message.")
 (kubernetes-state-defaccessors pods (pods))
 
 (kubernetes-state-defaccessors updates-received-p (flag))
+
+
+(provide 'kubernetes-state)
 
 ;;; kubernetes-state.el ends here
