@@ -100,6 +100,10 @@ the parsed s-expression message.")
   (kubernetes-state-clear)
   (kubernetes-state--marshal-from-kubectl props))
 
+(defun kubernetes-state-reset-resources ()
+  (let ((pods (kubernetes-state-pods)))
+    (--each (hash-table-keys pods) (remhash it pods))))
+
 
 ;; Handle messages from subprocess.
 

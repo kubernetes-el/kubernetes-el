@@ -207,6 +207,22 @@
       (should (equal (kubernetes-state-cluster) "cluster"))
       (should (equal (kubernetes-state-user) "user")))))
 
+(ert-deftest kubernetes-state-test--resetting-resources-only ()
+  (kubernetes-state--with-empty-state
+    (kubernetes-state-set-namespace "ns")
+
+    ;; Populate the state with some pods.
+    (let ((pods-table (kubernetes-state-pods)))
+      (puthash 'A t pods-table)
+      (puthash 'B t pods-table)
+      (puthash 'C t pods-table)
+      (puthash 'D t pods-table))
+
+    (kubernetes-state-reset-resources)
+    (should (equal (kubernetes-state-namespace) "ns"))
+    (should (hash-table-empty-p (kubernetes-state-pods)))))
+
+
 (provide 'kubernetes-state-test)
 
 ;;; kubernetes-state-test.el ends here

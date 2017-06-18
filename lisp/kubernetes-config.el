@@ -17,7 +17,7 @@
 (defconst kubernetes-config-props
   `((set-namespace . kubernetes-state-set-namespace)
     (get-namespace . kubernetes-state-namespace)
-    (reset-state . kubernetes-state-reset)
+    (reset-resources . kubernetes-state-reset-resources)
     (restart-client . kubernetes-client-restart)
     (context . kubernetes-state-context))
   "Functions to inject for isolation and testing.")
@@ -28,16 +28,13 @@
   :actions
   '((?n "Set namespace" kubernetes-config-set-namespace)))
 
-(defun kubernetes-config-set-namespace (ns props)
-  "Set the namespace to NS and restart the client process.
-
-PROPS is an alist of functions to inject."
-  (interactive (list (completing-read "Namespace: " (kubernetes-kubectl-known-namespaces) 'kubernetes-namespace)
-                     kubernetes-config-props))
+(defun kubernetes-config-set-namespace (ns &optional props)
+  "Set the namespace to NS and restart the client process. PROPS is an alist of functions to inject."
+  (interactive (list (completing-read "Namespace: " (kubernetes-kubectl-known-namespaces) 'kubernetes-namespace)))
   (let ((props (or props kubernetes-config-props)))
-    (kubernetes-props-bind ([set-namespace get-namespace restart-client reset-state] props)
+    (kubernetes-props-bind ([set-namespace get-namespace restart-client reset-resources] props)
       (unless (equal ns (get-namespace))
-        (reset-state)
+        (reset-resources)
         (set-namespace ns)
         (restart-client)))))
 
