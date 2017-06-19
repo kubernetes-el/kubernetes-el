@@ -38,7 +38,7 @@
           (section-name (intern (format "pod-container-%s" name))))
 
     `(section (,section-name)
-              (heading ,(concat state " " name))
+              (heading (copy-prop ,name ,(concat state " " name)))
               (key-value 12 "Image" ,image)
               (key-value 12 "Restarts" ,(when restart-count (number-to-string restart-count)))
               (key-value 12 "Started At" ,started-at))))
@@ -67,7 +67,7 @@
           (section-name (intern (format "pod-entry-%s" name))))
 
     `(section (,section-name t)
-              (heading ,name)
+              (heading (copy-prop ,name ,name))
               (indent
                (section (label) (key-value 12 "Label" ,label))
                (section (job-name) (key-value 12 "Job Name" ,job-name))
