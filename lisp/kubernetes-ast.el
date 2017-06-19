@@ -54,13 +54,14 @@ such in rendering ASTs." name)))
   (cl-assert (stringp key) t)
   (when value
     (let* ((fmt-string (concat "%-" (number-to-string width) "s"))
-           (str (with-temp-buffer
-                  (kubernetes-ast-eval value)
-                  (concat (propertize (format fmt-string (concat key ": ")) 'face 'magit-header-line)
-                          (buffer-string)))))
+           (value-str (with-temp-buffer
+                        (kubernetes-ast-eval value)
+                        (buffer-string)))
+           (str (concat (propertize (format fmt-string (concat key ": ")) 'face 'magit-header-line)
+                        value-str)))
       (unless (string-blank-p (buffer-substring (line-beginning-position) (line-end-position)))
         (newline))
-      `(copy-prop ,value (line ,str)))))
+      `(copy-prop ,(substring-no-properties value-str) (line ,str)))))
 
 (kubernetes-ast-define-component nav-prop (spec &rest inner-ast)
   `(propertize (kubernetes-nav ,spec)

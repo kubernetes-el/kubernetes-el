@@ -12,6 +12,33 @@
     (nlinum-mode . nlinum-mode))
   "Alist of functions to inject for testing and isolation.")
 
+(defun kubernetes--ellipsize (s threshold)
+  (if (> (length s) threshold)
+      (concat (substring s 0 (1- threshold)) "…")
+    s))
+
+(defun kubernetes-copy-thing-at-point (point)
+  "Perform a context-sensitive copy action.
+
+Inspecs the `kubernetes-copy' text property at POINT to determine
+what to copy."
+  (interactive "d")
+  (when-let (s (get-text-property point 'kubernetes-copy))
+    (kill-new s)
+
+    ;; Print a user-friendly message for feedback.
+    (let ((n-lines 1) (first-line nil))
+      (with-temp-buffer
+        (insert s)
+        (goto-char (point-min))
+        (setq first-line (buffer-substring (line-beginning-position) (line-end-position)))
+        (while (search-forward "\n" nil t)
+          (setq n-lines (1+ n-lines))))
+      (let ((ellipsized (kubernetes--ellipsize first-line 70)))
+        (if (< 1 n-lines)
+            (message "Copied %s lines, starting with: %s" n-lines ellipsized)
+          (message "Copied: %s" ellipsized))))))
+
 ;;;###autoload
 (defconst kubernetes-mode-map
   (let ((keymap (make-sparse-keymap)))
@@ -25,6 +52,8 @@
     (define-key keymap [C-tab]     #'magit-section-cycle)
     (define-key keymap [M-tab]     #'magit-section-cycle-diffs)
     (define-key keymap [S-tab]     #'magit-section-cycle-global)
+
+    (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
 
     (define-key keymap (kbd "q") #'quit-window)
     (define-key keymap (kbd "h") #'describe-mode)
