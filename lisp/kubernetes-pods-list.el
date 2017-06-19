@@ -5,6 +5,7 @@
 (require 'dash)
 
 (require 'kubernetes-ast)
+(require 'kubernetes-config)
 (require 'kubernetes-state)
 
 (kubernetes-ast-define-component pod-container (container-spec container-status)
@@ -70,7 +71,7 @@
               (indent
                (section (label) (key-value 12 "Label" ,label))
                (section (job-name) (key-value 12 "Job Name" ,job-name))
-               (section (namespace) (key-value 12 "Namespace" ,namespace))
+               (section (namespace) (key-value 12 "Namespace" (namespace ,namespace)))
                (padding)
                (pod-container-list ,containers ,container-statuses))
               (padding))))
