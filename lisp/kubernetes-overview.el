@@ -118,14 +118,14 @@
 PROPS is an alist of functions to inject.
 
 NAMESPACE is the namespace to use."
-       (interactive
-        (list kubernetes-overview-props
-              (or (kubernetes-state-namespace)
-                  (kubernetes-kubectl-current-namespace)
-                  (kubernetes-kubectl-read-namespace))))
-       (kubernetes-overview--initialize-client props namespace)
-       (let ((buffer (or (get-buffer kubernetes-overview-buffer) (kubernetes-overview--setup-buffer props))))
-         (kubernetes-display-buffer buffer)))
+  (interactive
+  (list kubernetes-overview-props
+        (or (kubernetes-state-namespace)
+            (kubernetes-kubectl-current-namespace)
+            (kubernetes-kubectl-read-namespace))))
+  (kubernetes-overview--initialize-client props namespace)
+  (let ((buffer (or (get-buffer kubernetes-overview-buffer) (kubernetes-overview--setup-buffer props))))
+    (kubernetes-display-buffer buffer)))
 
 (provide 'kubernetes-overview)
 
