@@ -17,6 +17,7 @@
       (concat (substring s 0 (1- threshold)) "…")
     s))
 
+;;;###autoload
 (defun kubernetes-copy-thing-at-point (point)
   "Perform a context-sensitive copy action.
 
