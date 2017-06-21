@@ -1,4 +1,4 @@
-;;; kubernetes-yaml.el --- YAML pretty-printing.  -*- lexical-binding: t; -*-
+;;; kubernetes-yaml.el --- Yaml rendering component  -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -6,7 +6,7 @@
 (require 'subr-x)
 
 (require 'kubernetes-ast)
-(require 'kubernetes-modes)
+(require 'kubernetes-mode)
 
 
 ;; Compile parsed JSON into an AST representation for rendering.
@@ -26,7 +26,7 @@
 
     ((pred vectorp)
      `(list ,@(seq-map (lambda (it)
-                         `(section (item nil) ,(kubernetes-yaml--render-helper it)))
+                         `(section (item) ,(kubernetes-yaml--render-helper it)))
                        json)))
 
     ;; Objects
@@ -35,7 +35,7 @@
      (seq-map (-lambda ((k . v))
                 (let ((k (kubernetes-yaml--render-helper k))
                       (v (kubernetes-yaml--render-helper v)))
-                  `(section (object-kvp nil)
+                  `(section (object-kvp)
                             ,(cond
                               ;; Indent multiline strings.
                               ((and (stringp v) (string-match-p "\n" (string-trim-right v)))
@@ -56,7 +56,7 @@
 
 (defun kubernetes-yaml-render (json)
   "Process some parsed JSON into a YAML AST for rendering."
-  `(section (json-root nil)
+  `(section (yaml)
             ,(kubernetes-yaml--render-helper json)
             (padding)))
 
@@ -66,11 +66,9 @@
 (defun kubernetes-yaml-make-buffer (bufname parsed-json)
   (let ((buf (get-buffer-create bufname)))
     (with-current-buffer buf
-      (kubernetes-display-thing-mode)
+      (kubernetes-mode)
       (let ((inhibit-read-only t))
-        (erase-buffer)
-        (kubernetes-ast-eval (kubernetes-yaml-render parsed-json))
-        (goto-char (point-min))))
+        (kubernetes-ast-render buf (kubernetes-yaml-render parsed-json))))
     buf))
 
 

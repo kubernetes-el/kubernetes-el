@@ -7,6 +7,8 @@
 (require 'kubernetes-ast)
 (require 'kubernetes-config)
 (require 'kubernetes-state)
+(require 'kubernetes-yaml)
+
 
 ;; Helper functions
 
@@ -23,6 +25,30 @@
   "Find the interval between START and NOW, and return a string of the coarsest unit."
   (let ((diff (time-to-seconds (time-subtract now start))))
     (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff) ","))))
+
+(defun kubernetes-pods-list-display-pod (pod-name)
+  "Show the pod with string POD-NAME at point in a pop-up buffer."
+  (interactive (list (get-text-property (point) 'kubernetes-pod-name)))
+  (unless pod-name
+    (user-error "No pod name at point"))
+
+  (-if-let ((&hash (intern pod-name) pod) (kubernetes-state-pods))
+      (when-let (win (display-buffer (kubernetes-yaml-make-buffer pod-name pod)))
+        (select-window win))
+    (user-error "Pod %s not found and may have been deleted" pod-name)))
+
+(defun kubernetes-pods-list--sorted-keys (ht)
+  (-sort (lambda (l r) (string< (symbol-name l) (symbol-name r)))
+         (hash-table-keys ht)))
+
+
+;; Keymaps
+
+(defconst kubernetes-pod-name-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "RET") #'kubernetes-pods-list-display-pod)
+    (define-key keymap [mouse-1] #'kubernetes-pods-list-display-pod)
+    keymap))
 
 
 ;; Components
@@ -79,6 +105,10 @@
               (heading "Containers")
               (list ,@entries))))
 
+(kubernetes-ast-define-component pod-name (pod-name)
+  `(propertize (keymap ,kubernetes-pod-name-map kubernetes-pod-name ,pod-name)
+               (copy-prop ,pod-name ,pod-name)))
+
 (kubernetes-ast-define-component pod (pod)
   (-let* (((&alist 'metadata (&alist 'name name
                                      'namespace namespace
@@ -91,7 +121,7 @@
           (section-name (intern (format "pod-entry-%s" name))))
 
     `(section (,section-name t)
-              (heading (copy-prop ,name ,name))
+              (heading (pod-name ,name))
               (indent
                (section (label) (key-value 12 "Label" ,label))
                (section (job-name) (key-value 12 "Job Name" ,job-name))
@@ -118,9 +148,6 @@
                   `(loading-indicator)))
               (padding))))
 
-(defun kubernetes-pods-list--sorted-keys (ht)
-  (-sort (lambda (l r) (string< (symbol-name l) (symbol-name r)))
-         (hash-table-keys ht)))
 
 (provide 'kubernetes-pods-list)
 
