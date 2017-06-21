@@ -67,8 +67,7 @@
   (let ((buf (get-buffer-create bufname)))
     (with-current-buffer buf
       (kubernetes-mode)
-      (let ((inhibit-read-only t))
-        (kubernetes-ast-render buf (kubernetes-yaml-render parsed-json))))
+      (kubernetes-ast-render buf (kubernetes-yaml-render parsed-json)))
     buf))
 
 

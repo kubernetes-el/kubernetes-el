@@ -54,11 +54,10 @@
     (user-error "Overview buffer not active"))
   (kubernetes-props-bind ([ast-render get-state region-active-p] props)
     (with-current-buffer buffer
-      (let ((inhibit-read-only t))
-        ;; If a region is active, a redraw would affect the region in
-        ;; unpredictable ways.
-        (unless (region-active-p)
-          (ast-render buffer `(overview ,(get-state))))))))
+      ;; If a region is active, a redraw would affect the region in
+      ;; unpredictable ways.
+      (unless (region-active-p)
+        (ast-render buffer `(overview ,(get-state)))))))
 
 (defun kubernetes-overview--handle-client-message (_msg &optional props)
   (let ((props (or props kubernetes-overview-props)))

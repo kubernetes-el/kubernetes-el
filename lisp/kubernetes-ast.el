@@ -326,7 +326,8 @@ window state."
 
 (defun kubernetes-ast-render (buffer ast)
   (with-current-buffer buffer
-    (let* ((initial-col (current-column))
+    (let* ((inhibit-read-only t)
+           (initial-col (current-column))
            (initial-line (line-number-at-pos))
            (section-restoration-args
             (when-let (section (magit-current-section))
