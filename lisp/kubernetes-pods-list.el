@@ -33,7 +33,7 @@
     (user-error "No pod name at point"))
 
   (-if-let ((&hash (intern pod-name) pod) (kubernetes-state-pods))
-      (when-let (win (display-buffer (kubernetes-yaml-make-buffer pod-name pod)))
+      (when-let (win (display-buffer (kubernetes-yaml-make-buffer (format "*kubernetes-pod:%s*" pod-name) pod)))
         (select-window win))
     (user-error "Pod %s not found and may have been deleted" pod-name)))
 
