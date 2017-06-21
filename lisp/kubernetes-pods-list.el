@@ -37,6 +37,29 @@
         (select-window win))
     (user-error "Pod %s not found and may have been deleted" pod-name)))
 
+(defun kubernetes-pods-list--pods-for-label (label-name state)
+  (let ((results (kubernetes-state-pods (kubernetes-state-empty)))
+        (pods (kubernetes-state-pods state)))
+    (dolist (key (hash-table-keys pods))
+      (-when-let ((pod &as &alist 'metadata (&alist 'labels (&alist "name" name))) (gethash key pods))
+        (when (equal name label-name)
+          (puthash key pod results))))
+    results))
+
+(defun kubernetes-pods-list-display-pods-for-label (label-name state)
+  "Display a list of pods in STATE with label LABEL-NAME."
+  (interactive (list
+                (get-text-property (point) 'kubernetes-label-name)
+                (kubernetes-state)))
+  (unless label-name
+    (user-error "No label name at point"))
+
+  (with-current-buffer (get-buffer-create (format "*kubernetes-label:%s*" label-name))
+    (kubernetes-mode)
+    (kubernetes-ast-render (current-buffer) `(pods-for-label-list ,state ,label-name))
+    (-when-let (win (display-buffer (current-buffer)))
+      (select-window win))))
+
 (defun kubernetes-pods-list--sorted-keys (ht)
   (-sort (lambda (l r) (string< (symbol-name l) (symbol-name r)))
          (hash-table-keys ht)))
@@ -48,6 +71,12 @@
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "RET") #'kubernetes-pods-list-display-pod)
     (define-key keymap [mouse-1] #'kubernetes-pods-list-display-pod)
+    keymap))
+
+(defconst kubernetes-label-name-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "RET") #'kubernetes-pods-list-display-pods-for-label)
+    (define-key keymap [mouse-1] #'kubernetes-pods-list-display-pods-for-label)
     keymap))
 
 
@@ -109,6 +138,11 @@
   `(propertize (keymap ,kubernetes-pod-name-map kubernetes-pod-name ,pod-name)
                (copy-prop ,pod-name ,pod-name)))
 
+(kubernetes-ast-define-component label-name (label-name)
+  `(propertize (keymap ,kubernetes-label-name-map kubernetes-label-name ,label-name)
+               (section (label)
+                        (key-value 12 "Label" ,label-name))))
+
 (kubernetes-ast-define-component pod (pod)
   (-let* (((&alist 'metadata (&alist 'name name
                                      'namespace namespace
@@ -121,7 +155,7 @@
     `(section (,section-name t)
               (heading (pod-name ,name))
               (indent
-               (section (label) (key-value 12 "Label" ,label))
+               (label-name ,label)
                (section (job-name) (key-value 12 "Job Name" ,job-name))
                (section (namespace) (key-value 12 "Namespace" (namespace ,namespace)))
                (padding)
@@ -145,6 +179,13 @@
                         `(empty-pods-indicator))
                   `(loading-indicator)))
               (padding))))
+
+(kubernetes-ast-define-component pods-for-label-list (state label-name &key pods)
+  (let ((pods (or pods (kubernetes-pods-list--pods-for-label label-name state))))
+    `(section (pods-for-label-list)
+              (label-name ,label-name)
+              (padding)
+              (pods-list ,state :pods ,pods))))
 
 
 (provide 'kubernetes-pods-list)
