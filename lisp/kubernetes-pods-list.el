@@ -136,9 +136,9 @@
 (kubernetes-ast-define-component empty-pods-indicator ()
   `(propertize (face kubernetes-dimmed) "None."))
 
-(kubernetes-ast-define-component pods-list (state)
-  (let ((updated-p (kubernetes-state-data-received-p state))
-        (pods (kubernetes-state-pods state)))
+(kubernetes-ast-define-component pods-list (state &key pods updated-p)
+  (let ((updated-p (or updated-p (kubernetes-state-data-received-p state)))
+        (pods (or pods (kubernetes-state-pods state))))
     `(section (pods-list nil)
               (heading "Pods")
               (indent
