@@ -27,8 +27,8 @@
     (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff) ","))))
 
 (defun kubernetes-pods-list--pod-label (pod)
-  (-let [(&alist 'metadata (&alist 'labels (&alist "name" name))) pod]
-    name))
+  (-let [(&alist 'metadata (&alist 'labels (&alist "name" name "job-name" job-name))) pod]
+    (or name job-name)))
 
 (defun kubernetes-pods-list--pods-for-label (label-name state)
   (let ((results (kubernetes-state-pods (kubernetes-state-empty)))
@@ -158,6 +158,11 @@
                (section (label)
                         (key-value 12 "Label" ,label-name))))
 
+(kubernetes-ast-define-component job-name (job-name)
+  `(propertize (keymap ,kubernetes-label-name-map kubernetes-label-name ,job-name)
+               (section (job)
+                        (key-value 12 "Job Name" ,job-name))))
+
 (kubernetes-ast-define-component pod (pod)
   (-let* (((&alist 'metadata (&alist 'name name
                                      'namespace namespace
@@ -171,7 +176,7 @@
               (heading (pod-name ,name))
               (indent
                (label-name ,label)
-               (section (job-name) (key-value 12 "Job Name" ,job-name))
+               (job-name ,job-name)
                (section (namespace) (key-value 12 "Namespace" (namespace ,namespace)))
                (padding)
                (pod-container-list ,containers ,container-statuses))
