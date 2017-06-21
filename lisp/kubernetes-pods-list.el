@@ -8,6 +8,25 @@
 (require 'kubernetes-config)
 (require 'kubernetes-state)
 
+;; Helper functions
+
+(defun kubernetes-pods-list--parse-utc-timestamp (timestamp)
+  "Parse TIMESTAMP string from the API into the representation used by Emacs."
+  (let ((parsed (parse-time-string
+                 (->> timestamp
+                      (replace-regexp-in-string ":" "")
+                      (replace-regexp-in-string "T" " " )
+                      (replace-regexp-in-string "+" " +")))))
+    (--map (or it 0) parsed)))
+
+(defun kubernetes-pods-list--time-diff-string (start now)
+  "Find the interval between START and NOW, and return a string of the coarsest unit."
+  (let ((diff (time-to-seconds (time-subtract now start))))
+    (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff) ","))))
+
+
+;; Components
+
 (kubernetes-ast-define-component pod-container (container-spec container-status)
   (-let* (((&alist 'name name 'image image) container-spec)
           ((&alist 'state (state &as &alist
@@ -19,6 +38,11 @@
           (started-at
            (car (--map (alist-get 'startedAt it)
                        (list running terminated waiting))))
+          (time-diff
+           (when started-at
+             (concat (kubernetes-pods-list--time-diff-string (apply #'encode-time (kubernetes-pods-list--parse-utc-timestamp started-at))
+                                         (current-time))
+                     " ago")))
           (state
            (cond
             ((null container-status)
@@ -41,7 +65,7 @@
               (heading (copy-prop ,name ,(concat state " " name)))
               (key-value 12 "Image" ,image)
               (key-value 12 "Restarts" ,(when restart-count (number-to-string restart-count)))
-              (key-value 12 "Started At" ,started-at))))
+              (key-value 12 "Started" ,(when started-at `(propertize (display ,time-diff) ,started-at))))))
 
 (kubernetes-ast-define-component pod-container-list (containers container-statuses)
   (when-let ((entries
