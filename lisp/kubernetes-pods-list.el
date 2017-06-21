@@ -26,30 +26,38 @@
   (let ((diff (time-to-seconds (time-subtract now start))))
     (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff) ","))))
 
-(defun kubernetes-pods-list-display-pod (pod-name)
-  "Show the pod with string POD-NAME at point in a pop-up buffer."
-  (interactive (list (get-text-property (point) 'kubernetes-pod-name)))
-  (unless pod-name
-    (user-error "No pod name at point"))
-
-  (-if-let ((&hash (intern pod-name) pod) (kubernetes-state-pods))
-      (when-let (win (display-buffer (kubernetes-yaml-make-buffer (format "*kubernetes-pod:%s*" pod-name) pod)))
-        (select-window win))
-    (user-error "Pod %s not found and may have been deleted" pod-name)))
+(defun kubernetes-pods-list--pod-label (pod)
+  (-let [(&alist 'metadata (&alist 'labels (&alist "name" name))) pod]
+    name))
 
 (defun kubernetes-pods-list--pods-for-label (label-name state)
   (let ((results (kubernetes-state-pods (kubernetes-state-empty)))
         (pods (kubernetes-state-pods state)))
     (dolist (key (hash-table-keys pods))
-      (-when-let ((pod &as &alist 'metadata (&alist 'labels (&alist "name" name))) (gethash key pods))
+      (-when-let* ((pod (gethash key pods))
+                   (name (kubernetes-pods-list--pod-label pod)))
         (when (equal name label-name)
           (puthash key pod results))))
     results))
 
+(defun kubernetes-pods-list--pod-labels ()
+  (-sort #'string< (-keep #'kubernetes-pods-list--pod-label (hash-table-values (kubernetes-state-pods)))))
+
+(defun kubernetes-pods-list--sorted-keys (ht)
+  (-sort (lambda (l r) (string< (symbol-name l) (symbol-name r)))
+         (hash-table-keys ht)))
+
+
+;; Interactive commands
+
+(defun kubernetes-pods-list--read-label ()
+  (completing-read "Label: " (kubernetes-pods-list--pod-labels) nil t nil 'kubernetes-labels))
+
 (defun kubernetes-pods-list-display-pods-for-label (label-name state)
   "Display a list of pods in STATE with label LABEL-NAME."
   (interactive (list
-                (get-text-property (point) 'kubernetes-label-name)
+                (or (get-text-property (point) 'kubernetes-label-name)
+                    (kubernetes-pods-list--read-label))
                 (kubernetes-state)))
   (unless label-name
     (user-error "No label name at point"))
@@ -60,9 +68,16 @@
     (-when-let (win (display-buffer (current-buffer)))
       (select-window win))))
 
-(defun kubernetes-pods-list--sorted-keys (ht)
-  (-sort (lambda (l r) (string< (symbol-name l) (symbol-name r)))
-         (hash-table-keys ht)))
+(defun kubernetes-pods-list-display-pod (pod-name)
+  "Show the pod with string POD-NAME at point in a pop-up buffer."
+  (interactive (list (get-text-property (point) 'kubernetes-pod-name)))
+  (unless pod-name
+    (user-error "No pod name at point"))
+
+  (-if-let ((&hash (intern pod-name) pod) (kubernetes-state-pods))
+      (when-let (win (display-buffer (kubernetes-yaml-make-buffer (format "*kubernetes-pod:%s*" pod-name) pod)))
+        (select-window win))
+    (user-error "Pod %s not found and may have been deleted" pod-name)))
 
 
 ;; Keymaps
