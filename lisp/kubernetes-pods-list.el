@@ -112,12 +112,10 @@
 (kubernetes-ast-define-component pod (pod)
   (-let* (((&alist 'metadata (&alist 'name name
                                      'namespace namespace
-                                     'labels labels)
+                                     'labels (&alist "job-name" job-name "name" label))
                    'spec (&alist 'containers containers)
                    'status (&alist 'containerStatuses container-statuses))
            pod)
-          ((_ . label) (--first (equal "name" (car it)) labels))
-          ((_ . job-name) (--first (equal "job-name" (car it)) labels))
           (section-name (intern (format "pod-entry-%s" name))))
 
     `(section (,section-name t)
