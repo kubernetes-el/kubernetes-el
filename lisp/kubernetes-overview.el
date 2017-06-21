@@ -26,6 +26,9 @@
 
 (defvar kubernetes-overview-buffer "*kubernetes-overview*")
 
+
+;; Components
+
 (kubernetes-ast-define-component errors (state)
   (-when-let ((&alist 'msg msg 'error err) (kubernetes-state-error state))
     `(section (errors)
@@ -40,6 +43,9 @@
             (errors ,state)
             (config ,state)
             (pods-list ,state)))
+
+
+;; Lifecycle and drawing
 
 (defun kubernetes-overview-redraw (buffer props)
   "Redraw the overview buffer."
@@ -101,6 +107,9 @@
 
       (kubernetes-overview-redraw buffer props)
       buffer)))
+
+
+;; Main entrypoint
 
 (defun kubernetes-overview (props namespace)
   "Show the overview buffer.
