@@ -111,6 +111,7 @@
 
 ;; Main entrypoint
 
+;;;###autoload
 (defun kubernetes-overview (props namespace)
   "Show the overview buffer.
 
