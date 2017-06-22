@@ -14,6 +14,7 @@ type podsUpdate struct {
 	Operation string     `json:"operation"`
 	Data      []*api.Pod `json:"data"`
 }
+
 type podsDeletes struct {
 	Type      string   `json:"type"`
 	Operation string   `json:"operation"`
@@ -64,7 +65,8 @@ func (c *podClient) run() {
 	}
 
 	// Diff
-	upserts := c.podUpserts(currentPods.Items)
+	upserts := c.upserts(currentPods.Items)
+	c.removeUnusedData(upserts)
 	p := podsUpdate{
 		Type:      "pod",
 		Operation: "upsert",
@@ -82,7 +84,7 @@ func (c *podClient) run() {
 	}
 
 	// Delete
-	deletes := c.podDeletes(currentPods.Items)
+	deletes := c.deletes(currentPods.Items)
 	pd := podsDeletes{
 		Type:      "pod",
 		Operation: "delete",
@@ -100,7 +102,7 @@ func (c *podClient) run() {
 	}
 }
 
-func (c podClient) podUpserts(p []*api.Pod) []*api.Pod {
+func (c podClient) upserts(p []*api.Pod) []*api.Pod {
 	podsIds := make(map[string]bool)
 	for _, p := range c.pods {
 		podsIds[*p.Metadata.Uid] = true
@@ -121,7 +123,7 @@ func (c podClient) podUpserts(p []*api.Pod) []*api.Pod {
 	return pods
 }
 
-func (c podClient) podDeletes(pods []*api.Pod) []string {
+func (c podClient) deletes(pods []*api.Pod) []string {
 	podsIds := make(map[string]bool)
 	for _, p := range pods {
 		podsIds[*p.Metadata.Uid] = true
@@ -134,4 +136,32 @@ func (c podClient) podDeletes(pods []*api.Pod) []string {
 		}
 	}
 	return ids
+}
+
+func (c podClient) removeUnusedData(pods []*api.Pod) []*api.Pod {
+	// Option 1 - remove data
+	for _, pod := range pods {
+		pod.Spec = nil
+		pod.Metadata.GenerateName = nil
+	}
+	return pods
+
+	// Option 2 - create new pod with data
+	// var res []*api.Pod
+	// for _, pod := range pods {
+	//	new := &api.Pod{
+	//		Metadata: &meta.ObjectMeta{
+	//			Name:      pod.Metadata.Name,
+	//			Namespace: pod.Metadata.Namespace,
+	//          ...
+	//		},
+	//		Status: &api.PodStatus{
+	//			Phase: pod.Status.Phase,
+	//          ...
+	//		},
+	//      ...
+	//	}
+	//	res = append(res, new)
+	// }
+	// return res
 }

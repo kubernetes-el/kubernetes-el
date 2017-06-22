@@ -40,7 +40,7 @@ func TestDiffUpserts(t *testing.T) {
 
 	p := []*api.Pod{a, b, dUpdated, e}
 
-	diff := client.podUpserts(p)
+	diff := client.upserts(p)
 
 	// Should have a, dUpdated, e
 	assert.Equal(t, 3, len(diff))
@@ -60,7 +60,7 @@ func TestDiffDeletes(t *testing.T) {
 		createPod("d"),
 	}
 
-	diff := c.podDeletes(p)
+	diff := c.deletes(p)
 
 	assert.Contains(t, diff, "a", "c")
 	assert.NotContains(t, diff, "b", "d")

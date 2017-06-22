@@ -29,6 +29,15 @@ func (c *client) run(namespace string, interval int) int {
 	podClient := newPodClient(client, c.writer, namespace, interval)
 	podClient.sched()
 
+	extnsClient, err := loadDefaultExtnsClient()
+	if err != nil {
+		c.writer <- errorSexp("could not load k8s client", err)
+		return -1
+	}
+
+	deploymentClient := newDeploymentClient(extnsClient, c.writer, namespace, interval)
+	deploymentClient.sched()
+
 	wg.Wait()
 	return -1
 }
