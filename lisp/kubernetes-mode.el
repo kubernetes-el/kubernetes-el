@@ -6,6 +6,7 @@
 (require 'kubernetes-props)
 
 (autoload 'kubernetes-config-popup "kubernetes-config")
+(autoload 'kubernetes-overview-popup "kubernetes-overview")
 
 (defconst kubernetes-mode-props
   '((linum-mode . linum-mode)
@@ -60,6 +61,7 @@ what to copy."
     (define-key keymap (kbd "h") #'describe-mode)
 
     (define-key keymap (kbd "c") #'kubernetes-config-popup)
+    (define-key keymap (kbd "o") #'kubernetes-overview-popup)
 
     keymap)
   "Keymap for `kubernetes-mode'.")

@@ -2,12 +2,19 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 'magit-popup)
+
 (require 'kubernetes-ast)
 (require 'kubernetes-custom)
 (require 'kubernetes-mode)
 (require 'kubernetes-pods-list)
 (require 'kubernetes-deployments-list)
 (require 'kubernetes-props)
+
+(defgroup kubernetes nil
+  "Emacs porcelain for Kubernetes."
+  :group 'tools
+  :prefix "kubernetes-")
 
 (defconst kubernetes-overview-props
   '((start-client . kubernetes-client-start)
@@ -19,6 +26,8 @@
     (ast-render . kubernetes-ast-render)
     (get-namespace . kubernetes-state-namespace)
     (set-namespace . kubernetes-state-set-namespace)
+    (current-view  . kubernetes-state-overview-mode)
+    (set-current-view  . kubernetes-state-set-overview-mode)
     (region-active-p . region-active-p)
     (get-buffer . get-buffer)
     (buffer-live-p . buffer-live-p)
@@ -26,6 +35,24 @@
   "Functions to inject for isolation and testing.")
 
 (defvar kubernetes-overview-buffer "*kubernetes-overview*")
+
+
+;; Popup
+
+(magit-define-popup kubernetes-overview-popup
+  "Popup console for the overview."
+  :group 'kubernetes
+  :actions
+  '((?o "Change view" kubernetes-overview-change-view)))
+
+(defun kubernetes-overview-change-view (view &optional props)
+  "Make the overview display VIEW."
+  (interactive (list (intern (completing-read "Overview mode: " '(pods-list deployments-list) nil t))))
+  (let ((props (or props kubernetes-overview-props)))
+    (kubernetes-props-bind ([current-view set-current-view] props)
+      (unless (equal view (current-view))
+        (set-current-view view)
+        (run-hook-with-args 'kubernetes-state-should-redraw-functions nil)))))
 
 
 ;; Components

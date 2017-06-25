@@ -53,7 +53,8 @@
   (kbd "q") #'quit-window
   (kbd "h") #'describe-mode
 
-  (kbd "c") #'kubernetes-config-popup)
+  (kbd "c") #'kubernetes-config-popup
+  (kbd "o") #'kubernetes-overview-popup)
 
 (provide 'kubernetes-evil)
 
