@@ -27,6 +27,7 @@ the parsed s-expression message.")
           :size 10
           :test #'eq)))
     (puthash 'pods (make-hash-table :test #'eq) ht)
+    (puthash 'deployments (make-hash-table :test #'eq) ht)
     ht))
 
 (defconst kubernetes-state (kubernetes-state-empty))
@@ -69,9 +70,15 @@ the parsed s-expression message.")
   (unless (stringp value)
     (error "Cluster was not a string: %S" value)))
 
+(kubernetes-state-defaccessors overview-mode (value)
+  (unless (member value '(deployments-list pods-list))
+    (error "Invalid overview mode: %S" value)))
+
 (kubernetes-state-defaccessors error (err))
 
 (kubernetes-state-defaccessors pods (pods))
+
+(kubernetes-state-defaccessors deployments (deployments))
 
 (kubernetes-state-defaccessors data-received-p (flag))
 
@@ -108,9 +115,11 @@ the parsed s-expression message.")
 
 (defun kubernetes-state-reset-resources ()
   (let ((pods (kubernetes-state-pods)))
-    (--each (hash-table-keys pods) (remhash it pods))
-    (kubernetes-state-set-data-received-p nil)
-    (run-hook-with-args 'kubernetes-state-should-redraw-functions nil)))
+    (--each (hash-table-keys pods) (remhash it pods)))
+  (let ((deployments (kubernetes-state-deployments)))
+    (--each (hash-table-keys deployments) (remhash it deployments)))
+  (kubernetes-state-set-data-received-p nil)
+  (run-hook-with-args 'kubernetes-state-should-redraw-functions nil))
 
 
 ;; Handle messages from subprocess.
@@ -145,6 +154,24 @@ the parsed s-expression message.")
               (--each deletes
                 (let ((key (intern (kubernetes-state--resource-name it))))
                   (remhash key pods-table))))
+            (kubernetes-state-set-error nil))
+
+           (`(deployment upsert)
+            (let ((deployments-table (kubernetes-state-deployments))
+                  (upserts (append data nil)))
+              (when upserts (setq changed-p t))
+              (--each upserts
+                (let ((key (intern (kubernetes-state--resource-name it))))
+                  (puthash key it deployments-table))))
+            (kubernetes-state-set-error nil))
+
+           (`(deployment delete)
+            (let ((deployments-table (kubernetes-state-deployments))
+                  (deletes (append data nil)))
+              (when deletes (setq changed-p t))
+              (--each deletes
+                (let ((key (intern (kubernetes-state--resource-name it))))
+                  (remhash key deployments-table))))
             (kubernetes-state-set-error nil))
 
            (x
