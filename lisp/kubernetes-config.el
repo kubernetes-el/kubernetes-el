@@ -3,11 +3,12 @@
 
 ;;; Code:
 
+(require 'magit-popup)
+
 (require 'kubernetes-ast)
 (require 'kubernetes-kubectl)
 (require 'kubernetes-props)
 (require 'kubernetes-state)
-(require 'magit-popup)
 
 (defgroup kubernetes nil
   "Emacs porcelain for Kubernetes."
@@ -54,15 +55,6 @@
 
 
 ;; Components
-
-(kubernetes-ast-define-component namespace (value)
-  `(propertize (face kubernetes-namespace) ,value))
-
-(kubernetes-ast-define-component context (value)
-  `(propertize (face kubernetes-context) ,value))
-
-(kubernetes-ast-define-component cluster (value)
-  `(propertize (face kubernetes-cluster) ,value))
 
 (kubernetes-ast-define-component config (state)
   `(section (config)

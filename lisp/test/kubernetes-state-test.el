@@ -228,6 +228,16 @@
       (should (equal namespace result))
       (should-error (kubernetes-state-set-namespace 'symbol)))))
 
+(ert-deftest kubernetes-state-test--overview-mode-accessors ()
+  (kubernetes-state--with-empty-state
+    (let ((overview-mode 'pods-list)
+          (result))
+      (kubernetes-state-set-overview-mode overview-mode)
+      (setq result (kubernetes-state-overview-mode))
+
+      (should (equal overview-mode result))
+      (should-error (kubernetes-state-set-overview-mode 'unknown)))))
+
 (ert-deftest kubernetes-state-test--context-accessors ()
   (kubernetes-state--with-empty-state
     (let ((context "ns")
@@ -313,6 +323,7 @@
   (kubernetes-state--with-empty-state
     (kubernetes-state-set-namespace "ns")
     (kubernetes-state-set-data-received-p t)
+    (kubernetes-state-set-overview-mode 'pods-list)
 
     ;; Populate the state with some resources.
     (let ((pods-table (kubernetes-state-pods)))
@@ -328,6 +339,7 @@
 
     (kubernetes-state-reset-resources)
     (should (equal (kubernetes-state-namespace) "ns"))
+    (should (equal (kubernetes-state-overview-mode) 'pods-list))
     (should-not (kubernetes-state-data-received-p))
     (should (hash-table-empty-p (kubernetes-state-pods)))
     (should (hash-table-empty-p (kubernetes-state-deployments)))))

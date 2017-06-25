@@ -6,6 +6,7 @@
 (require 'kubernetes-custom)
 (require 'kubernetes-mode)
 (require 'kubernetes-pods-list)
+(require 'kubernetes-deployments-list)
 (require 'kubernetes-props)
 
 (defconst kubernetes-overview-props
@@ -39,10 +40,13 @@
               (padding))))
 
 (kubernetes-ast-define-component overview (state)
-  `(section (root nil)
-            (errors ,state)
-            (config ,state)
-            (pods-list ,state)))
+  (let ((component-name
+         (or (kubernetes-state-overview-mode state)
+             kubernetes-default-overview-component)))
+    `(section (root nil)
+              (errors ,state)
+              (config ,state)
+              (,component-name ,state))))
 
 
 ;; Lifecycle and drawing

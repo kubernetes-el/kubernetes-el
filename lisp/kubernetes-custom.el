@@ -39,6 +39,14 @@ The function must take a single argument, which is the buffer to display."
                 (function-item display-buffer)
                 (function :tag "Function")))
 
+(defcustom kubernetes-default-overview-component 'deployments-list
+  "The initial component to render the overview.
+
+The component must be parameterised by a single value--the state."
+  :group 'kubernetes
+  :type '(radio (symbol deployments-list)
+                (symbol pods-list)))
+
 (defun kubernetes-display-buffer (buf)
   (funcall kubernetes-display-buffer-function buf))
 

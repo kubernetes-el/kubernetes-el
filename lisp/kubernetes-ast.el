@@ -9,6 +9,35 @@
 (require 'magit)
 (require 'subr-x)
 
+(require 'kubernetes-custom)
+
+(autoload 'kubernetes-parse-utc-timestamp "kubernetes-utils")
+(autoload 'kubernetes-time-diff-string "kubernetes-utils")
+(autoload 'kubernetes-pods-list-display-pod "kubernetes-pods-list")
+(autoload 'kubernetes-pods-list-display-pods-for-label "kubernetes-pods-list")
+
+
+;; Keymaps used by components
+
+(defconst kubernetes-pod-name-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "RET") #'kubernetes-pods-list-display-pod)
+    (define-key keymap [mouse-1] #'kubernetes-pods-list-display-pod)
+    keymap))
+
+(defconst kubernetes-label-name-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "RET") #'kubernetes-pods-list-display-pods-for-label)
+    (define-key keymap [mouse-1] #'kubernetes-pods-list-display-pods-for-label)
+    keymap))
+
+(defconst kubernetes-deployment-name-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "RET") #'kubernetes-deployments-list-display-deployment)
+    (define-key keymap [mouse-1] #'kubernetes-deployments-list-display-deployment)
+    keymap))
+
+
 ;; Derived component support.
 
 (defvar kubernetes-ast--components (make-hash-table :test #'eq)
@@ -70,6 +99,46 @@ such in rendering ASTs." name)))
 (kubernetes-ast-define-component copy-prop (copy-str &rest inner-ast)
   `(propertize (kubernetes-copy ,copy-str)
                ,inner-ast))
+
+(kubernetes-ast-define-component loading-indicator ()
+  `(propertize (face kubernetes-loading) "Loading..."))
+
+(kubernetes-ast-define-component empty-list-indicator ()
+  `(propertize (face kubernetes-dimmed) "None."))
+
+(kubernetes-ast-define-component pod-name (pod-name)
+  `(propertize (keymap ,kubernetes-pod-name-map kubernetes-pod-name ,pod-name)
+               (copy-prop ,pod-name ,pod-name)))
+
+(kubernetes-ast-define-component label-name (label-name)
+  `(propertize (keymap ,kubernetes-label-name-map kubernetes-label-name ,label-name)
+               (section (label)
+                        (key-value 12 "Label" ,label-name))))
+
+(kubernetes-ast-define-component job-name (job-name)
+  `(propertize (keymap ,kubernetes-label-name-map kubernetes-label-name ,job-name)
+               (section (job)
+                        (key-value 12 "Job Name" ,job-name))))
+
+(kubernetes-ast-define-component deployment-name (deployment-name)
+  `(propertize (keymap ,kubernetes-deployment-name-map kubernetes-deployment-name ,deployment-name)
+               ,deployment-name))
+
+(kubernetes-ast-define-component relative-time (time &optional now)
+  (when time
+    (let* ((now (or now (current-time)))
+           (time-diff (concat (kubernetes-time-diff-string (apply #'encode-time (kubernetes-parse-utc-timestamp time)) now)
+                              " ago")))
+      `(propertize (display ,time-diff) ,time))))
+
+(kubernetes-ast-define-component namespace (value)
+  `(propertize (face kubernetes-namespace) ,value))
+
+(kubernetes-ast-define-component context (value)
+  `(propertize (face kubernetes-context) ,value))
+
+(kubernetes-ast-define-component cluster (value)
+  `(propertize (face kubernetes-cluster) ,value))
 
 
 ;; Special operations.

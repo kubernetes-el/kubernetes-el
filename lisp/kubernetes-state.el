@@ -70,6 +70,10 @@ the parsed s-expression message.")
   (unless (stringp value)
     (error "Cluster was not a string: %S" value)))
 
+(kubernetes-state-defaccessors overview-mode (value)
+  (unless (member value '(pods-list))
+    (error "Invalid overview mode: %S" value)))
+
 (kubernetes-state-defaccessors error (err))
 
 (kubernetes-state-defaccessors pods (pods))
