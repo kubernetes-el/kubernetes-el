@@ -23,8 +23,11 @@
     (puthash 'namespace 'bar (kubernetes-state))
     (let ((pods-table (kubernetes-state-pods)))
       (puthash 'foo 'bar pods-table))
+    (let ((deployments-table (kubernetes-state-deployments)))
+      (puthash 'foo 'bar deployments-table))
     (kubernetes-state-clear)
     (should (hash-table-empty-p (kubernetes-state-pods)))
+    (should (hash-table-empty-p (kubernetes-state-deployments)))
     (should-not (gethash 'namespace (kubernetes-state)))))
 
 
@@ -47,6 +50,8 @@
                      (operation . "bark")
                      (data))))
       (should-error (kubernetes-state-handle-client-line (prin1-to-string message))))))
+
+;; Pod messages.
 
 (ert-deftest kubernetes-state-test--handle-client-line--handles-empty-pod-upserts ()
   (kubernetes-state--with-empty-state
@@ -112,6 +117,76 @@
         (should pods)
         (should (hash-table-p pods))
         (should (equal 2 (hash-table-count pods)))))))
+
+;; Deployment messages.
+
+(ert-deftest kubernetes-state-test--handle-client-line--handles-empty-deployment-upserts ()
+  (kubernetes-state--with-empty-state
+    (let* ((hook-run-p)
+           (kubernetes-state-should-redraw-functions (list (lambda (_) (setq hook-run-p t))))
+           (message '((type . "deployment")
+                      (operation . "upsert")
+                      (data))))
+      (kubernetes-state-handle-client-line (prin1-to-string message))
+      (should-not hook-run-p)
+      (should (hash-table-empty-p (kubernetes-state-deployments))))))
+
+(ert-deftest kubernetes-state-test--handle-client-line--handles-nonempty-deployment-upserts ()
+  (kubernetes-state--with-empty-state
+    (let* ((hook-run-p)
+           (kubernetes-state-should-redraw-functions (list (lambda (_) (setq hook-run-p t))))
+           (message '((type . "deployment")
+                      (operation . "upsert")
+                      (data . [((metadata (name . "A")))
+                               ((metadata (name . "B")))
+                               ((metadata (name . "C")))]))))
+
+      (kubernetes-state-handle-client-line (prin1-to-string message))
+      (should hook-run-p)
+      (let ((deployments (kubernetes-state-deployments)))
+        (should deployments)
+        (should (hash-table-p deployments))
+        (should (equal 3 (hash-table-count deployments)))))))
+
+(ert-deftest kubernetes-state-test--handle-client-line--handles-empty-deployment-deletes ()
+  (kubernetes-state--with-empty-state
+    (let* ((hook-run-p)
+           (kubernetes-state-should-redraw-functions (list (lambda (_) (setq hook-run-p t))))
+           (message '((type . "deployment")
+                      (operation . "delete")
+                      (data))))
+
+      (kubernetes-state-handle-client-line (prin1-to-string message))
+      (should-not hook-run-p)
+      (should (hash-table-empty-p (kubernetes-state-deployments))))))
+
+(ert-deftest kubernetes-state-test--handle-client-line--handles-nonempty-deployment-deletes ()
+  (kubernetes-state--with-empty-state
+    ;; Populate the state with some deployments.
+    (let ((deployments-table (kubernetes-state-deployments)))
+      (puthash 'A t deployments-table)
+      (puthash 'B t deployments-table)
+      (puthash 'C t deployments-table)
+      (puthash 'D t deployments-table))
+
+    ;; Test that individual deployments are deleted from the state.
+    (let* ((hook-run-p)
+           (kubernetes-state-should-redraw-functions (list (lambda (_) (setq hook-run-p t))))
+           (message '((type . "deployment")
+                      (operation . "delete")
+                      (data . [((metadata (name . "B")))
+                               ((metadata (name . "C")))
+                               ((metadata (name . "Z")))]))))
+
+      (kubernetes-state-handle-client-line (prin1-to-string message))
+      (should hook-run-p)
+      (let ((deployments (kubernetes-state-deployments)))
+        (should deployments)
+        (should (hash-table-p deployments))
+        (should (equal 2 (hash-table-count deployments)))))))
+
+
+;; Error messages.
 
 (ert-deftest kubernetes-state-test--handle-client-line--handles-error-messages ()
   (kubernetes-state--with-empty-state
@@ -192,6 +267,15 @@
 
       (should (equal pods result)))))
 
+(ert-deftest kubernetes-state-test--deployments-accessors ()
+  (kubernetes-state--with-empty-state
+    (let ((deployments 'deployments)
+          (result))
+      (kubernetes-state-set-deployments deployments)
+      (setq result (kubernetes-state-deployments))
+
+      (should (equal deployments result)))))
+
 (ert-deftest kubernetes-state-test--data-received-p-accessors ()
   (kubernetes-state--with-empty-state
     (should-not (kubernetes-state-data-received-p))
@@ -230,17 +314,23 @@
     (kubernetes-state-set-namespace "ns")
     (kubernetes-state-set-data-received-p t)
 
-    ;; Populate the state with some pods.
+    ;; Populate the state with some resources.
     (let ((pods-table (kubernetes-state-pods)))
       (puthash 'A t pods-table)
       (puthash 'B t pods-table)
       (puthash 'C t pods-table)
       (puthash 'D t pods-table))
+    (let ((deployments-table (kubernetes-state-deployments)))
+      (puthash 'A t deployments-table)
+      (puthash 'B t deployments-table)
+      (puthash 'C t deployments-table)
+      (puthash 'D t deployments-table))
 
     (kubernetes-state-reset-resources)
     (should (equal (kubernetes-state-namespace) "ns"))
     (should-not (kubernetes-state-data-received-p))
-    (should (hash-table-empty-p (kubernetes-state-pods)))))
+    (should (hash-table-empty-p (kubernetes-state-pods)))
+    (should (hash-table-empty-p (kubernetes-state-deployments)))))
 
 
 (provide 'kubernetes-state-test)
