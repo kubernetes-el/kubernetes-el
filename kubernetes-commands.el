@@ -126,7 +126,7 @@
 (defun kubernetes-copy-thing-at-point (point)
   "Perform a context-sensitive copy action.
 
-Inspecs the `kubernetes-copy' text property at POINT to determine
+Inspects the `kubernetes-copy' text property at POINT to determine
 what to copy."
   (interactive "d")
   (when-let (s (get-text-property point 'kubernetes-copy))
