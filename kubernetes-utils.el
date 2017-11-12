@@ -59,9 +59,11 @@ Update the pod state if it not set yet."
     result))
 
 (defun kubernetes-utils-maybe-pod-name-at-point ()
-  (pcase (get-text-property (point) 'kubernetes-nav)
-    (`(:pod-name ,value)
-     value)))
+  (let ((nav-buffer (get-buffer kubernetes-overview-buffer-name)))
+    (with-current-buffer nav-buffer
+      (pcase (get-text-property (point) 'kubernetes-nav nav-buffer)
+        (`(:pod-name ,value)
+         value)))))
 
 (defun kubernetes-utils-ellipsize (s threshold)
   (if (> (length s) threshold)
