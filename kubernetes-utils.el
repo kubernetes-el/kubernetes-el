@@ -42,6 +42,10 @@ Update the pod state if it not set yet."
                                "\\1:\\2"
                                tz))))
 
+(defun kubernetes-utils-read-container-name (&rest _)
+  "Read a container name to pass to kubectl."
+  (read-string "Container name: "))
+
 (defun kubernetes-utils-read-time-value (&rest _)
   "Read a relative time value in the style accepted by kubectl.  E.g. 20s, 3h, 5m."
   (let (result)
