@@ -32,6 +32,7 @@
   :options
   '("Options for customizing logging behaviour"
     (?t "Number of lines to display" "--tail=" read-number)
+    (?c "Container to read logs from" "--container=" kubernetes-utils-read-container-name)
     "Time controls"
     (?s "Since relative time" "--since=" kubernetes-utils-read-time-value)
     (?d "Since absolute datetime" "--since-time=" kubernetes-utils-read-iso-datetime))

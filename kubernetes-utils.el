@@ -42,6 +42,20 @@ Update the pod state if it not set yet."
                                "\\1:\\2"
                                tz))))
 
+(defun kubernetes-get-pod-container-names (pod)
+  "Return the names of all containers available in the specified pod."
+  (-let [(&alist 'spec (&alist 'containers containers)) pod]
+    (-map (-lambda ((&alist 'name name)) name) containers)))
+
+(defun kubernetes-utils-read-container-name (&rest _)
+  "Read a container name from the pod at POINT or a user-supplied pod."
+  (letrec ((state (kubernetes-state))
+           (pod-name (or (kubernetes-utils-maybe-pod-name-at-point)
+                         (kubernetes-utils-read-pod-name state)))
+           (pod (kubernetes-state-lookup-pod pod-name state))
+           (pod-containers (kubernetes-get-pod-container-names pod)))
+    (completing-read "Container name: " pod-containers nil t)))
+
 (defun kubernetes-utils-read-time-value (&rest _)
   "Read a relative time value in the style accepted by kubectl.  E.g. 20s, 3h, 5m."
   (let (result)
@@ -55,9 +69,11 @@ Update the pod state if it not set yet."
     result))
 
 (defun kubernetes-utils-maybe-pod-name-at-point ()
-  (pcase (get-text-property (point) 'kubernetes-nav)
-    (`(:pod-name ,value)
-     value)))
+  (let ((nav-buffer (get-buffer kubernetes-overview-buffer-name)))
+    (with-current-buffer nav-buffer
+      (pcase (get-text-property (point) 'kubernetes-nav nav-buffer)
+        (`(:pod-name ,value)
+         value)))))
 
 (defun kubernetes-utils-ellipsize (s threshold)
   (if (> (length s) threshold)
