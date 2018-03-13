@@ -259,7 +259,7 @@ Should be invoked via command `kubernetes-logs-popup'."
                          (if (string-empty-p cmd) kubernetes-default-exec-command cmd))))
                  (list pod-name (kubernetes-exec-arguments) command state)))
 
-  (let* ((command-args (append (list "exec")
+  (let* ((command-args (append (list "exec") (kubernetes-kubectl--flags-from-state (kubernetes-state))
                                args
                                (when-let (ns (kubernetes-state-current-namespace state))
                                  (list (format "--namespace=%s" ns)))
