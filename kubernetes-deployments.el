@@ -13,7 +13,7 @@
 (require 'kubernetes-yaml)
 
 
-;; Components
+;;;; Components
 
 (defconst kubernetes-deployments--column-heading
   (propertize (format "%-45s %10s %10s %10s %6s" "Name" "Replicas" "UpToDate" "Available" "Age")
@@ -159,7 +159,7 @@
     (kubernetes-state-trigger-redraw)))
 
 
-;; Displaying deployments
+;;;; Displaying deployments
 
 (defun kubernetes-deployments--read-name (state)
   "Read a deployment name from the user.
@@ -178,7 +178,7 @@ Update the deployment state if it not set yet."
           (names (-map #'kubernetes-state-resource-name deployments)))
     (completing-read "Deployment: " names nil t)))
 
-;;;###autoload
+;;###autoload
 (defun kubernetes-display-deployment (deployment-name state)
   "Display information for a deployment in a new window.
 
