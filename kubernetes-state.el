@@ -159,6 +159,30 @@
                (seq-intersection (alist-get 'services-pending-deletion next)
                                  service-names))))
 
+      ;; Ingress
+      (:mark-ingress
+       (let ((cur (alist-get 'marked-ingress state)))
+         (setf (alist-get 'marked-ingress next)
+               (delete-dups (cons args cur)))))
+      (:unmark-ingress
+       (setf (alist-get 'marked-ingress next)
+             (remove args (alist-get 'marked-ingress next))))
+      (:delete-ingress
+       (let ((updated (cons args (alist-get 'ingress-pending-deletion state))))
+         (setf (alist-get 'ingress-pending-deletion next)
+               (delete-dups updated))))
+      (:update-ingress
+       (setf (alist-get 'ingress next) args)
+
+       ;; Prune deleted ingress from state.
+       (-let* (((&alist 'items ingress) args)
+               (ingress-names (seq-map #'kubernetes-state-resource-name (append ingress nil))))
+         (setf (alist-get 'marked-ingress next)
+               (seq-intersection (alist-get 'marked-ingress next)
+                                 ingress-names))
+         (setf (alist-get 'ingress-pending-deletion next)
+               (seq-intersection (alist-get 'ingress-pending-deletion next)
+                                 ingress-names))))
       ;; Jobs
 
       (:mark-job
@@ -264,6 +288,19 @@
   (kubernetes-state-update :delete-configmap configmap-name)
   (kubernetes-state-update :unmark-configmap configmap-name))
 
+(defun kubernetes-state-mark-ingress (ingress-name)
+  (cl-assert (stringp ingress-name))
+  (kubernetes-state-update :mark-ingress ingress-name))
+
+(defun kubernetes-state-unmark-ingress (ingress-name)
+  (cl-assert (stringp ingress-name))
+  (kubernetes-state-update :unmark-ingress ingress-name))
+
+(defun kubernetes-state-delete-ingress (ingress-name)
+  (cl-assert (stringp ingress-name))
+  (kubernetes-state-update :delete-ingress ingress-name)
+  (kubernetes-state-update :unmark-ingress ingress-name))
+
 (defun kubernetes-state-mark-secret (secret-name)
   (cl-assert (stringp secret-name))
   (kubernetes-state-update :mark-secret secret-name))
@@ -344,6 +381,9 @@
 (kubernetes-state--define-accessors pods (pods)
   (cl-assert (listp pods)))
 
+(kubernetes-state--define-accessors ingress (ingress)
+  (cl-assert (listp ingress)))
+
 (kubernetes-state--define-accessors jobs (jobs)
   (cl-assert (listp jobs)))
 
@@ -380,6 +420,7 @@
                                   configmaps
                                   overview
                                   deployments
+                                  ingress
                                   jobs
                                   pods
                                   secrets
@@ -398,6 +439,9 @@
 
 (kubernetes-state--define-getter marked-configmaps)
 (kubernetes-state--define-getter configmaps-pending-deletion)
+
+(kubernetes-state--define-getter marked-ingress)
+(kubernetes-state--define-getter ingress-pending-deletion)
 
 (kubernetes-state--define-getter marked-jobs)
 (kubernetes-state--define-getter jobs-pending-deletion)
@@ -461,6 +505,7 @@ If lookup fails, return nil."
 
 (kubernetes-state-define-named-lookup configmap configmaps)
 (kubernetes-state-define-named-lookup deployment deployments)
+(kubernetes-state-define-named-lookup ingress ingress)
 (kubernetes-state-define-named-lookup job jobs)
 (kubernetes-state-define-named-lookup namespace namespaces)
 (kubernetes-state-define-named-lookup pod pods)
