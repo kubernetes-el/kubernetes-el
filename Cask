@@ -4,6 +4,7 @@
 (development
  (depends-on "undercover")
  (depends-on "evil")
+ (depends-on "magit")
  (depends-on "noflet")
  (depends-on "ert-runner")
  (depends-on "f"))
