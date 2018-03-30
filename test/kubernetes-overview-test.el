@@ -8,6 +8,7 @@
 
 (defconst kubernetes-overview-test--sample-configmaps-response (test-helper-json-resource "get-configmaps-response.json"))
 (defconst kubernetes-overview-test--sample-deployments-response (test-helper-json-resource "get-deployments-response.json"))
+(defconst kubernetes-overview-test--sample-statefulsets-response (test-helper-json-resource "get-statefulsets-response.json"))
 (defconst kubernetes-overview-test--sample-pods-response (test-helper-json-resource "get-pods-response.json"))
 (defconst kubernetes-overview-test--sample-secrets-response (test-helper-json-resource "get-secrets-response.json"))
 
@@ -31,6 +32,10 @@
 ;; Aggregated overview component
 
 (defconst kubernetes-overview-test--expected-overview--empty-state (string-trim "
+Statefulsets
+  Name                                            Replicas                          Age
+  Fetching...
+
 Deployments
   Name                                            Replicas   UpToDate  Available    Age
   Fetching...
@@ -43,6 +48,10 @@ Deployments
 
 
 (defconst kubernetes-overview-test--expected-overview--only-deployments-set (string-trim "
+Statefulsets
+  Name                                            Replicas                          Age
+  Fetching...
+
 Deployments (2)
   Name                                            Replicas   UpToDate  Available    Age
   deployment-1                                         1/1          1          1    64d
@@ -82,6 +91,10 @@ Deployments (2)
 
 
 (defconst kubernetes-overview-test--expected-overview--populated-state (string-trim "
+Statefulsets
+  Name                                            Replicas                          Age
+  Fetching...
+
 Deployments (2)
   Name                                            Replicas   UpToDate  Available    Age
   deployment-1                                         1/1          1          1    64d
