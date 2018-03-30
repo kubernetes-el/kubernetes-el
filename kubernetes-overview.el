@@ -9,6 +9,7 @@
 (require 'kubernetes-configmaps)
 (require 'kubernetes-contexts)
 (require 'kubernetes-deployments)
+(require 'kubernetes-statefulsets)
 (require 'kubernetes-errors)
 (require 'kubernetes-jobs)
 (require 'kubernetes-loading-container)
@@ -53,6 +54,15 @@
                 configmaps)))
 
 (defun kubernetes-overview--configmaps-for-deployment (state pods)
+  (->> pods
+       (seq-mapcat (lambda (pod) (kubernetes-overview--referenced-configmaps state pod)))
+       -non-nil
+       -uniq
+       (seq-sort (lambda (s1 s2)
+                   (string< (kubernetes-state-resource-name s1)
+                            (kubernetes-state-resource-name s2))))))
+
+(defun kubernetes-overview--configmaps-for-statefulset (state pods)
   (->> pods
        (seq-mapcat (lambda (pod) (kubernetes-overview--referenced-configmaps state pod)))
        -non-nil
@@ -120,6 +130,13 @@
                                    (kubernetes-overview--referenced-secrets secrets pod))
                                  pods)))))
 
+(defun kubernetes-overview--secrets-for-statefulset (state pods)
+  (-let* (((&alist 'items secrets) (kubernetes-state-secrets state))
+          (secrets (append secrets nil)))
+    (-non-nil (-uniq (seq-mapcat (lambda (pod)
+                                   (kubernetes-overview--referenced-secrets secrets pod))
+                                 pods)))))
+
 (kubernetes-ast-define-component aggregated-secret-line (state secret)
   (-let* ((pending-deletion (kubernetes-state-secrets-pending-deletion state))
           (marked-secrets (kubernetes-state-marked-secrets state))
@@ -146,6 +163,18 @@
 
 (defun kubernetes-overview--pods-for-deployment (state deployment)
   (-let* (((&alist 'spec (&alist 'selector (&alist 'matchLabels (&alist 'name selector-name)))) deployment)
+          ((&alist 'items pods) (kubernetes-state-pods state))
+          (pods (append pods nil)))
+    (nreverse (seq-reduce
+               (lambda (acc pod)
+                 (if (equal selector-name (kubernetes-state-resource-label pod))
+                     (cons pod acc)
+                   acc))
+               pods
+               nil))))
+
+(defun kubernetes-overview--pods-for-statefulset (state statefulset)
+  (-let* (((&alist 'spec (&alist 'selector (&alist 'matchLabels (&alist 'name selector-name)))) statefulset)
           ((&alist 'items pods) (kubernetes-state-pods state))
           (pods (append pods nil)))
     (nreverse (seq-reduce
@@ -187,7 +216,6 @@
 
               (padding))))
 
-
 ;; Deployment
 
 (kubernetes-ast-define-component aggregated-deployment-detail (deployment)
@@ -211,6 +239,22 @@
          `(key-value 12 "Strategy" ,strategy-type))
       (key-value 12 "Created" ,time))))
 
+;; Statefulset
+
+(kubernetes-ast-define-component aggregated-statefulset-detail (statefulset)
+  (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
+                 'spec (&alist
+                        'paused paused
+                        'strategy (&alist
+                                   'type strategy-type
+                                   'rollingUpdate rolling-update)))
+         statefulset]
+    `(,(when paused `(line (propertize (face warning) "Statefulset Paused")))
+      (section (namespace nil)
+               (nav-prop (:namespace-name ,ns)
+                         (key-value 12 "Namespace" ,(propertize ns 'face 'kubernetes-namespace))))
+      (key-value 12 "Created" ,time))))
+
 (kubernetes-ast-define-component aggregated-deployment (state deployment)
   (let* ((pods (kubernetes-overview--pods-for-deployment state deployment))
          (configmaps (kubernetes-overview--configmaps-for-deployment state pods))
@@ -228,17 +272,47 @@
                            `(aggregated-secrets ,state ,secrets)))))))
 
 
+(kubernetes-ast-define-component aggregated-statefulset (state statefulset)
+  (let* ((pods (kubernetes-overview--pods-for-statefulset state statefulset))
+         (configmaps (kubernetes-overview--configmaps-for-statefulset state pods))
+         (secrets (kubernetes-overview--secrets-for-statefulset state pods)))
+    `(section (,(intern (kubernetes-state-resource-name statefulset)) t)
+              (heading (statefulset-line ,state ,statefulset))
+              (section (details nil)
+                       (indent
+                        (aggregated-statefulset-detail ,statefulset)
+                        (padding)
+                        (aggregated-pods ,state ,statefulset ,pods)
+                        ,(when configmaps
+                           `(aggregated-configmaps ,state ,configmaps))
+                        ,(when secrets
+                           `(aggregated-secrets ,state ,secrets)))))))
+
+
 ;; Main Components
 
 (kubernetes-ast-define-component aggregated-view (state &optional hidden)
   (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state)]
-    `(section (overview-container ,hidden)
+    (-let [(state-set-p &as &alist 'items statefulsets) (kubernetes-state-statefulsets state)]
+      
+    `(section (ubercontainer, nil)
+    (section (overview-container ,hidden)
+              (header-with-count "Statefulsets" ,statefulsets)
+              (indent
+               (columnar-loading-container ,statefulsets
+                                           ,kubernetes-statefulsets--column-heading
+                                           ,@(--map `(aggregated-statefulset ,state ,it) statefulsets)))
+              (padding))
+    (section (overview-container ,hidden)
               (header-with-count "Deployments" ,deployments)
               (indent
                (columnar-loading-container ,deployments
                                            ,kubernetes-deployments--column-heading
                                            ,@(--map `(aggregated-deployment ,state ,it) deployments)))
-              (padding))))
+              (padding))
+    )
+    )
+))
 
 (defun kubernetes-overview-render (state)
   (let ((sections (kubernetes-state-overview-sections state)))
@@ -250,6 +324,8 @@
                  `(configmaps-list ,state))
               ,(when (member 'deployments sections)
                  `(deployments-list ,state))
+              ,(when (member 'statefulsets sections)
+                 `(statefulsets-list ,state))
               ,(when (member 'jobs sections)
                  `(jobs-list ,state))
               ,(when (member 'overview sections)
@@ -287,6 +363,7 @@
   (kubernetes-contexts-refresh verbose)
   (kubernetes-jobs-refresh verbose)
   (kubernetes-deployments-refresh verbose)
+  (kubernetes-statefulsets-refresh verbose)
   (kubernetes-namespaces-refresh verbose)
   (kubernetes-pods-refresh verbose)
   (kubernetes-secrets-refresh verbose)
