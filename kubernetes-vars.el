@@ -14,6 +14,13 @@
   :group 'kubernetes
   :type 'string)
 
+(defcustom kubernetes-namespaces-resource "namespaces"
+  "The resource type to use for switching between namespaces.
+
+Default value is 'namespaces' but other kubernetes flavors/distros have variations (e.g. Openshift is using 'projects')."
+  :group 'kubernetes
+  :type 'string)
+
 (defconst kubernetes-overview-views-alist
   '((overview . (context overview))
     (configmaps . (context configmaps))
