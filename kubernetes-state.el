@@ -50,6 +50,7 @@
       (:unmark-all
        (setf (alist-get 'marked-configmaps next nil t) nil)
        (setf (alist-get 'marked-deployments next nil t) nil)
+       (setf (alist-get 'marked-deploymentconfigs next nil t) nil)
        (setf (alist-get 'marked-jobs next nil t) nil)
        (setf (alist-get 'marked-pods next nil t) nil)
        (setf (alist-get 'marked-secrets next nil t) nil)
@@ -210,6 +211,32 @@
                (seq-intersection (alist-get 'deployments-pending-deletion next)
                                  deployment-names))))
 
+      ;; Deploymentconfigs
+
+      (:mark-deploymentconfig
+       (let ((cur (alist-get 'marked-deploymentconfigs state)))
+         (setf (alist-get 'marked-deploymentconfigs next)
+               (delete-dups (cons args cur)))))
+      (:unmark-deploymentconfig
+       (setf (alist-get 'marked-deploymentconfigs next)
+             (remove args (alist-get 'marked-deploymentconfigs next))))
+      (:delete-deploymentconfig
+       (let ((updated (cons args (alist-get 'deploymentconfigs-pending-deletion state))))
+         (setf (alist-get 'deploymentconfigs-pending-deletion next)
+               (delete-dups updated))))
+      (:update-deploymentconfigs
+       (setf (alist-get 'deploymentconfigs next) args)
+
+       ;; Prune deleted deploymentconfigs from state.
+       (-let* (((&alist 'items deploymentconfigs) args)
+               (deploymentconfig-names (seq-map #'kubernetes-state-resource-name (append deploymentconfigs nil))))
+         (setf (alist-get 'marked-deploymentconfigs next)
+               (seq-intersection (alist-get 'marked-deploymentconfigs next)
+                                 deploymentconfig-names))
+         (setf (alist-get 'deploymentconfigs-pending-deletion next)
+               (seq-intersection (alist-get 'deploymentconfigs-pending-deletion next)
+                                 deploymentconfig-names))))
+
       (_
        (error "Unknown action: %s" action)))
 
@@ -303,6 +330,19 @@
   (kubernetes-state-update :delete-deployment deployment-name)
   (kubernetes-state-update :unmark-deployment deployment-name))
 
+(defun kubernetes-state-mark-deploymentconfig (deploymentconfig-name)
+  (cl-assert (stringp deploymentconfig-name))
+  (kubernetes-state-update :mark-deploymentconfig deploymentconfig-name))
+
+(defun kubernetes-state-unmark-deploymentconfig (deploymentconfig-name)
+  (cl-assert (stringp deploymentconfig-name))
+  (kubernetes-state-update :unmark-deploymentconfig deploymentconfig-name))
+
+(defun kubernetes-state-delete-deploymentconfig (deploymentconfig-name)
+  (cl-assert (stringp deploymentconfig-name))
+  (kubernetes-state-update :delete-deploymentconfig deploymentconfig-name)
+  (kubernetes-state-update :unmark-deploymentconfig deploymentconfig-name))
+
 (defun kubernetes-state-unmark-all ()
   (kubernetes-state-update :unmark-all))
 
@@ -359,6 +399,9 @@
 (kubernetes-state--define-accessors deployments (deployments)
   (cl-assert (listp deployments)))
 
+(kubernetes-state--define-accessors deploymentconfigs (deploymentconfigs)
+  (cl-assert (listp deploymentconfigs)))
+
 (kubernetes-state--define-accessors namespaces (namespaces)
   (cl-assert (listp namespaces)))
 
@@ -380,6 +423,7 @@
                                   configmaps
                                   overview
                                   deployments
+                                  deploymentconfigs
                                   jobs
                                   pods
                                   secrets
@@ -414,6 +458,9 @@
 (kubernetes-state--define-getter marked-deployments)
 (kubernetes-state--define-getter deployments-pending-deletion)
 
+(kubernetes-state--define-getter marked-deploymentconfigs)
+(kubernetes-state--define-getter deploymentconfigs-pending-deletion)
+
 (kubernetes-state--define-getter last-error)
 
 (defun kubernetes-state-update-last-error (message command time)
@@ -434,6 +481,12 @@
 
 
 ;; Convenience functions.
+(defun kubernetes-state-resource-label-value (resource key)
+  "Get the label of RESOURCE from its metadata. 
+ RESOURCE is the parsed representation an API resource, such a
+ pod, secret, configmap, etc."
+   (-let [(&alist 'metadata (&alist 'labels (&alist key value))) resource]
+     value))
 
 (defmacro kubernetes-state-define-named-lookup (resource state-key)
   "Define `kubernetes-state-lookup-RESOURCE' for looking up an item by name.
@@ -461,6 +514,7 @@ If lookup fails, return nil."
 
 (kubernetes-state-define-named-lookup configmap configmaps)
 (kubernetes-state-define-named-lookup deployment deployments)
+(kubernetes-state-define-named-lookup deploymentconfig deploymentconfigs)
 (kubernetes-state-define-named-lookup job jobs)
 (kubernetes-state-define-named-lookup namespace namespaces)
 (kubernetes-state-define-named-lookup pod pods)

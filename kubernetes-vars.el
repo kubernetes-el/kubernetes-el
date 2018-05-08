@@ -16,6 +16,7 @@
   '((overview . (context overview))
     (configmaps . (context configmaps))
     (deployments . (context deployments))
+    (deploymentconfigs . (context deploymentconfigs))
     (jobs . (context jobs))
     (pods . (context pods))
     (secrets . (context secrets))
@@ -37,6 +38,7 @@ types that should be displayed."
                 :value-type (set (const context)
                                  (const configmaps)
                                  (const deployments)
+                                 (const deploymentconfigs)
                                  (const overview)
                                  (const pods)
                                  (const secrets)
@@ -156,6 +158,8 @@ form \"--flag=value\" or \"-flag\"."
 (defconst kubernetes-display-config-buffer-name "*kubernetes config*")
 
 (defconst kubernetes-display-deployment-buffer-name "*kubernetes deployment*")
+
+(defconst kubernetes-display-deploymentconfig-buffer-name "*kubernetes deploymentconfig*")
 
 (defconst kubernetes-display-job-buffer-name "*kubernetes job*")
 

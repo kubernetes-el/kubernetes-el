@@ -9,6 +9,7 @@
 (require 'kubernetes-configmaps)
 (require 'kubernetes-contexts)
 (require 'kubernetes-deployments)
+(require 'kubernetes-deploymentconfigs)
 (require 'kubernetes-errors)
 (require 'kubernetes-jobs)
 (require 'kubernetes-loading-container)
@@ -53,6 +54,15 @@
                 configmaps)))
 
 (defun kubernetes-overview--configmaps-for-deployment (state pods)
+  (->> pods
+       (seq-mapcat (lambda (pod) (kubernetes-overview--referenced-configmaps state pod)))
+       -non-nil
+       -uniq
+       (seq-sort (lambda (s1 s2)
+                   (string< (kubernetes-state-resource-name s1)
+                            (kubernetes-state-resource-name s2))))))
+
+(defun kubernetes-overview--configmaps-for-deploymentconfig (state pods)
   (->> pods
        (seq-mapcat (lambda (pod) (kubernetes-overview--referenced-configmaps state pod)))
        -non-nil
@@ -120,6 +130,13 @@
                                    (kubernetes-overview--referenced-secrets secrets pod))
                                  pods)))))
 
+(defun kubernetes-overview--secrets-for-deploymentconfig (state pods)
+  (-let* (((&alist 'items secrets) (kubernetes-state-secrets state))
+          (secrets (append secrets nil)))
+    (-non-nil (-uniq (seq-mapcat (lambda (pod)
+                                   (kubernetes-overview--referenced-secrets secrets pod))
+                                 pods)))))
+
 (kubernetes-ast-define-component aggregated-secret-line (state secret)
   (-let* ((pending-deletion (kubernetes-state-secrets-pending-deletion state))
           (marked-secrets (kubernetes-state-marked-secrets state))
@@ -156,6 +173,18 @@
                pods
                nil))))
 
+(defun kubernetes-overview--pods-for-deploymentconfig (state deploymentconfig)
+  (-let* ((name (kubernetes-state-resource-name deploymentconfig))
+          ((&alist 'items pods) (kubernetes-state-pods state))
+          (pods (append pods nil)))
+    (nreverse (seq-reduce
+               (lambda (acc pod)
+                 (if (equal name (kubernetes-state-resource-label-value pod 'deploymentconfig))
+                     (cons pod acc)
+                   acc))
+               pods
+               nil))))
+
 (kubernetes-ast-define-component aggregated-pods (state deployment pods)
   (-let [(&alist 'spec (&alist
                         'replicas replicas
@@ -187,7 +216,6 @@
 
               (padding))))
 
-
 ;; Deployment
 
 (kubernetes-ast-define-component aggregated-deployment-detail (deployment)
@@ -211,6 +239,22 @@
          `(key-value 12 "Strategy" ,strategy-type))
       (key-value 12 "Created" ,time))))
 
+;; Deploymentconfig
+
+(kubernetes-ast-define-component aggregated-deploymentconfig-detail (deploymentconfig)
+  (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
+                 'spec (&alist
+                        'paused paused
+                        'strategy (&alist
+                                   'type strategy-type
+                                   'rollingUpdate rolling-update)))
+         deploymentconfig]
+    `(,(when paused `(line (propertize (face warning) "Deploymentconfig Paused")))
+      (section (namespace nil)
+               (nav-prop (:namespace-name ,ns)
+                         (key-value 12 "Namespace" ,(propertize ns 'face 'kubernetes-namespace))))
+      (key-value 12 "Created" ,time))))
+
 (kubernetes-ast-define-component aggregated-deployment (state deployment)
   (let* ((pods (kubernetes-overview--pods-for-deployment state deployment))
          (configmaps (kubernetes-overview--configmaps-for-deployment state pods))
@@ -228,17 +272,47 @@
                            `(aggregated-secrets ,state ,secrets)))))))
 
 
+(kubernetes-ast-define-component aggregated-deploymentconfig (state deploymentconfig)
+  (let* ((pods (kubernetes-overview--pods-for-deploymentconfig state deploymentconfig))
+         (configmaps (kubernetes-overview--configmaps-for-deploymentconfig state pods))
+         (secrets (kubernetes-overview--secrets-for-deploymentconfig state pods)))
+    `(section (,(intern (kubernetes-state-resource-name deploymentconfig)) t)
+              (heading (deploymentconfig-line ,state ,deploymentconfig))
+              (section (details nil)
+                       (indent
+                        (aggregated-deploymentconfig-detail ,deploymentconfig)
+                        (padding)
+                        (aggregated-pods ,state ,deploymentconfig ,pods)
+                        ,(when configmaps
+                           `(aggregated-configmaps ,state ,configmaps))
+                        ,(when secrets
+                           `(aggregated-secrets ,state ,secrets)))))))
+
+
 ;; Main Components
 
 (kubernetes-ast-define-component aggregated-view (state &optional hidden)
   (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state)]
-    `(section (overview-container ,hidden)
+    (-let [(state-set-p &as &alist 'items deploymentconfigs) (kubernetes-state-deploymentconfigs state)]
+      
+    `(section (ubercontainer, nil)
+    (section (overview-container ,hidden)
+              (header-with-count "Deploymentconfigs" ,deploymentconfigs)
+              (indent
+               (columnar-loading-container ,deploymentconfigs
+                                           ,kubernetes-deploymentconfigs--column-heading
+                                           ,@(--map `(aggregated-deploymentconfig ,state ,it) deploymentconfigs)))
+              (padding))
+    (section (overview-container ,hidden)
               (header-with-count "Deployments" ,deployments)
               (indent
                (columnar-loading-container ,deployments
                                            ,kubernetes-deployments--column-heading
                                            ,@(--map `(aggregated-deployment ,state ,it) deployments)))
-              (padding))))
+              (padding))
+    )
+    )
+))
 
 (defun kubernetes-overview-render (state)
   (let ((sections (kubernetes-state-overview-sections state)))
@@ -250,6 +324,8 @@
                  `(configmaps-list ,state))
               ,(when (member 'deployments sections)
                  `(deployments-list ,state))
+              ,(when (member 'deploymentconfigs sections)
+                 `(deploymentconfigs-list ,state))
               ,(when (member 'jobs sections)
                  `(jobs-list ,state))
               ,(when (member 'overview sections)
@@ -287,6 +363,7 @@
   (kubernetes-contexts-refresh verbose)
   (kubernetes-jobs-refresh verbose)
   (kubernetes-deployments-refresh verbose)
+  (kubernetes-deploymentconfigs-refresh verbose)
   (kubernetes-namespaces-refresh verbose)
   (kubernetes-pods-refresh verbose)
   (kubernetes-secrets-refresh verbose)
