@@ -115,7 +115,7 @@ such in rendering ASTs." name)))
     (insert ?\n))
 
   ;; Update containing section to point to this heading.
-  (setf (magit-section-content magit-insert-section--current) (point-marker)))
+  (setf (oref magit-insert-section--current content) (point-marker)))
 
 (defsubst kubernetes-ast--finalize-delete-marks (start-pos)
   (let ((end-line (line-number-at-pos)))
