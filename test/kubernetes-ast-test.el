@@ -132,8 +132,8 @@
       (save-excursion (kubernetes-ast-eval ast))
       (should (equal "foo\n" (substring-no-properties (buffer-string))))
       (should (magit-current-section))
-      (should (equal 'test (magit-section-type (magit-current-section))))
-      (should (not (magit-section-hidden (magit-current-section)))))))
+      (should (equal 'test (oref (magit-current-section) type)))
+      (should (not (oref (magit-current-section) hidden))))))
 
 
 ;; indent
