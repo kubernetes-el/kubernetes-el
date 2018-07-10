@@ -63,17 +63,16 @@ Ingress (0)
 
 Ingress (1)
   Name                                          Hosts                                  Address        Age
-  kudos-ingress                                 myminikube.info                 192.168.99.100         1h
+  example-ingress                               myminikube.info                 192.168.99.100        29d
     Namespace:  default
-    Created:    2018-07-10T11:43:41Z
-
+    Created:    2018-06-10T11:43:41Z
 
 
 "))
 
 (ert-deftest kubernetes-ingress-test--sample-response ()
   (let ((state `((ingress . ,sample-get-ingress-response)
-                 (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
+                 (current-time . ,(date-to-time "2018-07-10 10:43Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-ingress-section state)))
