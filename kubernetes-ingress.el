@@ -61,7 +61,7 @@
 (kubernetes-ast-define-component ingress-list (state &optional hidden)
   (-let [(&alist 'items ingress) (kubernetes-state-ingress state)]
     `(section (ingress-container ,hidden)
-              (header-with-count "ingress" ,ingress)
+              (header-with-count "Ingress" ,ingress)
               (indent
                (columnar-loading-container ,ingress ,kubernetes-ingress--column-heading
                                            ,(--map `(ingress ,state ,it) ingress)))
