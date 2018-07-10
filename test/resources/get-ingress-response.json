@@ -1,0 +1,58 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "extensions/v1beta1",
+            "kind": "Ingress",
+            "metadata": {
+                "annotations": {
+                    "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"extensions/v1beta1\",\"kind\":\"Ingress\",\"metadata\":{\"annotations\":{\"nginx.ingress.kubernetes.io/rewrite-target\":\"/\"},\"name\":\"kudos-ingress\",\"namespace\":\"default\"},\"spec\":{\"backend\":{\"serviceName\":\"default-http-backend\",\"servicePort\":80},\"rules\":[{\"host\":\"myminikube.info\",\"http\":{\"paths\":[{\"backend\":{\"serviceName\":\"kudos-service\",\"servicePort\":80},\"path\":\"/\"}]}}]}}\n",
+                    "nginx.ingress.kubernetes.io/rewrite-target": "/"
+                },
+                "creationTimestamp": "2018-07-10T11:43:41Z",
+                "generation": 1,
+                "name": "example-ingress",
+                "namespace": "default",
+                "resourceVersion": "3694",
+                "selfLink": "/apis/extensions/v1beta1/namespaces/default/ingresses/example-ingress",
+                "uid": "7e1d16f2-8436-11e8-837a-08002733d1af"
+            },
+            "spec": {
+                "backend": {
+                    "serviceName": "default-http-backend",
+                    "servicePort": 80
+                },
+                "rules": [
+                    {
+                        "host": "myminikube.info",
+                        "http": {
+                            "paths": [
+                                {
+                                    "backend": {
+                                        "serviceName": "example-service",
+                                        "servicePort": 80
+                                    },
+                                    "path": "/"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "status": {
+                "loadBalancer": {
+                    "ingress": [
+                        {
+                            "ip": "192.168.99.100"
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": "",
+        "selfLink": ""
+    }
+}
