@@ -320,7 +320,7 @@ PROPS is an alist of functions to inject.  It should normally be passed
 STATE is the application state.
 
 ERROR-CB is called if an error occurred."
-  (kubernetes-kubectl props state (list "delete" "ingress" secret-name "-o" "name")
+  (kubernetes-kubectl props state (list "delete" "ingress" ingress-name "-o" "name")
                       (lambda (buf)
                         (with-current-buffer buf
                           (string-match (rx bol "ingress/" (group (+ nonl))) (buffer-string))
