@@ -108,7 +108,7 @@ will be mocked."
          (parsed-response (json-read-from-string sample-response))
          (cleanup-callback-called))
 
-    (with-successful-response-at '("get" "pods" "--show-all" "-o" "json") sample-response
+    (with-successful-response-at '("get" "pods" "-o" "json") sample-response
       (kubernetes-kubectl-get-pods
        kubernetes-kubectl-test-props
        nil
