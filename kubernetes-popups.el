@@ -67,9 +67,11 @@
   :switches
   '((?i "Pass stdin to container" "-i" t)
     (?t "Stdin is a TTY" "-t" t))
+  :options
+  '("Options for customizing exec behaviour"
+    (?c "Container to exec within" "--container=" kubernetes-utils-read-container-name))
   :actions
   '((?e "Exec" kubernetes-exec-into))
-
   :default-action 'kubernetes-exec-into)
 
 (magit-define-popup kubernetes-describe-popup
