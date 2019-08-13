@@ -145,14 +145,16 @@
 ;; Pods
 
 (defun kubernetes-overview--pods-for-deployment (state deployment)
-  (-let* (((&alist 'spec (&alist 'selector (&alist 'matchLabels (&alist 'name selector-name)))) deployment)
+  (-let* (((&alist 'spec (&alist 'selector (&alist 'matchLabels selectors))) deployment)
           ((&alist 'items pods) (kubernetes-state-pods state))
           (pods (append pods nil)))
     (nreverse (seq-reduce
                (lambda (acc pod)
-                 (if (equal selector-name (kubernetes-state-resource-label pod))
-                     (cons pod acc)
-                   acc))
+                 (-let [(&alist 'metadata (&alist 'labels labels)) pod]
+                   ;; The labels present on the pod must contain all selector labels
+                   (if (-all? (lambda (label) (-contains? labels label)) selectors)
+                       (cons pod acc)
+                     acc)))
                pods
                nil))))
 
