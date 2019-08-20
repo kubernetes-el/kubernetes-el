@@ -51,6 +51,12 @@ It should be one of the keys defined in
   :group 'kubernetes
   :type 'symbol)
 
+(defcustom kubernetes-default-overview-namespace nil
+  "The Kubernetes namespace to select on `kubernetes-overview'.
+Uses the default namespace if nil."
+  :group 'kubernetes
+  :type 'string)
+
 (defcustom kubernetes-commands-display-buffer-select t
   "Whether to select Kubernetes buffers automatically."
   :group 'kubernetes
