@@ -352,6 +352,9 @@ Type \\[kubernetes-refresh] to refresh the buffer.
   (interactive)
   (let ((dir default-directory)
         (buf (kubernetes-overview--initialize-buffer)))
+    (when kubernetes-default-overview-namespace
+      (kubernetes-set-namespace kubernetes-default-overview-namespace
+				(kubernetes-state)))
     (kubernetes-commands-display-buffer buf)
     (with-current-buffer buf
       (cd (kubernetes-utils-up-to-existing-dir dir)))
