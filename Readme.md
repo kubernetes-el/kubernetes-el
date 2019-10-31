@@ -5,7 +5,7 @@
 [![MELPA](http://melpa.milkbox.net/packages/kubernetes-badge.svg)](http://melpa.milkbox.net/#/kubernetes)
 [![License GPL 3](https://img.shields.io/github/license/chrisbarrett/kubernetes-el.svg)][COPYING]
 
-A magit-style interface to the Kubernetes command-line client.
+A magit-style interface to the Kubernetes command line client.
 
 ![Screenshot of Kubernetes Emacs client](assets/screenshot.png)
 
