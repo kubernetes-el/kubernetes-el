@@ -50,6 +50,7 @@
       (:unmark-all
        (setf (alist-get 'marked-configmaps next nil t) nil)
        (setf (alist-get 'marked-deployments next nil t) nil)
+       (setf (alist-get 'marked-statefulsets next nil t) nil)
        (setf (alist-get 'marked-jobs next nil t) nil)
        (setf (alist-get 'marked-pods next nil t) nil)
        (setf (alist-get 'marked-secrets next nil t) nil)
@@ -210,6 +211,32 @@
                (seq-intersection (alist-get 'deployments-pending-deletion next)
                                  deployment-names))))
 
+      ;; Statefulsets
+
+      (:mark-statefulset
+       (let ((cur (alist-get 'marked-statefulsets state)))
+         (setf (alist-get 'marked-statefulsets next)
+               (delete-dups (cons args cur)))))
+      (:unmark-statefulset
+       (setf (alist-get 'marked-statefulsets next)
+             (remove args (alist-get 'marked-statefulsets next))))
+      (:delete-statefulset
+       (let ((updated (cons args (alist-get 'statefulsets-pending-deletion state))))
+         (setf (alist-get 'statefulsets-pending-deletion next)
+               (delete-dups updated))))
+      (:update-statefulsets
+       (setf (alist-get 'statefulsets next) args)
+
+       ;; Prune deleted statefulsets from state.
+       (-let* (((&alist 'items statefulsets) args)
+               (statefulset-names (seq-map #'kubernetes-state-resource-name (append statefulsets nil))))
+         (setf (alist-get 'marked-statefulsets next)
+               (seq-intersection (alist-get 'marked-statefulsets next)
+                                 statefulset-names))
+         (setf (alist-get 'statefulsets-pending-deletion next)
+               (seq-intersection (alist-get 'statefulsets-pending-deletion next)
+                                 statefulset-names))))
+
       (_
        (error "Unknown action: %s" action)))
 
@@ -303,6 +330,19 @@
   (kubernetes-state-update :delete-deployment deployment-name)
   (kubernetes-state-update :unmark-deployment deployment-name))
 
+(defun kubernetes-state-mark-statefulset (statefulset-name)
+  (cl-assert (stringp statefulset-name))
+  (kubernetes-state-update :mark-statefulset statefulset-name))
+
+(defun kubernetes-state-unmark-statefulset (statefulset-name)
+  (cl-assert (stringp statefulset-name))
+  (kubernetes-state-update :unmark-statefulset statefulset-name))
+
+(defun kubernetes-state-delete-statefulset (statefulset-name)
+  (cl-assert (stringp statefulset-name))
+  (kubernetes-state-update :delete-statefulset statefulset-name)
+  (kubernetes-state-update :unmark-statefulset statefulset-name))
+
 (defun kubernetes-state-unmark-all ()
   (kubernetes-state-update :unmark-all))
 
@@ -359,6 +399,9 @@
 (kubernetes-state--define-accessors deployments (deployments)
   (cl-assert (listp deployments)))
 
+(kubernetes-state--define-accessors statefulsets (statefulsets)
+  (cl-assert (listp statefulsets)))
+
 (kubernetes-state--define-accessors namespaces (namespaces)
   (cl-assert (listp namespaces)))
 
@@ -380,6 +423,7 @@
                                   configmaps
                                   overview
                                   deployments
+                                  statefulsets
                                   jobs
                                   pods
                                   secrets
@@ -413,6 +457,9 @@
 
 (kubernetes-state--define-getter marked-deployments)
 (kubernetes-state--define-getter deployments-pending-deletion)
+
+(kubernetes-state--define-getter marked-statefulsets)
+(kubernetes-state--define-getter statefulsets-pending-deletion)
 
 (kubernetes-state--define-getter last-error)
 
@@ -461,6 +508,7 @@ If lookup fails, return nil."
 
 (kubernetes-state-define-named-lookup configmap configmaps)
 (kubernetes-state-define-named-lookup deployment deployments)
+(kubernetes-state-define-named-lookup statefulset statefulsets)
 (kubernetes-state-define-named-lookup job jobs)
 (kubernetes-state-define-named-lookup namespace namespaces)
 (kubernetes-state-define-named-lookup pod pods)
