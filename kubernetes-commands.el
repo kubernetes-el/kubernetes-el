@@ -11,9 +11,11 @@
 
 (autoload 'kubernetes-configmaps-delete-marked "kubernetes-configmaps")
 (autoload 'kubernetes-deployments-delete-marked "kubernetes-deployments")
+(autoload 'kubernetes-statefulsets-delete-marked "kubernetes-statefulsets")
 (autoload 'kubernetes-display-config "kubernetes-contexts")
 (autoload 'kubernetes-display-configmap "kubernetes-configmaps")
 (autoload 'kubernetes-display-deployment "kubernetes-deployments")
+(autoload 'kubernetes-display-statefulset "kubernetes-statefulsets")
 (autoload 'kubernetes-display-job "kubernetes-jobs")
 (autoload 'kubernetes-display-namespace "kubernetes-namespaces")
 (autoload 'kubernetes-display-pod "kubernetes-pods")
@@ -45,6 +47,8 @@
      (kubernetes-state-mark-service name))
     (`(:deployment-name ,name)
      (kubernetes-state-mark-deployment name))
+    (`(:statefulset-name ,name)
+     (kubernetes-state-mark-statefulset name))
     (_
      (user-error "Nothing here can be marked")))
 
@@ -68,7 +72,9 @@
     (`(:service-name ,name)
      (kubernetes-state-unmark-service name))
     (`(:deployment-name ,name)
-     (kubernetes-state-unmark-deployment name)))
+     (kubernetes-state-unmark-deployment name))
+    (`(:statefulset-name ,name)
+     (kubernetes-state-unmark-statefulset name)))
   (kubernetes-state-trigger-redraw)
   (goto-char point)
   (magit-section-forward))
@@ -106,6 +112,11 @@
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s deployment%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-deployments-delete-marked state)))
+
+    (let ((n (length (kubernetes-state-marked-statefulsets state))))
+      (when (and (not (zerop n))
+                 (y-or-n-p (format "Delete %s statefulsets%s? " n (if (equal 1 n) "" "s"))))
+        (kubernetes-statefulsets-delete-marked state)))
 
     (let ((n (length (kubernetes-state-marked-jobs state))))
       (when (and (not (zerop n))
@@ -173,6 +184,8 @@ the magit section at point."
      (kubernetes-display-service service-name state))
     (`(:deployment-name ,deployment-name)
      (kubernetes-display-deployment deployment-name state))
+    (`(:statefulset-name ,statefulset-name)
+     (kubernetes-display-statefulset statefulset-name state))
     (`(:job-name ,job-name)
      (kubernetes-display-job job-name state))
     (`(:secret-name ,secret-name)
