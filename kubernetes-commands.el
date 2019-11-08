@@ -361,11 +361,16 @@ CONTEXT is the name of a context as a string."
     (with-current-buffer buf
       (goto-char (point-min))))
 
-  (kubernetes-kubectl-config-use-context kubernetes-props
-                                         (kubernetes-state)
-                                         context
-                                         (lambda (_)
-                                           (kubernetes-state-trigger-redraw))))
+  (let ((state (kubernetes-state)))
+    (kubernetes-kubectl-config-use-context
+     kubernetes-props
+     state
+     context
+     (lambda (_)
+       (when kubernetes-default-overview-namespace
+         (kubernetes-set-namespace kubernetes-default-overview-namespace
+                                   state))
+       (kubernetes-state-trigger-redraw)))))
 
 (defun kubernetes--context-names (state)
   (-let* ((config (or (kubernetes-state-config state) (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-config-view)))
