@@ -4,7 +4,7 @@
 
 ;; Author: Chris Barrett <chris+emacs@walrus.cool>
 
-;; Version: 0.12.0
+;; Version: 0.13.0
 
 ;; Package-Requires: ((emacs "25.1") (dash "2.12.0") (magit "2.8.0") (magit-popup "2.13.0"))
 
