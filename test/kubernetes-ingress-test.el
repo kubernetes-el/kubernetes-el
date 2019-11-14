@@ -61,9 +61,21 @@ Ingress (0)
 (defconst kubernetes-ingress-test--sample-result
   (s-trim-left "
 
-Ingress (1)
+Ingress (4)
   Name                                          Hosts                                  Address        Age
+  clojurescript-ingress                         domain.example.io         3.10.144.54, 3.10.151.11, 3.9.177.209        -2y
+    Namespace:  default
+    Created:    2019-11-13T14:51:00Z
+
   example-ingress                               myminikube.info                 192.168.99.100        29d
+    Namespace:  default
+    Created:    2018-06-10T11:43:41Z
+
+                                                myminikube.info                 192.168.99.100        29d
+    Namespace:  default
+    Created:    2018-06-10T11:43:41Z
+
+  example-ingress                               myminikube.info           192.168.99.100, 1.1.1.1, 2.2.2.2        29d
     Namespace:  default
     Created:    2018-06-10T11:43:41Z
 

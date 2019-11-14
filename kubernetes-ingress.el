@@ -42,7 +42,13 @@
                          (format "%-25s " (--mapcat (alist-get 'host it) ingress-rules))
 
                          ;; Address
-                         (format "%20s " (--mapcat (alist-get 'ip it) ingress-lb-list))
+                          (format "%20s "
+                                  (mapconcat
+                                   'identity
+                                   (mapcar
+                                    (lambda (i) (format "%s" (alist-get 'ip   i )))
+                                    ingress-lb-list)
+                                   ", "))
 
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
