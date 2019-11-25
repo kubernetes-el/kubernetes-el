@@ -3,13 +3,17 @@ language: emacs-lisp
 matrix:
   fast_finish: true
   allow_failures:
-    - env: EVM_EMACS=emacs-git-snapshot-travis
-env:
-  - EVM_EMACS=emacs-26.3-travis
-  - EVM_EMACS=emacs-git-snapshot-travis
+    - env: EVM_EMACS=emacs-git-snapshot-travis-linux-trusty
+  include:
+    - os: linux
+      dist: trusty
+      env: EVM_EMACS=emacs-26.3-travis
+    - os: linux
+      dist: trusty
+      env: EVM_EMACS=emacs-git-snapshot-travis-linux-trusty
 
 before_install:
-  - git clone https://github.com/rejeep/evm.git $HOME/.evm
+  - curl -fsSkL https://raw.github.com/rejeep/evm/master/go | bash
   - export PATH=$HOME/.evm/bin:$HOME/.cask/bin:$PATH
   - evm config path /tmp
   - evm install $EVM_EMACS --use --skip
