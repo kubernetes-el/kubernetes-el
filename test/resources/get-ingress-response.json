@@ -1,0 +1,206 @@
+{
+    "apiVersion": "v1",
+    "items": [
+{
+            "apiVersion": "extensions/v1beta1",
+            "kind": "Ingress",
+            "metadata": {
+                "annotations": {
+                    "kubernetes.io/ingress.class": "nginx",
+                    "kubernetes.io/tls-acme": "true"
+                },
+                "creationTimestamp": "2019-11-13T14:51:00Z",
+                "generation": 3,
+                "labels": {
+                    "app": "nginx-ingress",
+                    "env": "production",
+                    "tier": "ingress"
+                },
+                "name": "clojurescript-ingress",
+                "namespace": "default",
+                "resourceVersion": "36968409",
+                "selfLink": "/apis/extensions/v1beta1/namespaces/merchants-website/ingresses/clojurescript-ingress",
+                "uid": "02426898-0625-11ea-b124-06117f66d962"
+            },
+            "spec": {
+                "rules": [
+                    {
+                        "host": "domain.example.io",
+                        "http": {
+                            "paths": [
+                                {
+                                    "backend": {
+                                        "serviceName": "nginx-service",
+                                        "servicePort": 80
+                                    },
+                                    "path": "/"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "tls": [
+                    {
+                        "hosts": [
+                            "domain.example.io"
+                        ],
+                        "secretName": "clojurescript-tls"
+                    }
+                ]
+            },
+            "status": {
+                "loadBalancer": {
+                    "ingress": [
+                        {
+                            "ip": "3.10.144.54"
+                        },
+                        {
+                            "ip": "3.10.151.11"
+                        },
+                        {
+                            "ip": "3.9.177.209"
+                        }
+                    ]
+
+                }
+            }
+        },
+        {
+            "apiVersion": "extensions/v1beta1",
+            "kind": "Ingress",
+            "metadata": {
+                "creationTimestamp": "2018-06-10T11:43:41Z",
+                "generation": 1,
+                "name": "example-ingress",
+                "namespace": "default",
+                "resourceVersion": "3694",
+                "selfLink": "/apis/extensions/v1beta1/namespaces/default/ingresses/example-ingress",
+                "uid": "7e1d16f2-8436-11e8-837a-08002733d1af"
+            },
+            "spec": {
+                "backend": {
+                    "serviceName": "default-http-backend",
+                    "servicePort": 80
+                },
+                "rules": [
+                    {
+                        "host": "myminikube.info",
+                        "http": {
+                            "paths": [
+                                {
+                                    "backend": {
+                                        "serviceName": "example-service",
+                                        "servicePort": 80
+                                    },
+                                    "path": "/"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "status": {
+                "loadBalancer": {
+                    "ingress": [
+                        {
+                            "ip": "192.168.99.100"
+                        }
+                    ]
+                }
+            }
+        },
+                {
+            "apiVersion": "extensions/v1beta1",
+            "kind": "Ingress",
+            "metadata": {
+                "creationTimestamp": "2018-06-10T11:43:41Z",
+                "generation": 1,
+                "name": "",
+                "namespace": "default",
+                "resourceVersion": "3694",
+                "selfLink": "/apis/extensions/v1beta1/namespaces/default/ingresses/example-ingress",
+                "uid": "7e1d16f2-8436-11e8-837a-08002733d1af"
+            },
+            "spec": {
+                "backend": {
+                    "serviceName": "default-http-backend",
+                    "servicePort": 80
+                },
+                "rules": [
+                    {
+                        "host": "myminikube.info",
+                        "http": {
+                            "paths": [
+                                {
+                                    "backend": {
+                                        "serviceName": "example-service",
+                                        "servicePort": 80
+                                    },
+                                    "path": "/"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "status": {
+                "loadBalancer": {
+                    "ingress": [
+                        {
+                            "ip": "192.168.99.100"
+                        }
+                    ]
+                }
+            }
+                },
+        {
+            "apiVersion": "extensions/v1beta1",
+            "kind": "Ingress",
+            "metadata": {
+                "creationTimestamp": "2018-06-10T11:43:41Z",
+                "generation": 1,
+                "name": "example-ingress",
+                "namespace": "default",
+                "resourceVersion": "3694",
+                "selfLink": "/apis/extensions/v1beta1/namespaces/default/ingresses/example-ingress",
+                "uid": "7e1d16f2-8436-11e8-837a-08002733d1af"
+            },
+            "spec": {
+                "backend": {
+                    "serviceName": "default-http-backend",
+                    "servicePort": 80
+                },
+                "rules": [
+                    {
+                        "host": "myminikube.info",
+                        "http": {
+                            "paths": [
+                                {
+                                    "backend": {
+                                        "serviceName": "example-service",
+                                        "servicePort": 80
+                                    },
+                                    "path": "/"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "status": {
+                "loadBalancer": {
+                    "ingress": [
+                        {
+                            "ip": "192.168.99.100, 1.1.1.1, 2.2.2.2"
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": "",
+        "selfLink": ""
+    }
+}
