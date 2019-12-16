@@ -64,7 +64,7 @@ Jobs (0)
 
 Jobs (2)
   Name                                          Successful    Age
-  example-job-1                                        1      10d
+  example-job-1                                          1    10d
     Namespace:  mm
     RestartPolicy: OnFailure
 
@@ -75,7 +75,7 @@ Jobs (2)
     Pod
       Fetching...
 
-  example-job-2                                        1      10d
+  example-job-2                                          1    10d
     Namespace:  mm
     RestartPolicy: OnFailure
 
@@ -106,7 +106,7 @@ Jobs (2)
 
 Jobs (2)
   Name                                          Successful    Age
-  example-job-1                                        1      10d
+  example-job-1                                          1    10d
     Namespace:  mm
     RestartPolicy: OnFailure
 
@@ -117,7 +117,7 @@ Jobs (2)
     Pod
       Running     example-svc-v3-1603416598-2f9lb
 
-  example-job-2                                        1      10d
+  example-job-2                                          1    10d
     Namespace:  mm
     RestartPolicy: OnFailure
 

@@ -261,6 +261,11 @@
                (seq-intersection (alist-get 'statefulsets-pending-deletion next)
                                  statefulset-names))))
 
+      ;; Nodes
+
+      (:update-nodes
+       (setf (alist-get 'nodes next) args))
+
       (_
        (error "Unknown action: %s" action)))
 
@@ -439,6 +444,9 @@
 (kubernetes-state--define-accessors deployments (deployments)
   (cl-assert (listp deployments)))
 
+(kubernetes-state--define-accessors nodes (nodes)
+  (cl-assert (listp nodes)))
+
 (kubernetes-state--define-accessors statefulsets (statefulsets)
   (cl-assert (listp statefulsets)))
 
@@ -468,7 +476,8 @@
                                   jobs
                                   pods
                                   secrets
-                                  services))
+                                  services
+                                  nodes))
                      resources)))
 
 (defun kubernetes-state-kubectl-flags (state)
@@ -559,6 +568,7 @@ If lookup fails, return nil."
 (kubernetes-state-define-named-lookup pod pods)
 (kubernetes-state-define-named-lookup secret secrets)
 (kubernetes-state-define-named-lookup service services)
+(kubernetes-state-define-named-lookup node nodes)
 
 (defun kubernetes-state-resource-name (resource)
   "Get the name of RESOURCE from its metadata.

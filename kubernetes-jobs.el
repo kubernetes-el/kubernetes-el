@@ -18,8 +18,7 @@
 ;; Components
 
 (defconst kubernetes-jobs--column-heading
-  (propertize (format "%-45s %10s %6s" "Name" "Successful" "Age")
-              'face 'magit-section-heading))
+  ["%-45s %10s %6s" "Name Successful Age"])
 
 (kubernetes-ast-define-component job-detail (state pod job)
   (-let* (((&alist 'metadata (&alist 'namespace ns
@@ -62,12 +61,12 @@
                    'status (&alist 'succeeded successful
                                    'completionTime completion-time))
            job)
-
           (successful (or successful 0))
-
+          ([fmt] kubernetes-jobs--column-heading)
+          (list-fmt (split-string fmt))
           (line (concat
                  ;; Name
-                 (let ((name-str (format "%-45s " (kubernetes-utils-ellipsize name 45))))
+                 (let ((name-str (format (pop list-fmt) (kubernetes-utils-ellipsize name 45))))
                    (cond
                     ((and completion-time (< 0 successful))
                      (propertize name-str 'face 'magit-dimmed))
@@ -75,11 +74,13 @@
                      (propertize name-str 'face 'warning))
                     (t
                      name-str)))
+                 " "
                  ;; Successful
-                 (propertize (format "%8s   " successful) 'face 'magit-dimmed)
+                 (propertize (format (pop list-fmt) successful) 'face 'magit-dimmed)
+                 " "
                  ;; Age
                  (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                   (propertize (format "%6s" (kubernetes-utils-time-diff-string start current-time))
+                   (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
                                'face 'magit-dimmed)))))
 
     `(nav-prop (:job-name ,name)
@@ -109,14 +110,18 @@
                         (job-detail ,state ,pod ,job))))))
 
 (kubernetes-ast-define-component jobs-list (state &optional hidden)
-  (-let [(state-set-p &as &alist 'items jobs) (kubernetes-state-jobs state)]
+  (-let (((state-set-p &as &alist 'items jobs) (kubernetes-state-jobs state))
+         ([fmt labels] kubernetes-jobs--column-heading))
     `(section (jobs-container ,hidden)
               (header-with-count "Jobs" ,jobs)
               (indent
-               (columnar-loading-container ,jobs ,kubernetes-jobs--column-heading
+               (columnar-loading-container ,jobs
+                                           ,(propertize
+                                             (apply #'format fmt (split-string labels))
+                                             'face
+                                             'magit-section-heading)
                                            ,(--map `(job ,state ,it) jobs)))
               (padding))))
-
 
 ;; Requests and state management
 

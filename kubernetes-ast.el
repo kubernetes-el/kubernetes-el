@@ -286,7 +286,6 @@ such in rendering ASTs." name)))
               (guard component)
               (guard (symbolp component)))
          (!cdr instruction-stack)
-
          (if-let (constructor (gethash component kubernetes-ast--components))
              (!cons (apply constructor args) instruction-stack)
            (error "Component not defined: %s" component)))
