@@ -29,7 +29,7 @@
   (-let* ((current-time (kubernetes-state-current-time state))
           (pending-deletion (kubernetes-state-ingress-pending-deletion state))
           (marked-ingress (kubernetes-state-marked-ingress state))
-          ((&alist 'data data 'metadata (&alist 'name name 'creationTimestamp created-time)
+          ((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
                    'spec (&alist 'rules ingress-rules)
                    'status (&alist 'loadBalancer (&alist 'ingress ingress-lb-list)))
            ingress)

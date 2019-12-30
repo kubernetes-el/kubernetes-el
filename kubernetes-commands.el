@@ -12,6 +12,7 @@
 (autoload 'kubernetes-configmaps-delete-marked "kubernetes-configmaps")
 (autoload 'kubernetes-deployments-delete-marked "kubernetes-deployments")
 (autoload 'kubernetes-statefulsets-delete-marked "kubernetes-statefulsets")
+(autoload 'kubernetes-ingress-delete-marked "kubernetes-ingress")
 (autoload 'kubernetes-display-config "kubernetes-contexts")
 (autoload 'kubernetes-display-configmap "kubernetes-configmaps")
 (autoload 'kubernetes-display-deployment "kubernetes-deployments")
