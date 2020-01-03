@@ -420,6 +420,35 @@ ERROR-CB is called if an error occurred."
                           (funcall cb (match-string 1 (buffer-string)))))
                       error-cb))
 
+(defun kubernetes-kubectl-await (command &rest callbacks)
+  "Apply COMMAND to list of CALLBACKS where first callback is assumed on-success.
+If no callbacks called within `kubernetes-kubectl-timeout-seconds', give up,
+possibly orphaning a process.
+Return result of first callback if success, nil otherwise."
+  (let* (result
+         complete
+         sentinelized
+         (sentinel (lambda (&rest _args) (setq complete t))))
+    (mapc (lambda (f)
+            (when (functionp f)
+              (add-function :before (var f) sentinel))
+            (push f sentinelized))
+          callbacks)
+    (setf sentinelized (nreverse sentinelized))
+    (when (functionp (car sentinelized))
+      (add-function :around (car sentinelized)
+                    (lambda (f &rest args)
+                      (setq result (apply f args)))))
+    (cl-loop initially do (apply command sentinelized)
+             with ms = 500
+             with count = (max 1 (truncate
+                                  (/ (* 1000 kubernetes-kubectl-timeout-seconds)
+                                     ms)))
+             repeat count
+             until complete
+             do (sleep-for 0 ms)
+             finally return result)))
+
 (defun kubernetes-kubectl-await-on-async (props state fn)
   "Turn an async function requiring a callback into a synchronous one.
 
