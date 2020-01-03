@@ -85,6 +85,18 @@ will be mocked."
   (let ((state '((kubectl-flags . ("--foo=bar" "-x")))))
     (should (equal '("--foo=bar" "-x") (kubernetes-kubectl--flags-from-state state)))))
 
+(ert-deftest kubernetes-kubectl-test--await-nohang ()
+  (should (let ((kubernetes-kubectl-timeout-seconds 3))
+            (kubernetes-kubectl-await
+             (lambda (&rest callbacks) (funcall (car callbacks)))
+             (lambda (&rest _args) t)))))
+
+(ert-deftest kubernetes-kubectl-test--await-hang ()
+  (should-not (let ((kubernetes-kubectl-timeout-seconds 3))
+                (kubernetes-kubectl-await
+                 #'ignore
+                 (lambda (&rest _args) t)))))
+
 (ert-deftest kubernetes-kubectl-test--running-kubectl-works ()
   (if (executable-find kubernetes-kubectl-executable)
       (let ((result-string (kubernetes-kubectl-await-on-async kubernetes-kubectl-test-props nil

@@ -7,6 +7,11 @@
   :group 'tools
   :prefix "kubernetes-")
 
+(defcustom kubernetes-kubectl-timeout-seconds 25
+  "How long to wait for kubectl before giving up."
+  :group 'kubernetes
+  :type 'integer)
+
 (defcustom kubernetes-kubectl-executable "kubectl"
   "The kubectl command used for Kubernetes commands."
   :group 'kubernetes
