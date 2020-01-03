@@ -447,15 +447,12 @@ will be mocked."
     (kubernetes-kubectl--default-error-handler props "")
     (should-not message-called-p)))
 
-(ert-deftest kubernetes-kubectl-test--error-handler-does-not-write-message-if-error-already-set ()
-  (let* ((message-called-p)
-         (props
-          (append `((message . ,(lambda (&rest _) (setq message-called-p t)))
-                    (get-last-error . (lambda (&rest _) t)))
-                  kubernetes-kubectl-test-props)))
-
-    (kubernetes-kubectl--default-error-handler props "")
-    (should-not message-called-p)))
+(ert-deftest kubernetes-kubectl-test--error-handler-write-message ()
+  (let* ((props kubernetes-props))
+    (setf (alist-get 'message props) 'format)
+    (kubernetes-props-update-last-error props "bar" "foo" (current-time))
+    (should (string= (kubernetes-kubectl--default-error-handler props "")
+                     "foo: bar"))))
 
 (ert-deftest kubernetes-kubectl-test--error-handler-does-not-write-message-if-process-was-sigkilled ()
   (let* ((message-called-p)

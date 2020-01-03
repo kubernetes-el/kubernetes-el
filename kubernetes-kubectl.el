@@ -14,10 +14,18 @@
 
 (defun kubernetes-kubectl--default-error-handler (props status)
   (unless (kubernetes-props-overview-buffer-selected-p props)
-    (-let* ((last-error-already-set (kubernetes-props-get-last-error props))
-            (process-killed-manually (string-match-p (rx bol (* space) "killed:" (* space) "9" (* space) eol) status)))
-      (unless (or process-killed-manually last-error-already-set)
-        (kubernetes-props-message props "kubernetes command failed.  See the overview buffer for details.")))))
+    (let* ((last-error (kubernetes-props-get-last-error props))
+           (last-error (concat
+                        (or (when (listp last-error)
+                              (alist-get 'command last-error))
+                            "undefined command")
+                        ": "
+                        (or (when (listp last-error)
+                              (alist-get 'message last-error))
+                            "undefined error")))
+           (process-killed-manually (string-match-p (rx bol (* space) "killed:" (* space) "9" (* space) eol) status)))
+      (unless process-killed-manually
+        (kubernetes-props-message props (string-trim-right last-error))))))
 
 (defun kubernetes-kubectl--flags-from-state (state)
   (append (when-let (ns (kubernetes-state-current-namespace state))
