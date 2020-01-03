@@ -144,17 +144,7 @@
 
 ;; Requests and state management
 
-(defun kubernetes-pods-refresh (&optional interactive)
-  (unless (kubernetes-process-poll-pods-process-live-p)
-    (kubernetes-process-set-poll-pods-process
-     (kubernetes-kubectl-get-pods kubernetes-props
-                                  (kubernetes-state)
-                                  (lambda (response)
-                                    (kubernetes-state-update-pods response)
-                                    (when interactive
-                                      (message "Updated pods.")))
-                                  (lambda ()
-                                    (kubernetes-process-release-poll-pods-process))))))
+(kubernetes-state-define-refreshers pods)
 
 (defun kubernetes-pods-delete-marked (state)
   (let ((names (kubernetes-state-marked-pods state)))

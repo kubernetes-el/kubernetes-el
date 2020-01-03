@@ -78,17 +78,7 @@
 
 ;; Requests and state management
 
-(defun kubernetes-secrets-refresh (&optional interactive)
-  (unless (kubernetes-process-poll-secrets-process-live-p)
-    (kubernetes-process-set-poll-secrets-process
-     (kubernetes-kubectl-get-secrets kubernetes-props
-                                     (kubernetes-state)
-                                     (lambda (response)
-                                       (kubernetes-state-update-secrets response)
-                                       (when interactive
-                                         (message "Updated secrets.")))
-                                     (lambda ()
-                                       (kubernetes-process-release-poll-secrets-process))))))
+(kubernetes-state-define-refreshers secrets)
 
 (defun kubernetes-secrets-delete-marked (state)
   (let ((names (kubernetes-state-marked-secrets state)))

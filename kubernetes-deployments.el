@@ -140,17 +140,7 @@
 
 ;; Requests and state management
 
-(defun kubernetes-deployments-refresh (&optional interactive)
-  (unless (kubernetes-process-poll-deployments-process-live-p)
-    (kubernetes-process-set-poll-deployments-process
-     (kubernetes-kubectl-get-deployments kubernetes-props
-                                         (kubernetes-state)
-                                         (lambda (response)
-                                           (kubernetes-state-update-deployments response)
-                                           (when interactive
-                                             (message "Updated deployments.")))
-                                         (lambda ()
-                                           (kubernetes-process-release-poll-deployments-process))))))
+(kubernetes-state-define-refreshers deployments)
 
 (defun kubernetes-deployments-delete-marked (state)
   (let ((names (kubernetes-state-marked-deployments state)))

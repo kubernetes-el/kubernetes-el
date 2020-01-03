@@ -1,4 +1,4 @@
-;deployments;; kubernetes-utils.el --- Common utilities.  -*- lexical-binding: t; -*-
+;; kubernetes-utils.el --- Common utilities.  -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
 
