@@ -79,8 +79,6 @@
   (push (cons 'kubernetes-nav t) text-property-default-nonsticky)
   (push (cons 'kubernetes-copy t) text-property-default-nonsticky)
   (add-hook 'post-command-hook #'magit-section-update-highlight t t)
-  (setq-local redisplay-highlight-region-function 'magit-highlight-region)
-  (setq-local redisplay-unhighlight-region-function 'magit-unhighlight-region)
   (when (bound-and-true-p global-linum-mode)
     (linum-mode -1))
   (when (and (fboundp 'nlinum-mode)
