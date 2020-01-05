@@ -146,6 +146,25 @@
 
 (kubernetes-state-define-refreshers pods)
 
+;; Displaying pods
+
+(defun kubernetes-pods--read-name (state)
+  "Read a pod name from the user.
+
+STATE is the current application state.
+
+Update the pod state if it not set yet."
+  (-let* (((&alist 'items pods)
+           (or (kubernetes-state-pods state)
+               (progn
+                 (message "Getting pods...")
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-pods)))
+                   (kubernetes-state-update-pods response)
+                   response))))
+          (pods (append pods nil))
+          (names (-map #'kubernetes-state-resource-name pods)))
+    (completing-read "Pod: " names nil t)))
+
 (defun kubernetes-pods-delete-marked (state)
   (let ((names (kubernetes-state-marked-pods state)))
     (dolist (name names)

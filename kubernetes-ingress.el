@@ -85,8 +85,6 @@
 
 (kubernetes-state-define-refreshers ingress)
 
-
-
 (defun kubernetes-ingress-delete-marked (state)
   (let ((names (kubernetes-state-marked-ingress state)))
     (dolist (name names)
