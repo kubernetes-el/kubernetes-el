@@ -21,16 +21,18 @@
               'face 'magit-section-heading))
 
 (kubernetes-ast-define-component pod-view-detail (pod)
-  (-let ((detail (lambda (k v)
+  (-let* ((detail (lambda (k v)
                    (when v
                      `(key-value 12 ,k ,v))))
-
          ((&alist 'metadata (&alist 'namespace ns 'labels (&alist 'name label-name))
-                  'status (&alist 'containerStatuses [(&alist 'image image 'name name)]
-                                  'hostIP host-ip
+                  'status (&alist 'hostIP host-ip
+                                  'containerStatuses containers
                                   'podIP pod-ip
                                   'startTime start-time))
-          pod))
+          pod)
+         ([(&alist 'image image 'name name)]
+          (or containers
+              (make-vector 1 (list '(name . "N/A") '(image . "N/A"))))))
     `(,(funcall detail "Name" name)
       ,(when label-name
          `(section (selector nil)
@@ -45,6 +47,7 @@
       ,(funcall detail "Pod IP" pod-ip)
       ,(funcall detail "Started" start-time))))
 
+
 (kubernetes-ast-define-component pod-view-line (state pod)
   (-let* ((current-time (kubernetes-state-current-time state))
           (marked-pods (kubernetes-state-marked-pods state))
@@ -54,9 +57,13 @@
                                    'startTime start-time
                                    'phase phase))
            pod)
-          ([(&alist 'restartCount restarts 'state pod-state)] containers)
-          (pod-state (or (alist-get 'reason (alist-get 'waiting pod-state))
+          ([(&alist 'restartCount restarts 'state pod-state)]
+           (or containers
+               (make-vector 1 (list '(restartCount . 0) '(state . '(failed . '(startedAt . nil)))))))
+          (start-time (or start-time (format-time-string "%Y-%m-%dT%TZ")))
+          (pod-state (or (alist-get 'reason (alist-get 'waiting pod-state) phase)
                          phase))
+          
           (str
            (concat
             ;; Name
