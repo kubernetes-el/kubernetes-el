@@ -61,10 +61,10 @@ Pods (0)
 (defconst kubernetes-pods-test--sample-result
   (s-trim-left "
 
-Pods (2)
+Pods (3)
   Name                                          Status     Ready   Restarts    Age
   example-svc-v3-1603416598-2f9lb               Running      1/1        0      36d
-    Name:       example-service
+    Name:       example-service-2
     Label:      example-pod-v3
     Namespace:  ns.example
     Image:      example.com/example-service:3.0.0
@@ -73,10 +73,19 @@ Pods (2)
     Started:    2017-02-25T08:12:14Z
 
   example-svc-v4-1603416598-2f9lb               Running      1/1        0      36d
-    Name:       example-service
+    Name:       example-service-4
     Label:      example-pod-v4
     Namespace:  ns.example
     Image:      example.com/example-service:4.8.0
+    Host IP:    10.0.0.0
+    Pod IP:     172.0.0.1
+    Started:    2017-02-25T08:12:14Z
+
+  example-svc-v5-1603416598-2f9lb               Running      0/0        0      36d
+    Name:       N/A
+    Label:      example-pod-v5
+    Namespace:  ns.example
+    Image:      N/A
     Host IP:    10.0.0.0
     Pod IP:     172.0.0.1
     Started:    2017-02-25T08:12:14Z
@@ -92,6 +101,7 @@ Pods (2)
                         (draw-pods-section state)))
       (should (equal kubernetes-pods-test--sample-result
                      (substring-no-properties (buffer-string)))))))
+
 
 (ert-deftest kubernetes-pods-test--sample-response-text-properties ()
   (let ((state `((pods . ,sample-get-pods-response)
