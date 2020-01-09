@@ -409,6 +409,7 @@
              (function
               ,(intern (format "kubernetes-process-release-poll-%s-process" s-attr)))))))
        (defun ,(intern (format "kubernetes-%s-refresh-now" s-attr)) (&optional interactive)
+         (interactive "p")
          (kubernetes-kubectl-await
           (apply-partially #'kubernetes-kubectl
                            kubernetes-props
