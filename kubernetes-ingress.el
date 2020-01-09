@@ -16,8 +16,7 @@
 ;; Components
 
 (defconst kubernetes-ingress--column-heading
-  (propertize (format "%-45s %-25s %20s %10s" "Name" "Hosts" "Address"  "Age")
-              'face 'magit-section-heading))
+  ["%-45s %-25s %20s %10s" "Name Hosts Address Age"])
 
 (kubernetes-ast-define-component ingress-detail (ingress)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) ingress]
@@ -34,27 +33,28 @@
                    'spec (&alist 'rules ingress-rules)
                    'status (&alist 'loadBalancer (&alist 'ingress ingress-lb-list)))
            ingress)
+          ([fmt] kubernetes-ingress--column-heading)
+          (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format "%-45s " (kubernetes-utils-ellipsize name 45))
-
+                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 45))
+                         " "
                          ;; Hosts
-                         (format "%-25s " (--mapcat (alist-get 'host it) ingress-rules))
-
+                         (format (pop list-fmt) (or (--mapcat (alist-get 'host it) ingress-rules) ""))
+                         " "
                          ;; Address
-                          (format "%20s "
-                                  (mapconcat
-                                   'identity
-                                   (mapcar
-                                    (lambda (i) (format "%s" (alist-get 'ip   i )))
-                                    ingress-lb-list)
-                                   ", "))
-
+                         (format (pop list-fmt)
+                                 (mapconcat
+                                  'identity
+                                  (mapcar
+                                   (lambda (i) (format "%s" (alist-get 'ip   i )))
+                                   ingress-lb-list)
+                                  ", "))
+                          " "
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format "%10s" (kubernetes-utils-time-diff-string start current-time))
+                           (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
                                        'face 'magit-dimmed))))))
-
     `(nav-prop (:ingress-name ,name)
                (copy-prop ,name
                           ,(cond
@@ -73,11 +73,16 @@
                       (ingress-detail ,ingress)
                       (padding)))))
 (kubernetes-ast-define-component ingress-list (state &optional hidden)
-  (-let [(&alist 'items ingress) (kubernetes-state-ingress state)]
+  (-let (((&alist 'items ingress) (kubernetes-state-ingress state))
+         ([fmt labels] kubernetes-ingress--column-heading))
     `(section (ingress-container ,hidden)
               (header-with-count "Ingress" ,ingress)
               (indent
-               (columnar-loading-container ,ingress ,kubernetes-ingress--column-heading
+               (columnar-loading-container ,ingress
+                                           ,(propertize
+                                             (apply #'format fmt (split-string labels))
+                                             'face
+                                             'magit-section-heading)
                                            ,(--map `(ingress ,state ,it) ingress)))
               (padding))))
 
@@ -94,8 +99,6 @@
                                          (message "Updated ingress.")))
                                      (lambda ()
                                        (kubernetes-process-release-poll-ingress-process))))))
-
-
 
 (defun kubernetes-ingress-delete-marked (state)
   (let ((names (kubernetes-state-marked-ingress state)))
