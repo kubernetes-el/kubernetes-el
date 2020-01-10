@@ -17,8 +17,7 @@
 ;; Components
 
 (defconst kubernetes-configmaps--column-heading
-  (propertize (format "%-45s %6s %6s" "Name" "Data" "Age")
-              'face 'magit-section-heading))
+  ["%-45s %6s %6s" "Name Data Age"])
 
 (kubernetes-ast-define-component configmap-detail (configmap)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) configmap]
@@ -34,16 +33,18 @@
           ((&alist 'data data
                    'metadata (&alist 'name name 'creationTimestamp created-time))
            configmap)
+          ([fmt] kubernetes-configmaps--column-heading)
+          (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format "%-45s " (kubernetes-utils-ellipsize name 45))
-
+                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 45))
+                         " "
                          ;; Data
-                         (propertize (format "%6s " (seq-length data)) 'face 'magit-dimmed)
-
+                         (propertize (format (pop list-fmt) (seq-length data)) 'face 'magit-dimmed)
+                         " "
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format "%6s" (kubernetes-utils-time-diff-string start current-time))
+                           (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
                                        'face 'magit-dimmed))))))
     `(nav-prop (:configmap-name ,name)
                (copy-prop ,name
@@ -64,11 +65,16 @@
                       (padding)))))
 
 (kubernetes-ast-define-component configmaps-list (state &optional hidden)
-  (-let [(&alist 'items configmaps) (kubernetes-state-configmaps state)]
+  (-let (((&alist 'items configmaps) (kubernetes-state-configmaps state))
+         ([fmt labels] kubernetes-configmaps--column-heading))
     `(section (configmaps-container ,hidden)
               (header-with-count "Configmaps" ,configmaps)
               (indent
-               (columnar-loading-container ,configmaps ,kubernetes-configmaps--column-heading
+               (columnar-loading-container ,configmaps
+                                           ,(propertize
+                                             (apply #'format fmt (split-string labels))
+                                             'face
+                                             'magit-section-heading)
                                            ,(--map `(configmap ,state ,it) configmaps)))
               (padding))))
 

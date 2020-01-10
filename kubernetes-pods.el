@@ -16,9 +16,8 @@
 
 ;; Components
 
-(defconst kubernetes-pods-column-heading
-  (propertize (format "%-45s %-10s %-5s   %6s %6s" "Name" "Status" "Ready" "Restarts" "Age")
-              'face 'magit-section-heading))
+(defconst kubernetes-pods--column-heading
+  ["%-45s %-10s %5s %10s %6s" "Name Status Ready Restarts Age"])
 
 (kubernetes-ast-define-component pod-view-detail (pod)
   (-let* ((detail (lambda (k v)
@@ -63,18 +62,19 @@
           (start-time (or start-time (format-time-string "%Y-%m-%dT%TZ")))
           (pod-state (or (alist-get 'reason (alist-get 'waiting pod-state) phase)
                          phase))
-          
+          ([fmt] kubernetes-pods--column-heading)
+          (list-fmt (split-string fmt))
           (str
            (concat
             ;; Name
-            (format "%-45s " (kubernetes-utils-ellipsize name 45))
-
-            ;; State
-            (let ((s (format "%-10s " (kubernetes-utils-ellipsize pod-state 10))))
+            (format (pop list-fmt) (kubernetes-utils-ellipsize name 45))
+            " "
+            ;; Status
+            (let ((s (format (pop list-fmt) (kubernetes-utils-ellipsize pod-state 10))))
               (if (equal pod-state "Running") (propertize s 'face 'magit-dimmed) s))
-
-            ;; Count
-            (format "%5s "
+            " "
+            ;; Ready
+            (format (pop list-fmt)
                     (let* ((n-ready (seq-count (-lambda ((it &as &alist 'ready r))
                                                  (eq r t))
                                                containers))
@@ -82,9 +82,9 @@
                       (if (zerop n-ready)
                           count-str
                         (propertize count-str 'face 'magit-dimmed))))
-
+            " "
             ;; Restarts
-            (let ((s (format "%8s " restarts)))
+            (let ((s (format (pop list-fmt) restarts)))
               (cond
                ((equal 0 restarts)
                 (propertize s 'face 'magit-dimmed))
@@ -92,12 +92,11 @@
                 (propertize s 'face 'warning))
                (t
                 s)))
-
+            " "
             ;; Age
             (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp start-time))))
-              (propertize (format "%8s" (kubernetes-utils-time-diff-string start current-time))
+              (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
                           'face 'magit-dimmed))))
-
           (str (cond
                 ((member (downcase pod-state) '("running" "containercreating" "terminated"))
                  str)
@@ -106,7 +105,6 @@
                 (t
                  (propertize str 'face 'warning))))
           (line `(line ,str)))
-
     `(nav-prop (:pod-name ,name)
                (copy-prop ,name
                           ,(cond
@@ -130,15 +128,19 @@
     (equal phase "Succeeded")))
 
 (kubernetes-ast-define-component pods-list (state &optional hidden)
-  (-let [(&alist 'items pods) (kubernetes-state-pods state)]
+  (-let (((&alist 'items pods) (kubernetes-state-pods state))
+         ([fmt labels] kubernetes-pods--column-heading))
     `(section (pods-container ,hidden)
               (header-with-count "Pods" ,pods)
               (indent
-               (columnar-loading-container ,pods ,kubernetes-pods-column-heading
+               (columnar-loading-container ,pods
+                                           ,(propertize
+                                             (apply #'format fmt (split-string labels))
+                                             'face
+                                             'magit-section-heading)
                                            ,@(--map `(pod ,state ,it)
                                                     (-remove #'kubernetes-pods--succeeded-job-pod-p (append pods nil)))))
               (padding))))
-
 
 ;; Requests and state management
 

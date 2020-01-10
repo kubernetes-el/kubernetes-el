@@ -24,11 +24,10 @@ TAR     := dist/kubernetes-$(VERSION).tar
 	git-release github-browse-release
 
 
-build : $(TARGETS) $(DEPS_PNG)
+build : compile $(DEPS_PNG)
 
-$(TARGETS) : $(SRCS) $(CASKDIR)
-	${CASK} clean-elc
-	${CASK} build
+compile: $(SRCS) $(CASKDIR)
+	! (${CASK} eval "(let ((byte-compile-error-on-warn t)) (cask-cli/build))" 2>&1 | egrep -a "(Warning|Error):") ; (ret=$$? ; ${CASK} clean-elc && exit $$ret)
 
 
 dist : $(TAR)
@@ -128,6 +127,10 @@ $(CASKDIR) :
 
 $(DEPS_PNG) : $(DEPS_SCRIPT) $(SRCS)
 	$(EMACS_BATCH) -f package-initialize -l $(DEPS_SCRIPT) -f project-deps-generate
+
+.PHONY: autoloads
+autoloads:
+	$(EMACS) -Q --batch --eval "(package-initialize)" --eval "(package-generate-autoloads \"kubernetes\" \".\")"
 
 
 

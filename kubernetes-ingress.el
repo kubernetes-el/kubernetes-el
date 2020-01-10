@@ -16,7 +16,8 @@
 ;; Components
 
 (defconst kubernetes-ingress--column-heading
-  ["%-45s %-25s %20s %10s" "Name Hosts Address Age"])
+  (propertize (format "%-45s %-25s %20s %10s" "Name" "Hosts" "Address"  "Age")
+              'face 'magit-section-heading))
 
 (kubernetes-ast-define-component ingress-detail (ingress)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) ingress]
@@ -29,32 +30,31 @@
   (-let* ((current-time (kubernetes-state-current-time state))
           (pending-deletion (kubernetes-state-ingress-pending-deletion state))
           (marked-ingress (kubernetes-state-marked-ingress state))
-          ((&alist 'data data 'metadata (&alist 'name name 'creationTimestamp created-time)
+          ((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
                    'spec (&alist 'rules ingress-rules)
                    'status (&alist 'loadBalancer (&alist 'ingress ingress-lb-list)))
            ingress)
-          ([fmt] kubernetes-ingress--column-heading)
-          (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 45))
-                         " "
+                         (format "%-45s " (kubernetes-utils-ellipsize name 45))
+
                          ;; Hosts
-                         (format (pop list-fmt) (or (--mapcat (alist-get 'host it) ingress-rules) ""))
-                         " "
+                         (format "%-25s " (--mapcat (alist-get 'host it) ingress-rules))
+
                          ;; Address
-                         (format (pop list-fmt)
-                                 (mapconcat
-                                  'identity
-                                  (mapcar
-                                   (lambda (i) (format "%s" (alist-get 'ip   i )))
-                                   ingress-lb-list)
-                                  ", "))
-                          " "
+                          (format "%20s "
+                                  (mapconcat
+                                   'identity
+                                   (mapcar
+                                    (lambda (i) (format "%s" (alist-get 'ip   i )))
+                                    ingress-lb-list)
+                                   ", "))
+
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
+                           (propertize (format "%10s" (kubernetes-utils-time-diff-string start current-time))
                                        'face 'magit-dimmed))))))
+
     `(nav-prop (:ingress-name ,name)
                (copy-prop ,name
                           ,(cond
@@ -73,16 +73,11 @@
                       (ingress-detail ,ingress)
                       (padding)))))
 (kubernetes-ast-define-component ingress-list (state &optional hidden)
-  (-let (((&alist 'items ingress) (kubernetes-state-ingress state))
-         ([fmt labels] kubernetes-ingress--column-heading))
+  (-let [(&alist 'items ingress) (kubernetes-state-ingress state)]
     `(section (ingress-container ,hidden)
               (header-with-count "Ingress" ,ingress)
               (indent
-               (columnar-loading-container ,ingress
-                                           ,(propertize
-                                             (apply #'format fmt (split-string labels))
-                                             'face
-                                             'magit-section-heading)
+               (columnar-loading-container ,ingress ,kubernetes-ingress--column-heading
                                            ,(--map `(ingress ,state ,it) ingress)))
               (padding))))
 
@@ -99,6 +94,8 @@
                                          (message "Updated ingress.")))
                                      (lambda ()
                                        (kubernetes-process-release-poll-ingress-process))))))
+
+
 
 (defun kubernetes-ingress-delete-marked (state)
   (let ((names (kubernetes-state-marked-ingress state)))

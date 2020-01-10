@@ -26,7 +26,8 @@
     (jobs . (context jobs))
     (pods . (context pods))
     (secrets . (context secrets))
-    (services . (context services)))
+    (services . (context services))
+    (nodes . (context nodes)))
   "Enumerates the different views that can be displayed in the overview.
 
 Each element is a cons-cell of the form (SYMBOL . LIST), where
@@ -49,7 +50,8 @@ types that should be displayed."
                                  (const overview)
                                  (const pods)
                                  (const secrets)
-                                 (const services))))
+                                 (const services)
+                                 (const nodes))))
 
 (defcustom kubernetes-default-overview-view 'overview
   "The view to use when first opening the overview.
@@ -171,6 +173,8 @@ form \"--flag=value\" or \"-flag\"."
 (defconst kubernetes-display-config-buffer-name "*kubernetes config*")
 
 (defconst kubernetes-display-deployment-buffer-name "*kubernetes deployment*")
+
+(defconst kubernetes-display-node-buffer-name "*kubernetes node*")
 
 (defconst kubernetes-display-statefulset-buffer-name "*kubernetes statefulset*")
 

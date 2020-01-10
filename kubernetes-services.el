@@ -18,8 +18,7 @@
 ;; Components
 
 (defconst kubernetes-services--column-heading
-  (propertize (format "%-30s %15s %15s %6s" "Name" "Internal IP" "External IP" "Age")
-              'face 'magit-section-heading))
+  ["%-30s %15s %15s %6s" "Name|Internal IP|External IP|Age"])
 
 (kubernetes-ast-define-component service-details (service)
   (-let ((detail
@@ -63,20 +62,22 @@
                    'spec (&alist 'clusterIP internal-ip
                                  'externalIPs external-ips))
            service)
+          ([fmt] kubernetes-services--column-heading)
+          (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format "%-30s " (kubernetes-utils-ellipsize name 30))
-
+                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 30))
+                         " "
                          ;; Internal IP
-                         (propertize (format "%15s " internal-ip) 'face 'magit-dimmed)
-
+                         (propertize (format (pop list-fmt) internal-ip) 'face 'magit-dimmed)
+                         " "
                          ;; External IP
                          (let ((ips (append external-ips nil)))
-                           (propertize (format "%15s " (or (car ips) "")) 'face 'magit-dimmed))
-
+                           (propertize (format (pop list-fmt) (or (car ips) "")) 'face 'magit-dimmed))
+                         " "
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format "%6s" (kubernetes-utils-time-diff-string start current-time))
+                           (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
                                        'face 'magit-dimmed))))))
     `(nav-prop (:service-name ,name)
                (copy-prop ,name
@@ -97,14 +98,18 @@
                       (padding)))))
 
 (kubernetes-ast-define-component services-list (state &optional hidden)
-  (-let [(services-response &as &alist 'items services) (kubernetes-state-services state)]
+  (-let (((services-response &as &alist 'items services) (kubernetes-state-services state))
+         ([fmt labels] kubernetes-services--column-heading))
     `(section (services-container ,hidden)
               (header-with-count "Services" ,services)
               (indent
-               (columnar-loading-container ,services ,kubernetes-services--column-heading
+               (columnar-loading-container ,services
+                                           ,(propertize
+                                             (apply #'format fmt (split-string labels "|"))
+                                             'face
+                                             'magit-section-heading)
                                            ,(--map `(service ,state ,it) services)))
               (padding))))
-
 
 ;; Requests and state management
 
