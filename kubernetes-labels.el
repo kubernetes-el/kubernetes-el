@@ -23,17 +23,19 @@
                                     (cons `(pod ,state ,pod) acc)
                                   acc))
                               pods
-                              nil))))
+                              nil)))
+          ([fmt labels] kubernetes-pods--column-heading))
     `(section (root nil)
               (section (query-header nil)
                        (key-value 10 "Label" ,(propertize query 'face 'kubernetes-selector))
                        (padding))
-
               (indent
                (columnar-loading-container ,pods
-                                           ,kubernetes-pods-column-heading
+                                           ,(propertize
+                                             (apply #'format fmt (split-string labels))
+                                             'face
+                                             'magit-section-heading)
                                            ,matches)))))
-
 
 ;; Commands
 

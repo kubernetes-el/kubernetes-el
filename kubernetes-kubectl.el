@@ -113,6 +113,23 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
                       nil
                       cleanup-cb))
 
+(defun kubernetes-kubectl-get-nodes (props state cb &optional cleanup-cb)
+  "Get all nodes and execute callback CB with the parsed JSON.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-props'.
+
+STATE is the application state.
+
+CLEANUP-CB is a function taking no arguments used to release any resources."
+  (kubernetes-kubectl props state '("get" "nodes" "-o" "json")
+                      (lambda (buf)
+                        (let ((json (with-current-buffer buf
+                                      (json-read-from-string (buffer-string)))))
+                          (funcall cb json)))
+                      nil
+                      cleanup-cb))
+
 (defun kubernetes-kubectl-get-configmaps (props state cb &optional cleanup-cb)
   "Get all configmaps and execute callback CB with the parsed JSON.
 

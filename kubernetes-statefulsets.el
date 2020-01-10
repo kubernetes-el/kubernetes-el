@@ -16,9 +16,8 @@
 ;; Components
 
 (defconst kubernetes-statefulsets--column-heading
-  ;The two empty headers are used to align statefulsets with deployments.
-  (propertize (format "%-45s %10s %10s %10s %6s" "Name" "Replicas" "" "" "Age")
-              'face 'magit-section-heading))
+  ["%-45s %10s %10s %10s %6s" "Name|Replicas|||Age"]
+  "The two empty headers are used to align statefulsets with deployments.")
 
 (kubernetes-ast-define-component statefulset-detail (statefulset)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
@@ -50,7 +49,6 @@
   (-let* ((current-time (kubernetes-state-current-time state))
           (pending-deletion (kubernetes-state-statefulsets-pending-deletion state))
           (marked-statefulsets (kubernetes-state-marked-statefulsets state))
-
           ((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
 
                    'spec (&alist 'replicas desired)
@@ -61,35 +59,36 @@
            statefulset)
           (current (or current 0))
           (desired (or desired 0))
-          (available (or available 0))
-          (up-to-date (or up-to-date 0))
-
+          (_available (or available 0))
+          (_up-to-date (or up-to-date 0))
+          ([fmt] kubernetes-statefulsets--column-heading)
+          (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format "%-45s " (kubernetes-utils-ellipsize name 45))
-
+                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 45))
+                         " "
                          ;; Replicas (current/desired)
-                         (let ((str (format "%s/%s" current desired)))
+                         (let ((str (format "%s/%s" current desired))
+                               (next (pop list-fmt)))
                            (cond
                             ((zerop desired)
-                             (format "%10s " str))
+                             (format next str))
                             ((zerop current)
-                             (propertize (format "%10s " str) 'face 'warning))
+                             (propertize (format next str) 'face 'warning))
                             ((/= current desired)
-                             (format "%10s " str))
+                             (format next str))
                             (t
-                             (propertize (format "%10s " str) 'face 'magit-dimmed))))
-
+                             (propertize (format next str) 'face 'magit-dimmed))))
+                         " "
                          ;; Up-to-date
-                         (propertize (format "%10s " "") 'face 'warning)
-
+                         (propertize (format (pop list-fmt) "") 'face 'warning)
+                         " "
                          ;; Available
-                         (propertize (format "%10s " "") 'face 'magit-dimmed)
-
-
+                         (propertize (format (pop list-fmt) "") 'face 'magit-dimmed)
+                         " "
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format "%6s" (kubernetes-utils-time-diff-string start current-time))
+                           (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
                                        'face 'magit-dimmed))))))
     `(nav-prop (:statefulset-name ,name)
                (copy-prop ,name
@@ -112,14 +111,19 @@
                       (padding)))))
 
 (kubernetes-ast-define-component statefulsets-list (state &optional hidden)
-  (-let [(state-set-p &as &alist 'items statefulsets) (kubernetes-state-statefulsets state)]
+  (-let (((state-set-p &as &alist 'items statefulsets)
+          (kubernetes-state-statefulsets state))
+         ([fmt labels] kubernetes-statefulsets--column-heading))
     `(section (statefulsets-container ,hidden)
               (header-with-count "Statefulsets" ,statefulsets)
               (indent
-               (columnar-loading-container ,statefulsets ,kubernetes-statefulsets--column-heading
+               (columnar-loading-container ,statefulsets
+                                           ,(propertize
+                                             (apply #'format fmt (split-string labels "|"))
+                                             'face
+                                             'magit-section-heading)
                                            ,(--map `(statefulset ,state ,it) statefulsets)))
               (padding))))
-
 
 ;; Requests and state management
 

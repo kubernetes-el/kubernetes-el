@@ -43,31 +43,22 @@
    (t
     on-loading)))
 
-(kubernetes-ast-define-component loading-container (resource-vector &rest loaded-content)
-  `(emptiness-loading-discriminator
-    ,resource-vector
-
-    :on-loading
-    (propertize (face kubernetes-progress-indicator) (line "Fetching..."))
-
-    :on-empty
-    (propertize (face magit-dimmed) (line "None."))
-
-    :on-populated ,loaded-content))
-
 (kubernetes-ast-define-component columnar-loading-container (resource-vector column-header &rest loaded-content)
   `(emptiness-loading-discriminator
     ,resource-vector
 
     :on-loading
-    ((line ,column-header)
-     (propertize (face kubernetes-progress-indicator) (line "Fetching...")))
+    (,@(when column-header
+         (list (cons 'line (list column-header))))
+     (propertize (face kubernetes-progress-indicator)
+                 (line "Fetching...")))
 
     :on-empty
     (propertize (face magit-dimmed) (line "None."))
 
     :on-populated
-    ((line ,column-header)
+    (,@(when column-header
+         (list (cons 'line (list column-header))))
      ,@loaded-content)))
 
 (kubernetes-ast-define-component header-with-count (header resource-vector)

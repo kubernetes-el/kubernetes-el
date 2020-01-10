@@ -10,6 +10,7 @@
 (require 'kubernetes-contexts)
 (require 'kubernetes-deployments)
 (require 'kubernetes-statefulsets)
+(require 'kubernetes-nodes)
 (require 'kubernetes-errors)
 (require 'kubernetes-ingress)
 (require 'kubernetes-jobs)
@@ -211,12 +212,9 @@
                   `(section (expressions nil)
                             (heading "Match Expressions")
                             (indent ,(kubernetes-yaml-render match-expressions))))
-
                (key-value 12 "Replicas" ,(format "%s" (or replicas 1)))
-
-               (loading-container ,(kubernetes-state-pods state)
-                                  ,(seq-map (lambda (pod) `(pod-line ,state ,pod)) pods)))
-
+               (columnar-loading-container ,(kubernetes-state-pods state) nil
+                                           ,@(seq-map (lambda (pod) `(pod-line ,state ,pod)) pods)))
               (padding))))
 
 ;; Deployment
@@ -249,8 +247,8 @@
                  'spec (&alist
                         'paused paused
                         'strategy (&alist
-                                   'type strategy-type
-                                   'rollingUpdate rolling-update)))
+                                   'type _strategy-type
+                                   'rollingUpdate _rolling-update)))
          statefulset]
     `(,(when paused `(line (propertize (face warning) "Statefulset Paused")))
       (section (namespace nil)
@@ -296,26 +294,33 @@
 
 (kubernetes-ast-define-component aggregated-view (state &optional hidden)
   (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state)]
-    (-let [(state-set-p &as &alist 'items statefulsets) (kubernetes-state-statefulsets state)]
-      
-    `(section (ubercontainer, nil)
-    (section (overview-container ,hidden)
-              (header-with-count "Statefulsets" ,statefulsets)
-              (indent
-               (columnar-loading-container ,statefulsets
-                                           ,kubernetes-statefulsets--column-heading
-                                           ,@(--map `(aggregated-statefulset ,state ,it) statefulsets)))
-              (padding))
-    (section (overview-container ,hidden)
-              (header-with-count "Deployments" ,deployments)
-              (indent
-               (columnar-loading-container ,deployments
-                                           ,kubernetes-deployments--column-heading
-                                           ,@(--map `(aggregated-deployment ,state ,it) deployments)))
-              (padding))
-    )
-    )
-))
+    (-let (((state-set-p &as &alist 'items statefulsets)
+            (kubernetes-state-statefulsets state))
+           ([fmt0 labels0] kubernetes-statefulsets--column-heading)
+           ([fmt1 labels1] kubernetes-deployments--column-heading))
+      `(section (ubercontainer, nil)
+                (section (overview-container ,hidden)
+                         (header-with-count "Statefulsets" ,statefulsets)
+                         (indent
+                          (columnar-loading-container
+                           ,statefulsets
+                           ,(propertize
+                             (apply #'format fmt0 (split-string labels0 "|"))
+                             'face
+                             'magit-section-heading)
+                           ,@(--map `(aggregated-statefulset ,state ,it) statefulsets)))
+                         (padding))
+                (section (overview-container ,hidden)
+                         (header-with-count "Deployments" ,deployments)
+                         (indent
+                          (columnar-loading-container
+                           ,deployments
+                           ,(propertize
+                             (apply #'format fmt1 (split-string labels1))
+                             'face
+                             'magit-section-heading)
+                           ,@(--map `(aggregated-deployment ,state ,it) deployments)))
+                         (padding))))))
 
 (defun kubernetes-overview-render (state)
   (let ((sections (kubernetes-state-overview-sections state)))
@@ -340,7 +345,9 @@
               ,(when (member 'secrets sections)
                  `(secrets-list ,state))
               ,(when (member 'services sections)
-                 `(services-list ,state)))))
+                 `(services-list ,state))
+              ,(when (member 'nodes sections)
+                 `(nodes-list ,state)))))
 
 
 ;; Overview buffer.
@@ -370,6 +377,7 @@
   (kubernetes-jobs-refresh verbose)
   (kubernetes-deployments-refresh verbose)
   (kubernetes-statefulsets-refresh verbose)
+  (kubernetes-nodes-refresh verbose)
   (kubernetes-namespaces-refresh verbose)
   (kubernetes-pods-refresh verbose)
   (kubernetes-secrets-refresh verbose)

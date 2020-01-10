@@ -16,8 +16,7 @@
 ;; Components
 
 (defconst kubernetes-secrets--column-heading
-  (propertize (format "%-45s %6s %6s" "Name" "Data" "Age")
-              'face 'magit-section-heading))
+  ["%-45s %6s %6s" "Name Data Age"])
 
 (kubernetes-ast-define-component secret-detail (secret)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) secret]
@@ -32,18 +31,19 @@
           (marked-secrets (kubernetes-state-marked-secrets state))
           ((&alist 'data data 'metadata (&alist 'name name 'creationTimestamp created-time))
            secret)
+          ([fmt] kubernetes-secrets--column-heading)
+          (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format "%-45s " (kubernetes-utils-ellipsize name 45))
-
+                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 45))
+                         " "
                          ;; Data
-                         (propertize (format "%6s " (seq-length data)) 'face 'magit-dimmed)
-
+                         (propertize (format (pop list-fmt) (seq-length data)) 'face 'magit-dimmed)
+                         " "
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format "%6s" (kubernetes-utils-time-diff-string start current-time))
+                           (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
                                        'face 'magit-dimmed))))))
-
     `(nav-prop (:secret-name ,name)
                (copy-prop ,name
                           ,(cond
@@ -63,14 +63,18 @@
                       (padding)))))
 
 (kubernetes-ast-define-component secrets-list (state &optional hidden)
-  (-let [(&alist 'items secrets) (kubernetes-state-secrets state)]
+  (-let (((&alist 'items secrets) (kubernetes-state-secrets state))
+         ([fmt labels] kubernetes-secrets--column-heading))
     `(section (secrets-container ,hidden)
               (header-with-count "Secrets" ,secrets)
               (indent
-               (columnar-loading-container ,secrets ,kubernetes-secrets--column-heading
+               (columnar-loading-container ,secrets
+                                           ,(propertize
+                                             (apply #'format fmt (split-string labels))
+                                             'face
+                                             'magit-section-heading)
                                            ,(--map `(secret ,state ,it) secrets)))
               (padding))))
-
 
 ;; Requests and state management
 

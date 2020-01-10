@@ -16,8 +16,7 @@
 ;;;; Components
 
 (defconst kubernetes-deployments--column-heading
-  (propertize (format "%-45s %10s %10s %10s %6s" "Name" "Replicas" "UpToDate" "Available" "Age")
-              'face 'magit-section-heading))
+  ["%-45s %10s %10s %10s %6s" "Name Replicas UpToDate Available Age"])
 
 (kubernetes-ast-define-component deployment-detail (deployment)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
@@ -62,45 +61,48 @@
           (desired (or desired 0))
           (available (or available 0))
           (up-to-date (or up-to-date 0))
-
+          ([fmt] kubernetes-deployments--column-heading)
+          (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format "%-45s " (kubernetes-utils-ellipsize name 45))
-
+                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 45))
+                         " "
                          ;; Replicas (current/desired)
-                         (let ((str (format "%s/%s" current desired)))
+                         (let ((next (pop list-fmt))
+                               (str (format "%s/%s" current desired)))
                            (cond
                             ((zerop desired)
-                             (format "%10s " str))
+                             (format next str))
                             ((zerop current)
-                             (propertize (format "%10s " str) 'face 'warning))
+                             (propertize (format next str) 'face 'warning))
                             ((/= current desired)
-                             (format "%10s " str))
+                             (format next str))
                             (t
-                             (propertize (format "%10s " str) 'face 'magit-dimmed))))
-
+                             (propertize (format next str) 'face 'magit-dimmed))))
+                         " "
                          ;; Up-to-date
-                         (cond
-                          ((zerop desired)
-                           (format "%10s " up-to-date))
-                          ((zerop up-to-date)
-                           (propertize (format "%10s " up-to-date) 'face 'warning))
-                          (t
-                           (propertize (format "%10s " up-to-date) 'face 'magit-dimmed)))
-
+                         (let ((next (pop list-fmt)))
+                           (cond
+                            ((zerop desired)
+                             (format next up-to-date))
+                            ((zerop up-to-date)
+                             (propertize (format next up-to-date) 'face 'warning))
+                            (t
+                             (propertize (format next up-to-date) 'face 'magit-dimmed))))
+                         " "
                          ;; Available
-                         (cond
-                          ((zerop desired)
-                           (format "%10s " available))
-                          ((zerop available)
-                           (propertize (format "%10s " available) 'face 'warning))
-                          (t
-                           (propertize (format "%10s " available) 'face 'magit-dimmed)))
-
-
+                         (let ((next (pop list-fmt)))
+                           (cond
+                            ((zerop desired)
+                             (format next available))
+                            ((zerop available)
+                             (propertize (format next available) 'face 'warning))
+                            (t
+                             (propertize (format next available) 'face 'magit-dimmed))))
+                         " "
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format "%6s" (kubernetes-utils-time-diff-string start current-time))
+                           (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
                                        'face 'magit-dimmed))))))
     `(nav-prop (:deployment-name ,name)
                (copy-prop ,name
@@ -123,14 +125,18 @@
                       (padding)))))
 
 (kubernetes-ast-define-component deployments-list (state &optional hidden)
-  (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state)]
+  (-let (((state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state))
+         ([fmt labels] kubernetes-deployments--column-heading))
     `(section (deployments-container ,hidden)
               (header-with-count "Deployments" ,deployments)
               (indent
-               (columnar-loading-container ,deployments ,kubernetes-deployments--column-heading
+               (columnar-loading-container ,deployments
+                                           ,(propertize
+                                             (apply #'format fmt (split-string labels))
+                                             'face
+                                             'magit-section-heading)
                                            ,(--map `(deployment ,state ,it) deployments)))
               (padding))))
-
 
 ;; Requests and state management
 
