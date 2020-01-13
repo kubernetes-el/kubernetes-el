@@ -50,5 +50,4 @@
          (kubernetes-kubectl-flags))
      ,@body))
 
-
 ;;; test-helper.el ends here
