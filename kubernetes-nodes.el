@@ -112,17 +112,7 @@
 
 ;; Requests and state management
 
-(defun kubernetes-nodes-refresh (&optional interactive)
-  (unless (kubernetes-process-poll-nodes-process-live-p)
-    (kubernetes-process-set-poll-nodes-process
-     (kubernetes-kubectl-get-nodes kubernetes-props
-                                  (kubernetes-state)
-                                  (lambda (response)
-                                    (kubernetes-state-update-nodes response)
-                                    (when interactive
-                                      (message "Updated nodes.")))
-                                  (lambda ()
-                                    (kubernetes-process-release-poll-nodes-process))))))
+(kubernetes-state-define-refreshers nodes)
 
 ;; Interactive commands
 
@@ -136,7 +126,9 @@ Update the node state if it not set yet."
            (or (kubernetes-state-nodes state)
                (progn
                  (message "Getting nodes...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-nodes)))
+                 (let ((response (kubernetes-kubectl-await-on-async
+                                  kubernetes-props state
+                                  #'kubernetes-kubectl-get-nodes)))
                    (kubernetes-state-update-nodes response)
                    response))))
           (nodes (append nodes nil))

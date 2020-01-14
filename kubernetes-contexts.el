@@ -59,18 +59,13 @@
 
 ;; Requests and state management
 
-(defun kubernetes-contexts-refresh (&optional interactive)
-  (unless (kubernetes-process-poll-config-process-live-p)
-    (kubernetes-process-set-poll-config-process
-     (kubernetes-kubectl-config-view kubernetes-props
-                                     (kubernetes-state)
-                                     (lambda (response)
-                                       (kubernetes-state-update-config response)
-                                       (when interactive
-                                         (message "Updated config.")))
-                                     (lambda ()
-                                       (kubernetes-process-release-poll-config-process))))))
+(kubernetes-state-define-refreshers config kubernetes-kubectl-config-view
+  "config view -o json")
 
+(defalias 'kubernetes-contexts-refresh-now 'kubernetes-config-refresh-now)
+(defalias 'kubernetes-contexts-refresh 'kubernetes-config-refresh-now)
+(defalias 'kubernetes-state-contexts 'kubernetes-state-config)
+(defalias 'kubernetes-state-update-contexts 'kubernetes-state-update-config)
 
 ;; Displaying config.
 

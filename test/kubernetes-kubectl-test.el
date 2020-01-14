@@ -10,16 +10,16 @@
 
 ;; Test helpers
 
-(defmacro with-successful-response-at (expected-args response-string form)
+(defmacro with-successful-response-at (expected-args response-string &rest forms)
   "Rebind `kubernetes-kubectl' to test handling of successful responses.
 
 Asserts the the args parsed to that function are equal to EXPECTED-ARGS.
 
 Executes the on-success callback with a buffer containing RESPONSE-STRING.
 
-FORM is the Elisp form to be evaluated, in which `kubernetes-kubectl'
+FORMS are the Elisp forms to be evaluated, in which `kubernetes-kubectl'
 will be mocked."
-  (declare (indent 2))
+  (declare (indent defun))
   `(noflet ((kubernetes-kubectl
              (_props _state args on-success &optional _on-error cleanup-cb)
 
@@ -36,16 +36,16 @@ will be mocked."
 
                  (when cleanup-cb
                    (funcall cleanup-cb))))))
-     ,form))
+     ,@forms))
 
-(defmacro with-error-response-at (expected-args response-string form)
+(defmacro with-error-response-at (expected-args response-string &rest forms)
   "Rebind `kubernetes-kubectl' to test handling of failed responses.
 
 Asserts the the args parsed to that function are equal to EXPECTED-ARGS.
 
 Executes the on-error callback with a buffer containing RESPONSE-STRING.
 
-FORM is the Elisp form to be evaluated, in which `kubernetes-kubectl'
+FORMS are the Elisp forms to be evaluated, in which `kubernetes-kubectl'
 will be mocked."
   (declare (indent 2))
   `(noflet ((kubernetes-kubectl
@@ -66,7 +66,7 @@ will be mocked."
 
                    (when cleanup-cb
                      (funcall cleanup-cb)))))))
-     ,form))
+     ,@forms))
 
 (defconst kubernetes-kubectl-test-props
   '((message . ignore)
@@ -112,8 +112,33 @@ will be mocked."
 
     (warn "kubectl is not installed. Skipping test.")))
 
+(defmacro define-refresh-tests (attr result)
+  `(progn
+     (ert-deftest ,(intern (format "kubernetes-kubectl-test--refresh-%s-now" attr)) ()
+       (let ((sample-response (test-helper-string-resource
+                               ,(format "get-%s-response.json" attr))))
+         (with-successful-response-at '("get" ,attr "-o" "json") sample-response
+           (should (equal (funcall #',(intern (format "kubernetes-%s-refresh-now" attr)))
+                          ,result)))))
+     (ert-deftest ,(intern (format "kubernetes-kubectl-test--refresh-%s" attr)) ()
+       (let ((sample-response (test-helper-string-resource
+                               ,(format "get-%s-response.json" attr))))
+         (with-successful-response-at '("get" ,attr "-o" "json") sample-response
+           (kubernetes-state-clear)
+           (funcall #',(intern (format "kubernetes-%s-refresh" attr)))
+           (should (equal (-let* (((&alist 'items)
+                                   (funcall #',(intern (format "kubernetes-state-%s" attr))
+                                            (kubernetes-state))))
+                            (seq-map (lambda (item)
+                                       (-let* (((&alist 'metadata (&alist 'name)) item)) name))
+                                     items))
+                          ,result)))))))
 
 ;; Get pods
+
+(define-refresh-tests "pods" '("example-svc-v3-1603416598-2f9lb"
+                               "example-svc-v4-1603416598-2f9lb"
+                               "example-svc-v5-1603416598-2f9lb"))
 
 (ert-deftest kubernetes-kubectl-test--get-pods-returns-parsed-json ()
   (let* ((sample-response (test-helper-string-resource "get-pods-response.json"))
@@ -129,6 +154,20 @@ will be mocked."
        (lambda ()
          (setq cleanup-callback-called t))))
     (should cleanup-callback-called)))
+
+;; contexts
+
+(ert-deftest kubernetes-kubectl-test-refresh-contexts ()
+  (let ((sample-response (test-helper-string-resource "config-view-response.json")))
+    (with-successful-response-at '("config" "view" "-o" "json") sample-response
+      (kubernetes-state-clear)
+      (kubernetes-contexts-refresh)
+      (should (equal (-let* (((&alist 'contexts)
+                              (kubernetes-state-contexts (kubernetes-state))))
+                       (seq-map (lambda (ctx)
+                                  (-let* (((&alist 'name) ctx)) name))
+                                contexts))
+                     '("example-dev" "example-prod"))))))
 
 (ert-deftest kubernetes-kubectl-test--viewing-config-returns-parsed-json ()
   (let* ((sample-response (test-helper-string-resource "config-view-response.json"))
@@ -169,6 +208,8 @@ will be mocked."
 
 
 ;; Delete service
+
+(define-refresh-tests "services" '("example-svc-1" "example-svc-2"))
 
 (ert-deftest kubernetes-kubectl-test--deleting-service-succeeds ()
   (let ((service-name "example-svc"))
@@ -226,6 +267,8 @@ will be mocked."
 
 ;; Get namespaces
 
+(define-refresh-tests "namespaces" '("ns1" "ns2"))
+
 (ert-deftest kubernetes-kubectl-test--getting-namespaces ()
   (let* ((sample-response (test-helper-string-resource "get-namespaces-response.json"))
          (parsed-response (json-read-from-string sample-response))
@@ -244,6 +287,8 @@ will be mocked."
 
 
 ;; Get configmaps
+
+(define-refresh-tests "configmaps" '("example-configmap-1" "example-configmap-2"))
 
 (ert-deftest kubernetes-kubectl-test--get-configmaps-returns-parsed-json ()
   (let* ((sample-response (test-helper-string-resource "get-configmaps-response.json"))
@@ -285,6 +330,8 @@ will be mocked."
 
 
 ;; Get secrets
+
+(define-refresh-tests "secrets" '("example-secret-1" "example-secret-2"))
 
 (ert-deftest kubernetes-kubectl-test--get-secrets-returns-parsed-json ()
   (let* ((sample-response (test-helper-string-resource "get-secrets-response.json"))
@@ -344,6 +391,8 @@ will be mocked."
 
 ;; Get deployments
 
+(define-refresh-tests "deployments" '("deployment-1" "deployment-2"))
+
 (ert-deftest kubernetes-kubectl-test--get-deployments-returns-parsed-json ()
   (let* ((sample-response (test-helper-string-resource "get-deployments-response.json"))
          (parsed-response (json-read-from-string sample-response))
@@ -360,6 +409,8 @@ will be mocked."
 
 
 ;; Get jobs
+
+(define-refresh-tests "jobs" '("example-job-1" "example-job-2"))
 
 (ert-deftest kubernetes-kubectl-test--get-jobs-returns-parsed-json ()
   (let* ((sample-response (test-helper-string-resource "get-jobs-response.json"))

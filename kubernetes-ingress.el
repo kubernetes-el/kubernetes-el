@@ -83,19 +83,7 @@
 
 ;; Requests and state management
 
-(defun kubernetes-ingress-refresh (&optional interactive)
-  (unless (kubernetes-process-poll-ingress-process-live-p)
-    (kubernetes-process-set-poll-ingress-process
-     (kubernetes-kubectl-get-ingress kubernetes-props
-                                     (kubernetes-state)
-                                     (lambda (response)
-                                       (kubernetes-state-update-ingress response)
-                                       (when interactive
-                                         (message "Updated ingress.")))
-                                     (lambda ()
-                                       (kubernetes-process-release-poll-ingress-process))))))
-
-
+(kubernetes-state-define-refreshers ingress)
 
 (defun kubernetes-ingress-delete-marked (state)
   (let ((names (kubernetes-state-marked-ingress state)))

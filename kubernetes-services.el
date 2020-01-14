@@ -113,17 +113,7 @@
 
 ;; Requests and state management
 
-(defun kubernetes-services-refresh (&optional interactive)
-  (unless (kubernetes-process-poll-services-process-live-p)
-    (kubernetes-process-set-poll-services-process
-     (kubernetes-kubectl-get-services kubernetes-props
-                                      (kubernetes-state)
-                                      (lambda (response)
-                                        (kubernetes-state-update-services response)
-                                        (when interactive
-                                          (message "Updated services.")))
-                                      (lambda ()
-                                        (kubernetes-process-release-poll-services-process))))))
+(kubernetes-state-define-refreshers services)
 
 (defun kubernetes-services-delete-marked (state)
   (let ((names (kubernetes-state-marked-services state)))

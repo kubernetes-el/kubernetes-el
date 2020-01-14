@@ -391,6 +391,45 @@
 
 ;; State accessors
 
+(defmacro kubernetes-state-define-refreshers (attr &optional canned raw)
+  (declare (indent 2))
+  (let* ((s-attr (symbol-name attr))
+         (canned (or canned (intern (format "kubernetes-kubectl-get-%s" s-attr)))))
+    `(progn
+       (defun ,(intern (format "kubernetes-%s-refresh" s-attr)) (&optional interactive)
+         (unless (,(intern (format "kubernetes-process-poll-%s-process-live-p" s-attr)))
+           (,(intern (format "kubernetes-process-set-poll-%s-process" s-attr))
+            (,canned
+             kubernetes-props
+             (kubernetes-state)
+             (lambda (response)
+               (,(intern (format "kubernetes-state-update-%s" s-attr)) response)
+               (when interactive
+                 (message (concat "Updated " ,s-attr "."))))
+             (function
+              ,(intern (format "kubernetes-process-release-poll-%s-process" s-attr)))))))
+       (defun ,(intern (format "kubernetes-%s-refresh-now" s-attr)) (&optional interactive)
+         (interactive "p")
+         (kubernetes-kubectl-await
+          (apply-partially #'kubernetes-kubectl
+                           kubernetes-props
+                           (kubernetes-state)
+                           ',(if raw (split-string raw) (list "get" s-attr "-o" "json")))
+          (lambda (buf)
+            (with-current-buffer buf
+              (when interactive
+                (message (concat "Updated " ,s-attr ".")))
+              (,(intern (format "kubernetes-state-update-%s" s-attr))
+               (json-read-from-string (buffer-string)))
+              (-let* (((&alist 'items)
+                       (,(intern (format "kubernetes-state-%s" s-attr))
+                        (kubernetes-state))))
+                (seq-map (lambda (item)
+                           (-let* (((&alist 'metadata (&alist 'name)) item)) name))
+                         items))))
+          nil
+          #'ignore)))))
+
 (defmacro kubernetes-state--define-getter (attr)
   `(defun ,(intern (format "kubernetes-state-%s" attr)) (state)
      (alist-get (quote ,attr) state)))
