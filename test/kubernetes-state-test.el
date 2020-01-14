@@ -6,7 +6,6 @@
 (require 'kubernetes-state)
 (declare-function test-helper-json-resource "test-helper.el")
 
-
 ;; Sample responses.
 
 (defconst sample-get-pods-response
@@ -32,7 +31,6 @@
 
 (defconst sample-get-config-response
   (test-helper-json-resource "config-view-response.json"))
-
 
 ;; Updating sets the main state
 

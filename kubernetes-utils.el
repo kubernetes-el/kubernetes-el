@@ -1,4 +1,4 @@
-;deployments;; kubernetes-utils.el --- Common utilities.  -*- lexical-binding: t; -*-
+;; kubernetes-utils.el --- Common utilities.  -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -15,22 +15,8 @@
 
 (autoload 'org-read-date "org")
 
-(defun kubernetes-utils-read-pod-name (state)
-  "Read a pod name from the user.
-
-STATE is the current application state.
-
-Update the pod state if it not set yet."
-  (-let* (((&alist 'items pods)
-           (or (kubernetes-state-pods state)
-               (progn
-                 (message "Getting pods...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-pods)))
-                   (kubernetes-state-update-pods response)
-                   response))))
-          (pods (append pods nil))
-          (names (-map #'kubernetes-state-resource-name pods)))
-    (completing-read "Pod: " names nil t)))
+(defalias 'kubernetes-utils-read-pod-name 'kubernetes-pods--read-name
+  "Exporting `kubernetes-pods--read-name'")
 
 (defun kubernetes-utils-read-iso-datetime (&rest _)
   (let* ((date (org-read-date nil t))

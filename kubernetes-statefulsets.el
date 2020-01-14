@@ -127,17 +127,7 @@
 
 ;; Requests and state management
 
-(defun kubernetes-statefulsets-refresh (&optional interactive)
-  (unless (kubernetes-process-poll-statefulsets-process-live-p)
-    (kubernetes-process-set-poll-statefulsets-process
-     (kubernetes-kubectl-get-statefulsets kubernetes-props
-                                         (kubernetes-state)
-                                         (lambda (response)
-                                           (kubernetes-state-update-statefulsets response)
-                                           (when interactive
-                                             (message "Updated statefulsets.")))
-                                         (lambda ()
-                                           (kubernetes-process-release-poll-statefulsets-process))))))
+(kubernetes-state-define-refreshers statefulsets)
 
 (defun kubernetes-statefulsets-delete-marked (state)
   (let ((names (kubernetes-state-marked-statefulsets state)))

@@ -81,17 +81,7 @@
 
 ;; Requests and state management
 
-(defun kubernetes-configmaps-refresh (&optional interactive)
-  (unless (kubernetes-process-poll-configmaps-process-live-p)
-    (kubernetes-process-set-poll-configmaps-process
-     (kubernetes-kubectl-get-configmaps kubernetes-props
-                                        (kubernetes-state)
-                                        (lambda (response)
-                                          (kubernetes-state-update-configmaps response)
-                                          (when interactive
-                                            (message "Updated configmaps.")))
-                                        (lambda ()
-                                          (kubernetes-process-release-poll-configmaps-process))))))
+(kubernetes-state-define-refreshers configmaps)
 
 (defun kubernetes-configmaps-delete-marked (state)
   (let ((names (kubernetes-state-marked-configmaps state)))

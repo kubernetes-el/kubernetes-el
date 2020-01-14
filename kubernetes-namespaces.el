@@ -11,18 +11,7 @@
 
 ;; Requests and state management
 
-(defun kubernetes-namespaces-refresh (&optional interactive)
-  (unless (kubernetes-process-poll-namespaces-process-live-p)
-    (kubernetes-process-set-poll-namespaces-process
-     (kubernetes-kubectl-get-namespaces kubernetes-props
-                                        (kubernetes-state)
-                                        (lambda (response)
-                                          (kubernetes-state-update-namespaces response)
-                                          (when interactive
-                                            (message "Updated namespaces.")))
-                                        (lambda ()
-                                          (kubernetes-process-release-poll-namespaces-process))))))
-
+(kubernetes-state-define-refreshers namespaces)
 
 ;; Displaying namespaces
 

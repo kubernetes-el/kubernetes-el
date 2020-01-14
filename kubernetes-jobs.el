@@ -125,17 +125,7 @@
 
 ;; Requests and state management
 
-(defun kubernetes-jobs-refresh (&optional interactive)
-  (unless (kubernetes-process-poll-jobs-process-live-p)
-    (kubernetes-process-set-poll-jobs-process
-     (kubernetes-kubectl-get-jobs kubernetes-props
-                                  (kubernetes-state)
-                                  (lambda (response)
-                                    (kubernetes-state-update-jobs response)
-                                    (when interactive
-                                      (message "Updated jobs.")))
-                                  (lambda ()
-                                    (kubernetes-process-release-poll-jobs-process))))))
+(kubernetes-state-define-refreshers jobs)
 
 (defun kubernetes-jobs-delete-marked (state)
   (let ((names (kubernetes-state-marked-jobs state)))

@@ -144,17 +144,26 @@
 
 ;; Requests and state management
 
-(defun kubernetes-pods-refresh (&optional interactive)
-  (unless (kubernetes-process-poll-pods-process-live-p)
-    (kubernetes-process-set-poll-pods-process
-     (kubernetes-kubectl-get-pods kubernetes-props
-                                  (kubernetes-state)
-                                  (lambda (response)
-                                    (kubernetes-state-update-pods response)
-                                    (when interactive
-                                      (message "Updated pods.")))
-                                  (lambda ()
-                                    (kubernetes-process-release-poll-pods-process))))))
+(kubernetes-state-define-refreshers pods)
+
+;; Displaying pods
+
+(defun kubernetes-pods--read-name (state)
+  "Read a pod name from the user.
+
+STATE is the current application state.
+
+Update the pod state if it not set yet."
+  (-let* (((&alist 'items pods)
+           (or (kubernetes-state-pods state)
+               (progn
+                 (message "Getting pods...")
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-pods)))
+                   (kubernetes-state-update-pods response)
+                   response))))
+          (pods (append pods nil))
+          (names (-map #'kubernetes-state-resource-name pods)))
+    (completing-read "Pod: " names nil t)))
 
 (defun kubernetes-pods-delete-marked (state)
   (let ((names (kubernetes-state-marked-pods state)))

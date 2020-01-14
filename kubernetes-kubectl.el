@@ -474,6 +474,26 @@ Return result of first callback if success, nil otherwise."
              do (sleep-for 0 ms)
              finally return result)))
 
+(defmacro kubernetes-kubectl-await-command (resource for-items)
+  (declare (indent defun))
+  "Await kubectl updating state's RESOURCE and return result of calling
+FOR-ITEMS on updated RESOURCEs."
+  `(kubernetes-kubectl-await
+    (apply-partially #'kubernetes-kubectl
+                     kubernetes-props
+                     (kubernetes-state)
+                     (split-string ,(format "get %s -o json" (symbol-name resource))))
+    (lambda (buf)
+      (with-current-buffer buf
+        (,(intern (concat "kubernetes-state-update-" (symbol-name resource)))
+         (json-read-from-string (buffer-string)))
+        (-let* (((&alist 'items)
+                 (,(intern (concat "kubernetes-state-" (symbol-name resource)))
+                  (kubernetes-state))))
+          (seq-map ,for-items items))))
+    nil
+    #'ignore))
+
 (defun kubernetes-kubectl-await-on-async (props state fn)
   "Turn an async function requiring a callback into a synchronous one.
 
