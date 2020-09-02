@@ -7,4 +7,5 @@
  (depends-on "evil")
  (depends-on "noflet")
  (depends-on "ert-runner")
+ (depends-on "dash")
  (depends-on "f"))

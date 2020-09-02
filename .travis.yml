@@ -1,26 +1,61 @@
-language: emacs-lisp
+# https://github.com/purcell/nix-emacs-ci
+language: nix
+cache:
+  directories:
+  - $HOME/nix.store
 
-matrix:
-  fast_finish: true
-  allow_failures:
-    - env: EVM_EMACS=emacs-git-snapshot-travis-linux-trusty
+jobs:
   include:
     - os: linux
-      dist: trusty
-      env: EVM_EMACS=emacs-26.3-travis
+      dist: bionic
+      env: EMACS_CI=emacs-25-1
     - os: linux
-      dist: trusty
-      env: EVM_EMACS=emacs-git-snapshot-travis-linux-trusty
+      dist: bionic
+      env: EMACS_CI=emacs-25-2
+    - os: linux
+      dist: bionic
+      env: EMACS_CI=emacs-25-3
+    - os: linux
+      dist: bionic
+      env: EMACS_CI=emacs-26-1
+    - os: linux
+      dist: bionic
+      env: EMACS_CI=emacs-26-2
+    - os: linux
+      dist: bionic
+      env: EMACS_CI=emacs-26-3
+    - os: linux
+      dist: bionic
+      env: EMACS_CI=emacs-27-1
+    - os: linux
+      dist: bionic
+      env: EMACS_CI=emacs-snapshot
 
 before_install:
-  - curl -fsSkL https://raw.github.com/rejeep/evm/master/go | bash
-  - export PATH=$HOME/.evm/bin:$HOME/.cask/bin:$PATH
-  - evm config path /tmp
-  - evm install $EVM_EMACS --use --skip
-  - curl -fsSkL https://raw.github.com/cask/cask/master/go | python
+  - sudo mkdir -p /etc/nix
+  - echo "substituters = https://cache.nixos.org/ file://$HOME/nix.store" | sudo tee -a /etc/nix/nix.conf > /dev/null
+  - echo 'require-sigs = false' | sudo tee -a /etc/nix/nix.conf > /dev/null
+
+before_cache:
+  - mkdir -p $HOME/nix.store
+  - nix copy --to file://$HOME/nix.store -f default.nix buildInputs
 
 install:
-  - cask install
+  # The default "emacs" executable on the $PATH will now be the version named by $EMACS_CI
+  - bash <(curl https://raw.githubusercontent.com/purcell/nix-emacs-ci/master/travis-install)
+  - travis_retry eval $"curl -fsSL https://raw.githubusercontent.com/cask/cask/master/go | python ; sleep 10"
+  - export PATH=$HOME/.cask/bin:$PATH
+  - travis_retry eval $"cask install ; sleep 10"
+  - nix-env -i kubectl
 
 script:
+  - export PATH=$HOME/.cask/bin:$PATH
+  - emacs --version
+  - cask build
+  - make build
   - make test
+
+allow_failures:
+  - os: linux
+    dist: bionic
+    env: EMACS_CI=emacs-snapshot

@@ -15,7 +15,11 @@
   (cond
    ((null vector)
     on-loading)
-   ((and vector (seq-contains vector elem))
+   ((and vector
+         (if
+             (fboundp 'seq-contains-p)
+             (seq-contains-p vector elem)
+           (with-no-warnings (seq-contains vector elem))))
     on-found)
    (t
     on-not-found)))
