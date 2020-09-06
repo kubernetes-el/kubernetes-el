@@ -3,6 +3,7 @@
 (package-file "kubernetes.el")
 
 (development
+ (depends-on "undo-tree")
  (depends-on "undercover")
  (depends-on "evil")
  (depends-on "noflet")

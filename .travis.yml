@@ -8,28 +8,39 @@ jobs:
   include:
     - os: linux
       dist: bionic
-      env: EMACS_CI=emacs-25-1
+      env:
+        - JOB=2
+        - EMACS_CI=emacs-25-2
     - os: linux
       dist: bionic
-      env: EMACS_CI=emacs-25-2
+      env:
+        - JOB=3
+        - EMACS_CI=emacs-25-3
     - os: linux
       dist: bionic
-      env: EMACS_CI=emacs-25-3
+      env:
+        - JOB=4
+        - EMACS_CI=emacs-26-1
     - os: linux
       dist: bionic
-      env: EMACS_CI=emacs-26-1
+      env:
+        - JOB=5
+        - EMACS_CI=emacs-26-2
     - os: linux
       dist: bionic
-      env: EMACS_CI=emacs-26-2
+      env:
+        - JOB=6
+        - EMACS_CI=emacs-26-3
     - os: linux
       dist: bionic
-      env: EMACS_CI=emacs-26-3
+      env:
+        - JOB=7
+        - EMACS_CI=emacs-27-1
     - os: linux
       dist: bionic
-      env: EMACS_CI=emacs-27-1
-    - os: linux
-      dist: bionic
-      env: EMACS_CI=emacs-snapshot
+      env:
+        - JOB=8
+        - EMACS_CI=emacs-snapshot
 
 before_install:
   - sudo mkdir -p /etc/nix
@@ -40,18 +51,25 @@ before_cache:
   - mkdir -p $HOME/nix.store
   - nix copy --to file://$HOME/nix.store -f default.nix buildInputs
 
+before_script:
+  - sudo mkdir -p /etc/nix && echo 'sandbox = true' | sudo tee /etc/nix/nix.conf
+
 install:
+  - sleep $(((JOB - 1) * 10))
   # The default "emacs" executable on the $PATH will now be the version named by $EMACS_CI
   - bash <(curl https://raw.githubusercontent.com/purcell/nix-emacs-ci/master/travis-install)
   - travis_retry eval $"curl -fsSL https://raw.githubusercontent.com/cask/cask/master/go | python ; sleep 10"
   - export PATH=$HOME/.cask/bin:$PATH
-  - travis_retry eval $"cask install ; sleep 10"
+  - cask clean-elc --verbose
+  - travis_retry eval $"cask install --verbose ; sleep 10"
+  - travis_retry eval $"cask update --verbose ; sleep 10"
+  - travis_retry eval $"cask upgrade --verbose ; sleep 10"
   - nix-env -i kubectl
 
 script:
   - export PATH=$HOME/.cask/bin:$PATH
   - emacs --version
-  - cask build
+  - cask build --verbose
   - make build
   - make test
 
