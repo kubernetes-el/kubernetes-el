@@ -1,4 +1,5 @@
 # https://github.com/purcell/nix-emacs-ci
+# https://nixos.wiki/wiki/Nix_on_Travis
 language: nix
 cache:
   directories:
