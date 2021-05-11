@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 'magit)
 (require 'seq)
 
 (require 'kubernetes-ast)
@@ -29,11 +30,8 @@
                                   'podIP pod-ip
                                   'startTime start-time))
           pod)
-         ([(&alist 'image image 'name name)]
-          (or containers
-              (make-vector 1 (list '(name . "N/A") '(image . "N/A"))))))
-    `(,(funcall detail "Name" name)
-      ,(when label-name
+         (_containers (or containers (make-vector 0 '()))))
+    `(,(when label-name
          `(section (selector nil)
                    (nav-prop (:selector ,label-name)
                              ,(funcall detail "Label" (propertize label-name 'face 'kubernetes-selector)))))
@@ -41,10 +39,14 @@
          `(section (namespace nil)
                    (nav-prop (:namespace-name ,ns)
                              (key-value 12 "Namespace" ,(propertize ns 'face 'kubernetes-namespace)))))
-      ,(funcall detail "Image" image)
       ,(funcall detail "Host IP" host-ip)
       ,(funcall detail "Pod IP" pod-ip)
-      ,(funcall detail "Started" start-time))))
+      ,(funcall detail "Started" start-time)
+      (header-with-count "Containers:" ,_containers)
+      ,(cons 'list (-map (-lambda ((&alist 'image image 'name name))
+                           `((key-value 10 "Name" ,name)
+                             (key-value 10 "Image" ,image)))
+                         _containers)))))
 
 
 (kubernetes-ast-define-component pod-view-line (state pod)
