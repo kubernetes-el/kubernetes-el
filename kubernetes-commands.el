@@ -292,7 +292,7 @@ Should be invoked via command `kubernetes-logs-popup'."
                                args
                                (when-let (ns (kubernetes-state-current-namespace state))
                                  (list (format "--namespace=%s" ns)))
-                               (list pod-name exec-command)))
+                               (list pod-name "--" exec-command)))
 
          (interactive-tty (member "-t" args))
          (buf
