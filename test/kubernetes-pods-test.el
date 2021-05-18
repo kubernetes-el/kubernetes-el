@@ -64,31 +64,34 @@ Pods (0)
 Pods (3)
   Name                                          Status     Ready   Restarts    Age
   example-svc-v3-1603416598-2f9lb               Running      1/1          0    36d
-    Name:       example-service-2
     Label:      example-pod-v3
     Namespace:  ns.example
-    Image:      example.com/example-service:3.0.0
     Host IP:    10.0.0.0
     Pod IP:     172.0.0.1
     Started:    2017-02-25T08:12:14Z
+    Containers: (1)
+    - Name:     example-service-2
+      Image:    example.com/example-service:3.0.0
 
-  example-svc-v4-1603416598-2f9lb               Running      1/1          0    36d
-    Name:       example-service-4
+  example-svc-v4-1603416598-2f9lb               Running      2/2          0    36d
     Label:      example-pod-v4
     Namespace:  ns.example
-    Image:      example.com/example-service:4.8.0
     Host IP:    10.0.0.0
     Pod IP:     172.0.0.1
     Started:    2017-02-25T08:12:14Z
+    Containers: (2)
+    - Name:     example-service-4
+      Image:    example.com/example-service:4.8.0
+    - Name:     fake-runner-0
+      Image:    fake.com/fake-runner:1.0.0
 
   example-svc-v5-1603416598-2f9lb               Running      0/0          0    36d
-    Name:       N/A
     Label:      example-pod-v5
     Namespace:  ns.example
-    Image:      N/A
     Host IP:    10.0.0.0
     Pod IP:     172.0.0.1
     Started:    2017-02-25T08:12:14Z
+    Containers: (0)
 
 
 "))

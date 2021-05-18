@@ -393,6 +393,20 @@
                 "startedAt": "2017-02-25T08:13:39Z"
               }
             }
+          },
+          {
+            "containerID": "docker://fake-container-id",
+            "image": "fake.com/fake-runner:1.0.0",
+            "imageID": "docker-pullable://fake.com/fake-runner@sha256:2406309063027f398037b69c3cfcb2e108213f45c47998d26eedaf16d8253871",
+            "lastState": {},
+            "name": "fake-runner-0",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "running": {
+                "startedAt": "2017-02-25T08:13:39Z"
+              }
+            }
           }
         ],
         "hostIP": "10.0.0.0",
