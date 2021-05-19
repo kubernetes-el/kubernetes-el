@@ -88,7 +88,7 @@ The function must take a single argument, which is the buffer to display."
   :type 'number)
 
 (defcustom kubernetes-poll-frequency 5
-  "The frequency at which to poll Kubernetes for changes."
+  "The frequency in seconds at which to poll Kubernetes for changes."
   :group 'kubernetes
   :type 'integer)
 
