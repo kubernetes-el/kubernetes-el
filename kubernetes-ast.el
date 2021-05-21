@@ -131,7 +131,7 @@ such in rendering ASTs." name)))
     (goto-char start-pos)
     (goto-char (line-beginning-position))
     (skip-chars-forward " ")
-    (unless (eq (char-after) ?-)
+    (unless (string-equal "- " (buffer-substring (point) (+ 2 (point))))
       (delete-char -2)
       (insert "- "))))
 
