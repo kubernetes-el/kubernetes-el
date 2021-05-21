@@ -44,6 +44,17 @@
 
 ;; list
 
+(ert-deftest kubernetes-ast-list--list-with-dashes ()
+  (let ((ast '(list (line "foo") (line "-bar") (line "--baz")))
+        (expected (string-trim-left "
+- foo
+- -bar
+- --baz
+")))
+    (with-temp-buffer
+      (kubernetes-ast-eval ast)
+      (should (equal expected (buffer-string))))))
+
 (ert-deftest kubernetes-ast-test--lists ()
   (let ((ast '(list (line "foo") (line "bar") (line "baz")))
         (expected (string-trim-left "
