@@ -26,7 +26,7 @@
 
     ((pred vectorp)
      `(list ,@(seq-map (lambda (it)
-                         `(line ,(kubernetes-yaml--render-helper it)))
+                         `(section (item nil) (line ,(kubernetes-yaml--render-helper it))))
                        json)))
 
     ;; Objects
