@@ -1,6 +1,6 @@
 # kubernetes-el
 
-[![Build Status](https://travis-ci.org/chrisbarrett/kubernetes-el.svg?branch=master)](https://travis-ci.org/chrisbarrett/kubernetes-el)
+[![Build Status](https://github.com/chrisbarrett/kubernetes-el/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/chrisbarrett/kubernetes-el/actions/workflows/ci.yaml)
 [![Coverage Status](https://coveralls.io/repos/github/chrisbarrett/kubernetes-el/badge.svg?branch=master)](https://coveralls.io/github/chrisbarrett/kubernetes-el?branch=master)
 [![MELPA Stable](https://stable.melpa.org/packages/kubernetes-badge.svg)](https://stable.melpa.org/#/kubernetes)
 [![MELPA](https://melpa.org/packages/kubernetes-badge.svg)](https://melpa.org/#/kubernetes)
