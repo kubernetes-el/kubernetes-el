@@ -8,6 +8,7 @@
 (require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
+(require 'mode-local)
 
 (autoload 'kubernetes-configmaps-delete-marked "kubernetes-configmaps")
 (autoload 'kubernetes-deployments-delete-marked "kubernetes-deployments")
@@ -144,6 +145,27 @@
 
 
 ;; Misc commands
+
+;;;###autoload
+(defun kubernetes-kill-buffers (&optional no-confirm)
+  "Kill all `kubernetes-mode' buffers.
+
+With prefix argument, skips confirmation prior to killing all
+buffers."
+  (interactive "P")
+  (let* ((kubernetes-buffer-p
+          (lambda (buffer)
+            (let ((major-mode (buffer-local-value 'major-mode buffer)))
+              (or (eq major-mode 'kubernetes-mode)
+                  (eq (get-mode-local-parent major-mode) 'kubernetes-mode)))))
+         (buffers (-filter kubernetes-buffer-p (buffer-list)))
+         (num-buffers (length buffers)))
+    (if (not buffers)
+        (message "No Kubernetes buffers to kill.")
+      (when (or no-confirm (y-or-n-p (format "Kill %s Kubernetes buffer(s)? " num-buffers)))
+        (dolist (buffer buffers)
+          (kill-buffer buffer))
+        (message "Killed %s Kubernetes buffers." num-buffers)))))
 
 ;;;###autoload
 (defun kubernetes-copy-thing-at-point (point)
