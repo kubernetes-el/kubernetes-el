@@ -147,9 +147,12 @@
 ;; Misc commands
 
 ;;;###autoload
-(defun kubernetes-kill-buffers ()
-  "Kill all `kubernetes-mode' buffers."
-  (interactive)
+(defun kubernetes-kill-buffers (&optional no-confirm)
+  "Kill all `kubernetes-mode' buffers.
+
+With prefix argument, skips confirmation prior to killing all
+buffers."
+  (interactive "P")
   (let* ((kubernetes-buffer-p
           (lambda (buffer)
             (let ((major-mode (buffer-local-value 'major-mode buffer)))
@@ -159,7 +162,7 @@
          (num-buffers (length buffers)))
     (if (not buffers)
         (message "No Kubernetes buffers to kill.")
-      (when (y-or-n-p (format "Kill %s Kubernetes buffer(s)? " num-buffers))
+      (when (or no-confirm (y-or-n-p (format "Kill %s Kubernetes buffer(s)? " num-buffers)))
         (dolist (buffer buffers)
           (kill-buffer buffer))
         (message "Killed %s Kubernetes buffers." num-buffers)))))
