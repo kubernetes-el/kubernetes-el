@@ -18,7 +18,11 @@
 
 (when (require 'undercover nil t)
   (with-no-warnings
-    (undercover "*.el" (:exclude "kubernetes-evil.el"))))
+    (undercover "*.el"
+                (:exclude "kubernetes-evil.el")
+                (:merge-report nil)
+                (:report-format 'lcov)
+                (:send-report nil))))
 
 
 ;; Load package
