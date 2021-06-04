@@ -7,7 +7,8 @@
 (require 'kubernetes-utils)
 
 (defun kubernetes-pod-line-ok-p (pod)
-  (-let [(&alist 'status (&alist 'containerStatuses containers 'phase phase)) pod pod]
+  "Determine if POD should be displayed with a warning or not."
+  (-let [(&alist 'status (&alist 'containerStatuses containers 'phase phase)) pod]
     (unless (seq-empty-p containers)
       (-let* (([(&alist 'state pod-state)] containers)
               (pod-state (or (alist-get 'reason (alist-get 'waiting pod-state)) phase)))
