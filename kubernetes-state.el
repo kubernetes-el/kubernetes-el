@@ -563,7 +563,7 @@
   (cl-assert (-all? #'integerp time))
   (let ((arg `((message . ,message)
                (command . ,command)
-               (time ., time))))
+               (time . ,time))))
     (kubernetes-state-update :update-last-error arg)
     arg))
 
