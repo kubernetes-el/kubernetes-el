@@ -2,7 +2,7 @@ CASK ?= cask
 EMACS ?= emacs
 EMACS_BATCH = ${CASK} exec ${EMACS} -Q --batch -l package
 
-REPO = github.com/chrisbarrett/kubernetes-el
+REPO = github.com/kubernetes-el/kubernetes-el
 
 DEPS_SCRIPT = assets/project-deps.el
 DEPS_PNG = assets/project-deps.png
