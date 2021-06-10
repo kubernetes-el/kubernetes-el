@@ -50,7 +50,7 @@ Otherwise clone the main repo.
 git clone "git@github.com:<username>/kubernetes-el.git"
 
 # Otherwise
-git clone "git@github.com:chrisbarrett/kubernetes-el.git"
+git clone "git@github.com:kubernetes-el/kubernetes-el.git"
 #+END_SRC
 
 Running make will tell you if you need to install anything to hack on the
