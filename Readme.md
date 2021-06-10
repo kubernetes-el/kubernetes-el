@@ -1,10 +1,10 @@
 # kubernetes-el
 
-[![Build Status](https://github.com/chrisbarrett/kubernetes-el/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/chrisbarrett/kubernetes-el/actions/workflows/ci.yaml)
-[![Coverage Status](https://coveralls.io/repos/github/chrisbarrett/kubernetes-el/badge.svg?branch=master)](https://coveralls.io/github/chrisbarrett/kubernetes-el?branch=master)
+[![Build Status](https://github.com/kubernetes-el/kubernetes-el/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/kubernetes-el/kubernetes-el/actions/workflows/ci.yaml)
+[![Coverage Status](https://coveralls.io/repos/github/kubernetes-el/kubernetes-el/badge.svg?branch=master)](https://coveralls.io/github/kubernetes-el/kubernetes-el?branch=master)
 [![MELPA Stable](https://stable.melpa.org/packages/kubernetes-badge.svg)](https://stable.melpa.org/#/kubernetes)
 [![MELPA](https://melpa.org/packages/kubernetes-badge.svg)](https://melpa.org/#/kubernetes)
-[![License GPL 3](https://img.shields.io/github/license/chrisbarrett/kubernetes-el.svg)][COPYING]
+[![License GPL 3](https://img.shields.io/github/license/kubernetes-el/kubernetes-el.svg)][COPYING]
 
 A magit-style interface to the Kubernetes command-line client.
 
@@ -48,7 +48,7 @@ Otherwise, you can install the packages with `M-x package-install`.
 Requires Emacs 25 and [Cask][].
 
 ```sh
-git clone git@github.com:chrisbarrett/kubernetes-el.git
+git clone git@github.com:kubernetes-el/kubernetes-el.git
 cd kubernetes-el
 make && make install
 ```
