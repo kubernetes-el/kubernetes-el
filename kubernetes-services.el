@@ -18,7 +18,7 @@
 ;; Components
 
 (defconst kubernetes-services--column-heading
-  ["%-30s %15s %15s %6s" "Name|Internal IP|External IP|Age"])
+  ["%-45s %15s %15s %6s" "Name|Internal IP|External IP|Age"])
 
 (kubernetes-ast-define-component service-details (service)
   (-let ((detail
@@ -66,7 +66,7 @@
           (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 30))
+                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 43))
                          " "
                          ;; Internal IP
                          (propertize (format (pop list-fmt) internal-ip) 'face 'magit-dimmed)

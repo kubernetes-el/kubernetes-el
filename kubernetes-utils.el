@@ -63,7 +63,7 @@
 
 (defun kubernetes-utils-ellipsize (s threshold)
   (if (> (length s) threshold)
-      (concat (substring s 0 (1- threshold)) "…")
+      (concat (substring s 0 (1- threshold)) "...")
     s))
 
 (defun kubernetes-utils-parse-utc-timestamp (timestamp)

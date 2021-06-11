@@ -35,7 +35,7 @@
           (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 45))
+                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 43))
                          " "
                          ;; Data
                          (propertize (format (pop list-fmt) (seq-length data)) 'face 'magit-dimmed)
