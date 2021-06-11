@@ -28,7 +28,9 @@
   "Popup console for pod logging commands."
   :group 'kubernetes
   :switches
-  '((?p "Print logs for previous instances of the container in this pod" "-p"))
+  '((?a "Print logs from all containers in this pod" "--all-containers=true")
+    (?p "Print logs for previous instances of the container in this pod" "-p"))
+
   :options
   '("Options for customizing logging behaviour"
     (?t "Number of lines to display" "--tail=" read-number)
