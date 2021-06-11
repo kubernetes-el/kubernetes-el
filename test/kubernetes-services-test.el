@@ -19,7 +19,7 @@
   (s-trim-left "
 
 Services
-  Name                               Internal IP     External IP    Age
+  Name                                              Internal IP     External IP    Age
   Fetching...
 
 "))
@@ -62,8 +62,8 @@ Services (0)
   (s-trim-left "
 
 Services (2)
-  Name                               Internal IP     External IP    Age
-  example-svc-1                      192.168.0.0     192.168.0.0     4d
+  Name                                              Internal IP     External IP    Age
+  example-svc-1                                     192.168.0.0     192.168.0.0     4d
     Selector:      example-pod-v1
     Label:         example-svc-1
     Namespace:     example
@@ -72,7 +72,7 @@ Services (2)
     External IPs:  192.168.0.0
     Ports:         80/TCP
 
-  example-svc-2                      192.168.0.0                    19d
+  example-svc-2                                     192.168.0.0                    19d
     Selector:      example-pod-v1
     Label:         example-svc-2
     Namespace:     example

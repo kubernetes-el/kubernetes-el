@@ -66,7 +66,7 @@
           (list-fmt (split-string fmt))
           (line (concat
                  ;; Name
-                 (let ((name-str (format (pop list-fmt) (kubernetes-utils-ellipsize name 45))))
+                 (let ((name-str (format (pop list-fmt) (kubernetes-utils-ellipsize name 43))))
                    (cond
                     ((and completion-time (< 0 successful))
                      (propertize name-str 'face 'magit-dimmed))

@@ -36,10 +36,10 @@
            ingress)
           (line `(line ,(concat
                          ;; Name
-                         (format "%-45s " (kubernetes-utils-ellipsize name 45))
+                         (format "%-45s " (kubernetes-utils-ellipsize name 43))
 
                          ;; Hosts
-                         (format "%-25s " (--mapcat (alist-get 'host it) ingress-rules))
+                         (format "%-25s " (kubernetes-utils-ellipsize (--mapcat (alist-get 'host it) ingress-rules) 23))
 
                          ;; Address
                           (format "%20s "

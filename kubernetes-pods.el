@@ -68,7 +68,7 @@
           (str
            (concat
             ;; Name
-            (format (pop list-fmt) (kubernetes-utils-ellipsize name 45))
+            (format (pop list-fmt) (kubernetes-utils-ellipsize name 43))
             " "
             ;; Status
             (let ((s (format (pop list-fmt) (kubernetes-utils-ellipsize pod-state 10))))

@@ -65,7 +65,7 @@
           (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 45))
+                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 43))
                          " "
                          ;; Replicas (current/desired)
                          (let ((next (pop list-fmt))
