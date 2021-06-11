@@ -358,6 +358,12 @@
 
 (defun kubernetes-overview--poll (&optional verbose)
   (let ((sections (kubernetes-state-overview-sections (kubernetes-state))))
+    (when (member 'overview sections)
+      (kubernetes-pods-refresh verbose)
+      (kubernetes-configmaps-refresh verbose)
+      (kubernetes-secrets-refresh verbose)
+      (kubernetes-statefulsets-refresh verbose)
+      (kubernetes-deployments-refresh verbose))
     (when (member 'configmaps sections)
       (kubernetes-configmaps-refresh verbose))
     (when (member 'context sections)
