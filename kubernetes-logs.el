@@ -101,6 +101,7 @@ STATE is the current application state"
     (define-key keymap (kbd "n") #'kubernetes-logs-forward-line)
     (define-key keymap (kbd "p") #'kubernetes-logs-previous-line)
     (define-key keymap (kbd "RET") #'kubernetes-logs-inspect-line)
+    (define-key keymap (kbd "M-w") nil)
     keymap)
   "Keymap for `kubernetes-logs-mode'.")
 
