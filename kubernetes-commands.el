@@ -301,7 +301,7 @@ EXEC-COMMAND is the command to run in the container.
 
 STATE is the current application state.
 
-Should be invoked via command `kubernetes-logs-popup'."
+Should be invoked via command `kubernetes-exec-popup'."
   (interactive (let* ((state (kubernetes-state))
                       (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state)))
                       (command
