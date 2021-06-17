@@ -29,6 +29,7 @@
 (require 'kubernetes-labels)
 (require 'kubernetes-logs)
 (require 'kubernetes-overview)
+(require 'kubernetes-tramp)
 
 (provide 'kubernetes)
 

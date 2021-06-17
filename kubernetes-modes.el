@@ -53,6 +53,7 @@
     (define-key keymap (kbd "d") #'kubernetes-describe-popup)
     (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
     (define-key keymap (kbd "e") #'kubernetes-exec-popup)
+    (define-key keymap (kbd "f") #'kubernetes-file-popup)
     (define-key keymap (kbd "g") #'kubernetes-refresh)
     (define-key keymap (kbd "l") #'kubernetes-logs-popup)
     (define-key keymap (kbd "L") #'kubernetes-labels-popup)

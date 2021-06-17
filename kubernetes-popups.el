@@ -57,6 +57,7 @@
     "Popup commands"
     (?d "Describe" kubernetes-describe-popup)
     (?e "Exec" kubernetes-exec-popup)
+    (?f "File" kubernetes-file-popup)
     (?L "Labels" kubernetes-labels-popup)
     (?l "Logs" kubernetes-logs-popup)
     "Misc"
@@ -75,6 +76,17 @@
   :actions
   '((?e "Exec" kubernetes-exec-into))
   :default-action 'kubernetes-exec-into)
+
+(magit-define-popup kubernetes-file-popup
+  "Popup console for file commands for POD."
+  :group 'kubernetes
+  :options
+  '("Options for customizing file behaviour"
+    (?c "Container" "--container=" kubernetes-utils-read-container-name))
+  :actions
+  '((?f "Find file" kubernetes-tramp-find-file)
+    (?d "Dired" kubernetes-tramp-dired))
+  :default-action 'kubernetes-tramp-dired)
 
 (magit-define-popup kubernetes-describe-popup
   "Popup console for describe commands."
