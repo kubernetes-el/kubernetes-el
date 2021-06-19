@@ -58,10 +58,10 @@ Pods (0)
 
 ;; Shows pod lines when there are pods.
 
-(defconst kubernetes-pods-test--sample-result
+(defconst kubernetes-pods-test--sample-result-without-completed
   (s-trim-left "
 
-Pods (3)
+Pods (4)
   Name                                          Status     Ready   Restarts    Age
   example-svc-v3-1603416598-2f9lb               Running      1/1          0    36d
     Label:      example-pod-v3
@@ -96,13 +96,39 @@ Pods (3)
 
 "))
 
-(ert-deftest kubernetes-pods-test--sample-response ()
+(ert-deftest kubernetes-pods-test--sample-response-without-completed ()
   (let ((state `((pods . ,sample-get-pods-response)
                  (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-pods-section state)))
-      (should (equal kubernetes-pods-test--sample-result
+      (should (equal kubernetes-pods-test--sample-result-without-completed
+                     (substring-no-properties (buffer-string)))))))
+
+(defconst kubernetes-pods-test--sample-result-with-completed
+  (concat (s-trim-right kubernetes-pods-test--sample-result-without-completed) "
+
+  example-svc-v6-1603416598-2f9lb               Succeeded    0/1          0    36d
+    Label:      example-pod-v6
+    Namespace:  ns.example
+    Host IP:    10.27.111.26
+    Pod IP:     172.16.0.216
+    Started:    2017-02-25T08:13:39Z
+    Containers: (1)
+    - Name:     example-svc-v6
+      Image:    example.com/example-service:4.8.0
+
+
+"))
+
+(ert-deftest kubernetes-pods-test--sample-response-with-completed ()
+  (let ((state `((pods . ,sample-get-pods-response)
+                 (current-time . ,(date-to-time "2017-04-03 00:00Z"))))
+        (kubernetes-pods-display-completed t))
+    (with-temp-buffer
+      (save-excursion (magit-insert-section (root)
+                        (draw-pods-section state)))
+      (should (equal kubernetes-pods-test--sample-result-with-completed
                      (substring-no-properties (buffer-string)))))))
 
 

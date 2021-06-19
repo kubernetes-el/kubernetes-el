@@ -129,6 +129,10 @@ form \"--flag=value\" or \"-flag\"."
   :type '(repeat (string :tag "Argument"))
   :group 'kubernetes)
 
+(defcustom kubernetes-pods-display-completed nil
+  "If non-nil, display completed pods."
+  :group 'kubernetes
+  :type 'boolean)
 
 (defface kubernetes-context-name
   '((((class color) (background light)) :foreground "SkyBlue4")
