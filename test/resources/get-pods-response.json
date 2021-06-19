@@ -415,7 +415,7 @@
         "startTime": "2017-02-25T08:12:14Z"
       }
     },
-        {
+    {
       "apiVersion": "v1",
       "kind": "Pod",
       "metadata": {
@@ -593,14 +593,170 @@
             "type": "PodScheduled"
           }
         ],
-
         "hostIP": "10.0.0.0",
         "phase": "Running",
         "podIP": "172.0.0.1",
         "startTime": "2017-02-25T08:12:14Z"
       }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "creationTimestamp": "2017-02-25T08:12:14Z",
+        "generateName": "setup-wizard-",
+        "labels": {
+          "name": "example-pod-v6",
+          "controller-uid": "502b3b8b-cccf-4ac0-bbe2-642d13bdb7a9",
+          "job-name": "example-svc-v6"
+        },
+        "name": "example-svc-v6-1603416598-2f9lb",
+        "namespace": "ns.example",
+        "ownerReferences": [
+          {
+            "apiVersion": "batch/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "Job",
+            "name": "example-svc-v6",
+            "uid": "502b3b8b-cccf-4ac0-bbe2-642d13bdb7a9"
+          }
+        ],
+        "resourceVersion": "14537",
+        "selfLink": "/api/v1/namespaces/ns.example/pods/example-svc-v6-1603416598-2f9lb",
+        "uid": "5c589ef2-4f40-4f88-8509-21fe3622890a"
+      },
+      "spec": {
+        "containers": [
+          {
+            "args": [
+              "-c",
+              "echo dummy_run"
+            ],
+            "command": [
+              "/bin/sh"
+            ],
+            "image": "example.com/example-service:4.8.0",
+            "imagePullPolicy": "IfNotPresent",
+            "name": "example-svc-v6",
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "6192Mi"
+              },
+              "requests": {
+                "cpu": "0",
+                "memory": "0"
+              }
+            },
+            "terminationMessagePath": "/dev/termination-log",
+            "terminationMessagePolicy": "File",
+            "volumeMounts": [
+              {
+                "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                "name": "default-token-469vw",
+                "readOnly": true
+              }
+            ]
+          }
+        ],
+        "dnsPolicy": "ClusterFirst",
+        "enableServiceLinks": true,
+        "nodeName": "10.27.111.26",
+        "priority": 0,
+        "restartPolicy": "Never",
+        "schedulerName": "default-scheduler",
+        "securityContext": {},
+        "serviceAccount": "default",
+        "serviceAccountName": "default",
+        "terminationGracePeriodSeconds": 30,
+        "tolerations": [
+          {
+            "effect": "NoExecute",
+            "key": "node.kubernetes.io/not-ready",
+            "operator": "Exists",
+            "tolerationSeconds": 300
+          },
+          {
+            "effect": "NoExecute",
+            "key": "node.kubernetes.io/unreachable",
+            "operator": "Exists",
+            "tolerationSeconds": 300
+          }
+        ],
+        "volumes": [
+          {
+            "name": "default-token-469vw",
+            "secret": {
+              "defaultMode": 420,
+              "secretName": "default-token-469vw"
+            }
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2017-02-25T08:12:14Z",
+            "reason": "PodCompleted",
+            "status": "True",
+            "type": "Initialized"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2017-02-25T08:13:39Z",
+            "reason": "PodCompleted",
+            "status": "False",
+            "type": "Ready"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2017-02-25T08:12:14Z",
+            "reason": "PodCompleted",
+            "status": "False",
+            "type": "ContainersReady"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2017-02-25T08:12:14Z",
+            "status": "True",
+            "type": "PodScheduled"
+          }
+        ],
+        "containerStatuses": [
+          {
+            "containerID": "docker://2557cb6ce7c64b181a899471fe80a652cef3537b0849e37a3f8b5a6877c3e0df",
+            "image": "example.com/example-service:4.8.0",
+            "imageID": "docker://sha256:cf059c1fbc2bcaac7e93db0d38d0149090137ec6f578b3386a1143f1defadac3",
+            "lastState": {},
+            "name": "example-svc-v6",
+            "ready": false,
+            "restartCount": 0,
+            "started": false,
+            "state": {
+              "terminated": {
+                "containerID": "docker://2557cb6ce7c64b181a899471fe80a652cef3537b0849e37a3f8b5a6877c3e0df",
+                "exitCode": 0,
+                "finishedAt": "2017-02-25T08:14:00Z",
+                "reason": "Completed",
+                "startedAt": "2017-02-25T08:13:39Z"
+              }
+            }
+          }
+        ],
+        "hostIP": "10.27.111.26",
+        "phase": "Succeeded",
+        "podIP": "172.16.0.216",
+        "podIPs": [
+          {
+            "ip": "172.16.0.216"
+          }
+        ],
+        "qosClass": "Burstable",
+        "startTime": "2017-02-25T08:13:39Z"
+      }
     }
-
   ],
   "kind": "List",
   "metadata": {},

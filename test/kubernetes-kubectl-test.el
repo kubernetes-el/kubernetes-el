@@ -138,7 +138,8 @@ will be mocked."
 
 (define-refresh-tests "pods" '("example-svc-v3-1603416598-2f9lb"
                                "example-svc-v4-1603416598-2f9lb"
-                               "example-svc-v5-1603416598-2f9lb"))
+                               "example-svc-v5-1603416598-2f9lb"
+                               "example-svc-v6-1603416598-2f9lb"))
 
 (ert-deftest kubernetes-kubectl-test--get-pods-returns-parsed-json ()
   (let* ((sample-response (test-helper-string-resource "get-pods-response.json"))

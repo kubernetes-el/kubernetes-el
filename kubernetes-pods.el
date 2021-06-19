@@ -125,8 +125,9 @@
                       (padding)))))
 
 (defun kubernetes-pods--succeeded-job-pod-p (pod)
-  (-let [(&alist 'status (&alist 'phase phase)) pod]
-    (equal phase "Succeeded")))
+  (unless kubernetes-pods-display-completed
+    (-let [(&alist 'status (&alist 'phase phase)) pod]
+      (equal phase "Succeeded"))))
 
 (kubernetes-ast-define-component pods-list (state &optional hidden)
   (-let (((&alist 'items pods) (kubernetes-state-pods state))
