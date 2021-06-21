@@ -5,6 +5,7 @@
 (require 'dash)
 (require 'subr-x)
 (require 'term)
+(require 'vterm)
 
 (require 'kubernetes-ast)
 (require 'kubernetes-kubectl)
@@ -131,6 +132,19 @@ buffer is killed."
                   nil t)))
 
     buf))
+
+(defun kubernetes-utils-vterm-start (bufname command args)
+  ;; Kill existing process.
+  (when-let ((existing (get-buffer bufname)))
+    (let ((proc (get-buffer-process existing)))
+      (if proc
+          (kubernetes-process-kill-quietly proc)
+        (kill-buffer bufname))))
+
+  (let* ((vterm-buffer-name bufname)
+         (command-str (format "%s %s" command (string-join args " ")))
+         (vterm-shell command-str))
+    (vterm-other-window)))
 
 (defun kubernetes-utils-process-buffer-start (bufname setup-fn command args &optional process-filter)
   (let ((buf (get-buffer-create bufname)))
