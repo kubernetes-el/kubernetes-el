@@ -73,7 +73,8 @@
   '("Options for customizing exec behaviour"
     (?c "Container to exec within" "--container=" kubernetes-utils-read-container-name))
   :actions
-  '((?e "Exec" kubernetes-exec-into))
+  '((?e "Exec" kubernetes-exec-into)
+    (?v "Exec into container using vterm" kubernetes-exec-using-vterm))
   :default-action 'kubernetes-exec-into)
 
 (magit-define-popup kubernetes-describe-popup

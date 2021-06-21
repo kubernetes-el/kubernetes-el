@@ -333,6 +333,44 @@ Should be invoked via command `kubernetes-exec-popup'."
     (select-window (display-buffer buf))))
 
 
+;;;###autoload
+(defun kubernetes-exec-using-vterm (pod-name args exec-command state)
+  "Open a vterm terminal for exec into a pod.
+
+POD-NAME is the name of the pod to exec into.
+
+ARGS are additional args to pass to kubectl.
+
+EXEC-COMMAND is the command to run in the container.
+
+STATE is the current application state.
+
+Should be invoked via command `kubernetes-exec-popup'."
+  (unless (featurep 'vterm)
+    (error "This action requires the vterm package."))
+
+  (interactive (let* ((state (kubernetes-state))
+                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state)))
+                      (command
+                       (let ((cmd (string-trim (read-string (format "Command (default: %s): " kubernetes-default-exec-command)
+                                                            nil 'kubernetes-exec-history))))
+                         (if (string-empty-p cmd) kubernetes-default-exec-command cmd))))
+                 (list pod-name (kubernetes-exec-arguments) command state)))
+
+  (let* ((command-args (append (list "exec") (kubernetes-kubectl--flags-from-state (kubernetes-state))
+                               args
+                               (when-let (ns (kubernetes-state-current-namespace state))
+                                 (list (format "--namespace=%s" ns)))
+                               (list pod-name "--" exec-command)))
+
+         (interactive-tty (member "-t" args))
+         (buf
+          (if interactive-tty
+              (kubernetes-utils-vterm-start kubernetes-exec-vterm-buffer-name
+                                            kubernetes-kubectl-executable
+                                            command-args)
+            (error "VTerm is supported only for interactive session"))))))
+
 ;; View management
 
 (defun kubernetes-commands-display-buffer-fullframe (buffer)

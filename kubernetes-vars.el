@@ -208,6 +208,8 @@ form \"--flag=value\" or \"-flag\"."
 
 (defconst kubernetes-exec-buffer-name "*kubernetes exec*")
 
+(defconst kubernetes-exec-vterm-buffer-name "*kubernetes exec vterm*")
+
 (defconst kubernetes-label-query-buffer-name "*kubernetes-label-query*")
 
 
