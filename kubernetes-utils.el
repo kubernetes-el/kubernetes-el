@@ -5,7 +5,6 @@
 (require 'dash)
 (require 'subr-x)
 (require 'term)
-(require 'vterm)
 
 (require 'kubernetes-ast)
 (require 'kubernetes-kubectl)
