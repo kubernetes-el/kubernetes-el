@@ -47,8 +47,12 @@ Disabling automatic refresh helped many to solve [issue #100][]. For
 example one can use the following configuration:
 
 ```elisp
-(kubernetes-poll-frequency 3600)
-(kubernetes-redraw-frequency 3600)
+(use-package kubernetes
+  :ensure t
+  :commands (kubernetes-overview)
+  :config
+  (setq kubernetes-poll-frequency 3600
+        kubernetes-redraw-frequency 3600))
 ```
 
 ## Manual Installation
