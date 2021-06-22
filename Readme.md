@@ -43,6 +43,14 @@ packages. If you use [use-package][], the forms below will get you started.
 
 Otherwise, you can install the packages with `M-x package-install`.
 
+Disabling automatic refresh helped many to solve [issue #100][]. For
+example one can use the following configuration:
+
+```elisp
+(kubernetes-poll-frequency 3600)
+(kubernetes-redraw-frequency 3600)
+```
+
 ## Manual Installation
 
 Requires Emacs 25 and [Cask][].
@@ -64,3 +72,4 @@ Yes please! 😻 See [contributing.org][]
 [MELPA]: http://melpa.milkbox.net/#/getting-started
 [contributing.org]: ./contributing.org
 [use-package]: https://github.com/jwiegley/use-package
+[issue #100]: https://github.com/kubernetes-el/kubernetes-el/issues/100
