@@ -27,7 +27,7 @@ TAR     := dist/kubernetes-$(VERSION).tar
 build : compile $(DEPS_PNG)
 
 compile: $(SRCS) $(CASKDIR)
-	! (${CASK} eval "(let ((byte-compile-error-on-warn t)) (cask-cli/build))" 2>&1 | egrep -a "(Warning|Error):") ; (ret=$$? ; ${CASK} clean-elc && exit $$ret)
+	! (${CASK} eval "(cask-cli/build)" | tee 2>&1 | egrep -a "(Error):") ; (ret=$$? ; ${CASK} clean-elc && exit $$ret)
 
 
 dist : $(TAR)

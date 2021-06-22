@@ -29,7 +29,6 @@
 
 (require 'kubernetes (f-join project-root "kubernetes.el"))
 
-
 ;; Resources
 
 (defun test-helper-string-resource (name)
