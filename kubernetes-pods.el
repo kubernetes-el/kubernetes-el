@@ -17,7 +17,7 @@
 ;; Components
 
 (defconst kubernetes-pods--column-heading
-  ["%-45s %-10s %5s %10s %6s" "Name Status Ready Restarts Age"])
+  ["%-45s %-13s %5s %10s %6s" "Name Status Ready Restarts Age"])
 
 (kubernetes-ast-define-component pod-view-detail (pod)
   (-let* ((detail (lambda (k v)
