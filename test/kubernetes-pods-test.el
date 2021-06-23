@@ -19,7 +19,7 @@
   (s-trim-left "
 
 Pods
-  Name                                          Status     Ready   Restarts    Age
+  Name                                          Status        Ready   Restarts    Age
   Fetching...
 
 "))
@@ -62,8 +62,8 @@ Pods (0)
   (s-trim-left "
 
 Pods (4)
-  Name                                          Status     Ready   Restarts    Age
-  example-svc-v3-1603416598-2f9lb               Running      1/1          0    36d
+  Name                                          Status        Ready   Restarts    Age
+  example-svc-v3-1603416598-2f9lb               Running         1/1          0    36d
     Label:      example-pod-v3
     Namespace:  ns.example
     Host IP:    10.0.0.0
@@ -73,7 +73,7 @@ Pods (4)
     - Name:     example-service-2
       Image:    example.com/example-service:3.0.0
 
-  example-svc-v4-1603416598-2f9lb               Running      2/2          0    36d
+  example-svc-v4-1603416598-2f9lb               Running         2/2          0    36d
     Label:      example-pod-v4
     Namespace:  ns.example
     Host IP:    10.0.0.0
@@ -85,7 +85,7 @@ Pods (4)
     - Name:     fake-runner-0
       Image:    fake.com/fake-runner:1.0.0
 
-  example-svc-v5-1603416598-2f9lb               Running      0/0          0    36d
+  example-svc-v5-1603416598-2f9lb               Running         0/0          0    36d
     Label:      example-pod-v5
     Namespace:  ns.example
     Host IP:    10.0.0.0
@@ -108,7 +108,7 @@ Pods (4)
 (defconst kubernetes-pods-test--sample-result-with-completed
   (concat (s-trim-right kubernetes-pods-test--sample-result-without-completed) "
 
-  example-svc-v6-1603416598-2f9lb               Succeeded    0/1          0    36d
+  example-svc-v6-1603416598-2f9lb               Succeeded       0/1          0    36d
     Label:      example-pod-v6
     Namespace:  ns.example
     Host IP:    10.27.111.26
