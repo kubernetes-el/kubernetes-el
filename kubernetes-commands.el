@@ -452,6 +452,48 @@ CONTEXT is the name of a context as a string."
           ((&alist 'contexts contexts) config))
     (--map (alist-get 'name it) contexts)))
 
+(defun kubernetes--edit-resource (kind name)
+  (kubernetes-kubectl-edit-resource kubernetes-props
+                                    (kubernetes-state)
+                                    kind
+                                    name
+                                    (lambda (buf)
+                                      (let ((s (with-current-buffer buf (buffer-string))))
+                                        (message "Edited resource %s of kind %s" name kind)
+                                        (message s)))
+                                    (lambda (buf)
+                                      (let ((s (with-current-buffer buf (buffer-string))))
+                                        (message "Editing resource %s of kind %s failed" name kind)
+                                        (message s)))))
+
+;;;###autoload
+(defun kubernetes-edit-resource-dwim (thing)
+  "Edit the resource at point.
+
+THING must be a valid target for `kubectl edit'."
+  (interactive (list (kubernetes--describable-thing-at-pt)))
+  (pcase thing
+    (`(:configmap-name ,name)
+     (kubernetes--edit-resource "configmap" name))
+    (`(:deployment-name ,name)
+     (kubernetes--edit-resource "deployment" name))
+    (`(:ingress-name ,name)
+     (kubernetes--edit-resource "ingress" name))
+    (`(:job-name ,name)
+     (kubernetes--edit-resource "job" name))
+    (`(:pod-name ,name)
+     (kubernetes--edit-resource "node" name))
+    (`(:node-name ,name)
+     (kubernetes--edit-resource "pod" name))
+    (`(:secret-name ,name)
+     (kubernetes--edit-resource "secret" name))
+    (`(:service-name ,name)
+     (kubernetes--edit-resource "service" name))
+    (`(:statefulset-name ,name)
+     (kubernetes--edit-resource "statefulset" name))
+    (_
+     (user-error "Nothing at point to edit"))))
+
 (provide 'kubernetes-commands)
 
 ;;; kubernetes-commands.el ends here

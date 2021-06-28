@@ -14,6 +14,7 @@ This project is in early stages, but the following are implemented:
 
 - Live-updating lists of kubernetes resources
 - Viewing and deleting pods, configmaps and secrets
+- Editing various Kubernetes resources like deployment, configmap, etc.
 - Switching contexts and namespaces.
 - Showing logs and exec'ing into containers
 - Describing pods
