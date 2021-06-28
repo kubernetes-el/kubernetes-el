@@ -64,6 +64,7 @@
   (kbd "d") #'kubernetes-describe-popup
   (kbd "D") #'kubernetes-mark-for-delete
   (kbd "e") #'kubernetes-exec-popup
+  (kbd "f") #'kubernetes-file-popup
   (kbd "u") #'kubernetes-unmark
   (kbd "U") #'kubernetes-unmark-all
   (kbd "x") #'kubernetes-execute-marks
