@@ -29,7 +29,7 @@
 (require 'kubernetes-labels)
 (require 'kubernetes-logs)
 (require 'kubernetes-overview)
-(require 'kubernetes-tramp)
+(require 'kubernetes-el-tramp)
 
 (provide 'kubernetes)
 
