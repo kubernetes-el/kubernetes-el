@@ -1,4 +1,4 @@
-;;; kubernetes-tramp.el --- Tramp setup for kubernetes.  -*- lexical-binding: t; -*-
+;;; kubernetes-el-tramp.el --- Tramp setup for kubernetes-el.  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2021 Erik Hetzner
 
@@ -18,6 +18,9 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
+
+;; This file is named kubernetes-el-tramp to avoid a conflict with
+;; kubernetes-tramp (https://github.com/gruggiero/kubernetes-tramp)
 
 ;;; Code:
 
@@ -63,5 +66,5 @@
 
 (tramp-set-completion-function "kubernetes" '((kubernetes-tramp--running-containers "")))
 
-(provide 'kubernetes-tramp)
-;;; kubernetes-tramp.el ends here
+(provide 'kubernetes-el-tramp)
+;;; kubernetes-el-tramp.el ends here
