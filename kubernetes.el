@@ -1,8 +1,11 @@
 ;;; kubernetes.el --- Magit-like porcelain for Kubernetes.  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2017  Chris Barrett
+;; Copyright (C) 2017-2021  Chris Barrett
 
 ;; Author: Chris Barrett <chris+emacs@walrus.cool>
+;; Maintainer: Chris Barrett <chris+emacs@walrus.cool>
+;;     Noorul Islam K M <noorul@noorul.com>
+;;     Jonatahn Jin <me@jonathanj.in>
 
 ;; Version: 0.15.0
 
