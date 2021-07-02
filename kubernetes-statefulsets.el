@@ -78,18 +78,18 @@
                             ((/= current desired)
                              (format next str))
                             (t
-                             (propertize (format next str) 'face 'magit-dimmed))))
+                             (propertize (format next str) 'face 'kubernetes-dimmed))))
                          " "
                          ;; Up-to-date
                          (propertize (format (pop list-fmt) "") 'face 'warning)
                          " "
                          ;; Available
-                         (propertize (format (pop list-fmt) "") 'face 'magit-dimmed)
+                         (propertize (format (pop list-fmt) "") 'face 'kubernetes-dimmed)
                          " "
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
                            (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
-                                       'face 'magit-dimmed))))))
+                                       'face 'kubernetes-dimmed))))))
     `(nav-prop (:statefulset-name ,name)
                (copy-prop ,name
                           ,(cond
@@ -98,7 +98,7 @@
                             ((member name marked-statefulsets)
                              `(mark-for-delete ,line))
                             ((zerop desired)
-                             `(propertize (face magit-dimmed) ,line))
+                             `(propertize (face kubernetes-dimmed) ,line))
                             (t
                              line))))))
 

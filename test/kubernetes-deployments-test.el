@@ -53,7 +53,7 @@ Deployments (0)
       (should (equal kubernetes-deployments-test--empty-result
                      (substring-no-properties (buffer-string))))
       (search-forward "None")
-      (should (equal 'magit-dimmed (get-text-property (point) 'face))))))
+      (should (equal 'kubernetes-dimmed (get-text-property (point) 'face))))))
 
 
 ;; Shows deployment lines when there are deployments.

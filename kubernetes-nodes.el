@@ -56,7 +56,7 @@
             (let ((s (kubernetes-utils-ellipsize type 10)))
               (format (pop list-fmt)
                       (if (string-match-p "running" type)
-                          (propertize s 'face 'magit-dimmed)
+                          (propertize s 'face 'kubernetes-dimmed)
                         s)))
             " "
             ;; Roles
@@ -75,12 +75,12 @@
             ;; Age
             (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp creationTimestamp))))
               (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
-                          'face 'magit-dimmed))
+                          'face 'kubernetes-dimmed))
             " "
             ;; Version
             (format (pop list-fmt)
                     (propertize (kubernetes-utils-ellipsize kubeProxyVersion 8)
-                                'face 'magit-dimmed))))
+                                'face 'kubernetes-dimmed))))
           (str (cond
                 ((string-match-p "ready" type) str)
                 (t (propertize str 'face 'warning))))

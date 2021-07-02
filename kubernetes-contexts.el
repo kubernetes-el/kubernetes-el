@@ -30,7 +30,7 @@
                          (key-value 12 "Namespace" ,(propertize namespace-in-use 'face 'kubernetes-namespace)))))))
 
 (defun kubernetes-contexts--render-namespace-only (current-namespace)
-  (let ((none (propertize "<none>" 'face 'magit-dimmed)))
+  (let ((none (propertize "<none>" 'face 'kubernetes-dimmed)))
     `((heading (nav-prop :display-config (key-value 12 "Context" ,none)))
       (section (namespace nil)
                (nav-prop (:namespace-name ,current-namespace)
