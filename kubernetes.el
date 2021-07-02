@@ -5,7 +5,7 @@
 ;; Author: Chris Barrett <chris+emacs@walrus.cool>
 ;; Maintainer: Chris Barrett <chris+emacs@walrus.cool>
 ;;     Noorul Islam K M <noorul@noorul.com>
-;;     Jonatahn Jin <me@jonathanj.in>
+;;     Jonathan Jin <me@jonathanj.in>
 
 ;; Version: 0.15.0
 
