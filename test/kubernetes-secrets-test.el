@@ -96,7 +96,7 @@ Secrets (2)
                      "Created"))
         (save-excursion
           (search-forward key)
-          (should (equal 'magit-header-line (get-text-property (point) 'face))))))))
+          (should (equal 'magit-section-heading (get-text-property (point) 'face))))))))
 
 
 ;;; kubernetes-secrets-test.el ends here

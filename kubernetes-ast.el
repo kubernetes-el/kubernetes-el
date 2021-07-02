@@ -7,6 +7,7 @@
 
 (require 'cl-lib)
 (require 'magit)
+(require 'magit-section)
 (require 'subr-x)
 
 ;; Derived component support.
@@ -54,7 +55,7 @@ such in rendering ASTs." name)))
   (cl-assert (stringp key) t)
   (cl-assert (stringp value) t)
   (let* ((fmt-string (concat "%-" (number-to-string width) "s"))
-         (str (concat (propertize (format fmt-string (concat key ": ")) 'face 'magit-header-line)
+         (str (concat (propertize (format fmt-string (concat key ": ")) 'face 'magit-section-heading)
                       value)))
     (unless (string-blank-p (buffer-substring (line-beginning-position) (line-end-position)))
       (newline))

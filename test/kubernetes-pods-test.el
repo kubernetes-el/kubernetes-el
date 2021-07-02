@@ -150,6 +150,6 @@ Pods (4)
                      "Started"))
         (save-excursion
           (search-forward key)
-          (should (equal 'magit-header-line (get-text-property (point) 'face))))))))
+          (should (equal 'magit-section-heading (get-text-property (point) 'face))))))))
 
 ;;; kubernetes-pods-test.el ends here

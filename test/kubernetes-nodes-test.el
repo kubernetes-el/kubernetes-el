@@ -106,6 +106,6 @@ Nodes (1)
                      "systemUUID"))
         (save-excursion
           (search-forward key)
-          (should (equal 'magit-header-line (get-text-property (point) 'face))))))))
+          (should (equal 'magit-section-heading (get-text-property (point) 'face))))))))
 
 ;;; kubernetes-nodes-test.el ends here
