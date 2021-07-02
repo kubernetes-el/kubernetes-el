@@ -268,7 +268,7 @@ POD-NAME is the name of the pod to describe."
       (let ((inhibit-read-only t))
         (erase-buffer)
         (set-marker marker (point))
-        (insert (propertize "Loading..." 'face 'magit-dimmed))))
+        (insert (propertize "Loading..." 'face 'kubernetes-dimmed))))
     (let* ((populate-buffer (lambda (s)
                               (with-current-buffer (marker-buffer marker)
                                 (setq-local tab-width 8)

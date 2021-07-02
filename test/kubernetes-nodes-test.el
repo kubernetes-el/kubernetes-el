@@ -53,7 +53,7 @@ Nodes (0)
       (should (equal kubernetes-nodes-test--empty-result
                      (substring-no-properties (buffer-string))))
       (search-forward "None")
-      (should (equal 'magit-dimmed (get-text-property (point) 'face))))))
+      (should (equal 'kubernetes-dimmed (get-text-property (point) 'face))))))
 
 ;; Shows node lines when there are nodes.
 

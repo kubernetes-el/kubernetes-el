@@ -24,7 +24,7 @@
           (state-face
            (cond
             ((member (downcase pod-state) '("running" "containercreating" "terminated"))
-             'magit-dimmed)
+             'kubernetes-dimmed)
             ((member (downcase pod-state) '("runcontainererror" "crashloopbackoff"))
              'error)
             ((equal (downcase pod-state) "succeeded")

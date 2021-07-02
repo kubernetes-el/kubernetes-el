@@ -28,7 +28,7 @@ Context:    Fetching...
     (should (equal kubernetes-contexts-test--loading-result
                    (substring-no-properties (buffer-string))))
     (search-forward-regexp (rx "Context:" (+ space)))
-    (should (equal 'magit-dimmed (get-text-property (point) 'face)))))
+    (should (equal 'kubernetes-dimmed (get-text-property (point) 'face)))))
 
 
 ;; When there is a namespace set but no context, show the namespace with <none>
@@ -49,7 +49,7 @@ Namespace:  example-ns
     (should (equal kubernetes-contexts-test--just-namespace
                    (substring-no-properties (buffer-string))))
     (search-forward-regexp (rx "Context:" (+ space)))
-    (should (equal 'magit-dimmed (get-text-property (point) 'face)))))
+    (should (equal 'kubernetes-dimmed (get-text-property (point) 'face)))))
 
 
 ;; When state is initialized, shows current information.

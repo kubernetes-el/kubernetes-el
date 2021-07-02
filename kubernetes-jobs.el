@@ -69,19 +69,19 @@
                  (let ((name-str (format (pop list-fmt) (kubernetes-utils-ellipsize name 43))))
                    (cond
                     ((and completion-time (< 0 successful))
-                     (propertize name-str 'face 'magit-dimmed))
+                     (propertize name-str 'face 'kubernetes-dimmed))
                     ((not (kubernetes-pod-line-ok-p pod))
                      (propertize name-str 'face 'warning))
                     (t
                      name-str)))
                  " "
                  ;; Successful
-                 (propertize (format (pop list-fmt) successful) 'face 'magit-dimmed)
+                 (propertize (format (pop list-fmt) successful) 'face 'kubernetes-dimmed)
                  " "
                  ;; Age
                  (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
                    (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
-                               'face 'magit-dimmed)))))
+                               'face 'kubernetes-dimmed)))))
 
     `(nav-prop (:job-name ,name)
                (copy-prop ,name

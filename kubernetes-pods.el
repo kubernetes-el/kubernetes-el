@@ -72,7 +72,7 @@
             " "
             ;; Status
             (let ((s (format (pop list-fmt) (kubernetes-utils-ellipsize pod-state 10))))
-              (if (equal pod-state "Running") (propertize s 'face 'magit-dimmed) s))
+              (if (equal pod-state "Running") (propertize s 'face 'kubernetes-dimmed) s))
             " "
             ;; Ready
             (format (pop list-fmt)
@@ -82,13 +82,13 @@
                            (count-str (format "%s/%s" n-ready (seq-length containers))))
                       (if (zerop n-ready)
                           count-str
-                        (propertize count-str 'face 'magit-dimmed))))
+                        (propertize count-str 'face 'kubernetes-dimmed))))
             " "
             ;; Restarts
             (let ((s (format (pop list-fmt) restarts)))
               (cond
                ((equal 0 restarts)
-                (propertize s 'face 'magit-dimmed))
+                (propertize s 'face 'kubernetes-dimmed))
                ((<= kubernetes-pod-restart-warning-threshold restarts)
                 (propertize s 'face 'warning))
                (t
@@ -97,7 +97,7 @@
             ;; Age
             (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp start-time))))
               (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
-                          'face 'magit-dimmed))))
+                          'face 'kubernetes-dimmed))))
           (str (cond
                 ((member (downcase pod-state) '("running" "containercreating" "terminated"))
                  str)

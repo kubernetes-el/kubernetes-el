@@ -10,6 +10,7 @@
 ;;; Code:
 
 (require 'kubernetes-ast)
+(require 'kubernetes-vars)
 
 (kubernetes-ast-define-component membership-loading-discriminator (elem vector &key on-loading on-found on-not-found)
   (cond
@@ -58,7 +59,7 @@
                  (line "Fetching...")))
 
     :on-empty
-    (propertize (face magit-dimmed) (line "None."))
+    (propertize (face kubernetes-dimmed) (line "None."))
 
     :on-populated
     (,@(when column-header
