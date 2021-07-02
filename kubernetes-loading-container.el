@@ -11,6 +11,7 @@
 
 (require 'kubernetes-ast)
 (require 'kubernetes-vars)
+(require 'magit-section)
 
 (kubernetes-ast-define-component membership-loading-discriminator (elem vector &key on-loading on-found on-not-found)
   (cond
@@ -67,7 +68,7 @@
      ,@loaded-content)))
 
 (kubernetes-ast-define-component header-with-count (header resource-vector)
-  (let ((header (propertize header 'face 'magit-header-line)))
+  (let ((header (propertize header 'face 'magit-section-heading)))
     `(heading
       (emptiness-loading-discriminator
        ,resource-vector
