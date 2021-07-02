@@ -116,9 +116,9 @@ buffer is killed."
       (let ((time-str (format "Session started at %s" (substring (current-time-string) 0 19)))
             (command-str (format "%s %s" command (string-join args " "))))
         (kubernetes-ast-eval
-         `((line ,(propertize time-str 'face 'magit-dimmed))
+         `((line ,(propertize time-str 'face 'kubernetes-dimmed))
            (padding)
-           (line ,(propertize command-str 'face 'magit-dimmed))
+           (line ,(propertize command-str 'face 'kubernetes-dimmed))
            (padding))))
 
       (term-exec (current-buffer) "kuberenetes-term" command nil args)
@@ -156,9 +156,9 @@ buffer is killed."
         (let ((time-str (format "Process started at %s" (substring (current-time-string) 0 19)))
               (command-str (format "%s %s" command (string-join args " "))))
           (kubernetes-ast-eval
-           `((line ,(propertize time-str 'face 'magit-dimmed))
+           `((line ,(propertize time-str 'face 'kubernetes-dimmed))
              (padding)
-             (line ,(propertize command-str 'face 'magit-dimmed))
+             (line ,(propertize command-str 'face 'kubernetes-dimmed))
              (padding))))))
 
     (let ((proc (apply #'start-process "kubernetes-exec" buf command args)))

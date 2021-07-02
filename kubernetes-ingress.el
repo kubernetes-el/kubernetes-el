@@ -53,7 +53,7 @@
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
                            (propertize (format "%10s" (kubernetes-utils-time-diff-string start current-time))
-                                       'face 'magit-dimmed))))))
+                                       'face 'kubernetes-dimmed))))))
 
     `(nav-prop (:ingress-name ,name)
                (copy-prop ,name

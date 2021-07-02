@@ -134,6 +134,12 @@ form \"--flag=value\" or \"-flag\"."
   :group 'kubernetes
   :type 'boolean)
 
+(defface kubernetes-dimmed
+  '((((class color) (background light)) :foreground "grey50")
+    (((class color) (background dark)) :foreground "grey50"))
+  "Face for text that shouldn't stand out."
+  :group 'kubernetes)
+
 (defface kubernetes-context-name
   '((((class color) (background light)) :foreground "SkyBlue4")
     (((class color) (background  dark)) :foreground "LightSkyBlue1"))

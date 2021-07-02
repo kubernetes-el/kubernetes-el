@@ -69,16 +69,16 @@
                          (format (pop list-fmt) (kubernetes-utils-ellipsize name 43))
                          " "
                          ;; Internal IP
-                         (propertize (format (pop list-fmt) internal-ip) 'face 'magit-dimmed)
+                         (propertize (format (pop list-fmt) internal-ip) 'face 'kubernetes-dimmed)
                          " "
                          ;; External IP
                          (let ((ips (append external-ips nil)))
-                           (propertize (format (pop list-fmt) (or (car ips) "")) 'face 'magit-dimmed))
+                           (propertize (format (pop list-fmt) (or (car ips) "")) 'face 'kubernetes-dimmed))
                          " "
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
                            (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
-                                       'face 'magit-dimmed))))))
+                                       'face 'kubernetes-dimmed))))))
     `(nav-prop (:service-name ,name)
                (copy-prop ,name
                           ,(cond

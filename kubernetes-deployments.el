@@ -78,7 +78,7 @@
                             ((/= current desired)
                              (format next str))
                             (t
-                             (propertize (format next str) 'face 'magit-dimmed))))
+                             (propertize (format next str) 'face 'kubernetes-dimmed))))
                          " "
                          ;; Up-to-date
                          (let ((next (pop list-fmt)))
@@ -88,7 +88,7 @@
                             ((zerop up-to-date)
                              (propertize (format next up-to-date) 'face 'warning))
                             (t
-                             (propertize (format next up-to-date) 'face 'magit-dimmed))))
+                             (propertize (format next up-to-date) 'face 'kubernetes-dimmed))))
                          " "
                          ;; Available
                          (let ((next (pop list-fmt)))
@@ -98,12 +98,12 @@
                             ((zerop available)
                              (propertize (format next available) 'face 'warning))
                             (t
-                             (propertize (format next available) 'face 'magit-dimmed))))
+                             (propertize (format next available) 'face 'kubernetes-dimmed))))
                          " "
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
                            (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
-                                       'face 'magit-dimmed))))))
+                                       'face 'kubernetes-dimmed))))))
     `(nav-prop (:deployment-name ,name)
                (copy-prop ,name
                           ,(cond
@@ -112,7 +112,7 @@
                             ((member name marked-deployments)
                              `(mark-for-delete ,line))
                             ((zerop desired)
-                             `(propertize (face magit-dimmed) ,line))
+                             `(propertize (face kubernetes-dimmed) ,line))
                             (t
                              line))))))
 

@@ -53,7 +53,7 @@ Secrets (0)
       (should (equal kubernetes-secrets-test--empty-result
                      (substring-no-properties (buffer-string))))
       (search-forward "None")
-      (should (equal 'magit-dimmed (get-text-property (point) 'face))))))
+      (should (equal 'kubernetes-dimmed (get-text-property (point) 'face))))))
 
 
 ;; Shows secret lines when there are secrets.

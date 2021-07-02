@@ -40,12 +40,12 @@
                          (format (pop list-fmt) (kubernetes-utils-ellipsize name 43))
                          " "
                          ;; Data
-                         (propertize (format (pop list-fmt) (seq-length data)) 'face 'magit-dimmed)
+                         (propertize (format (pop list-fmt) (seq-length data)) 'face 'kubernetes-dimmed)
                          " "
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
                            (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
-                                       'face 'magit-dimmed))))))
+                                       'face 'kubernetes-dimmed))))))
     `(nav-prop (:configmap-name ,name)
                (copy-prop ,name
                           ,(cond
