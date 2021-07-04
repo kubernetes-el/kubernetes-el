@@ -55,6 +55,16 @@
       (kubernetes-ast-eval ast)
       (should (equal expected (buffer-string))))))
 
+(ert-deftest kubernetes-ast-list--list-with-empty-string ()
+  (let ((ast '(list (line "") ))
+        ;; whitespace at the end of the expected output is intentional
+        (expected (string-trim-left "
+- 
+")))
+    (with-temp-buffer
+      (kubernetes-ast-eval ast)
+      (should (equal expected (buffer-string))))))
+
 (ert-deftest kubernetes-ast-test--lists ()
   (let ((ast '(list (line "foo") (line "bar") (line "baz")))
         (expected (string-trim-left "
