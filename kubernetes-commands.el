@@ -412,7 +412,8 @@ STATE is the current application state."
   (kubernetes-state-update-current-namespace ns)
   (kubernetes-state-update-overview-sections (kubernetes-state-overview-sections state))
 
-  (kubernetes-state-trigger-redraw))
+  (kubernetes-state-trigger-redraw)
+  (run-hook-with-args 'kubernetes-poll-hook nil))
 
 (defun kubernetes--namespace-names (state)
   (-let* ((config (or (kubernetes-state-namespaces state) (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-namespaces)))
@@ -445,7 +446,8 @@ CONTEXT is the name of a context as a string."
        (when kubernetes-default-overview-namespace
          (kubernetes-set-namespace kubernetes-default-overview-namespace
                                    state))
-       (kubernetes-state-trigger-redraw)))))
+       (kubernetes-state-trigger-redraw)
+       (run-hook-with-args 'kubernetes-poll-hook nil)))))
 
 (defun kubernetes--context-names (state)
   (-let* ((config (or (kubernetes-state-config state) (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-config-view)))

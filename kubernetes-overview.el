@@ -412,7 +412,8 @@ SECTIONS is a list of sections to display.  See
      (list (alist-get choice views))))
 
   (kubernetes-state-update-overview-sections sections)
-  (kubernetes-state-trigger-redraw))
+  (kubernetes-state-trigger-redraw)
+  (run-hook-with-args 'kubernetes-poll-hook nil))
 
 (defvar kubernetes-overview-mode-map
   (let ((keymap (make-sparse-keymap)))
