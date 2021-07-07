@@ -2,7 +2,7 @@
 ;;; Commentary:
 ;;; Code:
 
-(require 'magit)
+(require 'magit-section)
 (require 'subr-x)
 
 (autoload 'kubernetes-config-popup "kubernetes-popups")

@@ -11,6 +11,7 @@
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-yaml)
+(require 'magit-section)
 
 
 ;; Components

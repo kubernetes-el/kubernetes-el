@@ -6,7 +6,6 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'magit)
 (require 'magit-section)
 (require 'subr-x)
 

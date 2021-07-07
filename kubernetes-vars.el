@@ -168,12 +168,12 @@ form \"--flag=value\" or \"-flag\"."
   :group 'kubernetes)
 
 (defface kubernetes-selector
-  '((t :inherit magit-branch-remote))
+  '((t :foreground "DarkSeaGreen2"))
   "Face for labels used as selectors."
   :group 'kubernetes)
 
 (defface kubernetes-namespace
-  '((t :inherit magit-tag))
+  '((t :foreground "LightGoldenrod2"))
   "Face for namespace references."
   :group 'kubernetes)
 
