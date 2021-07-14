@@ -1,7 +1,7 @@
 # kubernetes-el
 
 [![Build Status](https://github.com/kubernetes-el/kubernetes-el/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/kubernetes-el/kubernetes-el/actions/workflows/ci.yaml)
-[![Coverage Status](https://coveralls.io/repos/github/kubernetes-el/kubernetes-el/badge.svg?branch=master)](https://coveralls.io/github/kubernetes-el/kubernetes-el?branch=master)
+[![codecov](https://codecov.io/gh/kubernetes-el/kubernetes-el/branch/master/graph/badge.svg?token=DVOij2iMVs)](https://codecov.io/gh/kubernetes-el/kubernetes-el)
 [![MELPA Stable](https://stable.melpa.org/packages/kubernetes-badge.svg)](https://stable.melpa.org/#/kubernetes)
 [![MELPA](https://melpa.org/packages/kubernetes-badge.svg)](https://melpa.org/#/kubernetes)
 [![License GPL 3](https://img.shields.io/github/license/kubernetes-el/kubernetes-el.svg)][COPYING]
