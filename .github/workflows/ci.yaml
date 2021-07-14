@@ -23,6 +23,8 @@ jobs:
         include:
           - emacs_version: snapshot
             ignore_error: true
+    env:
+      EMACS_VERSION: ${{ matrix.emacs_version }}
     steps:
       - name: Setup Emacs
         uses: purcell/setup-emacs@master
@@ -55,20 +57,8 @@ jobs:
         run: |
           make test
 
-      - name: Coveralls
+      - name: Upload coverage
+        uses: codecov/codecov-action@v1
         if: steps.install.outcome == 'success' && steps.install.conclusion == 'success'
-        uses: coverallsapp/github-action@master
         with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: emacs-${{ matrix.emacs_version }}
-          parallel: true
-
-  finish:
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Coveralls Finished
-        uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.github_token }}
-          parallel-finished: true
+          env_vars: EMACS_VERSION
