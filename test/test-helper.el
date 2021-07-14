@@ -20,7 +20,6 @@
   (with-no-warnings
     (undercover "*.el"
                 (:exclude "kubernetes-evil.el")
-                (:merge-report nil)
                 (:report-format 'lcov)
                 (:send-report nil))))
 
