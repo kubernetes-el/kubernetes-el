@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 'with-editor)
 
 (require 'kubernetes-process)
 (require 'kubernetes-props)
@@ -518,6 +519,23 @@ to a function of the type:
       (sleep-for 0.001))
 
     result))
+
+(defun kubernetes-kubectl-edit-resource (props state kind resource-name cb &optional error-cb)
+  "Edit resource of kind KIND with RESOURCE-NAME, then execute CB
+with the response buffer.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-props'.
+
+STATE is the application state.
+
+ERROR-CB is called if an error occurred."
+  (with-editor
+    (kubernetes-kubectl props
+                        state
+                        (list "edit" kind resource-name)
+                        cb
+                        error-cb)))
 
 (provide 'kubernetes-kubectl)
 

@@ -514,4 +514,33 @@ will be mocked."
     (kubernetes-kubectl--default-error-handler props "killed: 9")
     (should-not message-called-p)))
 
+;; Edit resource
+
+(ert-deftest kubernetes-kubectl-test--edit-resource-succeeds ()
+  (let ((deployment-name "example-deployment"))
+    (with-successful-response-at
+     (list "edit" "deployment" deployment-name) deployment-name
+     (kubernetes-kubectl-edit-resource kubernetes-kubectl-test-props
+                                       nil
+                                       "deployment"
+                                       deployment-name
+                                       (lambda (buf)
+                                         (let ((s (with-current-buffer buf (buffer-string))))
+                                           (should (equal deployment-name s))))))))
+
+(ert-deftest kubernetes-kubectl-test--edit-resource-fails ()
+  (let ((on-error-called)
+        (deployment-name "example-deployment"))
+    (with-error-response-at
+     (list "edit" "deployment" "example-deployment") deployment-name
+     (kubernetes-kubectl-edit-resource kubernetes-kubectl-test-props
+                                       nil
+                                       "deployment"
+                                       deployment-name
+                                       (lambda (_)
+                                         (error "Unexpected success response"))
+                                       (lambda (_)
+                                         (setq on-error-called t))))
+    (should on-error-called)))
+
 ;;; kubernetes-kubectl-test.el ends here

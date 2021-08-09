@@ -56,6 +56,7 @@
     (?U "Unmark all" kubernetes-unmark-all)
     "Popup commands"
     (?d "Describe" kubernetes-describe-popup)
+    (?E "Edit" kubernetes-edit-popup)
     (?e "Exec" kubernetes-exec-popup)
     (?f "File" kubernetes-file-popup)
     (?L "Labels" kubernetes-labels-popup)
@@ -103,6 +104,13 @@
   :actions
   '((?p "Pods" kubernetes-show-pods-for-label))
   :default-action 'kubernetes-show-pods-for-label)
+
+(magit-define-popup kubernetes-edit-popup
+  "Popup console for commands relating to edit resources."
+  :group 'kubernetes
+  :actions
+  '((?e "Edit (dwim)" kubernetes-edit-resource-dwim))
+  :default-action 'kubernetes-edit-resource-dwim)
 
 
 ;; Config popup
