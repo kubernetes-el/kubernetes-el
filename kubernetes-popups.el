@@ -42,7 +42,7 @@
     (?e "Exec" kubernetes-exec-popup)
     (?f "File" kubernetes-file-popup)
     (?L "Labels" kubernetes-labels-popup)
-    (?l "Logs" kubernetes-logs-transient)
+    (?l "Logs" kubernetes-logs)
     "Misc"
     (?h "Describe mode and keybindings" describe-mode)))
 
