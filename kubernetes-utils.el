@@ -77,11 +77,6 @@
   (let ((diff (time-to-seconds (time-subtract now start))))
     (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff) ","))))
 
-(defun kubernetes-utils-kill-buffer (proc-buf &rest _)
-  (if-let (win (get-buffer-window proc-buf))
-      (quit-window t win)
-    (kill-buffer proc-buf)))
-
 (defun kubernetes-utils-make-cleanup-fn (buf)
   "Make a function to add to `kill-buffer-hook' for a Kubernetes buffer.
 
