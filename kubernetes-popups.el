@@ -3,7 +3,9 @@
 ;;; Code:
 
 (require 'magit-popup)
+(require 'transient)
 (require 'kubernetes-state)
+(require 'kubernetes-utils)
 
 (defgroup kubernetes nil
   "Emacs porcelain for Kubernetes."
@@ -24,26 +26,6 @@
 
 ;; Popup definitions
 
-(magit-define-popup kubernetes-logs-popup
-  "Popup console for pod logging commands."
-  :group 'kubernetes
-  :switches
-  '((?a "Print logs from all containers in this pod" "--all-containers=true")
-    (?p "Print logs for previous instances of the container in this pod" "-p"))
-
-  :options
-  '("Options for customizing logging behaviour"
-    (?t "Number of lines to display" "--tail=" read-number)
-    (?c "Container to read logs from" "--container=" kubernetes-utils-read-container-name)
-    "Time controls"
-    (?s "Since relative time" "--since=" kubernetes-utils-read-time-value)
-    (?d "Since absolute datetime" "--since-time=" kubernetes-utils-read-iso-datetime))
-  :actions
-  '((?l "Logs" kubernetes-logs-fetch-all)
-    (?f "Logs (stream and follow)" kubernetes-logs-follow))
-  :max-action-columns 2
-  :default-action 'kubernetes-logs)
-
 (magit-define-popup kubernetes-overview-popup
   "Popup console for showing an overview of available popup commands."
   :group 'kubernetes
@@ -60,7 +42,7 @@
     (?e "Exec" kubernetes-exec-popup)
     (?f "File" kubernetes-file-popup)
     (?L "Labels" kubernetes-labels-popup)
-    (?l "Logs" kubernetes-logs-popup)
+    (?l "Logs" kubernetes-logs)
     "Misc"
     (?h "Describe mode and keybindings" describe-mode)))
 

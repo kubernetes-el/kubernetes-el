@@ -9,7 +9,7 @@
 
 ;; Version: 0.15.0
 
-;; Package-Requires: ((emacs "25.1") (dash "2.12.0") (magit-section "3.1.1") (magit-popup "2.13.0") (with-editor "3.0.4"))
+;; Package-Requires: ((emacs "25.1") (dash "2.12.0") (magit-section "3.1.1") (magit-popup "2.13.0") (with-editor "3.0.4") (transient "0.3.0"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
