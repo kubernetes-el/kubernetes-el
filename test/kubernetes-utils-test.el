@@ -12,6 +12,6 @@
 
 (ert-deftest kubernetes-utils-test--read-container-name--no-state ()
   (cl-letf (((symbol-function 'kubernetes-state) #'ignore))
-    (should-error (kubernetes-utils-read-container-name) :type 'k8s-state-error)))
+    (should-error (kubernetes-utils-read-container-name) :type 'kubernetes-state-error)))
 
 ;;; kubernetes-utils-test.el ends here
