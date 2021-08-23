@@ -33,9 +33,11 @@
   (-let [(&alist 'spec (&alist 'containers containers)) pod]
     (-map (-lambda ((&alist 'name name)) name) containers)))
 
+(define-error 'k8s-state-error "Kubernetes state not initialized")
+
 (defun kubernetes-utils-read-container-name (&rest _)
   "Read a container name from the pod at POINT or a user-supplied pod."
-  (letrec ((state (kubernetes-state))
+  (letrec ((state (or (kubernetes-state) (signal 'k8s-state-error nil)))
            (pod-name (or (kubernetes-utils-maybe-pod-name-at-point)
                          (kubernetes-utils-read-pod-name state)))
            (pod (kubernetes-state-lookup-pod pod-name state))
@@ -55,7 +57,7 @@
     result))
 
 (defun kubernetes-utils-maybe-pod-name-at-point ()
-  (let ((nav-buffer (get-buffer kubernetes-overview-buffer-name)))
+  (when-let ((nav-buffer (get-buffer kubernetes-overview-buffer-name)))
     (with-current-buffer nav-buffer
       (pcase (get-text-property (point) 'kubernetes-nav nav-buffer)
         (`(:pod-name ,value)
