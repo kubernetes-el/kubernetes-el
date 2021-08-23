@@ -36,7 +36,10 @@
 (define-error 'k8s-state-error "Kubernetes state not initialized")
 
 (defun kubernetes-utils-read-container-name (&rest _)
-  "Read a container name from the pod at POINT or a user-supplied pod."
+  "Read a container name from the pod at POINT or a user-supplied pod.
+
+This function will error if `kubernetes-state' is not
+initialized."
   (letrec ((state (or (kubernetes-state) (signal 'k8s-state-error nil)))
            (pod-name (or (kubernetes-utils-maybe-pod-name-at-point)
                          (kubernetes-utils-read-pod-name state)))
