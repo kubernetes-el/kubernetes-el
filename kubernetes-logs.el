@@ -5,7 +5,6 @@
 (require 'subr-x)
 
 (require 'kubernetes-modes)
-(require 'kubernetes-popups)
 (require 'kubernetes-utils)
 
 (autoload 'json-pretty-print-buffer "json")
@@ -70,7 +69,7 @@ STATE is the current application state."
    (let ((state (kubernetes-state)))
      (list (or (kubernetes-utils-maybe-pod-name-at-point)
                (kubernetes-utils-read-pod-name state))
-           (kubernetes-logs-arguments)
+           (transient-args 'kubernetes-logs)
            state)))
   (kubernetes-logs-fetch-all pod-name (cons "-f" args) state))
 
@@ -86,13 +85,28 @@ STATE is the current application state"
   (interactive
    (let ((state (kubernetes-state)))
      (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state))
-           (kubernetes-logs-arguments)
+           (transient-args 'kubernetes-logs)
            state)))
   (let ((args (append (list "logs") args (list pod-name) (kubernetes-kubectl--flags-from-state (kubernetes-state))
                       (when-let (ns (kubernetes-state-current-namespace state))
                         (list (format "--namespace=%s" ns))))))
     (with-current-buffer (kubernetes-utils-process-buffer-start kubernetes-logs-buffer-name #'kubernetes-logs-mode kubernetes-kubectl-executable args)
       (select-window (display-buffer (current-buffer))))))
+
+(transient-define-prefix kubernetes-logs ()
+  "Fetch or tail logs from Kubernetes resources."
+  [["Flags"
+    ("-a" "Print logs from all containers in this pod" "--all-containers=true")
+    ("-p" "Print logs for previous instances of the container in this pod" "-p")]
+   ["Options"
+    ("=c" "Select container" "--container=" kubernetes-utils-read-container-name)
+    ("=t" "Number of lines to display" "--tail=" transient-read-number-N+)]
+   ["Time"
+    ("=s" "Since relative time" "--since=" kubernetes-utils-read-time-value)
+    ("=d" "Since absolute datetime" "--since-time=" kubernetes-utils-read-iso-datetime)]]
+  [["Actions"
+    ("l" "Logs" kubernetes-logs-fetch-all)
+    ("f" "Logs (stream and follow)" kubernetes-logs-follow)]])
 
 
 ;;;###autoload
