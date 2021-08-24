@@ -15,7 +15,7 @@
 (autoload 'kubernetes-logs "kubernetes-logs")
 (autoload 'kubernetes-mark-for-delete "kubernetes-commands")
 (autoload 'kubernetes-navigate "kubernetes-commands")
-(autoload 'kubernetes-overview-popup "kubernetes-popups")
+(autoload 'kubernetes-dispatch "kubernetes-popups")
 (autoload 'kubernetes-refresh "kubernetes-commands")
 (autoload 'kubernetes-unmark "kubernetes-commands")
 (autoload 'kubernetes-unmark-all "kubernetes-commands")
@@ -48,7 +48,7 @@
     (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
     (define-key keymap (kbd "h") #'describe-mode)
 
-    (define-key keymap (kbd "?") #'kubernetes-overview-popup)
+    (define-key keymap (kbd "?") #'kubernetes-dispatch)
     (define-key keymap (kbd "c") #'kubernetes-config-popup)
     (define-key keymap (kbd "d") #'kubernetes-describe-popup)
     (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
