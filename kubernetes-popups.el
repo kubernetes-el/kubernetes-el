@@ -86,7 +86,7 @@
 (transient-define-prefix kubernetes-edit ()
   "Edit Kubernetes resources."
   [["Actions"
-    ("e" "Edit *dwim" kubernetes-edit-resource-dwim)]])
+    ("e" "Dwim" kubernetes-edit-resource-dwim)]])
 
 ;; Config popup
 ;;
