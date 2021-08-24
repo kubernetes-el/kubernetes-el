@@ -29,7 +29,9 @@
                                tz))))
 
 (defun kubernetes-get-pod-container-names (pod)
-  "Return the names of all containers available in the specified pod."
+  "Return the names of all containers available in the specified POD.
+
+Returns nil on invalid input."
   (-let [(&alist 'spec (&alist 'containers containers)) pod]
     (-map (-lambda ((&alist 'name name)) name) containers)))
 
