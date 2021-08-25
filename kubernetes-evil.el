@@ -59,7 +59,7 @@
   (kbd "RET") #'kubernetes-navigate
   (kbd "M-w") #'kubernetes-copy-thing-at-point
 
-  (kbd "?") #'kubernetes-overview-popup
+  (kbd "?") #'kubernetes-dispatch
   (kbd "c") #'kubernetes-config-popup
   (kbd "g r") #'kubernetes-refresh
   (kbd "h") #'describe-mode

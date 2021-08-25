@@ -451,7 +451,7 @@ Type \\[kubernetes-refresh] to refresh the buffer.
     (kubernetes-commands-display-buffer buf)
     (with-current-buffer buf
       (cd (kubernetes-utils-up-to-existing-dir dir)))
-    (message (substitute-command-keys "\\<kubernetes-overview-mode-map>Type \\[kubernetes-overview-set-sections] to switch between resources, and \\[kubernetes-overview-popup] for usage."))))
+    (message (substitute-command-keys "\\<kubernetes-overview-mode-map>Type \\[kubernetes-overview-set-sections] to switch between resources, and \\[kubernetes-dispatch] for usage."))))
 
 
 (provide 'kubernetes-overview)

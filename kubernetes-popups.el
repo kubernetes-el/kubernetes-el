@@ -26,25 +26,20 @@
 
 ;; Popup definitions
 
-(magit-define-popup kubernetes-overview-popup
-  "Popup console for showing an overview of available popup commands."
-  :group 'kubernetes
-  :actions
-  '("Environment"
-    (?c "Configuration" kubernetes-config-popup)
-    "Marks"
-    (?D "Delete" kubernetes-mark-for-delete)
-    (?u "Unmark" kubernetes-unmark)
-    (?U "Unmark all" kubernetes-unmark-all)
-    "Popup commands"
-    (?d "Describe" kubernetes-describe)
-    (?E "Edit" kubernetes-edit)
-    (?e "Exec" kubernetes-exec-popup)
-    (?f "File" kubernetes-file-popup)
-    (?L "Labels" kubernetes-labels)
-    (?l "Logs" kubernetes-logs)
-    "Misc"
-    (?h "Describe mode and keybindings" describe-mode)))
+(transient-define-prefix kubernetes-dispatch ()
+  [["Environment"
+    ("c" "Configuration" kubernetes-config-popup)]
+   ["Marks"
+    ("D" "Delete" kubernetes-mark-for-delete)
+    ("u" "Unmark" kubernetes-unmark)
+    ("U" "Unmark (all)" kubernetes-unmark-all)]
+   ["Commands"
+    ("d" "Describe" kubernetes-describe-popup)
+    ("E" "Edit" kubernetes-edit-popup)
+    ("e" "Exec" kubernetes-exec-popup)
+    ("f" "File" kubernetes-file-popup)
+    ("L" "Labels" kubernetes-labels-popup)
+    ("l" "Logs" kubernetes-logs)]])
 
 (magit-define-popup kubernetes-exec-popup
   "Popup console for exec commands for POD."
