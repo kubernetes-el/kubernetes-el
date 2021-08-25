@@ -167,7 +167,7 @@ Update the deployment state if it not set yet."
            (or (kubernetes-state-deployments state)
                (progn
                  (message "Getting deployments...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-deployments)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "deployments"))))
                    (kubernetes-state-update-deployments response)
                    response))))
           (deployments (append deployments nil))

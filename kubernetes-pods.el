@@ -160,7 +160,7 @@ Update the pod state if it not set yet."
            (or (kubernetes-state-pods state)
                (progn
                  (message "Getting pods...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-pods)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "pods"))))
                    (kubernetes-state-update-pods response)
                    response))))
           (pods (append pods nil))

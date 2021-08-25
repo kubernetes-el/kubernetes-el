@@ -128,7 +128,7 @@ Update the node state if it not set yet."
                  (message "Getting nodes...")
                  (let ((response (kubernetes-kubectl-await-on-async
                                   kubernetes-props state
-                                  #'kubernetes-kubectl-get-nodes)))
+                                  (-partial #'kubernetes-kubectl-get "nodes"))))
                    (kubernetes-state-update-nodes response)
                    response))))
           (nodes (append nodes nil))

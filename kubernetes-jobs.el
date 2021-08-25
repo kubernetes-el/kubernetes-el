@@ -152,7 +152,7 @@ Update the job state if it not set yet."
            (or (kubernetes-state-jobs state)
                (progn
                  (message "Getting jobs...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-jobs)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "jobs"))))
                    (kubernetes-state-update-jobs response)
                    response))))
           (jobs (append jobs nil))

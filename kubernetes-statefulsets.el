@@ -154,7 +154,7 @@ Update the statefulset state if it not set yet."
            (or (kubernetes-state-statefulsets state)
                (progn
                  (message "Getting statefulsets...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-statefulsets)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "statefulsets"))))
                    (kubernetes-state-update-statefulsets response)
                    response))))
           (statefulsets (append statefulsets nil))

@@ -114,105 +114,6 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
                       nil
                       cleanup-cb))
 
-(defun kubernetes-kubectl-get-pods (props state cb &optional cleanup-cb)
-  "Get all pods and execute callback CB with the parsed JSON.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-CLEANUP-CB is a function taking no arguments used to release any resources."
-  (kubernetes-kubectl-get "pods" props state cb cleanup-cb))
-
-(defun kubernetes-kubectl-get-nodes (props state cb &optional cleanup-cb)
-  "Get all nodes and execute callback CB with the parsed JSON.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-CLEANUP-CB is a function taking no arguments used to release any resources."
-  (kubernetes-kubectl-get "nodes" props state cb cleanup-cb))
-
-(defun kubernetes-kubectl-get-configmaps (props state cb &optional cleanup-cb)
-  "Get all configmaps and execute callback CB with the parsed JSON.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-CLEANUP-CB is a function taking no arguments used to release any resources."
-  (kubernetes-kubectl-get "configmaps" props state cb cleanup-cb))
-
-(defun kubernetes-kubectl-get-deployments (props state cb &optional cleanup-cb)
-  "Get all deployments and execute callback CB with the parsed JSON.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-CLEANUP-CB is a function taking no arguments used to release any resources."
-  (kubernetes-kubectl-get "deployments" props state cb cleanup-cb))
-
-(defun kubernetes-kubectl-get-statefulsets (props state cb &optional cleanup-cb)
-  "Get all statefulsets and execute callback CB with the parsed JSON.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-CLEANUP-CB is a function taking no arguments used to release any resources."
-  (kubernetes-kubectl-get "statefulsets" props state cb cleanup-cb))
-
-(defun kubernetes-kubectl-get-ingress (props state cb &optional cleanup-cb)
-  "Get all ingress and execute callback CB with the parsed JSON.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-CLEANUP-CB is a function taking no arguments used to release any resources."
-  (kubernetes-kubectl-get "ingress" props state cb cleanup-cb))
-
-(defun kubernetes-kubectl-get-jobs (props state cb &optional cleanup-cb)
-  "Get all jobs and execute callback CB with the parsed JSON.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-CLEANUP-CB is a function taking no arguments used to release any resources."
-  (kubernetes-kubectl-get "jobs" props state cb cleanup-cb))
-
-(defun kubernetes-kubectl-get-secrets (props state cb &optional cleanup-cb)
-  "Get all secrets and execute callback CB with the parsed JSON.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-CLEANUP-CB is a function taking no arguments used to release any resources."
-  (kubernetes-kubectl-get "secrets" props state cb cleanup-cb))
-
-(defun kubernetes-kubectl-get-services (props state cb &optional cleanup-cb)
-  "Get all services and execute callback CB with the parsed JSON.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-CLEANUP-CB is a function taking no arguments used to release any resources."
-  (kubernetes-kubectl-get "services" props state cb cleanup-cb))
-
 (defun kubernetes-kubectl-config-view (props state cb &optional cleanup-cb)
   "Get the current configuration and pass it to CB.
 
@@ -249,17 +150,6 @@ CB is a function taking the name of the context that was switched to."
                           (string-match (rx bol "Switched to context \"" (group (+? nonl)) "\"." (* space) eol)
                                         (buffer-string))
                           (funcall cb (match-string 1 (buffer-string)))))))
-
-(defun kubernetes-kubectl-get-namespaces (props state cb &optional cleanup-cb)
-  "Get namespaces for the current cluster and pass the parsed response to CB.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-CLEANUP-CB is a function taking no arguments used to release any resources."
-  (kubernetes-kubectl-get "namespaces" props state cb cleanup-cb))
 
 (defun kubernetes-kubectl-delete-pod (props state pod-name cb &optional error-cb)
   "Delete pod with POD-NAME, then execute CB with the response buffer.

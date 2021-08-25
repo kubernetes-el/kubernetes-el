@@ -105,7 +105,7 @@ Update the secret state if it not set yet."
            (or (kubernetes-state-secrets state)
                (progn
                  (message "Getting secrets...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-secrets)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "secrets"))))
                    (kubernetes-state-update-secrets response)
                    response))))
           (secrets (append secrets nil))
