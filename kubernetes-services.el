@@ -140,7 +140,7 @@ Update the service state if it not set yet."
            (or (kubernetes-state-services state)
                (progn
                  (message "Getting services...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-services)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "services"))))
                    (kubernetes-state-update-services response)
                    response))))
           (services (append services nil))

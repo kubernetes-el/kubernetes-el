@@ -394,12 +394,13 @@
 (defmacro kubernetes-state-define-refreshers (attr &optional canned raw)
   (declare (indent 2))
   (let* ((s-attr (symbol-name attr))
-         (canned (or canned (intern (format "kubernetes-kubectl-get-%s" s-attr)))))
+         (canned (or canned (-partial #'kubernetes-kubectl-get s-attr))))
     `(progn
        (defun ,(intern (format "kubernetes-%s-refresh" s-attr)) (&optional interactive)
          (unless (,(intern (format "kubernetes-process-poll-%s-process-live-p" s-attr)))
            (,(intern (format "kubernetes-process-set-poll-%s-process" s-attr))
-            (,canned
+            (funcall
+             ,canned
              kubernetes-props
              (kubernetes-state)
              (lambda (response)

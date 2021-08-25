@@ -25,7 +25,7 @@ Update the namespace state if it not set yet."
            (or (kubernetes-state-namespaces state)
                (progn
                  (message "Getting namespaces...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-namespaces)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "namespaces"))))
                    (kubernetes-state-update-namespaces response)
                    response))))
           (namespaces (append namespaces nil))

@@ -108,7 +108,7 @@ Update the configmap state if it not set yet."
            (or (kubernetes-state-configmaps state)
                (progn
                  (message "Getting configmaps...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-configmaps)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "configmaps"))))
                    (kubernetes-state-update-configmaps response)
                    response))))
           (configmaps (append configmaps nil))

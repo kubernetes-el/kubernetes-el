@@ -110,7 +110,7 @@ Update the ingress state if it not set yet."
            (or (kubernetes-state-ingress state)
                (progn
                  (message "Getting ingress...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-get-ingress)))
+                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "ingress"))))
                    (kubernetes-state-update-ingress response)
                    response))))
           (ingress (append ingress nil))

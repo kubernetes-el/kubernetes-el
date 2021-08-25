@@ -134,27 +134,10 @@ will be mocked."
                                      items))
                           ,result)))))))
 
-;; Get pods
-
 (define-refresh-tests "pods" '("example-svc-v3-1603416598-2f9lb"
                                "example-svc-v4-1603416598-2f9lb"
                                "example-svc-v5-1603416598-2f9lb"
                                "example-svc-v6-1603416598-2f9lb"))
-
-(ert-deftest kubernetes-kubectl-test--get-pods-returns-parsed-json ()
-  (let* ((sample-response (test-helper-string-resource "get-pods-response.json"))
-         (parsed-response (json-read-from-string sample-response))
-         (cleanup-callback-called))
-
-    (with-successful-response-at '("get" "pods" "-o" "json") sample-response
-      (kubernetes-kubectl-get-pods
-       kubernetes-kubectl-test-props
-       nil
-       (lambda (response)
-         (should (equal parsed-response response)))
-       (lambda ()
-         (setq cleanup-callback-called t))))
-    (should cleanup-callback-called)))
 
 ;; contexts
 
@@ -266,45 +249,37 @@ will be mocked."
     (should on-success-called)))
 
 
-;; Get namespaces
-
 (define-refresh-tests "namespaces" '("ns1" "ns2"))
 
-(ert-deftest kubernetes-kubectl-test--getting-namespaces ()
-  (let* ((sample-response (test-helper-string-resource "get-namespaces-response.json"))
-         (parsed-response (json-read-from-string sample-response))
-         (on-success-called)
-         (cleanup-callback-called))
-    (with-successful-response-at '("get" "namespaces" "-o" "json") sample-response
-      (kubernetes-kubectl-get-namespaces kubernetes-kubectl-test-props
-                       nil
-                       (lambda (response)
-                         (setq on-success-called t)
-                         (should (equal parsed-response response)))
-                       (lambda ()
-                         (setq cleanup-callback-called t))))
-    (should on-success-called)
-    (should cleanup-callback-called)))
-
-
-;; Get configmaps
+(ert-deftest kubernetes-kubectl-test--get--returns-parsed-json ()
+  (--each '(("configmaps" "get-configmaps-response.json")
+            ("namespace" "get-namespaces-response.json")
+            ("pods" "get-pods-response.json")
+            ("secrets" "get-secrets-response.json")
+            ("services" "get-services-response.json")
+            ("deployments" "get-deployments-response.json")
+            ("jobs" "get-jobs-response.json"))
+    (-let* (((type fake-response) it)
+            (sample-response (test-helper-string-resource fake-response))
+            (parsed-response (json-read-from-string sample-response))
+            (on-success-called)
+            (cleanup-callback-called))
+      (with-successful-response-at
+       `("get" ,type "-o" "json")
+       sample-response
+       (kubernetes-kubectl-get
+        type
+        kubernetes-kubectl-test-props
+        nil
+        (lambda (response)
+          (setq on-success-called t)
+          (should (equal parsed-response response)))
+        (lambda ()
+          (setq cleanup-callback-called t))))
+      (should on-success-called)
+      (should cleanup-callback-called))))
 
 (define-refresh-tests "configmaps" '("example-configmap-1" "example-configmap-2"))
-
-(ert-deftest kubernetes-kubectl-test--get-configmaps-returns-parsed-json ()
-  (let* ((sample-response (test-helper-string-resource "get-configmaps-response.json"))
-         (parsed-response (json-read-from-string sample-response))
-         (cleanup-callback-called))
-
-    (with-successful-response-at '("get" "configmaps" "-o" "json") sample-response
-      (kubernetes-kubectl-get-configmaps kubernetes-kubectl-test-props
-                       nil
-                       (lambda (response)
-                         (should (equal parsed-response response)))
-                       (lambda ()
-                         (setq cleanup-callback-called t))))
-    (should cleanup-callback-called)))
-
 
 ;; Delete configmap
 
@@ -330,24 +305,7 @@ will be mocked."
     (should on-error-called)))
 
 
-;; Get secrets
-
 (define-refresh-tests "secrets" '("example-secret-1" "example-secret-2"))
-
-(ert-deftest kubernetes-kubectl-test--get-secrets-returns-parsed-json ()
-  (let* ((sample-response (test-helper-string-resource "get-secrets-response.json"))
-         (parsed-response (json-read-from-string sample-response))
-         (cleanup-callback-called))
-
-    (with-successful-response-at '("get" "secrets" "-o" "json") sample-response
-      (kubernetes-kubectl-get-secrets kubernetes-kubectl-test-props
-                    nil
-                    (lambda (response)
-                      (should (equal parsed-response response)))
-                    (lambda ()
-                      (setq cleanup-callback-called t))))
-    (should cleanup-callback-called)))
-
 
 ;; Delete secret
 
@@ -372,61 +330,9 @@ will be mocked."
                         (setq on-error-called t))))
     (should on-error-called)))
 
-
-;; Get services
-
-(ert-deftest kubernetes-kubectl-test--get-services-returns-parsed-json ()
-  (let* ((sample-response (test-helper-string-resource "get-services-response.json"))
-         (parsed-response (json-read-from-string sample-response))
-         (cleanup-callback-called))
-
-    (with-successful-response-at '("get" "services" "-o" "json") sample-response
-      (kubernetes-kubectl-get-services kubernetes-kubectl-test-props
-                     nil
-                     (lambda (response)
-                       (should (equal parsed-response response)))
-                     (lambda ()
-                       (setq cleanup-callback-called t))))
-    (should cleanup-callback-called)))
-
-
-;; Get deployments
-
 (define-refresh-tests "deployments" '("deployment-1" "deployment-2"))
 
-(ert-deftest kubernetes-kubectl-test--get-deployments-returns-parsed-json ()
-  (let* ((sample-response (test-helper-string-resource "get-deployments-response.json"))
-         (parsed-response (json-read-from-string sample-response))
-         (cleanup-callback-called))
-
-    (with-successful-response-at '("get" "deployments" "-o" "json") sample-response
-      (kubernetes-kubectl-get-deployments kubernetes-kubectl-test-props
-                        nil
-                        (lambda (response)
-                          (should (equal parsed-response response)))
-                        (lambda ()
-                          (setq cleanup-callback-called t))))
-    (should cleanup-callback-called)))
-
-
-;; Get jobs
-
 (define-refresh-tests "jobs" '("example-job-1" "example-job-2"))
-
-(ert-deftest kubernetes-kubectl-test--get-jobs-returns-parsed-json ()
-  (let* ((sample-response (test-helper-string-resource "get-jobs-response.json"))
-         (parsed-response (json-read-from-string sample-response))
-         (cleanup-callback-called))
-
-    (with-successful-response-at '("get" "jobs" "-o" "json") sample-response
-      (kubernetes-kubectl-get-jobs kubernetes-kubectl-test-props
-                 nil
-                 (lambda (response)
-                   (should (equal parsed-response response)))
-                 (lambda ()
-                   (setq cleanup-callback-called t))))
-    (should cleanup-callback-called)))
-
 
 ;; Delete job
 
@@ -451,9 +357,6 @@ will be mocked."
                      (setq on-error-called t))))
     (should on-error-called)))
 
-
-
-
 ;; Delete deployment
 
 (ert-deftest kubernetes-kubectl-test--deleting-deployment-succeeds ()
@@ -476,7 +379,6 @@ will be mocked."
                           (lambda (_)
                             (setq on-error-called t))))
     (should on-error-called)))
-
 
 ;; Error handler
 
