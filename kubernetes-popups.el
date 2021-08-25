@@ -34,11 +34,11 @@
     ("u" "Unmark" kubernetes-unmark)
     ("U" "Unmark (all)" kubernetes-unmark-all)]
    ["Commands"
-    ("d" "Describe" kubernetes-describe-popup)
-    ("E" "Edit" kubernetes-edit-popup)
+    ("d" "Describe" kubernetes-describe)
+    ("E" "Edit" kubernetes-edit)
     ("e" "Exec" kubernetes-exec-popup)
     ("f" "File" kubernetes-file-popup)
-    ("L" "Labels" kubernetes-labels-popup)
+    ("L" "Labels" kubernetes-labels)
     ("l" "Logs" kubernetes-logs)]])
 
 (magit-define-popup kubernetes-exec-popup
