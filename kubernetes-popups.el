@@ -37,11 +37,11 @@
     (?u "Unmark" kubernetes-unmark)
     (?U "Unmark all" kubernetes-unmark-all)
     "Popup commands"
-    (?d "Describe" kubernetes-describe-popup)
-    (?E "Edit" kubernetes-edit-popup)
+    (?d "Describe" kubernetes-describe)
+    (?E "Edit" kubernetes-edit)
     (?e "Exec" kubernetes-exec-popup)
     (?f "File" kubernetes-file-popup)
-    (?L "Labels" kubernetes-labels-popup)
+    (?L "Labels" kubernetes-labels)
     (?l "Logs" kubernetes-logs)
     "Misc"
     (?h "Describe mode and keybindings" describe-mode)))
@@ -72,28 +72,21 @@
     (?d "Dired" kubernetes-tramp-dired))
   :default-action 'kubernetes-tramp-dired)
 
-(magit-define-popup kubernetes-describe-popup
-  "Popup console for describe commands."
-  :group 'kubernetes
-  :actions
-  '((?d "Dwim" kubernetes-describe-dwim)
-    (?p "Pod" kubernetes-describe-pod))
-  :default-action 'kubernetes-logs)
+(transient-define-prefix kubernetes-describe ()
+  "Describe Kubernetes resources."
+  [["Actions"
+    ("d" "Dwim" kubernetes-describe-dwim)
+    ("p" "Pod" kubernetes-describe-pod)]])
 
-(magit-define-popup kubernetes-labels-popup
-  "Popup console for commands relating to labels."
-  :group 'kubernetes
-  :actions
-  '((?p "Pods" kubernetes-show-pods-for-label))
-  :default-action 'kubernetes-show-pods-for-label)
+(transient-define-prefix kubernetes-labels ()
+  "Act on Kubernetes labels."
+  [["Actions"
+    ("p" "Pods" kubernetes-show-pods-for-label)]])
 
-(magit-define-popup kubernetes-edit-popup
-  "Popup console for commands relating to edit resources."
-  :group 'kubernetes
-  :actions
-  '((?e "Edit (dwim)" kubernetes-edit-resource-dwim))
-  :default-action 'kubernetes-edit-resource-dwim)
-
+(transient-define-prefix kubernetes-edit ()
+  "Edit Kubernetes resources."
+  [["Actions"
+    ("e" "Dwim" kubernetes-edit-resource-dwim)]])
 
 ;; Config popup
 ;;
