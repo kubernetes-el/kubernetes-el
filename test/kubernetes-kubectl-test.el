@@ -308,18 +308,16 @@ will be mocked."
 (ert-deftest kubernetes-kubectl-test--deleting-secret-succeeds ()
   (let ((secret-name "example-config"))
     (with-successful-response-at '("delete" "secret" "example-secret" "-o" "name") "secret/example-config"
-      (kubernetes-kubectl-delete-secret kubernetes-kubectl-test-props
+      (kubernetes-kubectl-delete "secret" "example-secret" kubernetes-kubectl-test-props
                       nil
-                      "example-secret"
                       (lambda (result)
                         (should (equal secret-name result)))))))
 
 (ert-deftest kubernetes-kubectl-test--deleting-secret-fails ()
   (let ((on-error-called))
     (with-error-response-at '("delete" "secret" "example-secret" "-o" "name") "secret/example-config"
-      (kubernetes-kubectl-delete-secret kubernetes-kubectl-test-props
+      (kubernetes-kubectl-delete "secret" "example-secret" kubernetes-kubectl-test-props
                       nil
-                      "example-secret"
                       (lambda (_)
                         (error "Unexpected success response"))
                       (lambda (_)
