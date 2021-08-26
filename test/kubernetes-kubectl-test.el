@@ -358,18 +358,16 @@ will be mocked."
 (ert-deftest kubernetes-kubectl-test--deleting-deployment-succeeds ()
   (let ((deployment-name "example-config"))
     (with-successful-response-at '("delete" "deployment" "example-deployment" "-o" "name") "deployment/example-config"
-      (kubernetes-kubectl-delete-deployment kubernetes-kubectl-test-props
+      (kubernetes-kubectl-delete "deployment" "example-deployment" kubernetes-kubectl-test-props
                           nil
-                          "example-deployment"
                           (lambda (result)
                             (should (equal deployment-name result)))))))
 
 (ert-deftest kubernetes-kubectl-test--deleting-deployment-fails ()
   (let ((on-error-called))
     (with-error-response-at '("delete" "deployment" "example-deployment" "-o" "name") "deployment/example-config"
-      (kubernetes-kubectl-delete-deployment kubernetes-kubectl-test-props
+      (kubernetes-kubectl-delete "deployment" "example-deployment" kubernetes-kubectl-test-props
                           nil
-                          "example-deployment"
                           (lambda (_)
                             (error "Unexpected success response"))
                           (lambda (_)

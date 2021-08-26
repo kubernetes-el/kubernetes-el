@@ -146,12 +146,12 @@
   (let ((names (kubernetes-state-marked-deployments state)))
     (dolist (name names)
       (kubernetes-state-delete-deployment name)
-      (kubernetes-kubectl-delete-deployment kubernetes-props state name
-                                         (lambda (_)
-                                           (message "Deleting deployment %s succeeded." name))
-                                         (lambda (_)
-                                           (message "Deleting deployment %s failed" name)
-                                           (kubernetes-state-mark-deployment name))))
+      (kubernetes-kubectl-delete "deployment" name kubernetes-props state
+                                 (lambda (_)
+                                   (message "Deleting deployment %s succeeded." name))
+                                 (lambda (_)
+                                   (message "Deleting deployment %s failed" name)
+                                   (kubernetes-state-mark-deployment name))))
     (kubernetes-state-trigger-redraw)))
 
 
