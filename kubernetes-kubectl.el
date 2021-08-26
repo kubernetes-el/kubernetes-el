@@ -238,18 +238,6 @@ STATE is the application state.
 ERROR-CB is called if an error occurred."
   (kubernetes-kubectl-delete "deployment" deployment-name props state cb error-cb))
 
-
-(defun kubernetes-kubectl-delete-statefulset (props state statefulset-name cb &optional error-cb)
-  "Delete STATEFULSET-NAME, then execute CB with the response buffer.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-ERROR-CB is called if an error occurred."
-  (kubernetes-kubectl-delete "statefulset" statefulset-name props state cb error-cb))
-
 (defun kubernetes-kubectl-await (command &rest callbacks)
   "Apply COMMAND to list of CALLBACKS where first callback is assumed on-success.
 If no callbacks called within `kubernetes-kubectl-timeout-seconds', give up,
