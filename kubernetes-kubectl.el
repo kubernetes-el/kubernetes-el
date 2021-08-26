@@ -114,6 +114,25 @@ CLEANUP-CB is a function taking no arguments used to release any resources."
                       nil
                       cleanup-cb))
 
+(defun kubernetes-kubectl-delete (type name props state cb &optional error-cb)
+  "Delete resource of TYPE and NAME; execute CB with the response buffer.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-props'.
+
+STATE is the application state.
+
+ERROR-CB is called if an error occurred."
+
+  (kubernetes-kubectl props state `("delete" ,type ,name "-o" "name")
+                      (lambda (buf)
+                        `(with-current-buffer buf
+                          (string-match
+                            (rx bol ,type "/" (group (+ nonl)))
+                            (buffer-string))
+                          (funcall cb (match-string 1 (buffer-string)))))
+                      error-cb))
+
 (defun kubernetes-kubectl-config-view (props state cb &optional cleanup-cb)
   "Get the current configuration and pass it to CB.
 
@@ -151,71 +170,6 @@ CB is a function taking the name of the context that was switched to."
                                         (buffer-string))
                           (funcall cb (match-string 1 (buffer-string)))))))
 
-(defun kubernetes-kubectl-delete-pod (props state pod-name cb &optional error-cb)
-  "Delete pod with POD-NAME, then execute CB with the response buffer.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-ERROR-CB is called if an error occurred."
-  (kubernetes-kubectl props state (list "delete" "pod" pod-name "-o" "name")
-                      (lambda (buf)
-                        (with-current-buffer buf
-                          (string-match (rx bol "pod/" (group (+ nonl))) (buffer-string))
-                          (funcall cb (match-string 1 (buffer-string)))))
-                      error-cb))
-
-(defun kubernetes-kubectl-delete-configmap (props state configmap-name cb &optional error-cb)
-  "Delete CONFIGMAP-NAME, then execute CB with the response buffer.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-ERROR-CB is called if an error occurred."
-  (kubernetes-kubectl props state (list "delete" "configmap" configmap-name "-o" "name")
-                      (lambda (buf)
-                        (with-current-buffer buf
-                          (string-match (rx bol "configmap/" (group (+ nonl))) (buffer-string))
-                          (funcall cb (match-string 1 (buffer-string)))))
-                      error-cb))
-
-
-(defun kubernetes-kubectl-delete-ingress (props state ingress-name cb &optional error-cb)
-  "Delete INGRESS-NAME, then execute CB with the response buffer.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-ERROR-CB is called if an error occurred."
-  (kubernetes-kubectl props state (list "delete" "ingress" ingress-name "-o" "name")
-                      (lambda (buf)
-                        (with-current-buffer buf
-                          (string-match (rx bol "ingress/" (group (+ nonl))) (buffer-string))
-                          (funcall cb (match-string 1 (buffer-string)))))
-                      error-cb))
-
-(defun kubernetes-kubectl-delete-secret (props state secret-name cb &optional error-cb)
-  "Delete SECRET-NAME, then execute CB with the response buffer.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-ERROR-CB is called if an error occurred."
-  (kubernetes-kubectl props state (list "delete" "secret" secret-name "-o" "name")
-                      (lambda (buf)
-                        (with-current-buffer buf
-                          (string-match (rx bol "secret/" (group (+ nonl))) (buffer-string))
-                          (funcall cb (match-string 1 (buffer-string)))))
-                      error-cb))
-
 (defun kubernetes-kubectl-describe-pod (props state pod-name cb)
   "Describe pod with POD-NAME, then execute CB with the string response.
 
@@ -227,71 +181,6 @@ STATE is the application state."
                       (lambda (buf)
                         (let ((s (with-current-buffer buf (buffer-string))))
                           (funcall cb s)))))
-
-(defun kubernetes-kubectl-delete-service (props state service-name cb &optional error-cb)
-  "Delete SERVICE-NAME, then execute CB with the response buffer.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-ERROR-CB is called if an error occurred."
-  (kubernetes-kubectl props state (list "delete" "service" service-name "-o" "name")
-                      (lambda (buf)
-                        (with-current-buffer buf
-                          (string-match (rx bol "service/" (group (+ nonl))) (buffer-string))
-                          (funcall cb (match-string 1 (buffer-string)))))
-                      error-cb))
-
-(defun kubernetes-kubectl-delete-deployment (props state deployment-name cb &optional error-cb)
-  "Delete DEPLOYMENT-NAME, then execute CB with the response buffer.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-ERROR-CB is called if an error occurred."
-  (kubernetes-kubectl props state (list "delete" "deployment" deployment-name "-o" "name")
-                      (lambda (buf)
-                        (with-current-buffer buf
-                          (string-match (rx bol "deployment/" (group (+ nonl))) (buffer-string))
-                          (funcall cb (match-string 1 (buffer-string)))))
-                      error-cb))
-
-
-(defun kubernetes-kubectl-delete-statefulset (props state statefulset-name cb &optional error-cb)
-  "Delete STATEFULSET-NAME, then execute CB with the response buffer.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-ERROR-CB is called if an error occurred."
-  (kubernetes-kubectl props state (list "delete" "statefulset" statefulset-name "-o" "name")
-                      (lambda (buf)
-                        (with-current-buffer buf
-                          (string-match (rx bol "statefulset/" (group (+ nonl))) (buffer-string))
-                          (funcall cb (match-string 1 (buffer-string)))))
-                      error-cb))
-
-(defun kubernetes-kubectl-delete-job (props state job-name cb &optional error-cb)
-  "Delete JOB-NAME, then execute CB with the response buffer.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-ERROR-CB is called if an error occurred."
-  (kubernetes-kubectl props state (list "delete" "job" job-name "-o" "name")
-                      (lambda (buf)
-                        (with-current-buffer buf
-                          (string-match (rx bol "job/" (group (+ nonl))) (buffer-string))
-                          (funcall cb (match-string 1 (buffer-string)))))
-                      error-cb))
 
 (defun kubernetes-kubectl-await (command &rest callbacks)
   "Apply COMMAND to list of CALLBACKS where first callback is assumed on-success.

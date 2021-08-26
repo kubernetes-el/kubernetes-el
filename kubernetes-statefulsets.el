@@ -133,7 +133,7 @@
   (let ((names (kubernetes-state-marked-statefulsets state)))
     (dolist (name names)
       (kubernetes-state-delete-statefulset name)
-      (kubernetes-kubectl-delete-statefulset kubernetes-props state name
+      (kubernetes-kubectl-delete "statefulset" name kubernetes-props state
                                          (lambda (_)
                                            (message "Deleting statefulset %s succeeded." name))
                                          (lambda (_)

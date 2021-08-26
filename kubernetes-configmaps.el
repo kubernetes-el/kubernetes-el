@@ -87,12 +87,12 @@
   (let ((names (kubernetes-state-marked-configmaps state)))
     (dolist (name names)
       (kubernetes-state-delete-configmap name)
-      (kubernetes-kubectl-delete-configmap kubernetes-props state name
-                                           (lambda (_)
-                                             (message "Deleting configmap %s succeeded." name))
-                                           (lambda (_)
-                                             (message "Deleting configmap %s failed" name)
-                                             (kubernetes-state-mark-configmap name))))
+      (kubernetes-kubectl-delete "configmap" name kubernetes-props state
+                                 (lambda (_)
+                                   (message "Deleting configmap %s succeeded." name))
+                                 (lambda (_)
+                                   (message "Deleting configmap %s failed" name)
+                                   (kubernetes-state-mark-configmap name))))
     (kubernetes-state-trigger-redraw)))
 
 

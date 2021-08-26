@@ -84,12 +84,12 @@
   (let ((names (kubernetes-state-marked-secrets state)))
     (dolist (name names)
       (kubernetes-state-delete-secret name)
-      (kubernetes-kubectl-delete-secret kubernetes-props state name
-                                        (lambda (_)
-                                          (message "Deleting secret %s succeeded." name))
-                                        (lambda (_)
-                                          (message "Deleting secret %s failed" name)
-                                          (kubernetes-state-mark-secret name))))
+      (kubernetes-kubectl-delete "secret" name kubernetes-props state
+                                 (lambda (_)
+                                   (message "Deleting secret %s succeeded." name))
+                                 (lambda (_)
+                                   (message "Deleting secret %s failed" name)
+                                   (kubernetes-state-mark-secret name))))
     (kubernetes-state-trigger-redraw)))
 
 

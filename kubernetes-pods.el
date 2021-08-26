@@ -171,12 +171,12 @@ Update the pod state if it not set yet."
   (let ((names (kubernetes-state-marked-pods state)))
     (dolist (name names)
       (kubernetes-state-delete-pod name)
-      (kubernetes-kubectl-delete-pod kubernetes-props state name
-                                     (lambda (_)
-                                       (message "Deleting pod %s succeeded." name))
-                                     (lambda (_)
-                                       (message "Deleting pod %s failed" name)
-                                       (kubernetes-state-mark-pod name))))
+      (kubernetes-kubectl-delete "pod" name kubernetes-props state
+                                 (lambda (_)
+                                   (message "Deleting pod %s succeeded." name))
+                                 (lambda (_)
+                                   (message "Deleting pod %s failed" name)
+                                   (kubernetes-state-mark-pod name))))
     (kubernetes-state-trigger-redraw)))
 
 ;; Interactive commands

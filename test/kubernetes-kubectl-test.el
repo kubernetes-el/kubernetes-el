@@ -167,54 +167,7 @@ will be mocked."
     (should cleanup-callback-called)))
 
 
-;; Delete pod
-
-(ert-deftest kubernetes-kubectl-test--deleting-pod-succeeds ()
-  (let ((pod-name "example-v3-4120544588-55kmw"))
-    (with-successful-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
-      (kubernetes-kubectl-delete-pod kubernetes-kubectl-test-props
-                   nil
-                   "example-pod"
-                   (lambda (result)
-                     (should (equal pod-name result)))))))
-
-(ert-deftest kubernetes-kubectl-test--deleting-pod-fails ()
-  (let ((on-error-called))
-    (with-error-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
-      (kubernetes-kubectl-delete-pod kubernetes-kubectl-test-props
-                   nil
-                   "example-pod"
-                   (lambda (_)
-                     (error "Unexpected success response"))
-                   (lambda (_)
-                     (setq on-error-called t))))
-    (should on-error-called)))
-
-
-;; Delete service
-
 (define-refresh-tests "services" '("example-svc-1" "example-svc-2"))
-
-(ert-deftest kubernetes-kubectl-test--deleting-service-succeeds ()
-  (let ((service-name "example-svc"))
-    (with-successful-response-at '("delete" "service" "example-service" "-o" "name") "service/example-svc"
-      (kubernetes-kubectl-delete-service kubernetes-kubectl-test-props
-                       nil
-                       "example-service"
-                       (lambda (result)
-                         (should (equal service-name result)))))))
-
-(ert-deftest kubernetes-kubectl-test--deleting-service-fails ()
-  (let ((on-error-called))
-    (with-error-response-at '("delete" "service" "example-service" "-o" "name") "service/example-svc"
-      (kubernetes-kubectl-delete-service kubernetes-kubectl-test-props
-                       nil
-                       "example-service"
-                       (lambda (_)
-                         (error "Unexpected success response"))
-                       (lambda (_)
-                         (setq on-error-called t))))
-    (should on-error-called)))
 
 
 ;; Describe pod
@@ -283,52 +236,34 @@ will be mocked."
 
 ;; Delete configmap
 
-(ert-deftest kubernetes-kubectl-test--deleting-configmap-succeeds ()
-  (let ((configmap-name "example-config"))
-    (with-successful-response-at '("delete" "configmap" "example-configmap" "-o" "name") "configmap/example-config"
-      (kubernetes-kubectl-delete-configmap kubernetes-kubectl-test-props
-                         nil
-                         "example-configmap"
-                         (lambda (result)
-                           (should (equal configmap-name result)))))))
+(ert-deftest kubernetes-kubectl-test--delete--succeeds ()
+  (--each '(("configmap" "example-configmap")
+            ("foo" "example-foo"))
+    (-let* (((type name) it))
+      (with-successful-response-at
+       `("delete" ,type ,name "-o" "name")
+       (s-join "/" (list type name))
+       (kubernetes-kubectl-delete type name kubernetes-kubectl-test-props nil
+                                  (lambda (result)
+                                    (should (equal name result))))))))
 
-(ert-deftest kubernetes-kubectl-test--deleting-configmap-fails ()
-  (let ((on-error-called))
-    (with-error-response-at '("delete" "configmap" "example-configmap" "-o" "name") "configmap/example-config"
-      (kubernetes-kubectl-delete-configmap kubernetes-kubectl-test-props
-                         nil
-                         "example-configmap"
-                         (lambda (_)
-                           (error "Unexpected success response"))
-                         (lambda (_)
-                           (setq on-error-called t))))
-    (should on-error-called)))
-
+(ert-deftest kubernetes-kubectl-test--delete--fails ()
+  (--each '(("configmap" "example-configmap"))
+    (-let* ((on-error-called)
+            ((type name) it))
+      (with-error-response-at
+       `("delete" ,type ,name "-o" "name")
+       (s-join "/" (list type name))
+       (kubernetes-kubectl-delete type name kubernetes-kubectl-test-props nil
+                                  (lambda (_)
+                                    (error "Unexpected success response"))
+                                  (lambda (_)
+                                    (setq on-error-called t))))
+      (should on-error-called))))
 
 (define-refresh-tests "secrets" '("example-secret-1" "example-secret-2"))
 
 ;; Delete secret
-
-(ert-deftest kubernetes-kubectl-test--deleting-secret-succeeds ()
-  (let ((secret-name "example-config"))
-    (with-successful-response-at '("delete" "secret" "example-secret" "-o" "name") "secret/example-config"
-      (kubernetes-kubectl-delete-secret kubernetes-kubectl-test-props
-                      nil
-                      "example-secret"
-                      (lambda (result)
-                        (should (equal secret-name result)))))))
-
-(ert-deftest kubernetes-kubectl-test--deleting-secret-fails ()
-  (let ((on-error-called))
-    (with-error-response-at '("delete" "secret" "example-secret" "-o" "name") "secret/example-config"
-      (kubernetes-kubectl-delete-secret kubernetes-kubectl-test-props
-                      nil
-                      "example-secret"
-                      (lambda (_)
-                        (error "Unexpected success response"))
-                      (lambda (_)
-                        (setq on-error-called t))))
-    (should on-error-called)))
 
 (define-refresh-tests "deployments" '("deployment-1" "deployment-2"))
 
@@ -336,49 +271,7 @@ will be mocked."
 
 ;; Delete job
 
-(ert-deftest kubernetes-kubectl-test--deleting-job-succeeds ()
-  (let ((job-name "example-job"))
-    (with-successful-response-at '("delete" "job" "example-job" "-o" "name") "job/example-job"
-      (kubernetes-kubectl-delete-job kubernetes-kubectl-test-props
-                   nil
-                   "example-job"
-                   (lambda (result)
-                     (should (equal job-name result)))))))
-
-(ert-deftest kubernetes-kubectl-test--deleting-job-fails ()
-  (let ((on-error-called))
-    (with-error-response-at '("delete" "job" "example-job" "-o" "name") "job/example-job"
-      (kubernetes-kubectl-delete-job kubernetes-kubectl-test-props
-                   nil
-                   "example-job"
-                   (lambda (_)
-                     (error "Unexpected success response"))
-                   (lambda (_)
-                     (setq on-error-called t))))
-    (should on-error-called)))
-
 ;; Delete deployment
-
-(ert-deftest kubernetes-kubectl-test--deleting-deployment-succeeds ()
-  (let ((deployment-name "example-config"))
-    (with-successful-response-at '("delete" "deployment" "example-deployment" "-o" "name") "deployment/example-config"
-      (kubernetes-kubectl-delete-deployment kubernetes-kubectl-test-props
-                          nil
-                          "example-deployment"
-                          (lambda (result)
-                            (should (equal deployment-name result)))))))
-
-(ert-deftest kubernetes-kubectl-test--deleting-deployment-fails ()
-  (let ((on-error-called))
-    (with-error-response-at '("delete" "deployment" "example-deployment" "-o" "name") "deployment/example-config"
-      (kubernetes-kubectl-delete-deployment kubernetes-kubectl-test-props
-                          nil
-                          "example-deployment"
-                          (lambda (_)
-                            (error "Unexpected success response"))
-                          (lambda (_)
-                            (setq on-error-called t))))
-    (should on-error-called)))
 
 ;; Error handler
 

@@ -119,12 +119,12 @@
   (let ((names (kubernetes-state-marked-services state)))
     (dolist (name names)
       (kubernetes-state-delete-service name)
-      (kubernetes-kubectl-delete-service kubernetes-props state name
-                                         (lambda (_)
-                                           (message "Deleting service %s succeeded." name))
-                                         (lambda (_)
-                                           (message "Deleting service %s failed" name)
-                                           (kubernetes-state-mark-service name))))
+      (kubernetes-kubectl-delete "service" name kubernetes-props state
+                                 (lambda (_)
+                                   (message "Deleting service %s succeeded." name))
+                                 (lambda (_)
+                                   (message "Deleting service %s failed" name)
+                                   (kubernetes-state-mark-service name))))
     (kubernetes-state-trigger-redraw)))
 
 
