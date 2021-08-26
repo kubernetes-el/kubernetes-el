@@ -216,17 +216,6 @@ STATE is the application state."
                         (let ((s (with-current-buffer buf (buffer-string))))
                           (funcall cb s)))))
 
-(defun kubernetes-kubectl-delete-service (props state service-name cb &optional error-cb)
-  "Delete SERVICE-NAME, then execute CB with the response buffer.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-ERROR-CB is called if an error occurred."
-  (kubernetes-kubectl-delete "service" service-name props state cb error-cb))
-
 (defun kubernetes-kubectl-await (command &rest callbacks)
   "Apply COMMAND to list of CALLBACKS where first callback is assumed on-success.
 If no callbacks called within `kubernetes-kubectl-timeout-seconds', give up,

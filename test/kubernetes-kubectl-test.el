@@ -196,18 +196,16 @@ will be mocked."
 (ert-deftest kubernetes-kubectl-test--deleting-service-succeeds ()
   (let ((service-name "example-svc"))
     (with-successful-response-at '("delete" "service" "example-service" "-o" "name") "service/example-svc"
-      (kubernetes-kubectl-delete-service kubernetes-kubectl-test-props
+      (kubernetes-kubectl-delete "service" "example-service" kubernetes-kubectl-test-props
                        nil
-                       "example-service"
                        (lambda (result)
                          (should (equal service-name result)))))))
 
 (ert-deftest kubernetes-kubectl-test--deleting-service-fails ()
   (let ((on-error-called))
     (with-error-response-at '("delete" "service" "example-service" "-o" "name") "service/example-svc"
-      (kubernetes-kubectl-delete-service kubernetes-kubectl-test-props
+      (kubernetes-kubectl-delete "service" "example-service" kubernetes-kubectl-test-props
                        nil
-                       "example-service"
                        (lambda (_)
                          (error "Unexpected success response"))
                        (lambda (_)
