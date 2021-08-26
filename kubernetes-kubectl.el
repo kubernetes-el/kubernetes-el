@@ -181,18 +181,6 @@ STATE is the application state.
 ERROR-CB is called if an error occurred."
   (kubernetes-kubectl-delete "configmap" configmap-name props state cb error-cb))
 
-
-(defun kubernetes-kubectl-delete-ingress (props state ingress-name cb &optional error-cb)
-  "Delete INGRESS-NAME, then execute CB with the response buffer.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-ERROR-CB is called if an error occurred."
-  (kubernetes-kubectl-delete "ingress" ingress-name props state cb error-cb))
-
 (defun kubernetes-kubectl-describe-pod (props state pod-name cb)
   "Describe pod with POD-NAME, then execute CB with the string response.
 

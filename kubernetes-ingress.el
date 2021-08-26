@@ -90,7 +90,7 @@
   (let ((names (kubernetes-state-marked-ingress state)))
     (dolist (name names)
       (kubernetes-state-delete-ingress name)
-      (kubernetes-kubectl-delete-ingress kubernetes-props state name
+      (kubernetes-kubectl-delete "ingress" name kubernetes-props state
                                         (lambda (_)
                                           (message "Deleting ingress %s succeeded." name))
                                         (lambda (_)
