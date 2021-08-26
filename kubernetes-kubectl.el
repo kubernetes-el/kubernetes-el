@@ -126,9 +126,9 @@ ERROR-CB is called if an error occurred."
 
   (kubernetes-kubectl props state `("delete" ,type ,name "-o" "name")
                       (lambda (buf)
-                        (with-current-buffer buf
+                        `(with-current-buffer buf
                           (string-match
-                            (rx bol (literal (s-concat type "/")) (group (+ nonl)))
+                            (rx bol ,type "/" (group (+ nonl)))
                             (buffer-string))
                           (funcall cb (match-string 1 (buffer-string)))))
                       error-cb))
