@@ -170,17 +170,6 @@ CB is a function taking the name of the context that was switched to."
                                         (buffer-string))
                           (funcall cb (match-string 1 (buffer-string)))))))
 
-(defun kubernetes-kubectl-delete-configmap (props state configmap-name cb &optional error-cb)
-  "Delete CONFIGMAP-NAME, then execute CB with the response buffer.
-
-PROPS is an alist of functions to inject.  It should normally be passed
-`kubernetes-props'.
-
-STATE is the application state.
-
-ERROR-CB is called if an error occurred."
-  (kubernetes-kubectl-delete "configmap" configmap-name props state cb error-cb))
-
 (defun kubernetes-kubectl-describe-pod (props state pod-name cb)
   "Describe pod with POD-NAME, then execute CB with the string response.
 

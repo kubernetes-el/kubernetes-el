@@ -282,18 +282,16 @@ will be mocked."
 (ert-deftest kubernetes-kubectl-test--deleting-configmap-succeeds ()
   (let ((configmap-name "example-config"))
     (with-successful-response-at '("delete" "configmap" "example-configmap" "-o" "name") "configmap/example-config"
-      (kubernetes-kubectl-delete-configmap kubernetes-kubectl-test-props
+      (kubernetes-kubectl-delete "configmap" "example-configmap" kubernetes-kubectl-test-props
                          nil
-                         "example-configmap"
                          (lambda (result)
                            (should (equal configmap-name result)))))))
 
 (ert-deftest kubernetes-kubectl-test--deleting-configmap-fails ()
   (let ((on-error-called))
     (with-error-response-at '("delete" "configmap" "example-configmap" "-o" "name") "configmap/example-config"
-      (kubernetes-kubectl-delete-configmap kubernetes-kubectl-test-props
+      (kubernetes-kubectl-delete "configmap" "example-configmap" kubernetes-kubectl-test-props
                          nil
-                         "example-configmap"
                          (lambda (_)
                            (error "Unexpected success response"))
                          (lambda (_)
