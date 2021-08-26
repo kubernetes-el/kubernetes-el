@@ -172,18 +172,16 @@ will be mocked."
 (ert-deftest kubernetes-kubectl-test--deleting-pod-succeeds ()
   (let ((pod-name "example-v3-4120544588-55kmw"))
     (with-successful-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
-      (kubernetes-kubectl-delete-pod kubernetes-kubectl-test-props
-                   nil
-                   "example-pod"
-                   (lambda (result)
-                     (should (equal pod-name result)))))))
+      (kubernetes-kubectl-delete "pod" "example-pod" kubernetes-kubectl-test-props
+                                 nil
+                                 (lambda (result)
+                                   (should (equal pod-name result)))))))
 
 (ert-deftest kubernetes-kubectl-test--deleting-pod-fails ()
   (let ((on-error-called))
     (with-error-response-at '("delete" "pod" "example-pod" "-o" "name") "pod/example-v3-4120544588-55kmw"
-      (kubernetes-kubectl-delete-pod kubernetes-kubectl-test-props
+      (kubernetes-kubectl-delete "pod" "example-pod" kubernetes-kubectl-test-props
                    nil
-                   "example-pod"
                    (lambda (_)
                      (error "Unexpected success response"))
                    (lambda (_)
