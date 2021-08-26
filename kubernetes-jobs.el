@@ -131,12 +131,12 @@
   (let ((names (kubernetes-state-marked-jobs state)))
     (dolist (name names)
       (kubernetes-state-delete-job name)
-      (kubernetes-kubectl-delete-job kubernetes-props state name
-                                     (lambda (_)
-                                       (message "Deleting job %s succeeded." name))
-                                     (lambda (_)
-                                       (message "Deleting job %s failed" name)
-                                       (kubernetes-state-mark-job name))))
+      (kubernetes-kubectl-delete "job" name kubernetes-props state
+                                 (lambda (_)
+                                   (message "Deleting job %s succeeded." name))
+                                 (lambda (_)
+                                   (message "Deleting job %s failed" name)
+                                   (kubernetes-state-mark-job name))))
     (kubernetes-state-trigger-redraw)))
 
 

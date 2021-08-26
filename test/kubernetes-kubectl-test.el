@@ -337,18 +337,16 @@ will be mocked."
 (ert-deftest kubernetes-kubectl-test--deleting-job-succeeds ()
   (let ((job-name "example-job"))
     (with-successful-response-at '("delete" "job" "example-job" "-o" "name") "job/example-job"
-      (kubernetes-kubectl-delete-job kubernetes-kubectl-test-props
+      (kubernetes-kubectl-delete "job" "example-job" kubernetes-kubectl-test-props
                    nil
-                   "example-job"
                    (lambda (result)
                      (should (equal job-name result)))))))
 
 (ert-deftest kubernetes-kubectl-test--deleting-job-fails ()
   (let ((on-error-called))
     (with-error-response-at '("delete" "job" "example-job" "-o" "name") "job/example-job"
-      (kubernetes-kubectl-delete-job kubernetes-kubectl-test-props
+      (kubernetes-kubectl-delete "job" "example-job" kubernetes-kubectl-test-props
                    nil
-                   "example-job"
                    (lambda (_)
                      (error "Unexpected success response"))
                    (lambda (_)
