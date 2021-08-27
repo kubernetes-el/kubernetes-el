@@ -532,9 +532,6 @@
   (cl-assert (-all? #'stringp flags))
   (setq kubernetes-kubectl-flags flags))
 
-(kubernetes-state--define-getter marked-secrets)
-(kubernetes-state--define-getter secrets-pending-deletion)
-
 (kubernetes-state--define-getter marked-services)
 (kubernetes-state--define-getter services-pending-deletion)
 

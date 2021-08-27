@@ -27,8 +27,8 @@
 
 (kubernetes-ast-define-component secret-line (state secret)
   (-let* ((current-time (kubernetes-state-current-time state))
-          (pending-deletion (kubernetes-state-secrets-pending-deletion state))
-          (marked-secrets (kubernetes-state-marked-secrets state))
+          (pending-deletion (kubernetes-state--get state 'secrets-pending-deletion))
+          (marked-secrets (kubernetes-state--get state 'marked-secrets))
           ((&alist 'data data 'metadata (&alist 'name name 'creationTimestamp created-time))
            secret)
           ([fmt] kubernetes-secrets--column-heading)
@@ -81,7 +81,7 @@
 (kubernetes-state-define-refreshers secrets)
 
 (defun kubernetes-secrets-delete-marked (state)
-  (let ((names (kubernetes-state-marked-secrets state)))
+  (let ((names (kubernetes-state--get state 'marked-secrets)))
     (dolist (name names)
       (kubernetes-state-delete-secret name)
       (kubernetes-kubectl-delete "secret" name kubernetes-props state

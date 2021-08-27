@@ -116,7 +116,7 @@
                  (y-or-n-p (format "Delete %s ingress%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-ingress-delete-marked state)))
 
-    (let ((n (length (kubernetes-state-marked-secrets state))))
+    (let ((n (length (kubernetes-state--get state 'marked-secrets))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s secret%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-secrets-delete-marked state)))
