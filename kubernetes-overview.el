@@ -74,8 +74,8 @@
                             (kubernetes-state-resource-name s2))))))
 
 (kubernetes-ast-define-component aggregated-configmap-line (state configmap)
-  (-let* ((pending-deletion (kubernetes-state-configmaps-pending-deletion state))
-          (marked-configmaps (kubernetes-state-marked-configmaps state))
+  (-let* ((pending-deletion (kubernetes-state--get state 'configmaps-pending-deletion))
+          (marked-configmaps (kubernetes-state--get state 'marked-configmaps))
           ((&alist 'metadata (&alist 'name name )) configmap)
           (line (cond
                  ((member name pending-deletion)

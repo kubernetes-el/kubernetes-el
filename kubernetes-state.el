@@ -534,9 +534,6 @@
   (cl-assert (-all? #'stringp flags))
   (setq kubernetes-kubectl-flags flags))
 
-(kubernetes-state--define-getter marked-configmaps)
-(kubernetes-state--define-getter configmaps-pending-deletion)
-
 (kubernetes-state--define-getter marked-ingress)
 (kubernetes-state--define-getter ingress-pending-deletion)
 

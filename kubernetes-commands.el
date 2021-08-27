@@ -106,7 +106,7 @@
                  (y-or-n-p (format "Delete %s pod%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-pods-delete-marked state)))
 
-    (let ((n (length (kubernetes-state-marked-configmaps state))))
+    (let ((n (length (kubernetes-state--get state 'marked-configmaps))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s configmap%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-configmaps-delete-marked state)))
