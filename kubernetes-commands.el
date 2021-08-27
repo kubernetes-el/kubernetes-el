@@ -111,7 +111,7 @@
                  (y-or-n-p (format "Delete %s configmap%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-configmaps-delete-marked state)))
 
-    (let ((n (length (kubernetes-state--get state 'marked-ingress))))
+    (let ((n (length (kubernetes-state-marked-ingress state))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s ingress%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-ingress-delete-marked state)))
