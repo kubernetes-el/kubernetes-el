@@ -532,9 +532,6 @@
   (cl-assert (-all? #'stringp flags))
   (setq kubernetes-kubectl-flags flags))
 
-(kubernetes-state--define-getter marked-ingress)
-(kubernetes-state--define-getter ingress-pending-deletion)
-
 (kubernetes-state--define-getter marked-jobs)
 (kubernetes-state--define-getter jobs-pending-deletion)
 
