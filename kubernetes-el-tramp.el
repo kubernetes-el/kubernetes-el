@@ -31,7 +31,7 @@
   "A tramp-completion function for kubernetes."
   (if (null (kubernetes-state))
       (kubernetes-pods-refresh-now))
-  (-let (((&alist 'items pods) (kubernetes-state-pods (kubernetes-state))))
+  (-let (((&alist 'items pods) (kubernetes-state--get (kubernetes-state) 'pods)))
     (-map (-lambda ((&alist 'metadata (&alist 'name)))
             (list nil name))
           pods)))

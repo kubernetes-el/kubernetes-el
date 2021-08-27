@@ -16,7 +16,7 @@
 
 (kubernetes-ast-define-component labelled-pods-list (state)
   (-let* ((query (kubernetes-state-label-query state))
-          ((&alist 'items pods) (kubernetes-state-pods state))
+          ((&alist 'items pods) (kubernetes-state--get state 'pods))
           (matches (nreverse (seq-reduce
                               (lambda (acc pod)
                                 (if (equal query (kubernetes-state-resource-label pod))
@@ -70,7 +70,7 @@
 
 LABEL-QUERY is a string used to match pods."
   (interactive
-   (-let* (((&alist 'items pods) (kubernetes-state-pods (kubernetes-state)))
+   (-let* (((&alist 'items pods) (kubernetes-state--get (kubernetes-state) 'pods))
            (labels (-non-nil (-uniq (seq-map #'kubernetes-state-resource-label pods)))))
      (list (completing-read "Label: " labels))))
 

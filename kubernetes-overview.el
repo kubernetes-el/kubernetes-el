@@ -165,7 +165,7 @@
 
 (defun kubernetes-overview--pods-for-deployment (state deployment)
   (-let* (((&alist 'spec (&alist 'selector (&alist 'matchLabels selectors))) deployment)
-          ((&alist 'items pods) (kubernetes-state-pods state))
+          ((&alist 'items pods) (kubernetes-state--get state 'pods))
           (pods (append pods nil)))
     (nreverse (seq-reduce
                (lambda (acc pod)
@@ -179,7 +179,7 @@
 
 (defun kubernetes-overview--pods-for-statefulset (state statefulset)
   (-let* (((&alist 'spec (&alist 'selector (&alist 'matchLabels (&alist 'name selector-name)))) statefulset)
-          ((&alist 'items pods) (kubernetes-state-pods state))
+          ((&alist 'items pods) (kubernetes-state--get state 'pods))
           (pods (append pods nil)))
     (nreverse (seq-reduce
                (lambda (acc pod)
@@ -213,7 +213,7 @@
                             (heading "Match Expressions")
                             (indent ,(kubernetes-yaml-render match-expressions))))
                (key-value 12 "Replicas" ,(format "%s" (or replicas 1)))
-               (columnar-loading-container ,(kubernetes-state-pods state) nil
+               (columnar-loading-container ,(kubernetes-state--get state 'pods) nil
                                            ,@(seq-map (lambda (pod) `(pod-line ,state ,pod)) pods)))
               (padding))))
 

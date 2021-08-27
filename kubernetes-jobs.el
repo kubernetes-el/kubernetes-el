@@ -29,7 +29,7 @@
                             'startTime start-time
                             'completionTime completion-time))
            job)
-          ((&alist 'items pods) (kubernetes-state-pods state)))
+          ((&alist 'items pods) (kubernetes-state--get state 'pods)))
 
     `((section (namespace nil)
                (nav-prop (:namespace-name ,ns)
@@ -95,7 +95,7 @@
 
 (defun kubernetes-jobs--lookup-pod-for-job (job state)
   (-let* (((&alist 'metadata (&alist 'labels (&alist 'job-name job-name))) job)
-          ((&alist 'items items) (kubernetes-state-pods state)))
+          ((&alist 'items items) (kubernetes-state--get state 'pods)))
     (seq-find (lambda (pod)
                 (let ((pod-name (kubernetes-state-resource-name pod)))
                   (string-prefix-p job-name pod-name)))

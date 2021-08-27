@@ -130,7 +130,7 @@
       (equal phase "Succeeded"))))
 
 (kubernetes-ast-define-component pods-list (state &optional hidden)
-  (-let (((&alist 'items pods) (kubernetes-state-pods state))
+  (-let (((&alist 'items pods) (kubernetes-state--get state 'pods))
          ([fmt labels] kubernetes-pods--column-heading))
     `(section (pods-container ,hidden)
               (header-with-count "Pods" ,pods)
@@ -157,7 +157,7 @@ STATE is the current application state.
 
 Update the pod state if it not set yet."
   (-let* (((&alist 'items pods)
-           (or (kubernetes-state-pods state)
+           (or (kubernetes-state--get state 'pods)
                (progn
                  (message "Getting pods...")
                  (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "pods"))))

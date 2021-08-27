@@ -467,7 +467,7 @@
     (namespace)
   (cl-assert (stringp namespace)))
 
-(kubernetes-state--define-accessors pods (pods)
+(kubernetes-state--define-setter pods (pods)
   (cl-assert (listp pods)))
 
 (kubernetes-state--define-accessors ingress (ingress)
