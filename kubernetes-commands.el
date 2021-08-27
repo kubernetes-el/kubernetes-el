@@ -136,7 +136,7 @@
                  (y-or-n-p (format "Delete %s job%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-jobs-delete-marked state)))
 
-    (let ((n (length (kubernetes-state-marked-services state))))
+    (let ((n (length (kubernetes-state--get state 'marked-services))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s service%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-services-delete-marked state))))

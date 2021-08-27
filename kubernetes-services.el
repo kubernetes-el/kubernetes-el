@@ -56,8 +56,8 @@
 
 (kubernetes-ast-define-component service-line (state service)
   (-let* ((current-time (kubernetes-state-current-time state))
-          (pending-deletion (kubernetes-state-services-pending-deletion state))
-          (marked-services (kubernetes-state-marked-services state))
+          (pending-deletion (kubernetes-state--get state 'services-pending-deletion))
+          (marked-services (kubernetes-state--get state 'marked-services))
           ((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
                    'spec (&alist 'clusterIP internal-ip
                                  'externalIPs external-ips))
@@ -116,7 +116,7 @@
 (kubernetes-state-define-refreshers services)
 
 (defun kubernetes-services-delete-marked (state)
-  (let ((names (kubernetes-state-marked-services state)))
+  (let ((names (kubernetes-state--get state 'marked-services)))
     (dolist (name names)
       (kubernetes-state-delete-service name)
       (kubernetes-kubectl-delete "service" name kubernetes-props state
