@@ -312,7 +312,7 @@ Should be invoked via command `kubernetes-exec-popup'."
 
   (let* ((command-args (append (list "exec") (kubernetes-kubectl--flags-from-state (kubernetes-state))
                                args
-                               (when-let (ns (kubernetes-state-current-namespace state))
+                               (when-let (ns (kubernetes-state--get state 'current-namespace))
                                  (list (format "--namespace=%s" ns)))
                                (list pod-name "--" exec-command)))
 
@@ -359,7 +359,7 @@ Should be invoked via command `kubernetes-exec-popup'."
 
   (let* ((command-args (append (list "exec") (kubernetes-kubectl--flags-from-state (kubernetes-state))
                                args
-                               (when-let (ns (kubernetes-state-current-namespace state))
+                               (when-let (ns (kubernetes-state--get state 'current-namespace))
                                  (list (format "--namespace=%s" ns)))
                                (list pod-name "--" exec-command)))
 

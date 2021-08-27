@@ -155,14 +155,14 @@
   (let ((kubernetes-state--current-state nil))
     (kubernetes-state-update-config sample-get-config-response)
     (should (kubernetes-state-config (kubernetes-state)))
-    (should (kubernetes-state-current-namespace (kubernetes-state)))))
+    (should (kubernetes-state--get (kubernetes-state) 'current-namespace))))
 
 (ert-deftest kubernetes-state-test--update-config-ignores-current-namespace-if-set ()
   (let ((kubernetes-state--current-state nil))
     (kubernetes-state-update-current-namespace "foo")
     (kubernetes-state-update-config sample-get-config-response)
     (should (kubernetes-state-config (kubernetes-state)))
-    (should (equal "foo" (kubernetes-state-current-namespace (kubernetes-state))))))
+    (should (equal "foo" (kubernetes-state--get (kubernetes-state) 'current-namespace)))))
 
 (ert-deftest kubernetes-state-test--kubectl-flags-initialized-using-config-popup-vars ()
   (let ((kubernetes-kubectl-flags '("--foo=bar" "-x")))

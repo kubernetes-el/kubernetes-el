@@ -462,7 +462,9 @@
      (kubernetes-state--define-getter ,attr)
      (kubernetes-state--define-setter ,attr ,arglist ,@forms-before-update)))
 
-(kubernetes-state--define-accessors current-namespace (namespace)
+(kubernetes-state--define-setter
+    current-namespace
+    (namespace)
   (cl-assert (stringp namespace)))
 
 (kubernetes-state--define-accessors pods (pods)

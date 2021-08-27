@@ -41,7 +41,7 @@
     `(heading (key-value 12 "Context" ,fetching))))
 
 (defun kubernetes-contexts-render (state)
-  (let ((current-namespace (kubernetes-state-current-namespace state))
+  (let ((current-namespace (kubernetes-state--get state 'current-namespace))
         (current-context (kubernetes-state-current-context state)))
 
     `(section (context-container nil)
