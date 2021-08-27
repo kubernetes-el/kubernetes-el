@@ -56,16 +56,14 @@
     (?v "Exec into container using vterm" kubernetes-exec-using-vterm))
   :default-action 'kubernetes-exec-into)
 
-(magit-define-popup kubernetes-file-popup
-  "Popup console for file commands for POD."
-  :group 'kubernetes
-  :options
-  '("Options for customizing file behaviour"
-    (?c "Container" "--container=" kubernetes-utils-read-container-name))
-  :actions
-  '((?f "Find file" kubernetes-tramp-find-file)
-    (?d "Dired" kubernetes-tramp-dired))
-  :default-action 'kubernetes-tramp-dired)
+(transient-define-prefix kubernetes-file ()
+  "Work with files in Kubernetes resources."
+  [["Options"
+    ;; TODO: This doesn't currently get picked up by the suffixes
+    ("=c" "Container" "--container=" kubernetes-utils-read-container-name)]]
+  [["Actions"
+    ("f" "Find file" kubernetes-tramp-find-file)
+    ("d" "Dired" kubernetes-tramp-dired)]])
 
 (transient-define-prefix kubernetes-describe ()
   "Describe Kubernetes resources."
