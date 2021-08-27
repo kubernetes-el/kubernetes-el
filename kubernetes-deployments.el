@@ -46,8 +46,8 @@
 
 (kubernetes-ast-define-component deployment-line (state deployment)
   (-let* ((current-time (kubernetes-state-current-time state))
-          (pending-deletion (kubernetes-state-deployments-pending-deletion state))
-          (marked-deployments (kubernetes-state-marked-deployments state))
+          (pending-deletion (kubernetes-state--get state 'deployments-pending-deletion))
+          (marked-deployments (kubernetes-state--get state 'marked-deployments))
 
           ((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
 
@@ -143,7 +143,7 @@
 (kubernetes-state-define-refreshers deployments)
 
 (defun kubernetes-deployments-delete-marked (state)
-  (let ((names (kubernetes-state-marked-deployments state)))
+  (let ((names (kubernetes-state--get state 'marked-deployments)))
     (dolist (name names)
       (kubernetes-state-delete-deployment name)
       (kubernetes-kubectl-delete "deployment" name kubernetes-props state
