@@ -46,7 +46,7 @@
       (key-value 12 "Created" ,time))))
 
 (kubernetes-ast-define-component statefulset-line (state statefulset)
-  (-let* ((current-time (kubernetes-state-current-time state))
+  (-let* ((current-time (kubernetes-state--get state 'current-time))
           (pending-deletion (kubernetes-state--get state 'statefulsets-pending-deletion))
           (marked-statefulsets (kubernetes-state--get state 'marked-statefulsets))
           ((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)

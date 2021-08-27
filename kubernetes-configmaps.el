@@ -27,7 +27,7 @@
       (key-value 12 "Created" ,time))))
 
 (kubernetes-ast-define-component configmap-line (state configmap)
-  (-let* ((current-time (kubernetes-state-current-time state))
+  (-let* ((current-time (kubernetes-state--get state 'current-time))
           (pending-deletion (kubernetes-state--get state 'configmaps-pending-deletion))
           (marked-configmaps (kubernetes-state--get state 'marked-configmaps))
           ((&alist 'data data

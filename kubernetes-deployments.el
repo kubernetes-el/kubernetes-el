@@ -45,7 +45,7 @@
       (key-value 12 "Created" ,time))))
 
 (kubernetes-ast-define-component deployment-line (state deployment)
-  (-let* ((current-time (kubernetes-state-current-time state))
+  (-let* ((current-time (kubernetes-state--get state 'current-time))
           (pending-deletion (kubernetes-state--get state 'deployments-pending-deletion))
           (marked-deployments (kubernetes-state--get state 'marked-deployments))
 

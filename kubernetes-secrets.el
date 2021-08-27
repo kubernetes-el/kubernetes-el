@@ -26,7 +26,7 @@
       (key-value 12 "Created" ,time))))
 
 (kubernetes-ast-define-component secret-line (state secret)
-  (-let* ((current-time (kubernetes-state-current-time state))
+  (-let* ((current-time (kubernetes-state--get state 'current-time))
           (pending-deletion (kubernetes-state--get state 'secrets-pending-deletion))
           (marked-secrets (kubernetes-state--get state 'marked-secrets))
           ((&alist 'data data 'metadata (&alist 'name name 'creationTimestamp created-time))

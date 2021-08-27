@@ -49,7 +49,7 @@
 
 
 (kubernetes-ast-define-component pod-view-line (state pod)
-  (-let* ((current-time (kubernetes-state-current-time state))
+  (-let* ((current-time (kubernetes-state--get state 'current-time))
           (marked-pods (kubernetes-state--get state 'marked-pods))
           (pending-deletion (kubernetes-state--get state 'pods-pending-deletion))
           ((&alist 'metadata (&alist 'name name)
