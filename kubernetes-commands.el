@@ -408,7 +408,7 @@ STATE is the current application state."
   (goto-char (point-min))
 
   ;; State for the context and view should be preserved.
-  (kubernetes-state-update-config (kubernetes-state-config state))
+  (kubernetes-state-update-config (kubernetes-state--get state 'config))
   (kubernetes-state-update-current-namespace ns)
   (kubernetes-state-update-overview-sections (kubernetes-state-overview-sections state))
 
@@ -448,7 +448,7 @@ CONTEXT is the name of a context as a string."
        (kubernetes-state-trigger-redraw)))))
 
 (defun kubernetes--context-names (state)
-  (-let* ((config (or (kubernetes-state-config state) (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-config-view)))
+  (-let* ((config (or (kubernetes-state--get state 'config) (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-config-view)))
           ((&alist 'contexts contexts) config))
     (--map (alist-get 'name it) contexts)))
 

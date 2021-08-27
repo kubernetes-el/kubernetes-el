@@ -15,7 +15,7 @@
 ;; Component
 
 (kubernetes-ast-define-component labelled-pods-list (state)
-  (-let* ((query (kubernetes-state-label-query state))
+  (-let* ((query (kubernetes-state--get state 'label-query))
           ((&alist 'items pods) (kubernetes-state--get state 'pods))
           (matches (nreverse (seq-reduce
                               (lambda (acc pod)

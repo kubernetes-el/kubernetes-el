@@ -110,7 +110,7 @@
                         (job-detail ,state ,pod ,job))))))
 
 (kubernetes-ast-define-component jobs-list (state &optional hidden)
-  (-let (((state-set-p &as &alist 'items jobs) (kubernetes-state-jobs state))
+  (-let (((state-set-p &as &alist 'items jobs) (kubernetes-state--get state 'jobs))
          ([fmt labels] kubernetes-jobs--column-heading))
     `(section (jobs-container ,hidden)
               (header-with-count "Jobs" ,jobs)
@@ -149,7 +149,7 @@ STATE is the current application state.
 
 Update the job state if it not set yet."
   (-let* (((&alist 'items jobs)
-           (or (kubernetes-state-jobs state)
+           (or (kubernetes-state--get state 'jobs)
                (progn
                  (message "Getting jobs...")
                  (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "jobs"))))

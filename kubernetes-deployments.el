@@ -125,7 +125,7 @@
                       (padding)))))
 
 (kubernetes-ast-define-component deployments-list (state &optional hidden)
-  (-let (((state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state))
+  (-let (((state-set-p &as &alist 'items deployments) (kubernetes-state--get state 'deployments))
          ([fmt labels] kubernetes-deployments--column-heading))
     `(section (deployments-container ,hidden)
               (header-with-count "Deployments" ,deployments)
@@ -164,7 +164,7 @@ STATE is the current application state.
 
 Update the deployment state if it not set yet."
   (-let* (((&alist 'items deployments)
-           (or (kubernetes-state-deployments state)
+           (or (kubernetes-state--get state 'deployments)
                (progn
                  (message "Getting deployments...")
                  (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "deployments"))))

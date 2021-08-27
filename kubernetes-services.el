@@ -98,7 +98,7 @@
                       (padding)))))
 
 (kubernetes-ast-define-component services-list (state &optional hidden)
-  (-let (((services-response &as &alist 'items services) (kubernetes-state-services state))
+  (-let (((services-response &as &alist 'items services) (kubernetes-state--get state 'services))
          ([fmt labels] kubernetes-services--column-heading))
     `(section (services-container ,hidden)
               (header-with-count "Services" ,services)
@@ -137,7 +137,7 @@ STATE is the current application state.
 
 Update the service state if it not set yet."
   (-let* (((&alist 'items services)
-           (or (kubernetes-state-services state)
+           (or (kubernetes-state--get state 'services)
                (progn
                  (message "Getting services...")
                  (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "services"))))

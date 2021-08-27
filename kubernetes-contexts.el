@@ -64,7 +64,8 @@
 
 (defalias 'kubernetes-contexts-refresh-now 'kubernetes-config-refresh-now)
 (defalias 'kubernetes-contexts-refresh 'kubernetes-config-refresh-now)
-(defalias 'kubernetes-state-contexts 'kubernetes-state-config)
+(defun kubernetes-state-contexts (state)
+  (kubernetes-state--get state 'config))
 (defalias 'kubernetes-state-update-contexts 'kubernetes-state-update-config)
 
 ;; Displaying config.

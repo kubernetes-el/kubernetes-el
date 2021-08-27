@@ -30,7 +30,7 @@
 ;; Configmaps
 
 (defun kubernetes-overview--referenced-configmaps (state pod)
-  (-let* (((&alist 'items configmaps) (kubernetes-state-configmaps state))
+  (-let* (((&alist 'items configmaps) (kubernetes-state--get state 'configmaps))
           (configmaps (append configmaps nil))
           ((&alist 'spec (&alist 'volumes volumes 'containers containers)) pod)
 
@@ -126,14 +126,14 @@
               matches)))
 
 (defun kubernetes-overview--secrets-for-deployment (state pods)
-  (-let* (((&alist 'items secrets) (kubernetes-state-secrets state))
+  (-let* (((&alist 'items secrets) (kubernetes-state--get state 'secrets))
           (secrets (append secrets nil)))
     (-non-nil (-uniq (seq-mapcat (lambda (pod)
                                    (kubernetes-overview--referenced-secrets secrets pod))
                                  pods)))))
 
 (defun kubernetes-overview--secrets-for-statefulset (state pods)
-  (-let* (((&alist 'items secrets) (kubernetes-state-secrets state))
+  (-let* (((&alist 'items secrets) (kubernetes-state--get state 'secrets))
           (secrets (append secrets nil)))
     (-non-nil (-uniq (seq-mapcat (lambda (pod)
                                    (kubernetes-overview--referenced-secrets secrets pod))
@@ -293,9 +293,9 @@
 ;; Main Components
 
 (kubernetes-ast-define-component aggregated-view (state &optional hidden)
-  (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state)]
+  (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state--get state 'deployments)]
     (-let (((state-set-p &as &alist 'items statefulsets)
-            (kubernetes-state-statefulsets state))
+            (kubernetes-state--get state 'statefulsets))
            ([fmt0 labels0] kubernetes-statefulsets--column-heading)
            ([fmt1 labels1] kubernetes-deployments--column-heading))
       `(section (ubercontainer, nil)
