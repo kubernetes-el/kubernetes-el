@@ -143,7 +143,7 @@
                `((message . "Foo")
                  (command . "Cmd")
                  (time . , time))
-               (kubernetes-state-last-error (kubernetes-state)))))))
+               (kubernetes-state--get (kubernetes-state) 'last-error))))))
 
 (kubernetes-state-test-accessor label-query
   (kubernetes-state-update-label-query "test"))
@@ -274,14 +274,14 @@
     (let* ((time (current-time))
            (kubernetes-state--current-state `((last-error . ((time . ,time))))))
       (kubernetes-state-clear-error-if-stale 5)
-      (should (kubernetes-state-last-error (kubernetes-state))))))
+      (should (kubernetes-state--get (kubernetes-state) 'last-error)))))
 
 (ert-deftest kubernetes-state-test--clear-error-if-stale--stale ()
   (test-helper-with-empty-state
     (let* ((time (time-subtract (current-time) (time-to-seconds 10)))
            (kubernetes-state--current-state `((last-error . ((time . ,time))))))
       (kubernetes-state-clear-error-if-stale 5)
-      (should (null (kubernetes-state-last-error (kubernetes-state)))))))
+      (should (null (kubernetes-state--get (kubernetes-state) 'last-error))))))
 
 (ert-deftest kubernetes-state-test--lookup-pod--no-such-pod ()
   (test-helper-with-empty-state

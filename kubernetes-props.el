@@ -7,7 +7,7 @@
     (update-last-error . kubernetes-state-update-last-error)
     (overview-buffer-selected-p . kubernetes-utils-overview-buffer-selected-p)
     (get-last-error . (lambda ()
-                        (kubernetes-state-last-error (kubernetes-state)))))
+                        (kubernetes-state--get (kubernetes-state) 'last-error))))
   "Variable used to inject functions across modules.")
 
 (defun kubernetes-props-update-last-error (props message command time)

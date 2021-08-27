@@ -532,8 +532,6 @@
   (cl-assert (-all? #'stringp flags))
   (setq kubernetes-kubectl-flags flags))
 
-(kubernetes-state--define-getter last-error)
-
 (defun kubernetes-state-update-last-error (message command time)
   (cl-assert (stringp message))
   (cl-assert (stringp command))
@@ -609,7 +607,7 @@ pod, secret, configmap, etc."
     (kubernetes-state--lookup-current-context config)))
 
 (defun kubernetes-state-clear-error-if-stale (error-display-time)
-  (-when-let ((&alist 'time err-time) (kubernetes-state-last-error (kubernetes-state)))
+  (-when-let ((&alist 'time err-time) (kubernetes-state--get (kubernetes-state) 'last-error))
     (when (< error-display-time
              (- (time-to-seconds) (time-to-seconds err-time)))
       (kubernetes-state-update :update-last-error nil))))

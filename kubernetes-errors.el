@@ -8,7 +8,7 @@
 (require 'kubernetes-state)
 
 (defun kubernetes-errors-render (state)
-  (-when-let* (((&alist 'message message 'command command) (kubernetes-state-last-error state))
+  (-when-let* (((&alist 'message message 'command command) (kubernetes-state--get state 'last-error))
                (message-paragraph
                 (with-temp-buffer
                   (insert message)
