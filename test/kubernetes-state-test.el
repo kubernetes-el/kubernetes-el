@@ -196,10 +196,8 @@
 
 (defmacro kubernetes-state-marking-tests (resource)
   (let ((get-marks-fn (-rpartial #'kubernetes-state--get (intern (format "marked-%ss" resource))))
-
         (get-pending-deletion-fn
          (-rpartial #'kubernetes-state--get (intern (format "%ss-pending-deletion" resource))))
-        
         (update-fn (intern (format "kubernetes-state-update-%ss" resource)))
         (mark-fn (intern (format "kubernetes-state-mark-%s" resource)))
         (unmark-fn (intern (format "kubernetes-state-unmark-%s" resource)))
