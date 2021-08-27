@@ -50,8 +50,8 @@
 
 (kubernetes-ast-define-component pod-view-line (state pod)
   (-let* ((current-time (kubernetes-state-current-time state))
-          (marked-pods (kubernetes-state-marked-pods state))
-          (pending-deletion (kubernetes-state-pods-pending-deletion state))
+          (marked-pods (kubernetes-state--get state 'marked-pods))
+          (pending-deletion (kubernetes-state--get state 'pods-pending-deletion))
           ((&alist 'metadata (&alist 'name name)
                    'status (&alist 'containerStatuses containers
                                    'startTime start-time
@@ -168,7 +168,7 @@ Update the pod state if it not set yet."
     (completing-read "Pod: " names nil t)))
 
 (defun kubernetes-pods-delete-marked (state)
-  (let ((names (kubernetes-state-marked-pods state)))
+  (let ((names (kubernetes-state--get state 'marked-pods)))
     (dolist (name names)
       (kubernetes-state-delete-pod name)
       (kubernetes-kubectl-delete "pod" name kubernetes-props state

@@ -101,7 +101,7 @@
   "Action all marked items in the buffer."
   (interactive)
   (let ((state (kubernetes-state)))
-    (let ((n (length (kubernetes-state-marked-pods state))))
+    (let ((n (length (kubernetes-state--get state 'marked-pods))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s pod%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-pods-delete-marked state)))
