@@ -431,9 +431,13 @@
           nil
           #'ignore)))))
 
+(defun kubernetes-state--get (state type)
+  "Get the entry for corresponding resource TYPE from STATE."
+  (alist-get type state))
+
 (defmacro kubernetes-state--define-getter (attr)
   `(defun ,(intern (format "kubernetes-state-%s" attr)) (state)
-     (alist-get (quote ,attr) state)))
+     (kubernetes-state--get state (quote ,attr))))
 
 (defmacro kubernetes-state--define-setter (attr arglist &rest forms-before-update)
   (declare (indent 2))
