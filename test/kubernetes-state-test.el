@@ -59,13 +59,12 @@
 ;; Test getters
 
 (defmacro kubernetes-state-test-getter (attr)
-  (let ((test-name (intern (format "kubernetes-state-test-getter-for-%s" attr)))
-        (get-fname (intern (format "kubernetes-state-%s" attr))))
+  (let ((test-name (intern (format "kubernetes-state-test-getter-for-%s" attr))))
     `(ert-deftest ,test-name ()
        (test-helper-with-empty-state
          (let* ((value '("foo" "bar" "baz"))
                 (state (list (cons (quote ,attr) value))))
-           (should (equal value (,get-fname state))))))))
+           (should (equal value (kubernetes-state--get state (quote ,attr)))))))))
 
 (kubernetes-state-test-getter marked-configmaps)
 (kubernetes-state-test-getter configmaps-pending-deletion)
@@ -89,13 +88,12 @@
 
 (defmacro kubernetes-state-test-accessor (attr update)
   (declare (indent 1))
-  (let ((test-name (intern (format "kubernetes-state-test-accessors-for-%s" attr)))
-        (get-fname (intern (format "kubernetes-state-%s" attr))))
+  (let ((test-name (intern (format "kubernetes-state-test-accessors-for-%s" attr))))
 
     `(ert-deftest ,test-name ()
        (test-helper-with-empty-state
          (let ((update-result ,update)
-               (get-result (,get-fname (kubernetes-state))))
+               (get-result (kubernetes-state--get (kubernetes-state) (quote ,attr))))
            (should (kubernetes-state))
            (should update-result)
            (should get-result)
