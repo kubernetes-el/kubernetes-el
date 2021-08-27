@@ -54,8 +54,8 @@
 
 (kubernetes-ast-define-component job-line (state pod job)
   (-let* ((current-time (kubernetes-state-current-time state))
-          (pending-deletion (kubernetes-state-jobs-pending-deletion state))
-          (marked-jobs (kubernetes-state-marked-jobs state))
+          (pending-deletion (kubernetes-state--get state 'jobs-pending-deletion))
+          (marked-jobs (kubernetes-state--get state 'marked-jobs))
 
           ((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
                    'status (&alist 'succeeded successful
@@ -128,7 +128,7 @@
 (kubernetes-state-define-refreshers jobs)
 
 (defun kubernetes-jobs-delete-marked (state)
-  (let ((names (kubernetes-state-marked-jobs state)))
+  (let ((names (kubernetes-state--get state 'marked-jobs)))
     (dolist (name names)
       (kubernetes-state-delete-job name)
       (kubernetes-kubectl-delete "job" name kubernetes-props state
