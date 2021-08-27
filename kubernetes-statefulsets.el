@@ -47,8 +47,8 @@
 
 (kubernetes-ast-define-component statefulset-line (state statefulset)
   (-let* ((current-time (kubernetes-state-current-time state))
-          (pending-deletion (kubernetes-state-statefulsets-pending-deletion state))
-          (marked-statefulsets (kubernetes-state-marked-statefulsets state))
+          (pending-deletion (kubernetes-state--get state 'statefulsets-pending-deletion))
+          (marked-statefulsets (kubernetes-state--get state 'marked-statefulsets))
           ((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
 
                    'spec (&alist 'replicas desired)
@@ -130,7 +130,7 @@
 (kubernetes-state-define-refreshers statefulsets)
 
 (defun kubernetes-statefulsets-delete-marked (state)
-  (let ((names (kubernetes-state-marked-statefulsets state)))
+  (let ((names (kubernetes-state--get state 'marked-statefulsets)))
     (dolist (name names)
       (kubernetes-state-delete-statefulset name)
       (kubernetes-kubectl-delete "statefulset" name kubernetes-props state

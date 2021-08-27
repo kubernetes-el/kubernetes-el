@@ -532,9 +532,6 @@
   (cl-assert (-all? #'stringp flags))
   (setq kubernetes-kubectl-flags flags))
 
-(kubernetes-state--define-getter marked-statefulsets)
-(kubernetes-state--define-getter statefulsets-pending-deletion)
-
 (kubernetes-state--define-getter last-error)
 
 (defun kubernetes-state-update-last-error (message command time)
