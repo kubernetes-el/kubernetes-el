@@ -48,6 +48,7 @@
                       (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state)))
                       (pod (kubernetes-state-lookup-pod pod-name state))
                       (potential-containers (kubernetes-get-pod-container-names pod))
+                      ;; FIXME: This should use transient state when appropriate
                       (container-name (if (= 1 (length potential-containers))
                                           (car potential-containers)
                                         (kubernetes-utils-read-container-name))))
