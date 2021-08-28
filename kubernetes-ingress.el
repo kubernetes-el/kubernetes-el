@@ -29,8 +29,8 @@
 
 (kubernetes-ast-define-component ingress-line (state ingress)
   (-let* ((current-time (kubernetes-state-current-time state))
-          (pending-deletion (kubernetes-state-ingress-pending-deletion state))
-          (marked-ingress (kubernetes-state-marked-ingress state))
+          (pending-deletion (kubernetes-state--get state 'ingress-pending-deletion))
+          (marked-ingress (kubernetes-state--get state 'marked-ingress))
           ((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
                    'spec (&alist 'rules ingress-rules)
                    'status (&alist 'loadBalancer (&alist 'ingress ingress-lb-list)))
@@ -87,7 +87,7 @@
 (kubernetes-state-define-refreshers ingress)
 
 (defun kubernetes-ingress-delete-marked (state)
-  (let ((names (kubernetes-state-marked-ingress state)))
+  (let ((names (kubernetes-state--get state 'marked-ingress)))
     (dolist (name names)
       (kubernetes-state-delete-ingress name)
       (kubernetes-kubectl-delete "ingress" name kubernetes-props state

@@ -101,7 +101,7 @@
   "Action all marked items in the buffer."
   (interactive)
   (let ((state (kubernetes-state)))
-    (let ((n (length (kubernetes-state-marked-pods state))))
+    (let ((n (length (kubernetes-state--get state 'marked-pods))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s pod%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-pods-delete-marked state)))
@@ -111,12 +111,12 @@
                  (y-or-n-p (format "Delete %s configmap%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-configmaps-delete-marked state)))
 
-    (let ((n (length (kubernetes-state-marked-ingress state))))
+    (let ((n (length (kubernetes-state--get state 'marked-ingress))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s ingress%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-ingress-delete-marked state)))
 
-    (let ((n (length (kubernetes-state-marked-secrets state))))
+    (let ((n (length (kubernetes-state--get state 'marked-secrets))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s secret%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-secrets-delete-marked state)))
@@ -126,17 +126,17 @@
                  (y-or-n-p (format "Delete %s deployment%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-deployments-delete-marked state)))
 
-    (let ((n (length (kubernetes-state-marked-statefulsets state))))
+    (let ((n (length (kubernetes-state--get state 'marked-statefulsets))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s statefulsets%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-statefulsets-delete-marked state)))
 
-    (let ((n (length (kubernetes-state-marked-jobs state))))
+    (let ((n (length (kubernetes-state--get state 'marked-jobs))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s job%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-jobs-delete-marked state)))
 
-    (let ((n (length (kubernetes-state-marked-services state))))
+    (let ((n (length (kubernetes-state--get state 'marked-services))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s service%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-services-delete-marked state))))

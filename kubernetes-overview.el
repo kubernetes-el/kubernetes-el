@@ -140,8 +140,8 @@
                                  pods)))))
 
 (kubernetes-ast-define-component aggregated-secret-line (state secret)
-  (-let* ((pending-deletion (kubernetes-state-secrets-pending-deletion state))
-          (marked-secrets (kubernetes-state-marked-secrets state))
+  (-let* ((pending-deletion (kubernetes-state--get state 'secrets-pending-deletion))
+          (marked-secrets (kubernetes-state--get state 'marked-secrets))
           ((&alist 'metadata (&alist 'name name )) secret)
           (line (cond
                  ((member name pending-deletion)

@@ -16,8 +16,8 @@
                                        "succeeded"))))))
 
 (kubernetes-ast-define-component pod-line (state pod)
-  (-let* ((marked-pods (kubernetes-state-marked-pods state))
-          (pending-deletion (kubernetes-state-pods-pending-deletion state))
+  (-let* ((marked-pods (kubernetes-state--get state 'marked-pods))
+          (pending-deletion (kubernetes-state--get state 'pods-pending-deletion))
           ((&alist 'metadata (&alist 'name name) 'status (&alist 'containerStatuses containers 'phase phase)) pod)
           ([(&alist 'state pod-state)] containers)
           (pod-state (or (alist-get 'reason (alist-get 'waiting pod-state)) phase))
