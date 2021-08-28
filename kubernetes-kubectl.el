@@ -29,7 +29,7 @@
         (kubernetes-props-message props (string-trim-right last-error))))))
 
 (defun kubernetes-kubectl--flags-from-state (state)
-  (append (when-let (ns (kubernetes-state-current-namespace state))
+  (append (when-let (ns (kubernetes-state--get state 'current-namespace))
             (list (format "--namespace=%s" ns)))
           (kubernetes-state-kubectl-flags state)))
 

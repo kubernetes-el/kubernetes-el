@@ -65,7 +65,7 @@
                       (padding)))))
 
 (kubernetes-ast-define-component configmaps-list (state &optional hidden)
-  (-let (((&alist 'items configmaps) (kubernetes-state-configmaps state))
+  (-let (((&alist 'items configmaps) (kubernetes-state--get state 'configmaps))
          ([fmt labels] kubernetes-configmaps--column-heading))
     `(section (configmaps-container ,hidden)
               (header-with-count "Configmaps" ,configmaps)
@@ -105,7 +105,7 @@ STATE is the current application state.
 
 Update the configmap state if it not set yet."
   (-let* (((&alist 'items configmaps)
-           (or (kubernetes-state-configmaps state)
+           (or (kubernetes-state--get state 'configmaps)
                (progn
                  (message "Getting configmaps...")
                  (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "configmaps"))))

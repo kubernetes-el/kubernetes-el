@@ -30,7 +30,7 @@
 ;; Configmaps
 
 (defun kubernetes-overview--referenced-configmaps (state pod)
-  (-let* (((&alist 'items configmaps) (kubernetes-state-configmaps state))
+  (-let* (((&alist 'items configmaps) (kubernetes-state--get state 'configmaps))
           (configmaps (append configmaps nil))
           ((&alist 'spec (&alist 'volumes volumes 'containers containers)) pod)
 
@@ -126,14 +126,14 @@
               matches)))
 
 (defun kubernetes-overview--secrets-for-deployment (state pods)
-  (-let* (((&alist 'items secrets) (kubernetes-state-secrets state))
+  (-let* (((&alist 'items secrets) (kubernetes-state--get state 'secrets))
           (secrets (append secrets nil)))
     (-non-nil (-uniq (seq-mapcat (lambda (pod)
                                    (kubernetes-overview--referenced-secrets secrets pod))
                                  pods)))))
 
 (defun kubernetes-overview--secrets-for-statefulset (state pods)
-  (-let* (((&alist 'items secrets) (kubernetes-state-secrets state))
+  (-let* (((&alist 'items secrets) (kubernetes-state--get state 'secrets))
           (secrets (append secrets nil)))
     (-non-nil (-uniq (seq-mapcat (lambda (pod)
                                    (kubernetes-overview--referenced-secrets secrets pod))
@@ -165,7 +165,7 @@
 
 (defun kubernetes-overview--pods-for-deployment (state deployment)
   (-let* (((&alist 'spec (&alist 'selector (&alist 'matchLabels selectors))) deployment)
-          ((&alist 'items pods) (kubernetes-state-pods state))
+          ((&alist 'items pods) (kubernetes-state--get state 'pods))
           (pods (append pods nil)))
     (nreverse (seq-reduce
                (lambda (acc pod)
@@ -179,7 +179,7 @@
 
 (defun kubernetes-overview--pods-for-statefulset (state statefulset)
   (-let* (((&alist 'spec (&alist 'selector (&alist 'matchLabels (&alist 'name selector-name)))) statefulset)
-          ((&alist 'items pods) (kubernetes-state-pods state))
+          ((&alist 'items pods) (kubernetes-state--get state 'pods))
           (pods (append pods nil)))
     (nreverse (seq-reduce
                (lambda (acc pod)
@@ -213,7 +213,7 @@
                             (heading "Match Expressions")
                             (indent ,(kubernetes-yaml-render match-expressions))))
                (key-value 12 "Replicas" ,(format "%s" (or replicas 1)))
-               (columnar-loading-container ,(kubernetes-state-pods state) nil
+               (columnar-loading-container ,(kubernetes-state--get state 'pods) nil
                                            ,@(seq-map (lambda (pod) `(pod-line ,state ,pod)) pods)))
               (padding))))
 
@@ -293,9 +293,9 @@
 ;; Main Components
 
 (kubernetes-ast-define-component aggregated-view (state &optional hidden)
-  (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state-deployments state)]
+  (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state--get state 'deployments)]
     (-let (((state-set-p &as &alist 'items statefulsets)
-            (kubernetes-state-statefulsets state))
+            (kubernetes-state--get state 'statefulsets))
            ([fmt0 labels0] kubernetes-statefulsets--column-heading)
            ([fmt1 labels1] kubernetes-deployments--column-heading))
       `(section (ubercontainer, nil)

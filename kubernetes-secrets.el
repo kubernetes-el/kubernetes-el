@@ -63,7 +63,7 @@
                       (padding)))))
 
 (kubernetes-ast-define-component secrets-list (state &optional hidden)
-  (-let (((&alist 'items secrets) (kubernetes-state-secrets state))
+  (-let (((&alist 'items secrets) (kubernetes-state--get state 'secrets))
          ([fmt labels] kubernetes-secrets--column-heading))
     `(section (secrets-container ,hidden)
               (header-with-count "Secrets" ,secrets)
@@ -102,7 +102,7 @@ STATE is the current application state.
 
 Update the secret state if it not set yet."
   (-let* (((&alist 'items secrets)
-           (or (kubernetes-state-secrets state)
+           (or (kubernetes-state--get state 'secrets)
                (progn
                  (message "Getting secrets...")
                  (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "secrets"))))

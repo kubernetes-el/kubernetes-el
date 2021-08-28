@@ -88,7 +88,7 @@ STATE is the current application state"
            (transient-args 'kubernetes-logs)
            state)))
   (let ((args (append (list "logs") args (list pod-name) (kubernetes-kubectl--flags-from-state (kubernetes-state))
-                      (when-let (ns (kubernetes-state-current-namespace state))
+                      (when-let (ns (kubernetes-state--get state 'current-namespace))
                         (list (format "--namespace=%s" ns))))))
     (with-current-buffer (kubernetes-utils-process-buffer-start kubernetes-logs-buffer-name #'kubernetes-logs-mode kubernetes-kubectl-executable args)
       (select-window (display-buffer (current-buffer))))))

@@ -10,7 +10,7 @@
 
 (ert-deftest kubernetes-pod-line-test--pod-line-ok-p ()
   (let* ((state `((pods . ,sample-get-pods-response)))
-         (pods (kubernetes-state-pods state))
+         (pods (kubernetes-state--get state 'pods))
          (pod (aref (alist-get 'items pods) 0)))
     (should-not (null (kubernetes-pod-line-ok-p pod)))))
 

@@ -462,43 +462,45 @@
      (kubernetes-state--define-getter ,attr)
      (kubernetes-state--define-setter ,attr ,arglist ,@forms-before-update)))
 
-(kubernetes-state--define-accessors current-namespace (namespace)
+(kubernetes-state--define-setter
+    current-namespace
+    (namespace)
   (cl-assert (stringp namespace)))
 
-(kubernetes-state--define-accessors pods (pods)
+(kubernetes-state--define-setter pods (pods)
   (cl-assert (listp pods)))
 
-(kubernetes-state--define-accessors ingress (ingress)
+(kubernetes-state--define-setter ingress (ingress)
   (cl-assert (listp ingress)))
 
-(kubernetes-state--define-accessors jobs (jobs)
+(kubernetes-state--define-setter jobs (jobs)
   (cl-assert (listp jobs)))
 
-(kubernetes-state--define-accessors configmaps (configmaps)
+(kubernetes-state--define-setter configmaps (configmaps)
   (cl-assert (listp configmaps)))
 
-(kubernetes-state--define-accessors secrets (secrets)
+(kubernetes-state--define-setter secrets (secrets)
   (cl-assert (listp secrets)))
 
-(kubernetes-state--define-accessors services (services)
+(kubernetes-state--define-setter services (services)
   (cl-assert (listp services)))
 
-(kubernetes-state--define-accessors deployments (deployments)
+(kubernetes-state--define-setter deployments (deployments)
   (cl-assert (listp deployments)))
 
-(kubernetes-state--define-accessors nodes (nodes)
+(kubernetes-state--define-setter nodes (nodes)
   (cl-assert (listp nodes)))
 
-(kubernetes-state--define-accessors statefulsets (statefulsets)
+(kubernetes-state--define-setter statefulsets (statefulsets)
   (cl-assert (listp statefulsets)))
 
-(kubernetes-state--define-accessors namespaces (namespaces)
+(kubernetes-state--define-setter namespaces (namespaces)
   (cl-assert (listp namespaces)))
 
-(kubernetes-state--define-accessors config (config)
+(kubernetes-state--define-setter config (config)
   (cl-assert (listp config)))
 
-(kubernetes-state--define-accessors label-query (label-name)
+(kubernetes-state--define-setter label-query (label-name)
   (cl-assert (stringp label-name)))
 
 (defun kubernetes-state-overview-sections (state)
@@ -603,7 +605,7 @@ pod, secret, configmap, etc."
     label))
 
 (defun kubernetes-state-current-context (state)
-  (when-let (config (kubernetes-state-config state))
+  (when-let (config (kubernetes-state--get state 'config))
     (kubernetes-state--lookup-current-context config)))
 
 (defun kubernetes-state-clear-error-if-stale (error-display-time)

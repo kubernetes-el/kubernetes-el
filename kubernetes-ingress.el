@@ -74,7 +74,7 @@
                       (ingress-detail ,ingress)
                       (padding)))))
 (kubernetes-ast-define-component ingress-list (state &optional hidden)
-  (-let [(&alist 'items ingress) (kubernetes-state-ingress state)]
+  (-let [(&alist 'items ingress) (kubernetes-state--get state 'ingress)]
     `(section (ingress-container ,hidden)
               (header-with-count "Ingress" ,ingress)
               (indent
@@ -107,7 +107,7 @@ STATE is the current application state.
 
 Update the ingress state if it not set yet."
   (-let* (((&alist 'items ingress)
-           (or (kubernetes-state-ingress state)
+           (or (kubernetes-state--get state 'ingress)
                (progn
                  (message "Getting ingress...")
                  (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "ingress"))))

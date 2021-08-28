@@ -97,7 +97,7 @@
                       (padding)))))
 
 (kubernetes-ast-define-component nodes-list (state &optional hidden)
-  (-let (((&alist 'items nodes) (kubernetes-state-nodes state))
+  (-let (((&alist 'items nodes) (kubernetes-state--get state 'nodes))
          ([fmt labels] kubernetes-nodes--column-heading))
     `(section (nodes-container ,hidden)
               (header-with-count "Nodes" ,nodes)
@@ -123,7 +123,7 @@ STATE is the current application state.
 
 Update the node state if it not set yet."
   (-let* (((&alist 'items nodes)
-           (or (kubernetes-state-nodes state)
+           (or (kubernetes-state--get state 'nodes)
                (progn
                  (message "Getting nodes...")
                  (let ((response (kubernetes-kubectl-await-on-async

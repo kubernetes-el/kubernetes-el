@@ -112,7 +112,7 @@
 
 (kubernetes-ast-define-component statefulsets-list (state &optional hidden)
   (-let (((state-set-p &as &alist 'items statefulsets)
-          (kubernetes-state-statefulsets state))
+          (kubernetes-state--get state 'statefulsets))
          ([fmt labels] kubernetes-statefulsets--column-heading))
     `(section (statefulsets-container ,hidden)
               (header-with-count "Statefulsets" ,statefulsets)
@@ -151,7 +151,7 @@ STATE is the current application state.
 
 Update the statefulset state if it not set yet."
   (-let* (((&alist 'items statefulsets)
-           (or (kubernetes-state-statefulsets state)
+           (or (kubernetes-state--get state 'statefulsets)
                (progn
                  (message "Getting statefulsets...")
                  (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "statefulsets"))))

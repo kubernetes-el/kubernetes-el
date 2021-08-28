@@ -22,7 +22,7 @@ STATE is the current application state.
 
 Update the namespace state if it not set yet."
   (-let* (((&alist 'items namespaces)
-           (or (kubernetes-state-namespaces state)
+           (or (kubernetes-state--get state 'namespaces)
                (progn
                  (message "Getting namespaces...")
                  (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "namespaces"))))
