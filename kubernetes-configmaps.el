@@ -28,8 +28,8 @@
 
 (kubernetes-ast-define-component configmap-line (state configmap)
   (-let* ((current-time (kubernetes-state-current-time state))
-          (pending-deletion (kubernetes-state-configmaps-pending-deletion state))
-          (marked-configmaps (kubernetes-state-marked-configmaps state))
+          (pending-deletion (kubernetes-state--get state 'configmaps-pending-deletion))
+          (marked-configmaps (kubernetes-state--get state 'marked-configmaps))
           ((&alist 'data data
                    'metadata (&alist 'name name 'creationTimestamp created-time))
            configmap)
@@ -84,7 +84,7 @@
 (kubernetes-state-define-refreshers configmaps)
 
 (defun kubernetes-configmaps-delete-marked (state)
-  (let ((names (kubernetes-state-marked-configmaps state)))
+  (let ((names (kubernetes-state--get state 'marked-configmaps)))
     (dolist (name names)
       (kubernetes-state-delete-configmap name)
       (kubernetes-kubectl-delete "configmap" name kubernetes-props state

@@ -423,8 +423,7 @@
               (,(intern (format "kubernetes-state-update-%s" s-attr))
                (json-read-from-string (buffer-string)))
               (-let* (((&alist 'items)
-                       (,(intern (format "kubernetes-state-%s" s-attr))
-                        (kubernetes-state))))
+                       (kubernetes-state--get (kubernetes-state) (quote ,attr))))
                 (seq-map (lambda (item)
                            (-let* (((&alist 'metadata (&alist 'name)) item)) name))
                          items))))
@@ -441,14 +440,13 @@
 
 (defmacro kubernetes-state--define-setter (attr arglist &rest forms-before-update)
   (declare (indent 2))
-  (let ((getter (intern (format "kubernetes-state-%s" attr)))
-        (arg
+  (let ((arg
          (pcase arglist
            (`(,x) x)
            (xs `(list ,@xs)))))
     `(defun ,(intern (format "kubernetes-state-update-%s" attr)) ,arglist
        ,@forms-before-update
-       (let ((prev (,getter (kubernetes-state)))
+       (let ((prev (kubernetes-state--get (kubernetes-state) (quote ,attr)))
              (arg ,arg))
          (kubernetes-state-update ,(intern (format ":update-%s" attr)) ,arg)
 
@@ -533,9 +531,6 @@
   (cl-assert (listp flags))
   (cl-assert (-all? #'stringp flags))
   (setq kubernetes-kubectl-flags flags))
-
-(kubernetes-state--define-getter marked-configmaps)
-(kubernetes-state--define-getter configmaps-pending-deletion)
 
 (kubernetes-state--define-getter marked-ingress)
 (kubernetes-state--define-getter ingress-pending-deletion)
