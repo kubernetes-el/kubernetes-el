@@ -48,10 +48,11 @@
    ("-i" "Pass stdin to container" "--stdin")
    ("-t" "Stdin is a TTY" "--tty")]
   ["Options"
-   ("=c" "Container to exec within" "--container=" kubernetes-utils-read-container-name)]
+   ("=c" "Container to exec within" "--container=" :reader kubernetes-utils-read-container-name)]
   [["Actions"
     ("e" "Exec" kubernetes-exec-into)
-    ("v" "Exec into container using vterm" kubernetes-exec-using-vterm)]])
+    ("v" "Exec into container using vterm" kubernetes-exec-using-vterm
+     :inapt-if-not (lambda () (require 'vterm nil 'noerror)))]])
 
 (transient-define-prefix kubernetes-file ()
   "Work with files in Kubernetes resources."
