@@ -36,25 +36,22 @@
    ["Commands"
     ("d" "Describe" kubernetes-describe)
     ("E" "Edit" kubernetes-edit)
-    ("e" "Exec" kubernetes-exec-popup)
+    ("e" "Exec" kubernetes-exec)
     ("f" "File" kubernetes-file-popup)
     ("L" "Labels" kubernetes-labels)
     ("l" "Logs" kubernetes-logs)]])
 
-(magit-define-popup kubernetes-exec-popup
-  "Popup console for exec commands for POD."
-  :group 'kubernetes
-  :default-arguments '("-i" "-t")
-  :switches
-  '((?i "Pass stdin to container" "-i" t)
-    (?t "Stdin is a TTY" "-t" t))
-  :options
-  '("Options for customizing exec behaviour"
-    (?c "Container to exec within" "--container=" kubernetes-utils-read-container-name))
-  :actions
-  '((?e "Exec" kubernetes-exec-into)
-    (?v "Exec into container using vterm" kubernetes-exec-using-vterm))
-  :default-action 'kubernetes-exec-into)
+(transient-define-prefix kubernetes-exec ()
+  "Execute into Kubernetes resources."
+  :value '("--stdin" "--tty")
+  ["Switches"
+   ("-i" "Pass stdin to container" "--stdin")
+   ("-t" "Stdin is a TTY" "--tty")]
+  ["Options"
+   ("=c" "Container to exec within" "--container=" kubernetes-utils-read-container-name)]
+  [["Actions"
+    ("e" "Exec" kubernetes-exec-into)
+    ("v" "Exec into container using vterm" kubernetes-exec-using-vterm)]])
 
 (transient-define-prefix kubernetes-file ()
   "Work with files in Kubernetes resources."
