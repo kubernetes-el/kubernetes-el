@@ -7,7 +7,7 @@
 ;;     Noorul Islam K M <noorul@noorul.com>
 ;;     Jonathan Jin <me@jonathanj.in>
 
-;; Version: 0.15.0
+;; Version: 0.16.0
 
 ;; Package-Requires: ((emacs "25.1") (dash "2.12.0") (magit-section "3.1.1") (magit-popup "2.13.0") (with-editor "3.0.4") (transient "0.3.0"))
 
