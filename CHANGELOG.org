@@ -1,0 +1,18 @@
+#+TITLE: Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [[https://keepachangelog.com/en/1.0.0/][Keep a Changelog]], and this project adheres to [[https://semver.org/spec/v2.0.0.html][semantic
+versioning]].
+
+* Upcoming
+   
+* 0.16.0
+  
+** Changed
+
+   - Ability to find files in pods via =tramp= ([[https://github.com/kubernetes-el/kubernetes-el/pull/167][#167]])
+   - Ability to exec into pods via [[https://github.com/akermu/emacs-libvterm][vterm]] ([[https://github.com/kubernetes-el/kubernetes-el/pull/169][#169]])
+   - Ability to edit resources ([[https://github.com/kubernetes-el/kubernetes-el/pull/186][#186]])
+   - Migrate several popups from the defunct `magit-popup` to `transient` ([[https://github.com/kubernetes-el/kubernetes-el/pull/190][#190]],
+     [[https://github.com/kubernetes-el/kubernetes-el/pull/193][#193]], [[https://github.com/kubernetes-el/kubernetes-el/pull/198][#198]], etc.)
