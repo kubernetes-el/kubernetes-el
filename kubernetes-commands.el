@@ -301,14 +301,14 @@ EXEC-COMMAND is the command to run in the container.
 
 STATE is the current application state.
 
-Should be invoked via command `kubernetes-exec-popup'."
+Should be invoked via command `kubernetes-exec'."
   (interactive (let* ((state (kubernetes-state))
                       (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state)))
                       (command
                        (let ((cmd (string-trim (read-string (format "Command (default: %s): " kubernetes-default-exec-command)
                                                             nil 'kubernetes-exec-history))))
                          (if (string-empty-p cmd) kubernetes-default-exec-command cmd))))
-                 (list pod-name (kubernetes-exec-arguments) command state)))
+                 (list pod-name (transient-args 'kubernetes-exec) command state)))
 
   (let* ((command-args (append (list "exec") (kubernetes-kubectl--flags-from-state (kubernetes-state))
                                args
@@ -316,7 +316,7 @@ Should be invoked via command `kubernetes-exec-popup'."
                                  (list (format "--namespace=%s" ns)))
                                (list pod-name "--" exec-command)))
 
-         (interactive-tty (member "-t" args))
+         (interactive-tty (member "--tty" args))
          (buf
           (if interactive-tty
               (kubernetes-utils-term-buffer-start kubernetes-exec-buffer-name
@@ -345,14 +345,14 @@ EXEC-COMMAND is the command to run in the container.
 
 STATE is the current application state.
 
-Should be invoked via command `kubernetes-exec-popup'."
+Should be invoked via command `kubernetes-exec'."
   (interactive (let* ((state (kubernetes-state))
                       (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state)))
                       (command
                        (let ((cmd (string-trim (read-string (format "Command (default: %s): " kubernetes-default-exec-command)
                                                             nil 'kubernetes-exec-history))))
                          (if (string-empty-p cmd) kubernetes-default-exec-command cmd))))
-                 (list pod-name (kubernetes-exec-arguments) command state)))
+                 (list pod-name (transient-args 'kubernetes-exec) command state)))
 
   (unless (require 'vterm nil 'noerror)
     (error "This action requires the vterm package."))
@@ -363,7 +363,7 @@ Should be invoked via command `kubernetes-exec-popup'."
                                  (list (format "--namespace=%s" ns)))
                                (list pod-name "--" exec-command)))
 
-         (interactive-tty (member "-t" args)))
+         (interactive-tty (member "--tty" args)))
     (if interactive-tty
         (kubernetes-utils-vterm-start kubernetes-exec-vterm-buffer-name
                                       kubernetes-kubectl-executable
