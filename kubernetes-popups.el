@@ -37,7 +37,7 @@
     ("d" "Describe" kubernetes-describe)
     ("E" "Edit" kubernetes-edit)
     ("e" "Exec" kubernetes-exec)
-    ("f" "File" kubernetes-file-popup)
+    ("f" "File" kubernetes-file)
     ("L" "Labels" kubernetes-labels)
     ("l" "Logs" kubernetes-logs)]])
 

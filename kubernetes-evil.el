@@ -66,7 +66,7 @@
   (kbd "d") #'kubernetes-describe
   (kbd "D") #'kubernetes-mark-for-delete
   (kbd "e") #'kubernetes-exec
-  (kbd "f") #'kubernetes-file-popup
+  (kbd "f") #'kubernetes-file
   (kbd "u") #'kubernetes-unmark
   (kbd "U") #'kubernetes-unmark-all
   (kbd "x") #'kubernetes-execute-marks
