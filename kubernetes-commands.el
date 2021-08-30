@@ -415,7 +415,7 @@ STATE is the current application state."
   (kubernetes-state-trigger-redraw))
 
 (defun kubernetes--namespace-names (state)
-  (-let* ((config (or (kubernetes-state-namespaces state) (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "namespaces"))))
+  (-let* ((config (or (kubernetes-state--get state 'namespaces) (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "namespaces"))))
           ((&alist 'items items) config))
     (-map (-lambda ((&alist 'metadata (&alist 'name name))) name) items)))
 
