@@ -6,12 +6,20 @@ The format is based on [[https://keepachangelog.com/en/1.0.0/][Keep a Changelog]
 versioning]].
 
 * Upcoming
+
+* 0.17.0
   
 ** Changed
 
    - Explicitly disable the =Exec into container using vterm= suffix of the
      =kubernetes-exec= transient if =vterm= is not installed ([[https://github.com/kubernetes-el/kubernetes-el/pull/209][#209]])
      
+** Fixed
+
+   - Some of the migrated transients from 0.16.0 were incomplete; we catch some
+     (hopefully all of) the stragglers in this release. Thanks @noorul for the
+     follow-through here.
+   
 * 0.16.0
   
 ** Changed
