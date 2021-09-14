@@ -23,7 +23,7 @@ jobs:
       - name: MkDocs
         uses: docker://squidfunk/mkdocs-material:6.2.4
         with:
-          args: -- build
+          args: -v ${PWD}:/docs -- build
 
       - name: Deploy to GitHub Pages
         if: success()
