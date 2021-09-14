@@ -1,0 +1,32 @@
+name: Docs
+on:
+  push:
+    branches:
+      - master
+      - jjin/docs
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: CHANGELOG.org -> CHANGELOG.md
+        uses: docker://pandoc/core:2.9
+        with:
+          args: -s CHANGELOG.org -t gfm -o docs/CHANGELOG.md
+
+      - name: MkDocs
+        uses: docker://squidfunk/mkdocs-material:6.2.4
+        with:
+          args: -- build
+
+      - name: Deploy to GitHub Pages
+        if: success()
+        uses: crazy-max/ghaction-github-pages@v2
+        with:
+          target_branch: gh-pages
+          build_dir: public
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
