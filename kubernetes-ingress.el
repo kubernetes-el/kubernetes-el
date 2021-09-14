@@ -40,16 +40,16 @@
                          (format "%-45s " (kubernetes-utils-ellipsize name 43))
 
                          ;; Hosts
-                         (format "%-25s " (kubernetes-utils-ellipsize (--mapcat (alist-get 'host it) ingress-rules) 23))
+                         (format "%-25s "
+                                 (kubernetes-utils-ellipsize
+                                  (mapconcat (-partial 'alist-get 'host) ingress-rules ", ")
+                                  23))
 
                          ;; Address
-                          (format "%20s "
-                                  (mapconcat
-                                   'identity
-                                   (mapcar
-                                    (lambda (i) (format "%s" (alist-get 'ip   i )))
-                                    ingress-lb-list)
-                                   ", "))
+                         (format "%20s "
+                                 (kubernetes-utils-ellipsize
+                                  (mapconcat (-partial 'alist-get 'ip) ingress-lb-list ", ")
+                                  18))
 
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
