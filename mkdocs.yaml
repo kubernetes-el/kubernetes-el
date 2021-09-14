@@ -1,0 +1,15 @@
+site_name: kubernetes-el -- Kubernetes client for Emacs
+site_description: Kubernetes client for Emacs
+site_url: https://jinnovation.github.io/kubernetes-el
+site_author: me@jonathanj.in
+
+nav:
+  - Home:
+      - Overview: README.md
+
+
+theme:
+  name: material
+
+repo_name: jinnovation/kubernetes-el
+repo_url: https://github.com/jinnovation/kubernetes-el
