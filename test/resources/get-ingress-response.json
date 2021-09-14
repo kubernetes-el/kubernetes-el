@@ -184,6 +184,20 @@
                                 }
                             ]
                         }
+                    },
+                    {
+                        "host": "mylargecube.info",
+                        "http": {
+                            "paths": [
+                                {
+                                    "backend": {
+                                        "serviceName": "example-service",
+                                        "servicePort": 80
+                                    },
+                                    "path": "/"
+                                }
+                            ]
+                        }
                     }
                 ]
             },
