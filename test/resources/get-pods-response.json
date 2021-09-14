@@ -12,6 +12,7 @@
         "generateName": "example-svc-v3-1603416598-",
         "labels": {
           "name": "example-pod-v3",
+          "job-name": "example-job-1",
           "pod-template-hash": "1603416598"
         },
         "name": "example-svc-v3-1603416598-2f9lb",
