@@ -19,6 +19,8 @@ versioning]].
    - Some of the migrated transients from 0.16.0 were incomplete; we catch some
      (hopefully all of) the stragglers in this release. Thanks @noorul for the
      follow-through here.
+     
+   - Fixed a bug in Ingress display. ([[https://github.com/kubernetes-el/kubernetes-el/pull/214][#214]])
    
 * 0.16.0
   
