@@ -18,7 +18,7 @@ jobs:
           args: -s CHANGELOG.org -t gfm -o docs/CHANGELOG.md
 
       - name: cp README.md
-        run: cp README.md docs/README.md
+        run: cp Readme.md docs/README.md
 
       - name: MkDocs
         uses: docker://squidfunk/mkdocs-material:6.2.4
