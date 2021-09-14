@@ -94,11 +94,11 @@
                                    line)))))))
 
 (defun kubernetes-jobs--lookup-pod-for-job (job state)
-  (-let* (((&alist 'metadata (&alist 'labels (&alist 'job-name job-name))) job)
+  (-let* ((job-name (kubernetes-state-resource-name job))
           ((&alist 'items items) (kubernetes-state--get state 'pods)))
     (seq-find (lambda (pod)
-                (let ((pod-name (kubernetes-state-resource-name pod)))
-                  (string-prefix-p job-name pod-name)))
+                (-let (((&alist 'metadata (&alist 'labels (&alist 'job-name pod-job-name))) pod))
+                  (string= pod-job-name job-name)))
               items)))
 
 (kubernetes-ast-define-component job (state job)
