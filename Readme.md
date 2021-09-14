@@ -52,8 +52,8 @@ example one can use the following configuration:
   :ensure t
   :commands (kubernetes-overview)
   :config
-  (setq kubernetes-poll-frequency 3600
-        kubernetes-redraw-frequency 3600))
+  (setq kubernetes-poll-frequency nil
+        kubernetes-redraw-frequency nil))
 ```
 
 ## Manual Installation

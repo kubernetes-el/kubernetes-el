@@ -90,7 +90,8 @@ The function must take a single argument, which is the buffer to display."
 (defcustom kubernetes-poll-frequency 5
   "The frequency in seconds at which to poll Kubernetes for changes."
   :group 'kubernetes
-  :type 'integer)
+  :type '(choice (integer :tag "Frequency in seconds")
+                 (const :tag "Disabled" nil)))
 
 (defcustom kubernetes-redraw-frequency 5
   "The buffer redraw frequency in seconds.
@@ -99,7 +100,8 @@ This is the frequency at which Kubernetes buffers will be redrawn
 to match the current state.  This variable should be tuned to
 balance interface stuttering with update frequency."
   :group 'kubernetes
-  :type 'integer)
+  :type '(choice (integer :tag "Frequency in seconds")
+                 (const :tag "Disabled" nil)))
 
 (defcustom kubernetes-json-mode 'javascript-mode
   "The mode to use when rendering pretty-printed JSON."
