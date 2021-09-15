@@ -12,24 +12,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      - run: pip install mkdocs-material
+
       - name: CHANGELOG.org -> CHANGELOG.md
         uses: docker://pandoc/core:2.9
         with:
           args: -s CHANGELOG.org -t gfm -o docs/CHANGELOG.md
+      - run: cp Readme.md docs/README.md
 
-      - name: cp README.md
-        run: cp Readme.md docs/README.md
-
-      - name: MkDocs
-        uses: docker://squidfunk/mkdocs-material:6.2.4
-        with:
-          args: -v ${PWD}:/docs -- build
-
-      - name: Deploy to GitHub Pages
-        if: success()
-        uses: crazy-max/ghaction-github-pages@v2
-        with:
-          target_branch: gh-pages
-          build_dir: docs
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: mkdocs gh-deploy --force

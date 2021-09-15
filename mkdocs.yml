@@ -5,8 +5,8 @@ site_author: me@jonathanj.in
 
 nav:
   - Home:
-      - Overview: docs/README.md
-      - Changelog: docs/CHANGELOG.md
+      - Overview: README.md
+      # - Changelog: docs/CHANGELOG.md
 
 theme:
   name: material
