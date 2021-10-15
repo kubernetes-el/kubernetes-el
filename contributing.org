@@ -34,7 +34,7 @@ setup steps to get started.
    - Take the time to write good commit messages; [[https://www.freecodecamp.org/news/writing-good-commit-messages-a-practical-guide/][here]] are some practical tips.
    - Run tests and make sure they all pass before submitting your PR.
    - If your contribution is a user-facing change, please add an entry to
-     =CHANGELOG.org= in thet =Unreleased= section detailing it. See
+     =CHANGELOG.org= in the =Unreleased= section detailing it. See
      [[https://keepachangelog.com/en/1.0.0/][keepachangelog.com]] for an overview of this process.
 
 * Development setup
