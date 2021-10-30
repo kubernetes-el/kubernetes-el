@@ -121,7 +121,7 @@
                  (y-or-n-p (format "Delete %s secret%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-secrets-delete-marked state)))
 
-    (let ((n (length (kubernetes-state-marked-deployments state))))
+    (let ((n (length (kubernetes-state--get state 'marked-deployments))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s deployment%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-deployments-delete-marked state)))
