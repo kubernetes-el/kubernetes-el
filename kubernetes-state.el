@@ -52,6 +52,7 @@
        (setf (alist-get 'marked-deployments next nil t) nil)
        (setf (alist-get 'marked-statefulsets next nil t) nil)
        (setf (alist-get 'marked-jobs next nil t) nil)
+       (setf (alist-get 'marked-persistentvolumeclaims next nil t) nil)
        (setf (alist-get 'marked-pods next nil t) nil)
        (setf (alist-get 'marked-secrets next nil t) nil)
        (setf (alist-get 'marked-services next nil t) nil))
@@ -106,6 +107,32 @@
          (setf (alist-get 'configmaps-pending-deletion next)
                (seq-intersection (alist-get 'configmaps-pending-deletion next)
                                  configmap-names))))
+
+      ;; Persistent Volume Claims.
+
+      (:mark-persistentvolumeclaim
+       (let ((cur (alist-get 'marked-persistentvolumeclaims state)))
+         (setf (alist-get 'marked-persistentvolumeclaims next)
+               (delete-dups (cons args cur)))))
+      (:unmark-persistentvolumeclaim
+       (setf (alist-get 'marked-persistentvolumeclaims next)
+             (remove args (alist-get 'marked-persistentvolumeclaims next))))
+      (:delete-persistentvolumeclaim
+       (let ((updated (cons args (alist-get 'persistentvolumeclaims-pending-deletion state))))
+         (setf (alist-get 'persistentvolumeclaims-pending-deletion next)
+               (delete-dups updated))))
+      (:update-persistentvolumeclaims
+       (setf (alist-get 'persistentvolumeclaims next) args)
+
+       ;; Prune deleted persistentvolumeclaims from state.
+       (-let* (((&alist 'items persistentvolumeclaims) args)
+               (persistentvolumeclaim-names (seq-map #'kubernetes-state-resource-name (append persistentvolumeclaims nil))))
+         (setf (alist-get 'marked-persistentvolumeclaims next)
+               (seq-intersection (alist-get 'marked-persistentvolumeclaims next)
+                                 persistentvolumeclaim-names))
+         (setf (alist-get 'persistentvolumeclaims-pending-deletion next)
+               (seq-intersection (alist-get 'persistentvolumeclaims-pending-deletion next)
+                                 persistentvolumeclaim-names))))
 
       ;; Secrets
 
@@ -385,6 +412,19 @@
   (kubernetes-state-update :delete-statefulset statefulset-name)
   (kubernetes-state-update :unmark-statefulset statefulset-name))
 
+(defun kubernetes-state-mark-persistentvolumeclaim (persistentvolumeclaim-name)
+  (cl-assert (stringp persistentvolumeclaim-name))
+  (kubernetes-state-update :mark-persistentvolumeclaim persistentvolumeclaim-name))
+
+(defun kubernetes-state-unmark-persistentvolumeclaim (persistentvolumeclaim-name)
+  (cl-assert (stringp persistentvolumeclaim-name))
+  (kubernetes-state-update :unmark-persistentvolumeclaim persistentvolumeclaim-name))
+
+(defun kubernetes-state-delete-persistentvolumeclaim (persistentvolumeclaim-name)
+  (cl-assert (stringp persistentvolumeclaim-name))
+  (kubernetes-state-update :delete-persistentvolumeclaim persistentvolumeclaim-name)
+  (kubernetes-state-update :unmark-persistentvolumeclaim persistentvolumeclaim-name))
+
 (defun kubernetes-state-unmark-all ()
   (kubernetes-state-update :unmark-all))
 
@@ -503,6 +543,9 @@
 (kubernetes-state--define-setter label-query (label-name)
   (cl-assert (stringp label-name)))
 
+(kubernetes-state--define-setter persistentvolumeclaims (persistentvolumeclaims)
+  (cl-assert (listp persistentvolumeclaims)))
+
 (defun kubernetes-state-overview-sections (state)
   (or (alist-get 'overview-sections state)
       (let* ((configurations (append kubernetes-overview-custom-views-alist kubernetes-overview-views-alist))
@@ -521,7 +564,8 @@
                                   pods
                                   secrets
                                   services
-                                  nodes))
+                                  nodes
+                                  persistentvolumeclaims))
                      resources)))
 
 (defun kubernetes-state-kubectl-flags (state)
@@ -587,6 +631,7 @@ If lookup fails, return nil."
 (kubernetes-state-define-named-lookup secret secrets)
 (kubernetes-state-define-named-lookup service services)
 (kubernetes-state-define-named-lookup node nodes)
+(kubernetes-state-define-named-lookup persistentvolumeclaim persistentvolumeclaims)
 
 (defun kubernetes-state-resource-name (resource)
   "Get the name of RESOURCE from its metadata.

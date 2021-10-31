@@ -22,10 +22,12 @@
 (autoload 'kubernetes-display-node "kubernetes-nodes")
 (autoload 'kubernetes-display-job "kubernetes-jobs")
 (autoload 'kubernetes-display-namespace "kubernetes-namespaces")
+(autoload 'kubernetes-display-persistentvolumeclaim "kubernetes-persistentvolumeclaims")
 (autoload 'kubernetes-display-pod "kubernetes-pods")
 (autoload 'kubernetes-display-secret "kubernetes-secrets")
 (autoload 'kubernetes-display-service "kubernetes-services")
 (autoload 'kubernetes-jobs-delete-marked "kubernetes-jobs")
+(autoload 'kubernetes-persistentvolumeclaims-delete-marked "kubernetes-persistentvolumeclaims")
 (autoload 'kubernetes-pods-delete-marked "kubernetes-pods")
 (autoload 'kubernetes-secrets-delete-marked "kubernetes-secrets")
 (autoload 'kubernetes-services-delete-marked "kubernetes-services")
@@ -55,6 +57,8 @@
      (kubernetes-state-mark-deployment name))
     (`(:statefulset-name ,name)
      (kubernetes-state-mark-statefulset name))
+    (`(:persistentvolumeclaim-name ,name)
+     (kubernetes-state-mark-persistentvolumeclaim name))
     (_
      (user-error "Nothing here can be marked")))
 
@@ -82,7 +86,9 @@
     (`(:deployment-name ,name)
      (kubernetes-state-unmark-deployment name))
     (`(:statefulset-name ,name)
-     (kubernetes-state-unmark-statefulset name)))
+     (kubernetes-state-unmark-statefulset name))
+    (`(:persistentvolumeclaim-name ,name)
+     (kubernetes-state-unmark-persistentvolumeclaim name)))
   (kubernetes-state-trigger-redraw)
   (goto-char point)
   (magit-section-forward))
@@ -121,7 +127,7 @@
                  (y-or-n-p (format "Delete %s secret%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-secrets-delete-marked state)))
 
-    (let ((n (length (kubernetes-state-marked-deployments state))))
+    (let ((n (length (kubernetes-state--get state 'marked-deployments))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s deployment%s? " n (if (equal 1 n) "" "s"))))
         (kubernetes-deployments-delete-marked state)))
@@ -139,7 +145,12 @@
     (let ((n (length (kubernetes-state--get state 'marked-services))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s service%s? " n (if (equal 1 n) "" "s"))))
-        (kubernetes-services-delete-marked state))))
+        (kubernetes-services-delete-marked state)))
+
+    (let ((n (length (kubernetes-state--get state 'marked-persistentvolumeclaims))))
+      (when (and (not (zerop n))
+                 (y-or-n-p (format "Delete %s PVC%s? " n (if (equal 1 n) "" "s"))))
+        (kubernetes-persistentvolumeclaims-delete-marked state))))
 
   (kubernetes-unmark-all))
 
@@ -232,6 +243,8 @@ the magit section at point."
      (kubernetes-display-namespace namespace-name state))
     (`(:pod-name ,pod-name)
      (kubernetes-display-pod pod-name state))
+    (`(:persistentvolumeclaim-name ,persistentvolumeclaim-name)
+     (kubernetes-display-persistentvolumeclaim persistentvolumeclaim-name state))
     (`(:selector ,selector)
      (kubernetes-show-pods-for-label selector))
     (_
@@ -483,6 +496,8 @@ THING must be a valid target for `kubectl edit'."
      (kubernetes--edit-resource "job" name))
     (`(:node-name ,name)
      (kubernetes--edit-resource "node" name))
+    (`(:persistentvolumeclaim-name ,name)
+     (kubernetes--edit-resource "persistentvolumeclaim" name))
     (`(:pod-name ,name)
      (kubernetes--edit-resource "pod" name))
     (`(:secret-name ,name)

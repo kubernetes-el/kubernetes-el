@@ -27,12 +27,21 @@ digraph {
     rankdir=LR;
     edge [color=gray];
 
-    {rank=same; configmaps contexts errors ingress jobs namespaces pods secrets services};
+    {rank=same; configmaps contexts errors ingress jobs namespaces persistentvolumeclaims pods secrets services};
     {rank=same; ast process popups};
 
 %s
 }
 "))
+
+(defun project-deps--remove-prefix-and-maybe-quote (file)
+  "Remove prefix from FILE's filename and maybe quote it.
+
+The filename is quoted if it contains a hyphen."
+  (let ((stripped (string-remove-prefix "kubernetes-" (f-filename (f-no-ext file)))))
+    (if (string-match-p "-" stripped)
+        (format "\"%s\"" stripped)
+      stripped)))
 
 (defconst project-deps--match-kubernetes-requires
   (rx bol (* space)
@@ -51,7 +60,7 @@ digraph {
     (-difference requires project-deps--excluded-from-graph)))
 
 (defun project-deps--render-attrs (file)
-  (let ((source (string-remove-prefix "kubernetes-" (f-filename (f-no-ext file))))
+  (let ((source (project-deps--remove-prefix-and-maybe-quote file))
         (url (f-join ".." file)))
     (format "    %s [headlabel=\"%s\" URL=\"%s\"];"
             source
@@ -59,8 +68,8 @@ digraph {
             url)))
 
 (defun project-deps--render-deps (file deps)
-  (let ((source (string-remove-prefix "kubernetes-" (f-filename (f-no-ext file))))
-        (targets (string-join (sort (--map (string-remove-prefix "kubernetes-" (f-no-ext (f-filename it))) deps)
+  (let ((source (project-deps--remove-prefix-and-maybe-quote file))
+        (targets (string-join (sort (--map (project-deps--remove-prefix-and-maybe-quote it) deps)
                                     #'string<) " ")))
     (format "    %s -> { %s };" source targets)))
 
