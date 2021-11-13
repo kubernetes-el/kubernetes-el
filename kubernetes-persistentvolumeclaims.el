@@ -38,7 +38,7 @@
           (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 24))
+                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 21))
                          " "
                          ;; Phase
                          (propertize (format (pop list-fmt) phase) 'face 'kubernetes-dimmed)
@@ -47,7 +47,7 @@
                          (propertize (format (pop list-fmt) capacity) 'face 'kubernetes-dimmed)
                          " "
                          ;; Storage Class
-                         (propertize (format (pop list-fmt) storage-class) 'face 'kubernetes-dimmed)
+                         (propertize (format (pop list-fmt) (kubernetes-utils-ellipsize storage-class 12)) 'face 'kubernetes-dimmed)
                          " "
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
