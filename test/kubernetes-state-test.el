@@ -32,6 +32,9 @@
 (defconst sample-get-config-response
   (test-helper-json-resource "config-view-response.json"))
 
+(defconst sample-get-persistentvolumeclaims-response
+  (test-helper-json-resource "get-persistentvolumeclaims-response.json"))
+
 ;; Updating sets the main state
 
 (ert-deftest kubernetes-state-test--updating-and-retrieving-state ()
@@ -80,6 +83,9 @@
 
 (kubernetes-state-test-getter marked-deployments)
 (kubernetes-state-test-getter deployments-pending-deletion)
+
+(kubernetes-state-test-getter marked-persistentvolumeclaims)
+(kubernetes-state-test-getter persistentvolumeclaims-pending-deletion)
 
 (kubernetes-state-test-getter current-time)
 
@@ -134,6 +140,9 @@
 
 (kubernetes-state-test-accessor jobs
   (kubernetes-state-update-jobs sample-get-jobs-response))
+
+(kubernetes-state-test-accessor persistentvolumeclaims
+  (kubernetes-state-update-persistentvolumeclaims sample-get-persistentvolumeclaims-response))
 
 (ert-deftest kubernetes-state-test--error-is-alist ()
   (test-helper-with-empty-state
@@ -251,6 +260,7 @@
 (kubernetes-state-marking-tests configmap)
 (kubernetes-state-marking-tests deployment)
 (kubernetes-state-marking-tests job)
+(kubernetes-state-marking-tests persistentvolumeclaim)
 (kubernetes-state-marking-tests pod)
 (kubernetes-state-marking-tests secret)
 (kubernetes-state-marking-tests service)
@@ -260,6 +270,7 @@
     (kubernetes-state-mark-configmap "configmap")
     (kubernetes-state-mark-deployment "deployment")
     (kubernetes-state-mark-job "job")
+    (kubernetes-state-mark-persistentvolumeclaim "pvc")
     (kubernetes-state-mark-pod "pod")
     (kubernetes-state-mark-secret "secret")
     (kubernetes-state-mark-service "svc")
@@ -309,6 +320,15 @@
   (test-helper-with-empty-state
     (kubernetes-state-update-configmaps sample-get-configmaps-response)
     (should (kubernetes-state-lookup-configmap "example-configmap-1" (kubernetes-state)))))
+
+(ert-deftest kubernetes-state-test--lookup-pvc--no-such-pvc ()
+  (test-helper-with-empty-state
+    (should (not (kubernetes-state-lookup-persistentvolumeclaim "baz-pvc" (kubernetes-state))))))
+
+(ert-deftest kubernetes-state-test--lookup-pvc--existing-pvc ()
+  (test-helper-with-empty-state
+    (kubernetes-state-update-persistentvolumeclaims sample-get-persistentvolumeclaims-response)
+    (should (kubernetes-state-lookup-persistentvolumeclaim "foo-pvc" (kubernetes-state)))))
 
 (ert-deftest kubernetes-state-test--lookup-secret--no-such-secret ()
   (test-helper-with-empty-state
