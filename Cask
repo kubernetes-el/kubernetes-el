@@ -3,6 +3,7 @@
 (package-file "kubernetes.el")
 
 (development
+ (depends-on "buttercup")
  (depends-on "undercover" "0.8.1")
  (depends-on "evil")
  (depends-on "noflet")
