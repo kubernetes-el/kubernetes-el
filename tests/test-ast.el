@@ -2,7 +2,7 @@
 ;;; Commentary:
 ;;; Code:
 
-(load-file "./test/undercover-init.el")
+(load-file "./tests/undercover-init.el")
 
 (require 'buttercup)
 (require 'dash)
