@@ -64,8 +64,3 @@ jobs:
           env_vars: EMACS_VERSION
           files: ./coverage/lcov.info
           fail_ci_if_error: true
-          verbose: true
-
-          # remove before merge
-          dry_run: true
-
