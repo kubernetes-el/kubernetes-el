@@ -58,7 +58,9 @@ jobs:
           make test
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v1
         if: steps.install.outcome == 'success' && steps.install.conclusion == 'success'
+        uses: codecov/codecov-action@v2
         with:
           env_vars: EMACS_VERSION
+          files: ./coverage/lcov.info
+          fail_ci_if_error: true
