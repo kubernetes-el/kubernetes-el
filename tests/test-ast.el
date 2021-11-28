@@ -2,6 +2,8 @@
 ;;; Commentary:
 ;;; Code:
 
+(load-file "./test/undercover-init.el")
+
 (require 'buttercup)
 (require 'dash)
 (require 'kubernetes-ast)

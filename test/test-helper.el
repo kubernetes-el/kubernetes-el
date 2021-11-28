@@ -16,13 +16,7 @@
 
 ;; Initialize test coverage.
 
-(when (require 'undercover nil t)
-  (with-no-warnings
-    (undercover "*.el"
-                (:exclude "kubernetes-evil.el")
-                (:report-format 'lcov)
-                (:send-report nil))))
-
+(load-file "./test/undercover-init.el")
 
 ;; Load package
 
