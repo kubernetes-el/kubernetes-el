@@ -1,4 +1,4 @@
-;;; kubernetes.el --- Magit-like porcelain for Kubernetes.  -*- lexical-binding: t; -*-
+;;; kubernetes.el --- Magit-like porcelain for Kubernetes  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2017-2021  Chris Barrett
 
@@ -8,8 +8,9 @@
 ;;     Jonathan Jin <me@jonathanj.in>
 
 ;; Version: 0.17.0
-
+;; Homepage: https://github.com/kubernetes-el/kubernetes-el
 ;; Package-Requires: ((emacs "25.1") (dash "2.12.0") (magit-section "3.1.1") (magit-popup "2.13.0") (with-editor "3.0.4") (transient "0.3.0"))
+;; Keywords: kubernetes
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -25,6 +26,9 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
+
+;; kubernetes-el is a text-based, interactive management interface for managing
+;; Kubernetes clusters within Emacs.
 
 ;;; Code:
 
