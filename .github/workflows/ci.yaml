@@ -62,5 +62,5 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           env_vars: EMACS_VERSION
-          files: ./coverage/lcov.info
+          files: ./coverage/lcov-ert.info,./coverage/lcov-buttercup.info
           fail_ci_if_error: true

@@ -20,9 +20,9 @@
   (with-no-warnings
     (undercover "*.el"
                 (:exclude "kubernetes-evil.el")
+                (:report-file "./coverage/lcov-ert.info")
                 (:report-format 'lcov)
                 (:send-report nil))))
-
 
 ;; Load package
 
