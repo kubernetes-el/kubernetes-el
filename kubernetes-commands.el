@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'kubernetes-ast)
+(require 'kubernetes-contexts)
 (require 'kubernetes-modes)
 (require 'kubernetes-popups)
 (require 'kubernetes-props)
@@ -460,10 +461,7 @@ CONTEXT is the name of a context as a string."
                                    state))
        (kubernetes-state-trigger-redraw)))))
 
-(defun kubernetes--context-names (state)
-  (-let* ((config (or (kubernetes-state--get state 'config) (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-config-view)))
-          ((&alist 'contexts contexts) config))
-    (--map (alist-get 'name it) contexts)))
+(defalias 'kubernetes--context-names 'kubernetes-contexts--context-names)
 
 (defun kubernetes--edit-resource (kind name)
   (kubernetes-kubectl-edit-resource kubernetes-props

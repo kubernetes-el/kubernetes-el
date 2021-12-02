@@ -78,6 +78,23 @@
    (display-buffer
     (kubernetes-yaml-make-buffer kubernetes-display-config-buffer-name config))))
 
+(defun kubernetes-contexts--context-names (state)
+  "Get a list of all available kubectl contexts from STATE."
+  (-let* ((config (or (kubernetes-state--get state 'config) (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-config-view)))
+          ((&alist 'contexts contexts) config))
+    (--map (alist-get 'name it) contexts)))
+
+
+(defun kubernetes-contexts-rename (context-name new-name)
+  (interactive
+   (let* ((contexts (kubernetes-contexts--context-names (kubernetes-state)))
+          (context-to-rename (completing-read "Rename context: " contexts)))
+     (list context-to-rename
+           (read-string (format "Rename `%s' to: " context-to-rename)))))
+  (-let* (((&alist 'name current-context)
+           (kubernetes-state-current-context (kubernetes-state))))
+    (message current-context)
+    (message new-name)))
 
 (provide 'kubernetes-contexts)
 
