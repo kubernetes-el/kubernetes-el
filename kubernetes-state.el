@@ -429,6 +429,33 @@
   (kubernetes-state-update :unmark-all))
 
 
+(defun kubernetes-state--refresh-now (type &optional interactive raw)
+  "Force a refresh of the state data for the given resource TYPE.
+
+INTERACTIVE denotes whether or not this function was invoked
+interactively.  RAW allows for providing explicit kubectl
+arguments."
+  (interactive "SResource: \np\ni")
+  (kubernetes-kubectl-await
+   (apply-partially #'kubernetes-kubectl
+                    kubernetes-props
+                    (kubernetes-state)
+                    (if raw (split-string raw) (list "get" (symbol-name type) "-o" "json")))
+   (lambda (buf)
+     (with-current-buffer buf
+       (when interactive
+         (message (concat "Updated " (symbol-name type) ".")))
+       (funcall (intern (format "kubernetes-state-update-%s" (symbol-name type)))
+                (json-read-from-string (buffer-string)))
+       (-let* (((&alist 'items)
+                (kubernetes-state--get (kubernetes-state) type)))
+         (seq-map (lambda (item)
+                    (-let* (((&alist 'metadata (&alist 'name)) item)) name))
+                  items))))
+   nil
+   #'ignore))
+
+
 ;; State accessors
 
 (defmacro kubernetes-state-define-refreshers (attr &optional canned raw)
@@ -451,24 +478,7 @@
               ,(intern (format "kubernetes-process-release-poll-%s-process" s-attr)))))))
        (defun ,(intern (format "kubernetes-%s-refresh-now" s-attr)) (&optional interactive)
          (interactive "p")
-         (kubernetes-kubectl-await
-          (apply-partially #'kubernetes-kubectl
-                           kubernetes-props
-                           (kubernetes-state)
-                           ',(if raw (split-string raw) (list "get" s-attr "-o" "json")))
-          (lambda (buf)
-            (with-current-buffer buf
-              (when interactive
-                (message (concat "Updated " ,s-attr ".")))
-              (,(intern (format "kubernetes-state-update-%s" s-attr))
-               (json-read-from-string (buffer-string)))
-              (-let* (((&alist 'items)
-                       (kubernetes-state--get (kubernetes-state) (quote ,attr))))
-                (seq-map (lambda (item)
-                           (-let* (((&alist 'metadata (&alist 'name)) item)) name))
-                         items))))
-          nil
-          #'ignore)))))
+         (kubernetes-state--refresh-now (quote ,attr) interactive ,raw)))))
 
 (defun kubernetes-state--get (state type)
   "Get the entry for corresponding resource TYPE from STATE."
