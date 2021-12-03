@@ -4,6 +4,7 @@
 
 (require 'magit-popup)
 (require 'transient)
+(require 'kubernetes-contexts)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 
@@ -99,7 +100,7 @@
           (?r "Client cert file" "--client-certificate=" kubernetes-popups--read-existing-file)
           (?t "API token" "--token=" read-string))
         :actions
-        '((?c "Change context" kubernetes-use-context)
+        '((?c "Change context" kubernetes-contexts-use-context)
           (?n "Set namespace" kubernetes-set-namespace))))
 
 (defun kubernetes-popups--update-kubectl-state ()
