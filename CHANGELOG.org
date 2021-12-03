@@ -10,9 +10,9 @@ versioning]].
 ** Changed
    - New overview for persistent volume claims. ([[https://github.com/kubernetes-el/kubernetes-el/pull/223][#223]])
    - Added a new interactive function, =kubernetes-contexts-rename=, for
-     renaming contexts.
+     renaming contexts. ([[https://github.com/kubernetes-el/kubernetes-el/pull/231][#231]])
    - Added a new transient prefix, =kubernetes-context=, for acting on kubectl
-     contexts, e.g. switching, renaming, etc.
+     contexts, e.g. switching, renaming, etc. ([[https://github.com/kubernetes-el/kubernetes-el/pull/231][#231]])
 
 * 0.17.0
   
