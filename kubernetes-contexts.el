@@ -113,7 +113,9 @@ CONTEXT is the name of a context as a string."
        (kubernetes-state-trigger-redraw)))))
 
 (defun kubernetes-contexts-rename (context new-name)
-  "Renames CONTEXT to NEW-NAME."
+  "Renames CONTEXT to NEW-NAME.
+
+If CONTEXT is the current context, reloads."
   (interactive
    (let* ((contexts (kubernetes-contexts--context-names (kubernetes-state)))
           (context-to-rename (completing-read "Rename context: " contexts)))
@@ -134,7 +136,9 @@ CONTEXT is the name of a context as a string."
      `("config" "rename-context" ,context ,new-name)
      (lambda (_)
        (message "Renamed context `%s' to `%s'." context new-name)
-       (kubernetes-contexts-use-context new-name)))))
+       (kubernetes-contexts-refresh-now)
+       (when (string-equal context current-context)
+         (kubernetes-contexts-use-context new-name))))))
 
 (provide 'kubernetes-contexts)
 
