@@ -4,6 +4,7 @@
 
 (require 'magit-popup)
 (require 'transient)
+(require 'kubernetes-contexts)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 
@@ -79,6 +80,15 @@
   [["Actions"
     ("e" "Dwim" kubernetes-edit-resource-dwim)]])
 
+(transient-define-prefix kubernetes-context ()
+  "Work with kubectl contexts."
+  [["Actions"
+    ("r" "Rename a context" kubernetes-contexts-rename)
+    ;; TODO: This suffix descriptor could be a little more colorful,
+    ;; e.g. "Change from context <current-context-name> to...", but we can
+    ;; improve later
+    ("c" "Change current context" kubernetes-contexts-use-context)]])
+
 ;; Config popup
 ;;
 ;; The macro definition is expanded here and modified to support marshalling
@@ -99,7 +109,7 @@
           (?r "Client cert file" "--client-certificate=" kubernetes-popups--read-existing-file)
           (?t "API token" "--token=" read-string))
         :actions
-        '((?c "Change context" kubernetes-use-context)
+        '((?c "Change context" kubernetes-contexts-use-context)
           (?n "Set namespace" kubernetes-set-namespace))))
 
 (defun kubernetes-popups--update-kubectl-state ()

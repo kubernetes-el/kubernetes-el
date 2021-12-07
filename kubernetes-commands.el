@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'kubernetes-ast)
+(require 'kubernetes-contexts)
 (require 'kubernetes-modes)
 (require 'kubernetes-popups)
 (require 'kubernetes-props)
@@ -431,39 +432,6 @@ STATE is the current application state."
   (-let* ((config (or (kubernetes-state--get state 'namespaces) (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "namespaces"))))
           ((&alist 'items items) config))
     (-map (-lambda ((&alist 'metadata (&alist 'name name))) name) items)))
-
-(defun kubernetes-use-context (context)
-  "Switch Kubernetes context refresh the pods buffer.
-
-CONTEXT is the name of a context as a string."
-  (interactive (list (completing-read "Context: " (kubernetes--context-names (kubernetes-state)) nil t)))
-  (kubernetes-process-kill-polling-processes)
-
-  (let ((state (kubernetes-state)))
-    (kubernetes-state-clear)
-    (kubernetes-state-update-overview-sections (kubernetes-state-overview-sections state)))
-
-  (kubernetes-state-trigger-redraw)
-
-  (when-let (buf (get-buffer kubernetes-overview-buffer-name))
-    (with-current-buffer buf
-      (goto-char (point-min))))
-
-  (let ((state (kubernetes-state)))
-    (kubernetes-kubectl-config-use-context
-     kubernetes-props
-     state
-     context
-     (lambda (_)
-       (when kubernetes-default-overview-namespace
-         (kubernetes-set-namespace kubernetes-default-overview-namespace
-                                   state))
-       (kubernetes-state-trigger-redraw)))))
-
-(defun kubernetes--context-names (state)
-  (-let* ((config (or (kubernetes-state--get state 'config) (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-config-view)))
-          ((&alist 'contexts contexts) config))
-    (--map (alist-get 'name it) contexts)))
 
 (defun kubernetes--edit-resource (kind name)
   (kubernetes-kubectl-edit-resource kubernetes-props

@@ -8,6 +8,7 @@
 (autoload 'kubernetes-config-popup "kubernetes-popups")
 (autoload 'kubernetes-kill-buffers "kubernetes-commands")
 (autoload 'kubernetes-copy-thing-at-point "kubernetes-commands")
+(autoload 'kubernetes-context "kubernetes-popups")
 (autoload 'kubernetes-describe "kubernetes-popups")
 (autoload 'kubernetes-exec "kubernetes-popups")
 (autoload 'kubernetes-execute-marks "kubernetes-commands")
@@ -50,6 +51,7 @@
 
     (define-key keymap (kbd "?") #'kubernetes-dispatch)
     (define-key keymap (kbd "c") #'kubernetes-config-popup)
+    (define-key keymap (kbd "C") #'kubernetes-context)
     (define-key keymap (kbd "d") #'kubernetes-describe)
     (define-key keymap (kbd "D") #'kubernetes-mark-for-delete)
     (define-key keymap (kbd "e") #'kubernetes-exec)
