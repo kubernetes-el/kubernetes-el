@@ -33,11 +33,6 @@
             (list (format "--namespace=%s" ns)))
           (kubernetes-state-kubectl-flags state)))
 
-;; TODO: In order to enable port-forwarding...
-;; - Need ability to specify explicit `buf' and `err-buf' DONE
-;; - Need ability to specific explicit kubectl flags; only use flags from state
-;;   if not provided
-;; - Need to name the process according to the command in question DONE
 (cl-defun kubernetes-kubectl (props
                               state
                               args
