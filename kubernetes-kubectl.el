@@ -33,7 +33,17 @@
             (list (format "--namespace=%s" ns)))
           (kubernetes-state-kubectl-flags state)))
 
-(defun kubernetes-kubectl (props state args on-success &optional on-error cleanup-cb)
+;; TODO: In order to enable port-forwarding...
+;; - Need ability to specify explicit `buf' and `err-buf' DONE
+;; - Need ability to specific explicit kubectl flags; only use flags from state
+;;   if not provided
+;; - Need to name the process according to the command in question DONE
+(cl-defun kubernetes-kubectl (props
+                              state
+                              args
+                              on-success
+                              &optional on-error cleanup-cb
+                              &key flags)
   "Run kubectl with ARGS.
 
 PROPS is an alist of functions to inject.  It should normally be passed
@@ -56,37 +66,14 @@ resources.
 After callbacks are executed, the process and its buffer will be killed.
 
 Returns the process object for this execution of kubectl."
-  (let* ((buf (generate-new-buffer " kubectl"))
-         (err-buf (generate-new-buffer " kubectl-err"))
-         (command (append (list kubernetes-kubectl-executable) args (kubernetes-kubectl--flags-from-state state)))
+  (let* ((flags (or flags (kubernetes-kubectl--flags-from-state state)))
+         (command (append (list kubernetes-kubectl-executable) args flags))
+         (buf (generate-new-buffer (format " kubectl: %s" command)))
+         (err-buf (generate-new-buffer (format " kubectl-err: %s" command)))
 
          ;; `default-directory' must exist, otherwise `make-process' raises an
          ;; error.
-         (default-directory (kubernetes-utils-up-to-existing-dir default-directory))
-         (proc (make-process
-                :name "kubectl"
-                :buffer buf
-                :stderr err-buf
-                :command command
-                :noquery t
-                :sentinel
-                (lambda (proc status)
-                  (unwind-protect
-                      (let ((exit-code (process-exit-status proc)))
-                        (cond
-                         ((zerop exit-code)
-                          (funcall on-success buf))
-                         (t
-                          (let ((err-message (with-current-buffer err-buf (buffer-string))))
-                            (unless (= 9 exit-code)
-                              (kubernetes-props-update-last-error props err-message (string-join command " ") (current-time))))
-                          (cond (on-error
-                                 (funcall on-error err-buf))
-                                (t
-                                 (kubernetes-kubectl--default-error-handler props status))))))
-                    (when cleanup-cb
-                      (funcall cleanup-cb))
-                    (kubernetes-process-kill-quietly proc))))))
+         (default-directory (kubernetes-utils-up-to-existing-dir default-directory)))
 
     ;; Clean up stderr buffer when stdout buffer is killed.
     (with-current-buffer buf
@@ -95,7 +82,30 @@ Returns the process object for this execution of kubectl."
                                       (ignore-errors (kill-buffer err-buf))))
                 nil t))
 
-    proc))
+    (make-process
+     :name (format "kubectl: %s" (s-join " " command))
+     :buffer buf
+     :stderr err-buf
+     :command command
+     :noquery t
+     :sentinel
+     (lambda (proc status)
+       (unwind-protect
+           (let ((exit-code (process-exit-status proc)))
+             (cond
+              ((zerop exit-code)
+               (funcall on-success buf))
+              (t
+               (let ((err-message (with-current-buffer err-buf (buffer-string))))
+                 (unless (= 9 exit-code)
+                   (kubernetes-props-update-last-error props err-message (string-join command " ") (current-time))))
+               (cond (on-error
+                      (funcall on-error err-buf))
+                     (t
+                      (kubernetes-kubectl--default-error-handler props status))))))
+         (when cleanup-cb
+           (funcall cleanup-cb))
+         (kubernetes-process-kill-quietly proc))))))
 
 (defun kubernetes-kubectl-get (resource props state cb &optional cleanup-cb)
   "Get all of a given RESOURCE and execute callback CB with the parsed JSON.
