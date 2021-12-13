@@ -2,9 +2,60 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 'map)
 (require 'subr-x)
 
+(defclass kubernetes--process-ledger ()
+  ((poll-processes
+    :initarg :poll-processes
+    :initform '()
+    :documentation "Mapping between resources and their polling
+  processes. Keys are expected to be in plural form, i.e. 'pods'
+  instead of 'pod' and so on."))
+  "Track Kubernetes processes.")
+
+(defmethod get-process-for-resource ((ledger kubernetes--process-ledger) resource)
+  "Get polling process for RESOURCE in LEDGER."
+  (map-elt (slot-value ledger 'poll-processes) resource))
+
+(defmethod poll-process-live-p ((ledger kubernetes--process-ledger) resource)
+  "Determine if the polling process for RESOURCE in LEDGER is
+live or not."
+  (process-live-p (get-process-for-resource ledger resource)))
+
+(defmethod release-process-for-resource ((ledger kubernetes--process-ledger)
+                                         resource)
+  "Terminate the polling process for RESOURCE in LEDGER and remove it from the ledger.
+
+This function is a no-op if there is no process.
+
+If the process is already dead, clean it up."
+  (when-let* ((proc (get-process-for-resource ledger resource)))
+    (when (process-live-p proc)
+      (kubernetes-process-kill-quietly proc))
+    (if (not (slot-value ledger 'poll-processes))
+        (object-add-to-list ledger 'poll-processes '(resource nil))
+      (setf (alist-get resource (slot-value ledger 'poll-processes)) nil))))
+
+(defmethod set-process-for-resource ((ledger kubernetes--process-ledger)
+                                     resource proc
+                                     &optional force)
+  "Assigns process PROC as the polling process for RESOURCE in
+LEDGER."
+  (when (poll-process-live-p ledger resource)
+    (if force
+        (release-process-for-resource ledger resource)
+      (error "Live poll process already present for `%s'; terminate first."
+             resource)))
+  (if (not (slot-value ledger 'poll-processes))
+      (object-add-to-list ledger 'poll-processes `(,resource . ,proc))
+    (setf (alist-get resource (slot-value ledger 'poll-processes)) proc)))
+
+(defvar kubernetes--global-process-ledger (kubernetes--process-ledger)
+  "Global process tracker for kubernetes-el.")
+
 (defun kubernetes-process-kill-quietly (proc &optional _signal)
+  "Kill process PROC silently and the associated buffer, suppressing all errors."
   (when proc
     (set-process-sentinel proc nil)
     (set-process-query-on-exit-flag proc nil)
@@ -13,7 +64,6 @@
       (ignore-errors (kill-process proc))
       (ignore-errors (delete-process proc))
       (ignore-errors (kill-buffer buf)))))
-
 
 ;;; Background polling processes.
 
@@ -39,19 +89,19 @@ Defines the following functions:
 Do not use this variable directly. Instead, use its corresponding accessors.")
 
        (defun ,proc-live-p ()
-         "Get the polling process for this resource if it is running."
-         (when-let (proc ,proc-var-name)
-           (when (process-live-p proc)
-             proc)))
+         (poll-process-live-p kubernetes--global-process-ledger (quote ,resource)))
 
        (defun ,setter-name (proc)
          "Set the polling process to PROC."
-         (,releaser-name)
+         (set-process-for-resource kubernetes--global-process-ledger
+                                   (quote ,resource)
+                                   proc
+                                   t)
          (setq ,proc-var-name proc))
 
        (defun ,releaser-name ()
          "Kill the existing polling process, if any."
-         (kubernetes-process-kill-quietly ,proc-var-name)
+         (release-process-for-resource kubernetes--global-process-ledger (quote ,resource))
          (setq ,proc-var-name nil)))))
 
 (kubernetes-process--define-polling-process config)
