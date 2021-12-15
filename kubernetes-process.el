@@ -2,6 +2,7 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 'dash)
 (require 'map)
 (require 'subr-x)
 
@@ -30,7 +31,7 @@ live or not."
 This function is a no-op if there is no process.
 
 If the process is already dead, clean it up."
-  (when-let* ((proc (get-process-for-resource ledger resource)))
+  (-when-let* ((proc (get-process-for-resource ledger resource)))
     (when (process-live-p proc)
       (kubernetes-process-kill-quietly proc))
     (if (not (slot-value ledger 'poll-processes))
