@@ -8,12 +8,23 @@ versioning]].
 * Upcoming
 
 ** Changed
+   
    - New overview for persistent volume claims. ([[https://github.com/kubernetes-el/kubernetes-el/pull/223][#223]])
    - Added a new interactive function, =kubernetes-contexts-rename=, for
      renaming contexts. ([[https://github.com/kubernetes-el/kubernetes-el/pull/231][#231]])
    - Added a new transient prefix, =kubernetes-context=, for acting on kubectl
      contexts, e.g. switching, renaming, etc. ([[https://github.com/kubernetes-el/kubernetes-el/pull/231][#231]])
 
+** Refinements
+
+   - We've taken a big step towards [[https://github.com/kubernetes-el/kubernetes-el/issues/69][support for custom resources]], overhauling
+     the process-tracking module -- how =kubernetes-el= keeps track of the
+     various =kubectl= processes that it spins up -- to be resource agnostic
+     ([[https://github.com/kubernetes-el/kubernetes-el/issues/234][#234]]). This removes another section of the codebase that historically has
+     had to be updated for every new resource that =kubernetes-el= wants to
+     "support," allowing it to accommodate any and all resources. See: [[https://github.com/kubernetes-el/kubernetes-el/pull/237][#237]];
+     [[https://github.com/kubernetes-el/kubernetes-el/pull/238][#238]].
+     
 * 0.17.0
   
 ** Changed

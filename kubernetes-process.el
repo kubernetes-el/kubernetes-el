@@ -76,59 +76,8 @@ LEDGER."
       (ignore-errors (delete-process proc))
       (ignore-errors (kill-buffer buf)))))
 
-;;; Background polling processes.
-
-(defmacro kubernetes-process--define-polling-process (resource)
-  "Create resource polling-related definitions.
-
-RESOURCE is the name of the resource as a symbol.
-
-Defines the following functions:
-
-- `kubernetes-process-set-poll-RESOURCE-process'
-- `kubernetes-process-release-poll-RESOURCE-process'
-- `kubernetes-process-poll-RESOURCE-process'."
-  (unless (symbolp resource) (error "RESOURCE must be a symbol"))
-  (let ((proc-var-name (intern (format "kubernetes--internal-poll-%s-process" resource)))
-        (proc-live-p (intern (format "kubernetes-process-poll-%s-process-live-p" resource)))
-        (releaser-name (intern (format "kubernetes-process-release-poll-%s-process" resource)))
-        (setter-name (intern (format "kubernetes-process-set-poll-%s-process" resource))))
-    `(progn
-       (defvar ,proc-var-name nil
-         "Variable used to coordinate polling access to resources.
-
-Do not use this variable directly. Instead, use its corresponding accessors.")
-
-       (defun ,proc-live-p ()
-         (poll-process-live-p kubernetes--global-process-ledger (quote ,resource)))
-
-       (defun ,setter-name (proc)
-         "Set the polling process to PROC."
-         (set-process-for-resource kubernetes--global-process-ledger
-                                   (quote ,resource)
-                                   proc
-                                   t)
-         (setq ,proc-var-name proc))
-
-       (defun ,releaser-name ()
-         "Kill the existing polling process, if any."
-         (release-process-for-resource kubernetes--global-process-ledger (quote ,resource))
-         (setq ,proc-var-name nil)))))
-
-(kubernetes-process--define-polling-process config)
-(kubernetes-process--define-polling-process configmaps)
-(kubernetes-process--define-polling-process deployments)
-(kubernetes-process--define-polling-process statefulsets)
-(kubernetes-process--define-polling-process ingress)
-(kubernetes-process--define-polling-process jobs)
-(kubernetes-process--define-polling-process namespaces)
-(kubernetes-process--define-polling-process pods)
-(kubernetes-process--define-polling-process secrets)
-(kubernetes-process--define-polling-process services)
-(kubernetes-process--define-polling-process nodes)
-(kubernetes-process--define-polling-process persistentvolumeclaims)
-
 (defun kubernetes-process-kill-polling-processes ()
+  "Kill all in-flight polling processes."
   (release-all kubernetes--global-process-ledger))
 
 
