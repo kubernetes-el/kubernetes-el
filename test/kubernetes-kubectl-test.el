@@ -26,6 +26,7 @@ will be mocked."
              ;; Silence byte-compiler warnings
              this-fn
 
+             
              (let ((buf (generate-new-buffer " test")))
                (with-current-buffer buf
                  (unwind-protect
@@ -35,7 +36,13 @@ will be mocked."
                        (funcall on-success buf)))
 
                  (when cleanup-cb
-                   (funcall cleanup-cb))))))
+                   (funcall cleanup-cb))))
+             ;; Make and return a "dummy" process here solely to conform to the
+             ;; expected return value of kubernetes-kubectl
+             (make-process
+              :name "dummy process"
+              :command '("sleep" "0")
+              :noquery t)))
      ,@forms))
 
 (defmacro with-error-response-at (expected-args response-string &rest forms)
@@ -65,7 +72,14 @@ will be mocked."
                        (funcall on-error buf))
 
                    (when cleanup-cb
-                     (funcall cleanup-cb)))))))
+                     (funcall cleanup-cb)))))
+
+             ;; Make and return a "dummy" process here solely to conform to the
+             ;; expected return value of kubernetes-kubectl
+             (make-process
+              :name "dummy process"
+              :command '("sleep" "0")
+              :noquery t)))
      ,@forms))
 
 (defconst kubernetes-kubectl-test-props
