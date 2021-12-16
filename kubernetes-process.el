@@ -24,6 +24,16 @@
 live or not."
   (process-live-p (get-process-for-resource ledger resource)))
 
+(defmethod release-all ((ledger kubernetes--process-ledger))
+  "Release all processes in LEDGER.
+
+Returns the resources for which processes were released."
+  (-flatten
+   (map-apply (lambda (key value)
+                (release-process-for-resource ledger key)
+                (when value key))
+              (slot-value ledger 'poll-processes))))
+
 (defmethod release-process-for-resource ((ledger kubernetes--process-ledger)
                                          resource)
   "Terminate the polling process for RESOURCE in LEDGER and remove it from the ledger.
@@ -119,18 +129,7 @@ Do not use this variable directly. Instead, use its corresponding accessors.")
 (kubernetes-process--define-polling-process persistentvolumeclaims)
 
 (defun kubernetes-process-kill-polling-processes ()
-  (kubernetes-process-release-poll-config-process)
-  (kubernetes-process-release-poll-configmaps-process)
-  (kubernetes-process-release-poll-deployments-process)
-  (kubernetes-process-release-poll-statefulsets-process)
-  (kubernetes-process-release-poll-ingress-process)
-  (kubernetes-process-release-poll-nodes-process)
-  (kubernetes-process-release-poll-jobs-process)
-  (kubernetes-process-release-poll-namespaces-process)
-  (kubernetes-process-release-poll-persistentvolumeclaims-process)
-  (kubernetes-process-release-poll-pods-process)
-  (kubernetes-process-release-poll-secrets-process)
-  (kubernetes-process-release-poll-services-process))
+  (release-all kubernetes--global-process-ledger))
 
 
 (provide 'kubernetes-process)

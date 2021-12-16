@@ -70,24 +70,42 @@
 
   (describe "process releasing"
     (before-each
+      (spy-on 'kubernetes-process-kill-quietly))
+
+    (it "can release all processes at once"
       (setq ledger (kubernetes--process-ledger
                     :poll-processes '((pods . :fake-proc-dead)
                                       (deployments . :fake-proc-live)
                                       (services . nil))))
-      (spy-on 'kubernetes-process-kill-quietly))
+      (expect (release-all ledger) :to-equal '(pods deployments))
+      (expect (get-process-for-resource ledger 'pods) :to-equal nil)
+      (expect (get-process-for-resource ledger 'deployments) :to-equal nil)
+      (expect (get-process-for-resource ledger 'services) :to-equal nil))
 
     (it "releases existing live processes"
+      (setq ledger (kubernetes--process-ledger
+                    :poll-processes '((pods . :fake-proc-dead)
+                                      (deployments . :fake-proc-live)
+                                      (services . nil))))
       (release-process-for-resource ledger 'deployments)
       (expect 'kubernetes-process-kill-quietly :to-have-been-called-with
               :fake-proc-live)
       (expect (get-process-for-resource ledger 'deployments) :to-equal nil))
 
     (it "cleans up if existing process is already dead"
+      (setq ledger (kubernetes--process-ledger
+                    :poll-processes '((pods . :fake-proc-dead)
+                                      (deployments . :fake-proc-live)
+                                      (services . nil))))
       (release-process-for-resource ledger 'pods)
       (expect 'kubernetes-process-kill-quietly :not :to-have-been-called)
       (expect (get-process-for-resource ledger 'pods) :to-equal nil))
 
     (it "no-ops if no existing process"
+      (setq ledger (kubernetes--process-ledger
+                    :poll-processes '((pods . :fake-proc-dead)
+                                      (deployments . :fake-proc-live)
+                                      (services . nil))))
       (release-process-for-resource ledger 'services)
       (expect 'kubernetes-process-kill-quietly :not :to-have-been-called)))
 
