@@ -8,6 +8,7 @@
 (require 'subr-x)
 
 (require 'kubernetes-vars)
+(require 'kubernetes-process)
 
 
 ;;; Main state
@@ -464,8 +465,8 @@ arguments."
          (canned (or canned (-partial #'kubernetes-kubectl-get s-attr))))
     `(progn
        (defun ,(intern (format "kubernetes-%s-refresh" s-attr)) (&optional interactive)
-         (unless (,(intern (format "kubernetes-process-poll-%s-process-live-p" s-attr)))
-           (,(intern (format "kubernetes-process-set-poll-%s-process" s-attr))
+         (unless (poll-process-live-p kubernetes--global-process-ledger (quote ,attr))
+           (set-process-for-resource kubernetes--global-process-ledger (quote ,attr)
             (funcall
              ,canned
              kubernetes-props
@@ -474,8 +475,8 @@ arguments."
                (,(intern (format "kubernetes-state-update-%s" s-attr)) response)
                (when interactive
                  (message (concat "Updated " ,s-attr "."))))
-             (function
-              ,(intern (format "kubernetes-process-release-poll-%s-process" s-attr)))))))
+             (-partial 'release-process-for-resource kubernetes--global-process-ledger (quote ,attr))
+             ))))
        (defun ,(intern (format "kubernetes-%s-refresh-now" s-attr)) (&optional interactive)
          (interactive "p")
          (kubernetes-state--refresh-now (quote ,attr) interactive ,raw)))))
