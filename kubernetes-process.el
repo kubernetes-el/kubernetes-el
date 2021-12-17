@@ -15,16 +15,16 @@
   instead of 'pod' and so on."))
   "Track Kubernetes processes.")
 
-(defmethod get-process-for-resource ((ledger kubernetes--process-ledger) resource)
+(cl-defmethod get-process-for-resource ((ledger kubernetes--process-ledger) resource)
   "Get polling process for RESOURCE in LEDGER."
   (map-elt (slot-value ledger 'poll-processes) resource))
 
-(defmethod poll-process-live-p ((ledger kubernetes--process-ledger) resource)
+(cl-defmethod poll-process-live-p ((ledger kubernetes--process-ledger) resource)
   "Determine if the polling process for RESOURCE in LEDGER is
 live or not."
   (process-live-p (get-process-for-resource ledger resource)))
 
-(defmethod release-all ((ledger kubernetes--process-ledger))
+(cl-defmethod release-all ((ledger kubernetes--process-ledger))
   "Release all processes in LEDGER.
 
 Returns the resources for which processes were released."
@@ -34,7 +34,7 @@ Returns the resources for which processes were released."
                 (when value key))
               (slot-value ledger 'poll-processes))))
 
-(defmethod release-process-for-resource ((ledger kubernetes--process-ledger)
+(cl-defmethod release-process-for-resource ((ledger kubernetes--process-ledger)
                                          resource)
   "Terminate the polling process for RESOURCE in LEDGER and remove it from the ledger.
 
@@ -48,7 +48,7 @@ If the process is already dead, clean it up."
         (object-add-to-list ledger 'poll-processes '(resource nil))
       (setf (alist-get resource (slot-value ledger 'poll-processes)) nil))))
 
-(defmethod set-process-for-resource ((ledger kubernetes--process-ledger)
+(cl-defmethod set-process-for-resource ((ledger kubernetes--process-ledger)
                                      resource proc
                                      &optional force)
   "Assigns process PROC as the polling process for RESOURCE in
