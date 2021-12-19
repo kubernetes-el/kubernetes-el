@@ -120,6 +120,24 @@
       (expect (poll-process-live-p ledger 'pods) :to-be-truthy)
       (expect (poll-process-live-p ledger 'secrets) :not :to-be-truthy)
       (expect (poll-process-live-p ledger 'deployments) :not :to-be-truthy)
-      (expect (poll-process-live-p ledger 'services) :not :to-be-truthy))))
+      (expect (poll-process-live-p ledger 'services) :not :to-be-truthy)))
+
+  (describe "proxy process"
+    (before-each
+      (spy-on 'make-process :and-return-value :new-proxy-proc))
+
+    (describe "when there's an existing process"
+      (before-each
+        (setq ledger (kubernetes--process-ledger
+                      :proxy (kubernetes--ported-process-record
+                              :process :existing-proxy-proc))))
+      (it "returns that process"
+        (expect (get-proxy-process ledger) :to-equal :existing-proxy-proc)))
+    (describe "when no existing process"
+      (before-each
+        (spy-on 'proxy-ready-p :and-return-value t))
+      (it "creates new process"
+        (setq ledger (kubernetes--process-ledger))
+        (expect (get-proxy-process ledger) :to-equal :new-proxy-proc)))))
 
 ;;; test-process.el ends here

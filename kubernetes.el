@@ -9,7 +9,7 @@
 
 ;; Version: 0.17.0
 ;; Homepage: https://github.com/kubernetes-el/kubernetes-el
-;; Package-Requires: ((emacs "25.1") (dash "2.12.0") (magit-section "3.1.1") (magit-popup "2.13.0") (with-editor "3.0.4") (transient "0.3.0"))
+;; Package-Requires: ((emacs "25.1") (dash "2.12.0") (magit-section "3.1.1") (magit-popup "2.13.0") (with-editor "3.0.4") (request "0.3.2") (transient "0.3.0"))
 ;; Keywords: kubernetes
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -37,6 +37,14 @@
 (require 'kubernetes-logs)
 (require 'kubernetes-overview)
 (require 'kubernetes-el-tramp)
+
+(defmacro kubernetes--with-proxy (&rest body)
+  "Run BODY with a kubectl proxy active in the background at PORT.
+
+Terminates the proxy on completion of BODY."
+  (declare (indent 2))
+  `(let* ((proxy-proc (get-proxy-process kubernetes--global-process-ledger)))
+     ,@body))
 
 (provide 'kubernetes)
 

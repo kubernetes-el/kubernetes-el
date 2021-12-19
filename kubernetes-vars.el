@@ -12,6 +12,13 @@
   :group 'kubernetes
   :type 'integer)
 
+(defcustom kubernetes-default-proxy-port 8001
+  "Default port to run kubectl proxies on."
+  :group 'kubernetes
+  :type '(choice (integer :tag "Explicit port")
+                 (const :tag "Random" 0))
+  :link '(url-link "https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#proxy"))
+
 (defcustom kubernetes-kubectl-executable "kubectl"
   "The kubectl command used for Kubernetes commands."
   :group 'kubernetes
