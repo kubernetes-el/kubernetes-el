@@ -44,19 +44,7 @@ packages. If you use [use-package][], the forms below will get you started.
 
 Otherwise, you can install the packages with `M-x package-install`.
 
-Disabling automatic refresh helped many to solve [issue #100][]. For
-example one can use the following configuration:
-
-```elisp
-(use-package kubernetes
-  :ensure t
-  :commands (kubernetes-overview)
-  :config
-  (setq kubernetes-poll-frequency 3600
-        kubernetes-redraw-frequency 3600))
-```
-
-## Manual Installation
+### Manual Installation
 
 Requires Emacs 25 and [Cask][].
 
@@ -69,6 +57,24 @@ make && make install
 ## Contributing
 
 Yes please! 😻 See [contributing.org][]
+
+## Compatibility Info
+
+This package supports and is tested against Emacs versions 25--27.
+
+## Known Issues
+
+Disabling automatic refresh helped many to solve [issue #100][]. For
+example one can use the following configuration:
+
+```elisp
+(use-package kubernetes
+  :ensure t
+  :commands (kubernetes-overview)
+  :config
+  (setq kubernetes-poll-frequency 3600
+        kubernetes-redraw-frequency 3600))
+```
 
 
 [Cask]: https://github.com/cask/cask
