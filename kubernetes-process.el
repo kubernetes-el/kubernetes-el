@@ -13,14 +13,14 @@
   "Send request to URL using BODY, returning error or the response.
 
 This function injects :sync t into BODY."
-  (if-let* ((updated-plist
-             (plist-put (plist-put body :sync t)
-                        ;; Suppress the default request.el error handler; we
-                        ;; check the error later
-                        :error (cl-function (lambda (&rest args &key error-thrown &allow-other-keys)
-                                              nil))))
-            (resp (apply #'request url updated-plist))
-            (err (request-response-error-thrown resp)))
+  (-if-let* ((updated-plist
+              (plist-put (plist-put body :sync t)
+                         ;; Suppress the default request.el error handler; we
+                         ;; check the error later
+                         :error (cl-function (lambda (&rest args &key error-thrown &allow-other-keys)
+                                               nil))))
+             (resp (apply #'request url updated-plist))
+             (err (request-response-error-thrown resp)))
       (signal 'error (list (cdr err)))
     resp))
 
