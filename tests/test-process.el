@@ -5,6 +5,26 @@
 (load-file "./tests/undercover-init.el")
 
 (require 'kubernetes-process)
+(require 'request)
+
+(describe "kubernetes--request-option"
+  (describe "when request throws an error"
+    (before-each
+      (spy-on 'request
+              :and-call-fake (lambda (&rest _)
+                               (make-request-response
+                                :status-code 404
+                                :error-thrown (error . ("bar"))))))
+    (it "throws an error"
+      (expect (kubernetes--request-option "foo") :to-throw 'error)))
+  (describe "when request returns successfully"
+    (before-each
+      (spy-on 'request
+              :and-return-value (make-request-response
+                                 :status-code 200
+                                 :error-thrown nil)))
+    (it "returns the response"
+      (expect (kubernetes--request-option "foo") :to-be-truthy))))
 
 (describe "Process ledger"
   :var (ledger)
