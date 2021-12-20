@@ -39,11 +39,11 @@
 (require 'kubernetes-el-tramp)
 
 (defmacro kubernetes--with-proxy (&rest body)
-  "Run BODY with a kubectl proxy active in the background at PORT.
+  "Run BODY with a kubectl proxy active in the background.
 
-Terminates the proxy on completion of BODY."
+The proxy process is accessible at `it'."
   (declare (indent 2))
-  `(let* ((proxy-proc (get-proxy-process kubernetes--global-process-ledger)))
+  `(let* ((it (get-proxy-process kubernetes--global-process-ledger)))
      ,@body))
 
 (provide 'kubernetes)
