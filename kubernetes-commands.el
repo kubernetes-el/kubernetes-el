@@ -162,7 +162,7 @@
 (defun kubernetes-kill-buffers (&optional no-confirm)
   "Kill all `kubernetes-mode' buffers.
 
-With prefix argument, skips confirmation prior to killing all
+With prefix argument NO-CONFIRM, skips confirmation prior to killing all
 buffers."
   (interactive "P")
   (let* ((kubernetes-buffer-p
@@ -178,6 +178,14 @@ buffers."
         (dolist (buffer buffers)
           (kill-buffer buffer))
         (message "Killed %s Kubernetes buffers." num-buffers)))))
+
+(defun kubernetes-kill-buffers-and-processes (&optional no-confirm)
+  "Kill all kubernetes-el buffers and all processes.
+
+With prefix argument NO-CONFIRM, skips confirmation prior to kill all buffers."
+  (interactive "P")
+  (kubernetes-kill-buffers no-confirm)
+  (release-all kubernetes--global-process-ledger))
 
 ;;;###autoload
 (defun kubernetes-copy-thing-at-point (point)

@@ -44,7 +44,7 @@
     (define-key keymap [S-tab]     #'magit-section-cycle-global)
     ;; Misc
     (define-key keymap (kbd "q") #'quit-window)
-    (define-key keymap (kbd "Q") #'kubernetes-kill-buffers)
+    (define-key keymap (kbd "Q") #'kubernetes-kill-buffers-and-processes)
     (define-key keymap (kbd "RET") #'kubernetes-navigate)
     (define-key keymap (kbd "M-w") #'kubernetes-copy-thing-at-point)
     (define-key keymap (kbd "h") #'describe-mode)
