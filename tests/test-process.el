@@ -138,7 +138,25 @@
         (spy-on 'proxy-ready-p :and-return-value t))
       (it "creates new process"
         (setq ledger (kubernetes--process-ledger))
-        (expect (get-proxy-process ledger) :to-equal :new-proxy-proc)))))
+        (expect (get-proxy-process ledger) :to-equal :new-proxy-proc)))
+    (describe "readiness checking"
+      (it "is ready if both readyz and livez return 200"
+        (spy-on 'wait-on-endpoint
+                :and-call-fake
+                (lambda (record endpoint)
+                  (cond
+                   ((string-equal endpoint "readyz") 200)
+                   ((string-equal endpoint "livez") 200))))
+        (expect (proxy-ready-p (kubernetes--process-ledger)) :to-be-truthy))
+      (it "is not ready if either readyz or livez return non-200"
+        (spy-on 'wait-on-endpoint
+                :and-call-fake
+                (lambda (record endpoint)
+                  (cond
+                   ((string-equal endpoint "readyz") 200)
+                   ((string-equal endpoint "livez") 300))))
+
+        (expect (proxy-ready-p (kubernetes--process-ledger)) :not :to-be-truthy)))))
 
 (describe "Ported process record"
   (describe "process waiting"
