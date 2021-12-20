@@ -140,4 +140,23 @@
         (setq ledger (kubernetes--process-ledger))
         (expect (get-proxy-process ledger) :to-equal :new-proxy-proc)))))
 
+(describe "Ported process record"
+  (describe "process waiting"
+    (describe "retrying"
+      (before-each
+        (spy-on 'sleep-for))
+      (it "retries by default"
+        (spy-on 'kubernetes--request-option :and-throw-error 'error)
+        (expect (wait-on-endpoint (kubernetes--ported-process-record) "foo")
+                :to-throw 'error)
+        (expect 'sleep-for :to-have-been-called-times 5)
+        (expect 'kubernetes--request-option :to-have-been-called-times 5))
+      (it "retries by specified count and wait time"
+        (spy-on 'kubernetes--request-option :and-throw-error 'error)
+        (expect (wait-on-endpoint (kubernetes--ported-process-record) "foo" 10 3)
+                :to-throw 'error)
+        (expect 'sleep-for :to-have-been-called-times 10)
+        (expect 'sleep-for :to-have-been-called-with 3)
+        (expect 'kubernetes--request-option :to-have-been-called-times 10)))))
+
 ;;; test-process.el ends here
