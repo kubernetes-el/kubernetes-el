@@ -12,11 +12,18 @@
   :group 'kubernetes
   :type 'integer)
 
+(define-widget 'kubernetes--positive-int 'lazy
+  "A positive integer."
+  :type '(restricted-sexp
+          :tag "Positive integer"
+          :match-alternatives
+          ((lambda (val)
+             (and (integerp val) (> val 0))))))
+
 (defcustom kubernetes-default-proxy-port 8001
   "Default port to run kubectl proxies on."
   :group 'kubernetes
-  :type '(choice (integer :tag "Explicit port")
-                 (const :tag "Random" 0))
+  :type 'kubernetes--positive-int
   :link '(url-link "https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#proxy"))
 
 (defcustom kubernetes-kubectl-executable "kubectl"
