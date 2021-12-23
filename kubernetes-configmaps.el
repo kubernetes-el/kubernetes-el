@@ -19,6 +19,20 @@
 (defconst kubernetes-configmaps--column-heading
   ["%-45s %6s %6s" "Name Data Age"])
 
+(kubernetes-ast-define-component configmap-data (configmap)
+  (-let [(&alist 'data data) configmap]
+    `(section (data-container t)
+      (header-with-count "Data:" ,data)
+      (indent
+       ,@(mapcar
+          (lambda (pair)
+            (cl-destructuring-bind (key . val) pair
+              `(key-value
+                16
+                ,(kubernetes-utils-ellipsize (symbol-name key) 12)
+                ,(kubernetes-utils-ellipsize-multiline val 18))))
+          data)))))
+
 (kubernetes-ast-define-component configmap-detail (configmap)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) configmap]
     `((section (namespace nil)
@@ -62,6 +76,7 @@
             (section (details nil)
                      (indent
                       (configmap-detail ,configmap)
+                      (configmap-data ,configmap)
                       (padding)))))
 
 (kubernetes-ast-define-component configmaps-list (state &optional hidden)
