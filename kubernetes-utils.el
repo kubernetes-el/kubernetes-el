@@ -74,7 +74,7 @@ initialized."
     s))
 
 (defun kubernetes-utils-ellipsize-multiline (s threshold)
-  "Ellipsize a string that may span mutliple lines."
+  "Ellipsize a string that may span multiple lines."
   (let* ((lines (split-string s "\n"))
          (ellipsized (kubernetes-utils-ellipsize (car lines) threshold))
          (single (< (length lines) 2)))
