@@ -30,7 +30,7 @@
               `(key-value
                 16
                 ,(kubernetes-utils-ellipsize (symbol-name key) 12)
-                ,(kubernetes-utils-ellipsize-multiline val 18))))
+                ,(kubernetes-utils-ellipsize val 18))))
           data)))))
 
 (kubernetes-ast-define-component configmap-detail (configmap)

@@ -69,18 +69,19 @@ initialized."
          value)))))
 
 (defun kubernetes-utils-ellipsize (s threshold)
-  (if (> (length s) threshold)
-      (concat (substring s 0 (1- threshold)) "...")
-    s))
+  "Ellipsize a string.
 
-(defun kubernetes-utils-ellipsize-multiline (s threshold)
-  "Ellipsize a string that may span multiple lines."
+If that string spans multiple lines, this is further indicated by
+a backward slash."
   (let* ((lines (split-string s "\n"))
-         (ellipsized (kubernetes-utils-ellipsize (car lines) threshold))
-         (single (< (length lines) 2)))
-    (if single
-        ellipsized
-      (concat ellipsized (propertize " \\" 'face 'kubernetes-dimmed)))))
+         (first-line (car lines))
+         (ellipsized
+          (if (> (length first-line) threshold)
+              (concat (substring first-line 0 (1- threshold)) "...")
+            first-line)))
+    (if (> (length lines) 1)
+        (concat ellipsized (propertize " \\" 'face 'kubernetes-dimmed))
+      ellipsized)))
 
 (defun kubernetes-utils-parse-utc-timestamp (timestamp)
   "Parse TIMESTAMP string from the API into the representation used by Emacs."
