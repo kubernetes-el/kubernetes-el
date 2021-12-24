@@ -16,6 +16,7 @@ versioning]].
      contexts, e.g. switching, renaming, etc. ([[https://github.com/kubernetes-el/kubernetes-el/pull/231][#231]])
    - Quitting via `Q` from the overview or any =kubernetes-mode= buffer now
      terminates all in-flight background processes. ([[https://github.com/kubernetes-el/kubernetes-el/pull/244][#244]])
+   - Added mapping for E to enable entity editing in evil mode.
 
 ** Refinements
 
