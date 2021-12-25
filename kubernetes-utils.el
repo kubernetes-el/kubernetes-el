@@ -69,7 +69,7 @@ initialized."
          value)))))
 
 (defun kubernetes-utils-ellipsize (s threshold)
-  "Ellipsize a string.
+  "Ellipsize a string S that's longer than THRESHOLD.
 
 If that string spans multiple lines, this is further indicated by
 a backward slash."
