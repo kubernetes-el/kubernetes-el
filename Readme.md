@@ -6,18 +6,21 @@
 [![MELPA](https://melpa.org/packages/kubernetes-badge.svg)](https://melpa.org/#/kubernetes)
 [![License GPL 3](https://img.shields.io/github/license/kubernetes-el/kubernetes-el.svg)][COPYING]
 
-A magit-style interface to the Kubernetes command-line client.
+Manage your Kubernetes clusters with Emacs.
 
 ![Screenshot of Kubernetes Emacs client](assets/screenshot.png)
 
-This project is in early stages, but the following are implemented:
+This project is in early stages, but the following is a subset of what's
+implemented:
 
-- Live-updating lists of kubernetes resources
+- Live-updating lists of Kubernetes resources
 - Viewing and deleting pods, configmaps and secrets
-- Editing various Kubernetes resources like deployment, configmap, etc.
-- Switching contexts and namespaces.
-- Showing logs and exec'ing into containers
-- Describing pods
+- Editing various core Kubernetes resource kinds, e.g. deployments and
+  configmaps;
+- Switching contexts and namespaces;
+- Fetching and following logs;
+- Exec'ing into containers;
+- Describing pods.
 
 ## Usage
 
