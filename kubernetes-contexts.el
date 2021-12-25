@@ -24,7 +24,8 @@
           (namespace-in-use (or current-namespace context-namespace "default")))
     `((nav-prop :display-config
                 (heading (key-value 12 "Context" ,context-name))
-                (key-value 12 "Cluster" ,cluster-name))
+                (key-value 12 "Cluster" ,cluster-name)
+                (proxy-status))
       (section (namespace nil)
                (nav-prop (:namespace-name ,namespace-in-use)
                          (key-value 12 "Namespace" ,(propertize namespace-in-use 'face 'kubernetes-namespace)))))))

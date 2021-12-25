@@ -45,7 +45,8 @@ PROPS is an alist of functions to inject.  It should normally be passed
 `kubernetes-props'.
 
 STATE is the current application state, used to apply additional
-global flags to kubectl.
+global flags to kubectl.  If FLAGS is set, this is ignored and
+can safely be set to nil.
 
 ON-SUCCESS is a function of one argument, called with the process' buffer.
 

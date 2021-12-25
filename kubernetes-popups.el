@@ -5,6 +5,7 @@
 (require 'magit-popup)
 (require 'transient)
 (require 'kubernetes-contexts)
+(require 'kubernetes-process)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 
@@ -26,6 +27,17 @@
 
 
 ;; Popup definitions
+
+(transient-define-prefix kubernetes-proxy ()
+  [["Connection"
+    ("=p" "Port" "--port=" read-string)]]
+  [["Actions"
+    ("p" "Enable/disable" kubernetes-proxy-toggle)]])
+
+(defun kubernetes-proxy-toggle (enable-disable args)
+  (interactive (list (not (proxy-active-p kubernetes--global-process-ledger))
+                     (transient-args 'kubernetes-proxy)))
+  (message "%s %s" enable-disable args))
 
 (transient-define-prefix kubernetes-dispatch ()
   [["Environment"

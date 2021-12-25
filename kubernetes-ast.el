@@ -9,6 +9,8 @@
 (require 'magit-section)
 (require 'subr-x)
 
+(require 'kubernetes-process)
+
 ;; Derived component support.
 
 (defconst kubernetes-ast--components (make-hash-table :test #'eq)
@@ -59,6 +61,15 @@ such in rendering ASTs." name)))
     (unless (string-blank-p (buffer-substring (line-beginning-position) (line-end-position)))
       (newline))
     `(copy-prop ,value (line ,str))))
+
+(kubernetes-ast-define-component proxy-status ()
+  (let ((proxy-record (oref kubernetes--global-process-ledger proxy)))
+    `(key-value
+      12
+      "Proxy"
+      ,(if proxy-record
+           (propertize "Enabled" 'face 'kubernetes-delete-mark)
+         (propertize "Disabled" 'face 'kubernetes-dimmed)))))
 
 (kubernetes-ast-define-component nav-prop (spec &rest inner-ast)
   `(propertize (kubernetes-nav ,spec)
