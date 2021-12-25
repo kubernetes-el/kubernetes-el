@@ -61,15 +61,29 @@ Configmaps (0)
 (defconst kubernetes-configmaps-test--sample-result
   (s-trim-left "
 
-Configmaps (2)
+Configmaps (3)
   Name                                            Data    Age
   example-configmap-1                                2    79d
     Namespace:  example-ns
     Created:    2017-01-13T00:24:47Z
+    Data: (2)
+      test.key1:      value
+      test.key2:      value
 
   example-configmap-2                                1   331d
     Namespace:  example-ns
     Created:    2016-05-06T02:54:41Z
+    Data: (1)
+      test.key2:      value
+
+  example-configmap-3                                4    21d
+    Namespace:  example-ns
+    Created:    2017-03-12T11:10:30Z
+    Data: (4)
+      test.trunca...: value
+      test.key2:      this value spans \\
+      test.key3:      longer value that...
+      test.key4:      longer value that... \\
 
 
 "))

@@ -34,6 +34,27 @@
         "selfLink": "/api/v1/namespaces/example-ns/configmaps/example-configmap2",
         "uid": "e13271c5-1335-11e6-b20e-12c05cb0b29d"
       }
+    },
+    {
+      "apiVersion": "v1",
+      "data": {
+        "test.truncated-key1": "value",
+        "test.key2": "this value spans\nmultiple lines\nin fact\four lines",
+        "test.key3": "longer value that will be truncated",
+        "test.key4": "longer value that also spans multiple lines\nwith double truncation"
+      },
+      "kind": "ConfigMap",
+      "metadata": {
+        "annotations": {
+          "kubectl.kubernetes.io/last-applied-configuration": "{}"
+        },
+        "creationTimestamp": "2017-03-12T11:10:30Z",
+        "name": "example-configmap-3",
+        "namespace": "example-ns",
+        "resourceVersion": "17475834",
+        "selfLink": "/api/v1/namespaces/example-ns/configmaps/example-configmap3",
+        "uid": "f33695e3-4d46-4984-b560-f737dbc45e46"
+      }
     }
   ],
   "kind": "List",

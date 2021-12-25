@@ -245,7 +245,7 @@ will be mocked."
       (should on-success-called)
       (should cleanup-callback-called))))
 
-(define-refresh-tests "configmaps" '("example-configmap-1" "example-configmap-2"))
+(define-refresh-tests "configmaps" '("example-configmap-1" "example-configmap-2" "example-configmap-3"))
 
 ;; Delete configmap
 
