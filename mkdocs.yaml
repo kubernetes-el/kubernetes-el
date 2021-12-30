@@ -1,0 +1,31 @@
+site_name: "kubernetes-el: Kubernetes client for Emacs"
+site_description: Kubernetes client for Emacs
+site_url: https://kubernetes-el.github.io/kubernetes-el
+
+repo_name: kubernetes-el/kubernetes-el
+repo_url: https://github.com/kubernetes-el/kubernetes-el
+
+nav:
+  - Home: index.md
+  - Contributing: contributing.md
+  - Changelog: CHANGELOG.md
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - toc.integrate
+    - navigation.top
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - tables
+  - meta
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
