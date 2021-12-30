@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - master
-      - 140/mkdocs
 
 jobs:
   build:
