@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - master
-      - jjin/docs
+      - 140/mkdocs
 
 jobs:
   build:
@@ -17,11 +17,4 @@ jobs:
           python-version: 3.x
 
       - run: pip install mkdocs-material
-
-      - name: CHANGELOG.org -> CHANGELOG.md
-        uses: docker://pandoc/core:2.9
-        with:
-          args: -s CHANGELOG.org -t gfm -o docs/CHANGELOG.md
-      - run: cp Readme.md docs/README.md
-
       - run: mkdocs gh-deploy --force
