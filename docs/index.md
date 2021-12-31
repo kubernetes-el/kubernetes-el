@@ -17,41 +17,6 @@ With `kubernetes-el`, you can:
 - Describe pods;
 - Much more.
 
-## Installation
-
-### MELPA
-
-This package is available on the [MELPA][] package repository. See the
-instructions there for how to configure Emacs to pull packages from MELPA.
-
-Once you've set that up, use your preferred method of configuring and installing
-packages. If you use [use-package][], the forms below will get you started.
-
-```elisp
-(use-package kubernetes
-  :ensure t
-  :commands (kubernetes-overview))
-
-;; If you want to pull in the Evil compatibility package.
-(use-package kubernetes-evil
-  :ensure t
-  :after kubernetes)
-```
-
-Otherwise, you can install the packages with `M-x package-install`.
-
-### Installing manually
-
-!!! note
-
-    Installing manually requires Emacs 25 and [Cask][].
-
-```bash
-git clone git@github.com:kubernetes-el/kubernetes-el.git
-cd kubernetes-el
-make && make install
-```
-
 ## Development Roadmap
 
 The project is actively being developed. 
@@ -105,7 +70,6 @@ any issues to us that you encounter with specific versions.
 
 Yes please! 😻 See [Contributing](contributing.md) for details.
 
-[Cask]: https://github.com/cask/cask
 [COPYING]: ./COPYING
 [Evil]: https://github.com/emacs-evil/evil
 [MELPA]: http://melpa.milkbox.net/#/getting-started

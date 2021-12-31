@@ -1,4 +1,8 @@
-# Changelog
+---
+title: Changelog
+hide:
+  - navigation
+---
 
 All notable changes to this project will be documented here.
 
