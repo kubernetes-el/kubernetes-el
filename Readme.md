@@ -8,62 +8,9 @@
 
 Manage your Kubernetes clusters with Emacs.
 
-![Screenshot of Kubernetes Emacs client](assets/screenshot.png)
+![Screenshot of Kubernetes Emacs client](./docs/assets/screenshot.png)
 
-This project is in early stages, but the following is a subset of what's
-implemented:
-
-- Live-updating lists of Kubernetes resources
-- Viewing and deleting pods, configmaps and secrets
-- Editing various core Kubernetes resource kinds, e.g. deployments and
-  configmaps;
-- Switching contexts and namespaces;
-- Fetching and following logs;
-- Exec'ing into containers;
-- Describing pods.
-
-## Usage
-
-Run `M-x kubernetes-overview` to get started.
-
-## Installation
-
-This package is available on the [MELPA][] package repository. See the
-instructions there for how to configure Emacs to pull packages from MELPA.
-
-Once you've set that up, use your preferred method of configuring and installing
-packages. If you use [use-package][], the forms below will get you started.
-
-```elisp
-(use-package kubernetes
-  :ensure t
-  :commands (kubernetes-overview))
-
-;; If you want to pull in the Evil compatibility package.
-(use-package kubernetes-evil
-  :ensure t
-  :after kubernetes)
-```
-
-Otherwise, you can install the packages with `M-x package-install`.
-
-### Manual Installation
-
-Requires Emacs 25 and [Cask][].
-
-```sh
-git clone git@github.com:kubernetes-el/kubernetes-el.git
-cd kubernetes-el
-make && make install
-```
-
-## Contributing
-
-Yes please! 😻 See [contributing.org][]
-
-## Compatibility Info
-
-This package supports and is tested against Emacs versions 25--27.
+See [docs/index.md](./docs/index.md) for details.
 
 ## Known Issues
 
