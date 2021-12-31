@@ -31,5 +31,4 @@ example one can use the following configuration:
 [COPYING]: ./COPYING
 [Evil]: https://github.com/emacs-evil/evil
 [contributing.org]: ./contributing.org
-[use-package]: https://github.com/jwiegley/use-package
 [issue #100]: https://github.com/kubernetes-el/kubernetes-el/issues/100
