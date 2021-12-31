@@ -94,3 +94,4 @@ give you a good overview. Otherwise, for more structured guidance, check out the
 [Tutorials](./tutorials) section.
 
 [Cask]: https://github.com/cask/cask
+[MELPA]: http://melpa.milkbox.net/#/getting-started
