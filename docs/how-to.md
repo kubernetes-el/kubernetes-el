@@ -12,24 +12,34 @@ This page provides "recipes" around how to perform common tasks with
 `kubernetes-el`. It can be considered an authoritive (if not necessarily
 comprehensive) overview of all that is possible with the package.
 
+## Interacting with `kubernetes-el`
+
+### Enter the package
+
+| Keybinding | Interactive function                        |
+|:-----------|:--------------------------------------------|
+| N/A        | `M-x kubernetes-kill-buffers-and-processes` |
+
+### Quit the package
+
+| Keybinding | Interactive function                        |
+|:-----------|:--------------------------------------------|
+| `Q`        | `M-x kubernetes-kill-buffers-and-processes` |
+    
+`kubernetes-kill-buffers-and-processes` (`Q`) will kill all buffers
+associated with `kubernetes-el`, as well as terminate all associated
+background processes, e.g. those for querying resources.
+
 ## Create
 
 ## Read
 
 ### Changing contexts
 
-=== "Keybinding"
+| Keybinding | Interactive function                  |
+|:-----------|:--------------------------------------|
+| `c c`      | `M-x kubernetes-contexts-use-context` |
 
-    ```
-    c c
-    ```
-    
-=== "Interactive function"
-
-    ```
-    M-x kubernetes-contexts-use-context
-    ```
-    
 ### Query CRDs
 
 !!! missing "Not Yet Implemented"
@@ -41,23 +51,15 @@ comprehensive) overview of all that is possible with the package.
     
 ### Changing namespace
 
-!!! info inline end
+| Keybinding | Interactive function           |
+|:-----------|:-------------------------------|
+| `c n`      | `M-x kubernetes-set-namespace` |
+
+!!! info
 
     It is currently not possible to view resources for multiple/all
     namespaces. See [issue #72][issue #72] for details.
 
-=== "Keybinding"
-
-    ```
-    c n
-    ```
-    
-=== "Interactive function"
-
-    ```
-    M-x kubernetes-set-namespace
-    ```
-    
 ## Update
 
 TODO.

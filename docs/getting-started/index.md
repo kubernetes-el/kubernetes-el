@@ -66,6 +66,10 @@ make && make install
 
 ## Start the package
 
+!!! warning
+
+    Before starting the package, make sure you have [`kubectl`][kubectl] installed.
+
 To start the package, use the entry-point command `kubernetes-overview`.
 
 ```
@@ -96,3 +100,4 @@ give you a good overview. Otherwise, for more structured guidance, check out the
 [Cask]: https://github.com/cask/cask
 [MELPA]: http://melpa.milkbox.net/#/getting-started
 [use-package]: https://github.com/jwiegley/use-package
+[kubectl]: https://kubernetes.io/docs/tasks/tools/#kubectl
