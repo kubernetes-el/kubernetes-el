@@ -16,9 +16,9 @@ comprehensive) overview of all that is possible with the package.
 
 ### Enter the package
 
-| Keybinding | Interactive function                        |
-|:-----------|:--------------------------------------------|
-| N/A        | `M-x kubernetes-kill-buffers-and-processes` |
+| Keybinding | Interactive function      |
+|:-----------|:--------------------------|
+| N/A        | `M-x kubernetes-overview` |
 
 ### Quit the package
 
