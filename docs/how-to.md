@@ -38,7 +38,7 @@ background processes, e.g. those for querying resources.
 
 | Keybinding | Interactive function                  |
 |:-----------|:--------------------------------------|
-| `c c`      | `M-x kubernetes-contexts-use-context` |
+| `C c`      | `M-x kubernetes-contexts-use-context` |
 
 ### Query CRDs
 
@@ -62,7 +62,11 @@ background processes, e.g. those for querying resources.
 
 ## Update
 
-TODO.
+### Renaming contexts
+
+| Keybinding | Interactive function         |
+|:-----------|:-----------------------------|
+| `C r`      | `kubernetes-contexts-rename` |
 
 ## Delete
 
