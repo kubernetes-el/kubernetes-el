@@ -1,4 +1,8 @@
-# kubernetes-el
+---
+title: kubernetes-el
+hide:
+  - navigation
+---
 
 Manage your Kubernetes clusters with Emacs.
 
