@@ -7,23 +7,34 @@ repo_url: https://github.com/kubernetes-el/kubernetes-el
 
 nav:
   - Home: index.md
-  - Contributing: contributing.md
+  - Getting Started: 
+      - getting-started/index.md
+      - Tutorials:
+        - getting-started/tutorials/index.md
+        - Feature Overview: getting-started/tutorials/0-feature-overview.md
+  - How-To: how-to.md
   - Changelog: CHANGELOG.md
+  - Contributing: contributing.md
 
 theme:
   name: material
   palette:
     scheme: slate
   features:
+    - navigation.indexes
     - navigation.tabs
     - navigation.tabs.sticky
-    - toc.integrate
     - navigation.top
 
 markdown_extensions:
+  - abbr
   - admonition
   - pymdownx.details
+  - pymdownx.snippets
   - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true 
+  - smarty
   - tables
   - meta
   - pymdownx.emoji:

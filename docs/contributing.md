@@ -1,5 +1,7 @@
 ---
 title: Contributing
+hide:
+  - navigation
 ---
 
 Hello there, intrepid contributor! Please see the [home page](index.md)

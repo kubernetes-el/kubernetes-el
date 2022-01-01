@@ -10,7 +10,7 @@ Manage your Kubernetes clusters with Emacs.
 
 ![Screenshot of Kubernetes Emacs client](./docs/assets/screenshot.png)
 
-See [docs/index.md](./docs/index.md) for details.
+For full documentation, please visit [kubernetes-el.github.io/kubernetes-el][].
 
 ## Known Issues
 
@@ -30,7 +30,6 @@ example one can use the following configuration:
 [Cask]: https://github.com/cask/cask
 [COPYING]: ./COPYING
 [Evil]: https://github.com/emacs-evil/evil
-[MELPA]: http://melpa.milkbox.net/#/getting-started
 [contributing.org]: ./contributing.org
-[use-package]: https://github.com/jwiegley/use-package
 [issue #100]: https://github.com/kubernetes-el/kubernetes-el/issues/100
+[kubernetes-el.github.io/kubernetes-el]: https://kubernetes-el.github.io/kubernetes-el
