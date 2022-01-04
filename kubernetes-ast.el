@@ -68,7 +68,7 @@ such in rendering ASTs." name)))
       12
       "Proxy"
       ,(if proxy-record
-           (propertize "Enabled" 'face 'kubernetes-delete-mark)
+           (propertize (base-url proxy-record) 'face 'kubernetes-delete-mark)
          (propertize "Disabled" 'face 'kubernetes-dimmed)))))
 
 (kubernetes-ast-define-component nav-prop (spec &rest inner-ast)

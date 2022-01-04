@@ -4,6 +4,7 @@
 
 (require 'dash)
 (require 'map)
+(require 'request)
 (require 'subr-x)
 
 (defun kubernetes--request-option (url &rest body)
@@ -35,6 +36,10 @@ This function injects :sync t into BODY."
     :initform nil
     :documentation "Port corresponding to the process."))
   "Record for a process with a corresponding network port.")
+
+(cl-defmethod base-url ((record kubernetes--ported-process-record))
+  "Get formatted URL for RECORD."
+  (format "http://%s:%s" (oref record address) (oref record port)))
 
 (cl-defmethod wait-on-endpoint ((record kubernetes--ported-process-record)
                                 endpoint
@@ -77,7 +82,7 @@ Retries RETRY-COUNT times, waiting RETRY-WAIT seconds in between
 
 (cl-defmethod proxy-active-p ((ledger kubernetes--process-ledger))
   "Determine if the proxy process in LEDGER is active or not."
-  (-if-let* ((proxy-record  (oref ledger proxy))
+  (-if-let* ((proxy-record (oref ledger proxy))
              (proxy-proc (oref proxy-record :process)))
       (process-live-p proxy-proc)))
 
@@ -118,30 +123,51 @@ either of form '(\"--foo=bar\") or '(\"--foo\" \"bar\").
 If there is already a process recorded in the ledger, return that
   process.  Otherwise, make a new one, record it in the ledger,
   and return it."
-  (-if-let* ((port-maybe (kubernetes--val-from-arg-list args 'port))
-             (port (and port-maybe (string-to-number port-maybe)))
-             (proxy-proc-record (oref ledger proxy))
-             (same-port-p (or (not port) (= port (oref proxy-proc-record port)))))
-      (oref proxy-proc-record process)
-    (let* ((port (or port kubernetes-default-proxy-port))
-           (proxy-output-buffer (generate-new-buffer
-                                 (format "*kubectl proxy<%s>*" port)))
-           ;; FIXME: This process needs to be set up such that it cleans itself
-           ;; up if the underlying process completes/dies
-           (proxy-proc (kubernetes-kubectl
-                        kubernetes-props
-                        (kubernetes-state)
-                        `("proxy" "--port" ,(format "%s" port))
-                        nil)))
-      (oset ledger proxy (kubernetes--ported-process-record
-                          :process proxy-proc
-                          :address "localhost"
-                          :port port))
-      (if (proxy-ready-p ledger)
-          proxy-proc
-        (kill-process proxy-proc)
-        (oset ledger proxy nil)
-        (error "Failed to start kubectl proxy")))))
+  ;; test spec:
+  ;; if record exists
+  ;;   if port specified AND ports don't match
+  ;;     destroy proxy process
+  ;;     create new process
+  ;;   else
+  ;;     return existing proxy
+  ;; else
+  ;;   when no port specified
+  ;;     set port to default
+  ;;   create new proxy process
+  (let ((mk-proxy (lambda (port)
+                    (let ((proxy-output-buffer
+                           (generate-new-buffer
+                            (format "*kubectl proxy<%s>" port)))
+                          (proxy-proc (kubernetes-kubectl
+                                       kubernetes-props
+                                       (kubernetes-state)
+                                       `("proxy" "--port" ,(format "%s" port))
+                                       nil)))
+                      (oset ledger proxy (kubernetes--ported-process-record
+                                          :process proxy-proc
+                                          :address "localhost"
+                                          :port port))
+                      ;; Give the proxy process some time to spin up, so that
+                      ;; curl doesn't return error code 7 which to request.el is
+                      ;; a "peculiar error"
+                      (sleep-for 2)
+
+                      (if (proxy-ready-p ledger)
+                          proxy-proc
+                        (kill-proxy-process ledger)
+                        (error "Failed to start kubectl proxy")))))
+        (port-maybe (kubernetes--val-from-arg-list args 'port)))
+    (-if-let ((proxy-proc-record (oref ledger proxy)))
+        (-if-let* ((port (string-to-number port-maybe))
+                   (same-port-p (= port (oref proxy-proc-record port))))
+            (when (not same-port-p)
+              (kill-proxy-process ledger)
+              (funcall mk-proxy port))
+          (oref proxy-proc-record process))
+      (let ((port (if (not port-maybe)
+                      kubernetes-default-proxy-port
+                    (string-to-number port-maybe))))
+        (funcall mk-proxy port)))))
 
 (cl-defmethod get-process-for-resource ((ledger kubernetes--process-ledger) resource)
   "Get polling process for RESOURCE in LEDGER."
