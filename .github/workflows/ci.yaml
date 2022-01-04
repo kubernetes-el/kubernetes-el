@@ -46,7 +46,7 @@ jobs:
 
       - name: Install
         id: install
-        continue-on-error: ${{ matrix.ignore_error || matrix.ignore_error == '' }}
+        continue-on-error: ${{ matrix.ignore_error != '' && matrix.ignore_error }}
         run: |
           emacs --version
           cask build --verbose
