@@ -44,8 +44,8 @@ This function injects :sync t into BODY."
 Retries RETRY-COUNT times, waiting RETRY-WAIT seconds in between
   each attempt.  Returns the response code.  If ENDPOINT fails to
   respond after retries, signals error."
-  (let ((_retry-count (or retry-count 5))
-        (_retry-wait (or retry-wait 2))
+  (let ((_retry-count (or retry-count 10))
+        (_retry-wait (or retry-wait 3))
         (retval))
     (while (and (not retval) (> _retry-count 0))
       (condition-case nil
@@ -90,21 +90,34 @@ Returns nil if the proxy has started, but either readyz or livez
     (and (= 200 (wait-on-endpoint proxy-record "readyz"))
          (= 200 (wait-on-endpoint proxy-record "livez")))))
 
+;; TODO: Unit tests
 (defun kubernetes--val-from-arg-list (arg-list key)
-  (when arg-list
-    (when-let ((key-index (-elem-index (format "--%s" (symbol-name key)) arg-list)))
-      (nth (+ 1 key-index) arg-list))))
+  "Find value for flag KEY in CLI-flag-style ARG-LIST.
 
-(setq jjin/proxy-proc (get-proxy-process kubernetes--global-process-ledger
-                                         '("--port" "1111")))
+Flag-value pairs in ARG-LIST can be either separate or paired with =,
+  e.g. '(\"--foo\" bar) or '(\"--foo=bar\").
+
+This function expects long flags only.
+
+If ARG-LIST is nil or KEY is not present in ARG-LIST, returns nil."
+  (when arg-list
+    (when-let* ((key-index (--find-index
+                            (s-prefix? (format "--%s" (symbol-name key)) it)
+                            arg-list))
+                (key-val (nth key-index arg-list)))
+      (if (s-contains? "=" key-val)
+          (second (s-split "=" key-val))
+        (nth (+ 1 key-index) arg-list)))))
 
 (cl-defmethod get-proxy-process ((ledger kubernetes--process-ledger) &optional args)
   "Get a proxy process from LEDGER with ARGS.
 
-ARGS is a list of flags and values to kubectl proxy.
+ARGS is a list of flags and values to kubectl proxy.  They can be
+either of form '(\"--foo=bar\") or '(\"--foo\" \"bar\").
 
-If there is already a process recorded in the ledger, return that process.
-  Otherwise, make a new one, record it in the ledger, and return it."
+If there is already a process recorded in the ledger, return that
+  process.  Otherwise, make a new one, record it in the ledger,
+  and return it."
   (-if-let* ((port-maybe (kubernetes--val-from-arg-list args 'port))
              (port (and port-maybe (string-to-number port-maybe)))
              (proxy-proc-record (oref ledger proxy))
@@ -134,6 +147,12 @@ If there is already a process recorded in the ledger, return that process.
   "Get polling process for RESOURCE in LEDGER."
   (map-elt (slot-value ledger 'poll-processes) resource))
 
+(cl-defmethod kill-proxy-process ((ledger kubernetes--process-ledger))
+  "Kill the proxy process at LEDGER if one is present and live."
+  (when (and (oref ledger proxy) (oref (oref ledger proxy) process))
+    (kubernetes-process-kill-quietly (oref (oref ledger proxy) process))
+    (oset ledger proxy nil)))
+
 (cl-defmethod poll-process-live-p ((ledger kubernetes--process-ledger) resource)
   "Determine if the polling process for RESOURCE in LEDGER is
 live or not."
@@ -144,6 +163,7 @@ live or not."
   "Release all processes in LEDGER.
 
 Returns the resources for which processes were released."
+  (kill-proxy-process ledger)
   (-flatten
    (map-apply (lambda (key value)
                 (release-process-for-resource ledger key)

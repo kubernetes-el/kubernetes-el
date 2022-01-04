@@ -35,9 +35,14 @@
     ("p" "Enable/disable" kubernetes-proxy-toggle)]])
 
 (defun kubernetes-proxy-toggle (enable-disable args)
+  "Enable/disable kubectl proxy according to ENABLE-DISABLE, using ARGS.
+
+If disabling the proxy, ARGS is ignored."
   (interactive (list (not (proxy-active-p kubernetes--global-process-ledger))
                      (transient-args 'kubernetes-proxy)))
-  (message "%s %s" enable-disable args))
+  (if enable-disable
+      (get-proxy-process kubernetes--global-process-ledger args)
+    (kill-proxy-process kubernetes--global-process-ledger)))
 
 (transient-define-prefix kubernetes-dispatch ()
   [["Environment"
