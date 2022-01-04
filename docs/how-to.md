@@ -74,6 +74,12 @@ TODO.
 
 ## Connectivity
 
+### Start/terminate a proxy server
+
+| Keybinding | Interactive function |
+|:-----------|:---------------------|
+| `P P`      | N/A                  |
+
 ### Port-forwarding
 
 !!! missing "Not Yet Implemented"

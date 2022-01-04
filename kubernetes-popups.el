@@ -32,7 +32,8 @@
   [["Connection"
     ("=p" "Port" "--port=" read-string)]]
   [["Actions"
-    ("p" "Enable/disable" kubernetes-proxy-toggle)]])
+    ;; TODO: Update this label dynamically based on current proxy status
+    ("P" "Enable/disable" kubernetes-proxy-toggle)]])
 
 (defun kubernetes-proxy-toggle (enable-disable args)
   "Enable/disable kubectl proxy according to ENABLE-DISABLE, using ARGS.

@@ -32,7 +32,11 @@ versioning][semver].
     (truncated) view of the data.
     ([#245](https://github.com/kubernetes-el/kubernetes-el/pull/245))
 -   Added mapping for E to enable entity editing in evil mode.
-    ([#246](https://github.com/kubernetes-el/kubernetes-el/pull/246))
+    ([#246](https://github.com/kubernetes-el/kubernetes-el/pull/246)).
+-   Added ability to enable and disable [`kubectl` proxies][kubectl proxy] via
+    `P P`, with status display in the overview.
+
+[kubectl proxy]: https://kubernetes.io/docs/tasks/extend-kubernetes/http-proxy-access-api/
 
 ### Refinements
 
