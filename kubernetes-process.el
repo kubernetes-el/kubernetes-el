@@ -90,17 +90,31 @@ Returns nil if the proxy has started, but either readyz or livez
     (and (= 200 (wait-on-endpoint proxy-record "readyz"))
          (= 200 (wait-on-endpoint proxy-record "livez")))))
 
-(cl-defmethod get-proxy-process ((ledger kubernetes--process-ledger) &optional port)
-  "Get a proxy process from LEDGER at PORT.
+(defun kubernetes--val-from-arg-list (arg-list key)
+  (when arg-list
+    (when-let ((key-index (-elem-index (format "--%s" (symbol-name key)) arg-list)))
+      (nth (+ 1 key-index) arg-list))))
+
+(setq jjin/proxy-proc (get-proxy-process kubernetes--global-process-ledger
+                                         '("--port" "1111")))
+
+(cl-defmethod get-proxy-process ((ledger kubernetes--process-ledger) &optional args)
+  "Get a proxy process from LEDGER with ARGS.
+
+ARGS is a list of flags and values to kubectl proxy.
 
 If there is already a process recorded in the ledger, return that process.
   Otherwise, make a new one, record it in the ledger, and return it."
-  (-if-let* ((proxy-proc-record (oref ledger proxy))
+  (-if-let* ((port-maybe (kubernetes--val-from-arg-list args 'port))
+             (port (and port-maybe (string-to-number port-maybe)))
+             (proxy-proc-record (oref ledger proxy))
              (same-port-p (or (not port) (= port (oref proxy-proc-record port)))))
       (oref proxy-proc-record process)
     (let* ((port (or port kubernetes-default-proxy-port))
            (proxy-output-buffer (generate-new-buffer
                                  (format "*kubectl proxy<%s>*" port)))
+           ;; FIXME: This process needs to be set up such that it cleans itself
+           ;; up if the underlying process completes/dies
            (proxy-proc (kubernetes-kubectl
                         kubernetes-props
                         (kubernetes-state)
@@ -125,6 +139,7 @@ If there is already a process recorded in the ledger, return that process.
 live or not."
   (process-live-p (get-process-for-resource ledger resource)))
 
+;; FIXME: This needs to release the proxy process as well
 (cl-defmethod release-all ((ledger kubernetes--process-ledger))
   "Release all processes in LEDGER.
 
