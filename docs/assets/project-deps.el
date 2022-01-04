@@ -19,8 +19,8 @@
                                              (-none? (lambda (s) (string-match-p s it))
                                                      project-deps--excluded-from-graph)))))
 
-(defconst project-deps--dot-file (f-join project-deps--repo-root "assets" "project-deps.dot"))
-(defconst project-deps--png-file (f-join project-deps--repo-root "assets" "project-deps.png"))
+(defconst project-deps--dot-file (f-join project-deps--repo-root "docs" "assets" "project-deps.dot"))
+(defconst project-deps--png-file (f-join project-deps--repo-root "docs" "assets" "project-deps.png"))
 
 (defconst project-deps--format-string (string-trim-left "
 digraph {

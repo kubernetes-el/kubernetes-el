@@ -4,8 +4,8 @@ EMACS_BATCH = ${CASK} exec ${EMACS} -Q --batch -l package
 
 REPO = github.com/kubernetes-el/kubernetes-el
 
-DEPS_SCRIPT = assets/project-deps.el
-DEPS_PNG = assets/project-deps.png
+DEPS_SCRIPT = docs/assets/project-deps.el
+DEPS_PNG = docs/assets/project-deps.png
 
 CASKDIR = .cask
 SRCS = $(wildcard *.el)
