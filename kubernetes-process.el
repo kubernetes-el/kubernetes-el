@@ -167,11 +167,9 @@ If there is already a process recorded in the ledger, return that
     (oset ledger proxy nil)))
 
 (cl-defmethod poll-process-live-p ((ledger kubernetes--process-ledger) resource)
-  "Determine if the polling process for RESOURCE in LEDGER is
-live or not."
+  "Determine liveness of polling process for RESOURCE in LEDGER."
   (process-live-p (get-process-for-resource ledger resource)))
 
-;; FIXME: This needs to release the proxy process as well
 (cl-defmethod release-all ((ledger kubernetes--process-ledger))
   "Release all processes in LEDGER.
 
