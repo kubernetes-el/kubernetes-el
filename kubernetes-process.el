@@ -123,51 +123,38 @@ either of form '(\"--foo=bar\") or '(\"--foo\" \"bar\").
 If there is already a process recorded in the ledger, return that
   process.  Otherwise, make a new one, record it in the ledger,
   and return it."
-  ;; test spec:
-  ;; if record exists
-  ;;   if port specified AND ports don't match
-  ;;     destroy proxy process
-  ;;     create new process
-  ;;   else
-  ;;     return existing proxy
-  ;; else
-  ;;   when no port specified
-  ;;     set port to default
-  ;;   create new proxy process
-  (let ((mk-proxy (lambda (port)
-                    (let ((proxy-output-buffer
-                           (generate-new-buffer
-                            (format "*kubectl proxy<%s>" port)))
-                          (proxy-proc (kubernetes-kubectl
-                                       kubernetes-props
-                                       (kubernetes-state)
-                                       `("proxy" "--port" ,(format "%s" port))
-                                       nil)))
-                      (oset ledger proxy (kubernetes--ported-process-record
-                                          :process proxy-proc
-                                          :address "localhost"
-                                          :port port))
-                      ;; Give the proxy process some time to spin up, so that
-                      ;; curl doesn't return error code 7 which to request.el is
-                      ;; a "peculiar error"
-                      (sleep-for 2)
+  (let* ((mk-proxy (lambda (port)
+                     (let ((proxy-output-buffer
+                            (generate-new-buffer
+                             (format "*kubectl proxy<%s>" port)))
+                           (proxy-proc (kubernetes-kubectl
+                                        kubernetes-props
+                                        (kubernetes-state)
+                                        `("proxy" "--port" ,(format "%s" port))
+                                        nil)))
+                       (oset ledger proxy (kubernetes--ported-process-record
+                                           :process proxy-proc
+                                           :address "localhost"
+                                           :port port))
+                       ;; Give the proxy process some time to spin up, so that
+                       ;; curl doesn't return error code 7 which to request.el is
+                       ;; a "peculiar error"
+                       (sleep-for 2)
 
-                      (if (proxy-ready-p ledger)
-                          proxy-proc
-                        (kill-proxy-process ledger)
-                        (error "Failed to start kubectl proxy")))))
-        (port-maybe (kubernetes--val-from-arg-list args 'port)))
-    (-if-let ((proxy-proc-record (oref ledger proxy)))
-        (-if-let* ((port (string-to-number port-maybe))
-                   (same-port-p (= port (oref proxy-proc-record port))))
-            (when (not same-port-p)
-              (kill-proxy-process ledger)
-              (funcall mk-proxy port))
-          (oref proxy-proc-record process))
-      (let ((port (if (not port-maybe)
-                      kubernetes-default-proxy-port
-                    (string-to-number port-maybe))))
-        (funcall mk-proxy port)))))
+                       (if (proxy-ready-p ledger)
+                           proxy-proc
+                         (kill-proxy-process ledger)
+                         (error "Failed to start kubectl proxy")))))
+         (port-maybe (kubernetes--val-from-arg-list args 'port))
+         (port-int-maybe (and port-maybe (string-to-number port-maybe))))
+    (-if-let (proxy-proc-record (oref ledger proxy))
+        (if (or (not port-int-maybe) (= port-int-maybe (oref proxy-proc-record port)))
+            (oref proxy-proc-record process)
+          (kill-proxy-process ledger)
+          (funcall mk-proxy port-int-maybe))
+      (funcall mk-proxy (if (not port-maybe)
+                            kubernetes-default-proxy-port
+                          (string-to-number port-maybe))))))
 
 (cl-defmethod get-process-for-resource ((ledger kubernetes--process-ledger) resource)
   "Get polling process for RESOURCE in LEDGER."

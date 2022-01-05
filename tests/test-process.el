@@ -31,6 +31,58 @@
                ((eq proc :fake-proc-live) t)
                ((eq proc :fake-proc-dead) nil)))))
 
+  (describe "get-proxy-process"
+    (before-each
+      (spy-on 'kill-proxy-process)
+      (spy-on 'proxy-ready-p :and-return-value t)
+      (spy-on 'kubernetes-kubectl :and-return-value :new-kubectl-proc)
+      (spy-on 'sleep-for))
+    (describe "when proxy present in ledger"
+      (describe "when port specified in arguments"
+        :var (args)
+        (describe "when argument port doesn't match port of existing proxy"
+          (before-each
+            (setq args '("--port=1111"))
+            (setq ledger (kubernetes--process-ledger
+                          :proxy (kubernetes--ported-process-record
+                                  :port 9999))))
+          (it "destroys and creates new proxy process"
+            (get-proxy-process ledger args)
+            (expect 'kill-proxy-process :to-have-been-called)
+            (expect (oref (oref ledger proxy) port) :to-equal 1111)))
+        (describe "when argument port matches port of existing proxy"
+          (before-each
+            (setq args '("--port=1111"))
+            (setq ledger (kubernetes--process-ledger
+                          :proxy (kubernetes--ported-process-record
+                                  :process :fake-process
+                                  :port 1111))))
+          (it "returns the existing proxy process"
+            (expect (get-proxy-process ledger args) :to-equal :fake-process)
+            (expect 'kill-proxy-process :not :to-have-been-called)
+            (expect (oref (oref ledger proxy) port) :to-equal 1111))))
+      (describe "when no port specified in arguments"
+        (before-each
+          (setq ledger (kubernetes--process-ledger
+                        :proxy (kubernetes--ported-process-record
+                                :process :fake-process))))
+        (it "returns the existing proxy process"
+          (expect (get-proxy-process ledger '("--something=else"))
+                  :to-equal
+                  :fake-process))))
+    (describe "when proxy not present in ledger"
+      (before-each
+        (setq ledger (kubernetes--process-ledger :proxy nil)))
+      (describe "when no port specified in arguments"
+        (it "creates new proxy process with default port"
+          (let ((kubernetes-default-proxy-port 1234))
+            (expect (get-proxy-process ledger nil) :to-equal :new-kubectl-proc)
+            (expect (oref (oref ledger proxy) port) :to-equal 1234))))
+      (describe "when port specified in arguments"
+        (it "creates new proxy process with that port"
+          (get-proxy-process ledger '("--port" "1111"))
+          (expect (oref (oref ledger proxy) port) :to-equal 1111)))))
+
   (describe "process lookup"
     (it "returns the process for resources"
       (setq ledger (kubernetes--process-ledger
