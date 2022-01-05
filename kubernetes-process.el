@@ -96,7 +96,6 @@ Returns nil if the proxy has started, but either readyz or livez
     (and (= 200 (wait-on-endpoint proxy-record "readyz"))
          (= 200 (wait-on-endpoint proxy-record "livez")))))
 
-;; TODO: Unit tests
 (defun kubernetes--val-from-arg-list (arg-list key)
   "Find value for flag KEY in CLI-flag-style ARG-LIST.
 
