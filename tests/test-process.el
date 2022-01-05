@@ -46,6 +46,35 @@
       (kill-proxy-process ledger)
       (expect 'kubernetes-process-kill-quietly :to-have-been-called)
       (expect (oref ledger proxy) :to-equal nil)))
+
+  (describe "proxy-active-p"
+    (it "returns nil if there is no record"
+      (expect (proxy-active-p (kubernetes--process-ledger :proxy nil))
+              :to-equal
+              nil))
+    (it "returns nil if record has nil process"
+      (expect (proxy-active-p (kubernetes--process-ledger
+                               :proxy (kubernetes--ported-process-record
+                                       :process nil)))
+              :to-equal
+              nil))
+    (it "returns nil if record's process is not alive"
+      (spy-on 'process-live-p :and-return-value nil)
+      (expect (proxy-active-p (kubernetes--process-ledger
+                               :proxy (kubernetes--ported-process-record
+                                       :process :fake-process)))
+              :to-equal
+              nil)
+      (expect 'process-live-p :to-have-been-called))
+    (it "returns t if record's process is alive"
+      (spy-on 'process-live-p :and-return-value t)
+      (expect (proxy-active-p (kubernetes--process-ledger
+                               :proxy (kubernetes--ported-process-record
+                                       :process :fake-process)))
+              :to-equal
+              t)
+      (expect 'process-live-p :to-have-been-called)))
+
   (describe "get-proxy-process"
     (before-each
       (spy-on 'kill-proxy-process)
