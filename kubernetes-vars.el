@@ -7,6 +7,11 @@
   :group 'tools
   :prefix "kubernetes-")
 
+(defcustom kubernetes-show-message t
+  "If non-nil, show log messages from `kubernetes-el'."
+  :group 'kubernetes
+  :type 'boolean)
+
 (defcustom kubernetes-kubectl-timeout-seconds 25
   "How long to wait for kubectl before giving up."
   :group 'kubernetes

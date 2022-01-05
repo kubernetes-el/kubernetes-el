@@ -8,6 +8,8 @@
 (require 's)
 (require 'subr-x)
 
+(require 'kubernetes-core)
+
 (defun kubernetes--request-option (url &rest body)
   "Send request to URL using BODY, returning error or the response.
 
@@ -142,7 +144,11 @@ If there is already a process recorded in the ledger, return that
                        (sleep-for 2)
 
                        (if (proxy-ready-p ledger)
-                           proxy-proc
+                           (progn
+                             (kubernetes--info "Started proxy server at %s" (base-url (oref ledger proxy)))
+                             (kubernetes--redraw-overview-buffer)
+                             proxy-proc)
+                         (kubernetes--error "Proxy server failed to start; terminating process")
                          (kill-proxy-process ledger)
                          (error "Failed to start kubectl proxy")))))
          (port-maybe (kubernetes--val-from-arg-list args 'port))
@@ -164,6 +170,8 @@ If there is already a process recorded in the ledger, return that
   "Kill the proxy process at LEDGER if one is present and live."
   (when (and (oref ledger proxy) (oref (oref ledger proxy) process))
     (kubernetes-process-kill-quietly (oref (oref ledger proxy) process))
+    (kubernetes--info "Terminated proxy server.")
+    (kubernetes--redraw-overview-buffer)
     (oset ledger proxy nil)))
 
 (cl-defmethod poll-process-live-p ((ledger kubernetes--process-ledger) resource)
