@@ -5,6 +5,7 @@
 (require 'dash)
 (require 'map)
 (require 'request)
+(require 's)
 (require 'subr-x)
 
 (defun kubernetes--request-option (url &rest body)
@@ -111,7 +112,7 @@ If ARG-LIST is nil or KEY is not present in ARG-LIST, returns nil."
                             arg-list))
                 (key-val (nth key-index arg-list)))
       (if (s-contains? "=" key-val)
-          (second (s-split "=" key-val))
+          (cadr (s-split "=" key-val))
         (nth (+ 1 key-index) arg-list)))))
 
 (cl-defmethod get-proxy-process ((ledger kubernetes--process-ledger) &optional args)
