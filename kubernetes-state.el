@@ -7,16 +7,11 @@
 (require 'seq)
 (require 'subr-x)
 
-(require 'kubernetes-vars)
+(require 'kubernetes-core)
 (require 'kubernetes-process)
 
 
 ;;; Main state
-
-(defvar kubernetes-state--current-state nil)
-
-(defun kubernetes-state ()
-  kubernetes-state--current-state)
 
 (defun kubernetes-state-update (action &optional args)
   (let ((updated (kubernetes-state-next kubernetes-state--current-state action args)))

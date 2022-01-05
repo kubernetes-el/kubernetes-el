@@ -235,6 +235,14 @@ LEDGER."
   "Kill all in-flight polling processes."
   (release-all kubernetes--global-process-ledger))
 
+(kubernetes-ast-define-component proxy-status ()
+  (let ((proxy-record (oref kubernetes--global-process-ledger proxy)))
+    `(key-value
+      12
+      "Proxy"
+      ,(if proxy-record
+           (propertize (base-url proxy-record) 'face 'kubernetes-delete-mark)
+         (propertize "Disabled" 'face 'kubernetes-dimmed)))))
 
 (provide 'kubernetes-process)
 

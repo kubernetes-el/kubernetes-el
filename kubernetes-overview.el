@@ -8,6 +8,7 @@
 (require 'kubernetes-commands)
 (require 'kubernetes-configmaps)
 (require 'kubernetes-contexts)
+(require 'kubernetes-core)
 (require 'kubernetes-deployments)
 (require 'kubernetes-statefulsets)
 (require 'kubernetes-nodes)
@@ -323,19 +324,7 @@
                            ,@(--map `(aggregated-deployment ,state ,it) deployments)))
                          (padding))))))
 
-(defun kubernetes-overview-render (state)
-  (let ((sections (kubernetes-state-overview-sections state)))
-    `(section (root nil)
-              ,(kubernetes-errors-render state)
-              ,(when (member 'context sections)
-                 (kubernetes-contexts-render state))
-              ,(mapcar (lambda (section)
-                         `(,(intern (if (eq section 'overview)
-                                        "aggregated-view"
-                                      (format "%s-list" section)))
-                           ,state))
-                       (remove 'context sections)))))
-
+(defalias 'kubernetes-overview-render 'kubernetes--overview-render)
 
 ;; Overview buffer.
 
