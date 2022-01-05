@@ -107,10 +107,10 @@ This function expects long flags only.
 
 If ARG-LIST is nil or KEY is not present in ARG-LIST, returns nil."
   (when arg-list
-    (when-let* ((key-index (--find-index
-                            (s-prefix? (format "--%s" (symbol-name key)) it)
-                            arg-list))
-                (key-val (nth key-index arg-list)))
+    (-when-let* ((key-index (--find-index
+                             (s-prefix? (format "--%s" (symbol-name key)) it)
+                             arg-list))
+                 (key-val (nth key-index arg-list)))
       (if (s-contains? "=" key-val)
           (cadr (s-split "=" key-val))
         (nth (+ 1 key-index) arg-list)))))
