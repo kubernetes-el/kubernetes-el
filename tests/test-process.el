@@ -31,6 +31,21 @@
                ((eq proc :fake-proc-live) t)
                ((eq proc :fake-proc-dead) nil)))))
 
+  (describe "kill-proxy-process"
+    (before-each
+      (spy-on 'kubernetes-process-kill-quietly))
+    (it "does nothing if no proxy process present"
+      (kill-proxy-process (kubernetes--process-ledger :proxy nil))
+      (expect 'kubernetes-process-kill-quietly :not :to-have-been-called))
+    (it "terminates and wipes existing proxy process"
+      (setq ledger (kubernetes--process-ledger
+                    :proxy (kubernetes--ported-process-record
+                            :process :existing-process
+                            :address "localhost"
+                            :port 9999)))
+      (kill-proxy-process ledger)
+      (expect 'kubernetes-process-kill-quietly :to-have-been-called)
+      (expect (oref ledger proxy) :to-equal nil)))
   (describe "get-proxy-process"
     (before-each
       (spy-on 'kill-proxy-process)
