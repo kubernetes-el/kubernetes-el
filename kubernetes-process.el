@@ -4,7 +4,68 @@
 
 (require 'dash)
 (require 'map)
+(require 'request)
 (require 'subr-x)
+
+(defun kubernetes--request-option (url &rest body)
+  "Send request to URL using BODY, returning error or the response.
+
+This function injects :sync t into BODY."
+  (-if-let* ((updated-plist
+              (plist-put (plist-put body :sync t)
+                         ;; Suppress the default request.el error handler; we
+                         ;; check the error later
+                         :error (cl-function (lambda (&rest args &key error-thrown &allow-other-keys)
+                                               nil))))
+             (resp (apply #'request url updated-plist))
+             (err (request-response-error-thrown resp)))
+      (signal 'error (list (cdr err)))
+    resp))
+
+(defclass kubernetes--ported-process-record ()
+  ((process
+    :initarg :process
+    :initform nil
+    :documentation "Process object.")
+   (address
+    :initarg :address
+    :initform nil
+    :documentation "Address corresponding to the process.")
+   (port
+    :initarg :port
+    :initform nil
+    :documentation "Port corresponding to the process."))
+  "Record for a process with a corresponding network port.")
+
+(cl-defmethod base-url ((record kubernetes--ported-process-record))
+  "Get formatted URL for RECORD."
+  (format "http://%s:%s" (oref record address) (oref record port)))
+
+(cl-defmethod wait-on-endpoint ((record kubernetes--ported-process-record)
+                                endpoint
+                                &optional retry-count retry-wait)
+  "Wait for RECORD process to respond without error at PORT and ENDPOINT.
+
+Retries RETRY-COUNT times, waiting RETRY-WAIT seconds in between
+  each attempt.  Returns the response code.  If ENDPOINT fails to
+  respond after retries, signals error."
+  (let ((_retry-count (or retry-count 10))
+        (_retry-wait (or retry-wait 3))
+        (retval))
+    (while (and (not retval) (> _retry-count 0))
+      (condition-case nil
+          (setq retval
+                (kubernetes--request-option (format "http://%s:%s/%s"
+                                                    (oref record address)
+                                                    (oref record port)
+                                                    endpoint)))
+        (error (progn
+                 (setq _retry-count (- _retry-count 1))
+                 (sleep-for _retry-wait)))))
+    (cond
+     ((not retval) (error "Process with port %s was not ready within accepted timeframe"
+                          (oref record port)))
+     (t (request-response-status-code retval)))))
 
 (defclass kubernetes--process-ledger ()
   ((poll-processes
