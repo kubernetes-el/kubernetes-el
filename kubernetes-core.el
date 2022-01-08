@@ -42,7 +42,6 @@
           ;; Force the section at point to highlight.
           (magit-section-update-highlight))))))
 
-;; Shamelessly copied from emacs-lsp/lsp-mode
 (defun kubernetes--message (format &rest args)
   "Call `message' with FORMAT and ARGS.
 
@@ -57,17 +56,14 @@ messages is already fixed in Emacs 27."
                                 (version< emacs-version "27.0"))))
       (apply #'message format args))))
 
-;; Shamelessly copied from emacs-lsp/lsp-mode
 (defun kubernetes--info (format &rest args)
   "Display kubernetes info message with FORMAT with ARGS."
   (kubernetes--message "%s :: %s" (propertize "k8s" 'face 'success) (apply #'format format args)))
 
-;; Shamelessly copied from emacs-lsp/lsp-mode
 (defun kubernetes--warn (format &rest args)
   "Display kubernetes warn message with FORMAT with ARGS."
   (kubernetes--message "%s :: %s" (propertize "k8s" 'face 'warning) (apply #'format format args)))
 
-;; Shamelessly copied from emacs-lsp/lsp-mode
 (defun kubernetes--error (format &rest args)
   "Display kubernetes error message with FORMAT with ARGS."
   (kubernetes--message "%s :: %s" (propertize "k8s" 'face 'error) (apply #'format format args)))
