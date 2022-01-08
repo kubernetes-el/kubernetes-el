@@ -15,7 +15,6 @@
 
 (autoload 'org-read-date "org")
 
-;; Shamelessly copied from emacs-lsp/lsp-mode
 (defalias 'kubernetes-utils-read-pod-name 'kubernetes-pods--read-name
   "Exporting `kubernetes-pods--read-name'")
 
