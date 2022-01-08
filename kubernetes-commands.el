@@ -4,6 +4,7 @@
 
 (require 'kubernetes-ast)
 (require 'kubernetes-contexts)
+(require 'kubernetes-core)
 (require 'kubernetes-modes)
 (require 'kubernetes-popups)
 (require 'kubernetes-props)
@@ -177,7 +178,7 @@ buffers."
       (when (or no-confirm (y-or-n-p (format "Kill %s Kubernetes buffer(s)? " num-buffers)))
         (dolist (buffer buffers)
           (kill-buffer buffer))
-        (message "Killed %s Kubernetes buffers." num-buffers)))))
+        (kubernetes--info "Killed %s Kubernetes buffers." num-buffers)))))
 
 (defun kubernetes-kill-buffers-and-processes (&optional no-confirm)
   "Kill all kubernetes-el buffers and all processes.
