@@ -71,7 +71,7 @@ polling according to `kubernetes-redraw-frequency' and
                                          (run-hooks 'kubernetes-poll-hook))))))
 
 (defun kubernetes--kill-timers ()
-  "Kill kubernetes-el global timers."
+  "Kill kubernetes.el global timers."
   (when-let (timer kubernetes--redraw-timer)
     (cancel-timer timer))
   (when-let (timer kubernetes--poll-timer)
