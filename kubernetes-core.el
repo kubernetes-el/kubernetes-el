@@ -2,6 +2,8 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 's)
+
 (require 'kubernetes-vars)
 
 (defun kubernetes--message (format &rest args)
@@ -29,6 +31,21 @@ messages is already fixed in Emacs 27."
 (defun kubernetes--error (format &rest args)
   "Display kubernetes error message with FORMAT with ARGS."
   (kubernetes--message "%s :: %s" (propertize "k8s" 'face 'error) (apply #'format format args)))
+
+(defun kubernetes--val-from-arg-list (arg-list key)
+  "Find value for flag KEY in CLI-flag-style ARG-LIST.
+Flag-value pairs in ARG-LIST can be either separate or paired with =,
+  e.g. '(\"--foo\" bar) or '(\"--foo=bar\").
+This function expects long flags only.
+If ARG-LIST is nil or KEY is not present in ARG-LIST, returns nil."
+  (when arg-list
+    (-when-let* ((key-index (--find-index
+                             (s-prefix? (format "--%s" (symbol-name key)) it)
+                             arg-list))
+                 (key-val (nth key-index arg-list)))
+      (if (s-contains? "=" key-val)
+          (cadr (s-split "=" key-val))
+        (nth (+ 1 key-index) arg-list)))))
 
 (provide 'kubernetes-core)
 ;;; kubernetes-core.el ends here
