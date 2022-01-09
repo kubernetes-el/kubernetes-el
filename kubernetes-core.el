@@ -58,7 +58,7 @@ This is used to regularly synchronise local state with Kubernetes.")
 This is used to display the current state.")
 
 (defun kubernetes--initialize-timers ()
-  "Initialize kubernetes-el global timers.
+  "Initialize kubernetes.el global timers.
 
 Global timers are responsible for overview redrawing and resource
 polling according to `kubernetes-redraw-frequency' and
