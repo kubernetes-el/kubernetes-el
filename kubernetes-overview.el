@@ -8,6 +8,7 @@
 (require 'kubernetes-commands)
 (require 'kubernetes-configmaps)
 (require 'kubernetes-contexts)
+(require 'kubernetes-core)
 (require 'kubernetes-deployments)
 (require 'kubernetes-statefulsets)
 (require 'kubernetes-nodes)
@@ -23,7 +24,6 @@
 (require 'kubernetes-popups)
 (require 'kubernetes-secrets)
 (require 'kubernetes-services)
-(require 'kubernetes-timers)
 
 (autoload 'kubernetes-utils-up-to-existing-dir "kubernetes-utils")
 
@@ -397,7 +397,7 @@
       (kubernetes-overview-mode)
       (add-hook 'kubernetes-redraw-hook #'kubernetes-overview--redraw-buffer)
       (add-hook 'kubernetes-poll-hook #'kubernetes-overview--poll)
-      (kubernetes-timers-initialize-timers)
+      (kubernetes--initialize-timers)
       (kubernetes-overview--redraw-buffer)
       (add-hook 'kill-buffer-hook (kubernetes-utils-make-cleanup-fn buf) nil t))
     buf))
