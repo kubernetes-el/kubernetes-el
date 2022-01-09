@@ -6,20 +6,6 @@
 
 (require 'kubernetes-process)
 
-(describe "kubernetes--val-from-arg-list"
-  (it "recognizes conjoined flag-value pairs"
-    (expect
-     (kubernetes--val-from-arg-list '("--foo=111") 'foo)
-     :to-equal
-     "111"))
-  (it "recognizes separated flag-value pairs"
-    (expect (kubernetes--val-from-arg-list '("--foo" "111") 'foo) :to-equal
-            "111"))
-  (it "returns nil on nil arg-list"
-    (expect (kubernetes--val-from-arg-list nil 'foo) :to-equal nil))
-  (it "returns nil on flag not found"
-    (expect (kubernetes--val-from-arg-list '("--foo" "bar") 'baz) :to-equal nil)))
-
 (describe "kubernetes--request-option"
   (describe "when request throws an error"
     (before-each
