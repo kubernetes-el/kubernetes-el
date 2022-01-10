@@ -7,10 +7,10 @@
 (require 'term)
 
 (require 'kubernetes-ast)
+(require 'kubernetes-core)
 (require 'kubernetes-kubectl)
 (require 'kubernetes-props)
 (require 'kubernetes-state)
-(require 'kubernetes-timers)
 (require 'kubernetes-vars)
 
 (autoload 'org-read-date "org")
@@ -111,7 +111,7 @@ buffer is killed."
           (with-current-buffer b
             (kubernetes-state-clear)))
         (kubernetes-process-kill-polling-processes)
-        (kubernetes-timers-kill-timers)))))
+        (kubernetes--kill-timers)))))
 
 (defun kubernetes-utils-term-buffer-start (bufname command args)
   ;; Kill existing process.

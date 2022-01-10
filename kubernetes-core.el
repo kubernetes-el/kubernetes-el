@@ -47,5 +47,37 @@ If ARG-LIST is nil or KEY is not present in ARG-LIST, returns nil."
           (cadr (s-split "=" key-val))
         (nth (+ 1 key-index) arg-list)))))
 
+(defvar kubernetes--poll-timer nil
+"Background timer used to poll for updates.
+
+This is used to regularly synchronise local state with Kubernetes.")
+
+(defvar kubernetes--redraw-timer nil
+  "Background timer used to trigger buffer redrawing.
+
+This is used to display the current state.")
+
+(defun kubernetes--initialize-timers ()
+  "Initialize kubernetes.el global timers.
+
+Global timers are responsible for overview redrawing and resource
+polling according to `kubernetes-redraw-frequency' and
+`kubernetes-poll-frequency', respectively."
+  (unless kubernetes--redraw-timer
+    (setq kubernetes--redraw-timer (run-with-timer 0 kubernetes-redraw-frequency #'kubernetes-state-trigger-redraw)))
+  (unless kubernetes--poll-timer
+    (setq kubernetes--poll-timer (run-with-timer 0 kubernetes-poll-frequency
+                                       (lambda ()
+                                         (run-hooks 'kubernetes-poll-hook))))))
+
+(defun kubernetes--kill-timers ()
+  "Kill kubernetes.el global timers."
+  (when-let (timer kubernetes--redraw-timer)
+    (cancel-timer timer))
+  (when-let (timer kubernetes--poll-timer)
+    (cancel-timer timer))
+  (setq kubernetes--redraw-timer nil)
+  (setq kubernetes--poll-timer nil))
+
 (provide 'kubernetes-core)
 ;;; kubernetes-core.el ends here
