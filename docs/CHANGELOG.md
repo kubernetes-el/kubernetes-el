@@ -33,6 +33,8 @@ versioning][semver].
     ([#245](https://github.com/kubernetes-el/kubernetes-el/pull/245))
 -   Added mapping for E to enable entity editing in evil mode.
     ([#246](https://github.com/kubernetes-el/kubernetes-el/pull/246))
+-   `kubernetes-overview` now returns an error if `kubectl` or
+    `kubernetes-kubectl-executable` is not found on PATH.
 
 ### Refinements
 

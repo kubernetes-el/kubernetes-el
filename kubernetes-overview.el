@@ -446,6 +446,8 @@ Type \\[kubernetes-refresh] to refresh the buffer.
 (defun kubernetes-overview ()
   "Display an overview buffer for Kubernetes."
   (interactive)
+  (unless (executable-find kubernetes-kubectl-executable)
+    (error "Executable for `kubectl' not found on PATH; make sure `kubernetes-kubectl-executable' is valid"))
   (let ((dir default-directory)
         (buf (kubernetes-overview--initialize-buffer)))
     (when kubernetes-default-overview-namespace
