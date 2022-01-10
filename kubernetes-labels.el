@@ -6,6 +6,7 @@
 
 (require 'kubernetes-ast)
 (require 'kubernetes-commands)
+(require 'kubernetes-core)
 (require 'kubernetes-loading-container)
 (require 'kubernetes-pods)
 (require 'kubernetes-state)
@@ -59,7 +60,7 @@
   (let ((buf (get-buffer-create kubernetes-label-query-buffer-name)))
     (with-current-buffer buf
       (kubernetes-mode)
-      (kubernetes-timers-initialize-timers)
+      (kubernetes--initialize-timers)
       (add-hook 'kubernetes-redraw-hook #'kubernetes-labels--redraw-buffer)
       (add-hook 'kill-buffer-hook (kubernetes-utils-make-cleanup-fn buf) nil t))
     buf))

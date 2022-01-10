@@ -24,7 +24,6 @@
 (require 'kubernetes-popups)
 (require 'kubernetes-secrets)
 (require 'kubernetes-services)
-(require 'kubernetes-timers)
 
 (autoload 'kubernetes-utils-up-to-existing-dir "kubernetes-utils")
 
@@ -370,7 +369,7 @@
       (kubernetes-overview-mode)
       (add-hook 'kubernetes-redraw-hook #'kubernetes-overview--redraw-buffer)
       (add-hook 'kubernetes-poll-hook #'kubernetes-overview--poll)
-      (kubernetes-timers-initialize-timers)
+      (kubernetes--initialize-timers)
       (kubernetes-overview--redraw-buffer)
       (add-hook 'kill-buffer-hook (kubernetes-utils-make-cleanup-fn buf) nil t))
     buf))
@@ -419,6 +418,8 @@ Type \\[kubernetes-refresh] to refresh the buffer.
 (defun kubernetes-overview ()
   "Display an overview buffer for Kubernetes."
   (interactive)
+  (unless (executable-find kubernetes-kubectl-executable)
+    (error "Executable for `kubectl' not found on PATH; make sure `kubernetes-kubectl-executable' is valid"))
   (let ((dir default-directory)
         (buf (kubernetes-overview--initialize-buffer)))
     (when kubernetes-default-overview-namespace
