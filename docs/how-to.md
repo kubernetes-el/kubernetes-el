@@ -74,6 +74,23 @@ TODO.
 
 ## Connectivity
 
+### Start/terminate a proxy server
+
+| Keybinding | Interactive function |
+|:-----------|:---------------------|
+| `P P`      | N/A                  |
+
+The overview buffer will update to reflect the new status of the proxy
+server.
+
+=== "Enabled"
+
+    ![Overview buffer showing an enabled proxy server](./img/proxy-enabled.png)
+    
+=== "Disabled"
+
+    ![Overview buffer showing a disabled proxy server](./img/proxy-disabled.png)
+
 ### Port-forwarding
 
 !!! missing "Not Yet Implemented"

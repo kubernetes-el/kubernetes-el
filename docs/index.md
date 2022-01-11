@@ -19,7 +19,10 @@ With `kubernetes-el`, you can:
 - Fetch and follow logs;
 - Exec into containers;
 - Describe pods;
+- Start and terminate a kubectl [proxy server][kubectl proxy];
 - Much more.
+
+[kubectl proxy]: https://kubernetes.io/docs/tasks/extend-kubernetes/http-proxy-access-api/
 
 ## Development Roadmap
 

@@ -323,39 +323,11 @@
                            ,@(--map `(aggregated-deployment ,state ,it) deployments)))
                          (padding))))))
 
-(defun kubernetes-overview-render (state)
-  (let ((sections (kubernetes-state-overview-sections state)))
-    `(section (root nil)
-              ,(kubernetes-errors-render state)
-              ,(when (member 'context sections)
-                 (kubernetes-contexts-render state))
-              ,(mapcar (lambda (section)
-                         `(,(intern (if (eq section 'overview)
-                                        "aggregated-view"
-                                      (format "%s-list" section)))
-                           ,state))
-                       (remove 'context sections)))))
-
+(defalias 'kubernetes-overview-render 'kubernetes--overview-render)
 
 ;; Overview buffer.
 
-(defun kubernetes-overview--redraw-buffer ()
-  "Redraws the main buffer using the current state."
-  (when-let (buf (get-buffer kubernetes-overview-buffer-name))
-    (with-current-buffer buf
-      ;; If a region is active, a redraw would affect the region in
-      ;; unpredictable ways.
-      (unless (region-active-p)
-        ;; Suppress redrawing if the overview is not selected. This prevents
-        ;; point from jumping around when a magit popup is open.
-        (when (member (selected-window) (get-buffer-window-list buf))
-          (kubernetes-utils--save-window-state
-           (let ((inhibit-read-only t))
-             (erase-buffer)
-             (kubernetes-ast-eval (kubernetes-overview-render (kubernetes-state)))))
-
-          ;; Force the section at point to highlight.
-          (magit-section-update-highlight))))))
+(defalias 'kubernetes-overview--redraw-buffer 'kubernetes--redraw-overview-buffer)
 
 (defun kubernetes-overview--poll (&optional verbose)
   (let ((sections (kubernetes-state-overview-sections (kubernetes-state))))

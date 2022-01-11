@@ -2,9 +2,48 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 'magit-section)
 (require 's)
 
+(require 'kubernetes-ast)
 (require 'kubernetes-vars)
+
+
+(defvar kubernetes-state--current-state nil)
+
+(defun kubernetes-state ()
+  kubernetes-state--current-state)
+
+(defun kubernetes--overview-render (state)
+  (let ((sections (kubernetes-state-overview-sections state)))
+    `(section (root nil)
+              ,(kubernetes-errors-render state)
+              ,(when (member 'context sections)
+                 (kubernetes-contexts-render state))
+              ,(mapcar (lambda (section)
+                         `(,(intern (if (eq section 'overview)
+                                        "aggregated-view"
+                                      (format "%s-list" section)))
+                           ,state))
+                       (remove 'context sections)))))
+
+(defun kubernetes--redraw-overview-buffer ()
+  "Redraws the main buffer using the current state."
+  (when-let (buf (get-buffer kubernetes-overview-buffer-name))
+    (with-current-buffer buf
+      ;; If a region is active, a redraw would affect the region in
+      ;; unpredictable ways.
+      (unless (region-active-p)
+        ;; Suppress redrawing if the overview is not selected. This prevents
+        ;; point from jumping around when a magit popup is open.
+        (when (member (selected-window) (get-buffer-window-list buf))
+          (kubernetes-utils--save-window-state
+           (let ((inhibit-read-only t))
+             (erase-buffer)
+             (kubernetes-ast-eval (kubernetes--overview-render (kubernetes-state)))))
+
+          ;; Force the section at point to highlight.
+          (magit-section-update-highlight))))))
 
 (defun kubernetes--message (format &rest args)
   "Call `message' with FORMAT and ARGS.

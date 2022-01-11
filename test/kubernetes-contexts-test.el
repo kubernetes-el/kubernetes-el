@@ -59,6 +59,7 @@ Namespace:  example-ns
 
 Context:    example-prod
 Cluster:    example-prod-cluster
+Proxy:      Disabled
 Namespace:  example-ns
 
 "))
@@ -111,6 +112,7 @@ Namespace:  example-ns
 
 Context:    example-prod
 Cluster:    example-prod-cluster
+Proxy:      Disabled
 Namespace:  default
 
 "))
