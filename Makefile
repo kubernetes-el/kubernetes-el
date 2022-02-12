@@ -61,7 +61,7 @@ install : $(TAR)
 
 test : $(SRCS)
 	${CASK} clean-elc
-	${CASK} exec ert-runner
+	${CASK} exec ert-runner --reporter ert+duration
 	${CASK} exec buttercup -L . tests/
 
 

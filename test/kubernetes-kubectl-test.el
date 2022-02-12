@@ -351,4 +351,30 @@ will be mocked."
                                          (setq on-error-called t))))
     (should on-error-called)))
 
+
+;; Set kubectl namespace for the current context
+
+(ert-deftest kubernetes-kubectl-test--set-namespace-for-current-context-succeeds ()
+  (let ((success-response "Updated current context ‘context0’ namespace to ‘ns0.’"))
+    (with-successful-response-at
+     (list "config" "set-context" "--current") success-response
+     (kubernetes-kubectl-config-set-current-namespace kubernetes-kubectl-test-props
+                                                      nil
+                                                      (lambda (buf)
+                                                        (let ((s (with-current-buffer buf (buffer-string))))
+                                                          (should (equal success-response s))))))))
+
+(ert-deftest kubernetes-kubectl-test--set-namespace-for-current-context-fails ()
+  (let ((on-error-called)
+        (error-response "Unable to set namespace `ns0' for current context `context0'."))
+    (with-error-response-at
+     (list "config" "set-context" "--current") error-response
+     (kubernetes-kubectl-config-set-current-namespace kubernetes-kubectl-test-props
+                                                      nil
+                                                      (lambda (_)
+                                                        (error "Unexpected success response"))
+                                                      (lambda (_)
+                                                        (setq on-error-called t))))
+    (should on-error-called)))
+
 ;;; kubernetes-kubectl-test.el ends here

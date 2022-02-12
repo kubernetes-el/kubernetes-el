@@ -54,6 +54,13 @@ versioning][semver].
     [#237](https://github.com/kubernetes-el/kubernetes-el/pull/237);
     [#238](https://github.com/kubernetes-el/kubernetes-el/pull/238).
 
+### Fixed
+
+-   Kubernetes tramp was not respecting set namespace as there are
+    limitations to what we can pass to `tramp-login-args`
+    ([#264](https://github.com/kubernetes-el/kubernetes-el/issues/264)).
+    The fix adds one more step to update the `kubectl` configuration.
+
 ## 0.17.0
 
 ### Changed
