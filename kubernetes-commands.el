@@ -433,6 +433,19 @@ STATE is the current application state."
   ;; State for the context and view should be preserved.
   (kubernetes-state-update-config (kubernetes-state--get state 'config))
   (kubernetes-state-update-current-namespace ns)
+  (kubernetes-kubectl-config-set-current-namespace kubernetes-props
+                                                   (kubernetes-state)
+                                                   (lambda (_)
+                                                     (message "Updated current context `%s' namespace to `%s.'"
+                                                              (alist-get 'name (kubernetes-state-current-context state))
+                                                              (kubernetes-state--get state 'current-namespace)))
+                                                   (lambda (buf)
+                                                     (let ((s (with-current-buffer buf (buffer-string))))
+                                                       (message "Unable to set namespace `%s' for current context `%s'."
+                                                                (kubernetes-state--get state 'current-namespace)
+                                                                (alist-get 'name (kubernetes-state-current-context state))
+                                                       (message s)))))
+
   (kubernetes-state-update-overview-sections (kubernetes-state-overview-sections state))
 
   (kubernetes-state-trigger-redraw))

@@ -279,6 +279,26 @@ ERROR-CB is called if an error occurred."
                         cb
                         error-cb)))
 
+(defun kubernetes-kubectl-config-set-current-namespace (props state cb &optional error-cb)
+  "Set the kubectl namespace and execute CB with kubectl output.
+
+PROPS is an alist of functions to inject.  It should normally be passed
+`kubernetes-props'.
+
+STATE is the application state.
+
+ERROR-CB is called if an error occurred."
+  ;; The kubectl command to be executed is the following:
+  ;; kubectl config set-context --current --namespace=<ns>
+  ;; But we are not passing value for option --namespace because this
+  ;; is set from the `state' by `kubernetes-kubectl' function. The new
+  ;; namespace is set in the state by `kubernetes-set-namespace'.
+  (kubernetes-kubectl props
+                      state
+                      (list "config" "set-context" "--current")
+                      cb
+                      error-cb))
+
 (provide 'kubernetes-kubectl)
 
 ;;; kubernetes-kubectl.el ends here
