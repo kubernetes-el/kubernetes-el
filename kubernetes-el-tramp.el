@@ -3,6 +3,9 @@
 ;; Copyright (C) 2021 Erik Hetzner
 
 ;; Author: Erik Hetzner <egh@e6h.org>
+;; Maintainer: Erik Hetzner <egh@e6h.org>
+;;     Noorul Islam K M <noorul@noorul.com>
+;;     Jonathan Jin <me@jonathanj.in>
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -36,24 +39,26 @@
             (list nil name))
           pods)))
 
-(defun kubernetes-tramp-find-file (pod-name state)
-  (interactive (let* ((state (kubernetes-state))
-                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state))))
-                 (list pod-name state)))
-  (let ((default-directory (format "/kubernetes:%s:" pod-name)))
-    (call-interactively #'find-file)))
+(defun get--tramp-file-path (pod-name &optional container-name)
+  "Return TRAMP file path formed using POD-NAME and/or CONTAINER-NAME."
+  (if container-name
+      (format "/kubernetes:%s@%s:" container-name pod-name)
+    (format "/kubernetes:%s:" pod-name)))
 
-(defun kubernetes-tramp-dired (pod-name container-name state)
+(defun kubernetes-tramp-find-file (pod-name container-name)
   (interactive (let* ((state (kubernetes-state))
                       (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state)))
-                      (pod (kubernetes-state-lookup-pod pod-name state))
-                      (potential-containers (kubernetes-get-pod-container-names pod))
-                      ;; FIXME: This should use transient state when appropriate
-                      (container-name (if (= 1 (length potential-containers))
-                                          (car potential-containers)
-                                        (kubernetes-utils-read-container-name))))
-                 (list pod-name container-name state)))
-  (dired (format "/kubernetes:%s@%s:" container-name pod-name)))
+                      (container-name (kubernetes--val-from-arg-list (transient-args 'kubernetes-file) 'container)))
+                 (list pod-name container-name)))
+  (let ((default-directory (get--tramp-file-path pod-name container-name)))
+    (call-interactively #'find-file)))
+
+(defun kubernetes-tramp-dired (pod-name container-name)
+  (interactive (let* ((state (kubernetes-state))
+                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state)))
+                      (container-name (kubernetes--val-from-arg-list (transient-args 'kubernetes-file) 'container)))
+                 (list pod-name container-name)))
+  (dired (get--tramp-file-path pod-name container-name)))
 
 (add-to-list 'tramp-methods
              `("kubernetes"
