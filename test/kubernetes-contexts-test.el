@@ -19,6 +19,7 @@
   (s-trim-left "
 
 Context:    Fetching...
+
 "))
 
 (ert-deftest kubernetes-contexts-test--empty-state ()
@@ -28,7 +29,7 @@ Context:    Fetching...
     (should (equal kubernetes-contexts-test--loading-result
                    (substring-no-properties (buffer-string))))
     (search-forward-regexp (rx "Context:" (+ space)))
-    (should (equal 'kubernetes-dimmed (get-text-property (point) 'face)))))
+    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face)))))
 
 
 ;; When there is a namespace set but no context, show the namespace with <none>
@@ -42,7 +43,7 @@ Namespace:  example-ns
 
 "))
 
-(ert-deftest kubernetes-contexts-test--empty-state ()
+(ert-deftest kubernetes-contexts-test--empty-state-with-namespace-set ()
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
                       (draw-context-section '((current-namespace . "example-ns")))))
