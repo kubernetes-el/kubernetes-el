@@ -97,7 +97,8 @@ STATE is the current application state"
   "Fetch or tail logs from Kubernetes resources."
   [["Flags"
     ("-a" "Print logs from all containers in this pod" "--all-containers=true")
-    ("-p" "Print logs for previous instances of the container in this pod" "-p")]
+    ("-p" "Print logs for previous instances of the container in this pod" "-p")
+    ("-t" "Include timestamps on each line in the log output" "--timestamps=true")]
    ["Options"
     ("=c" "Select container" "--container=" kubernetes-utils-read-container-name)
     ("=t" "Number of lines to display" "--tail=" transient-read-number-N+)]
