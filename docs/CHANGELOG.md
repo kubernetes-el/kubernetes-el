@@ -17,6 +17,8 @@ versioning][semver].
 
 ### Changed
 
+-   New flag `--timestamps` support added for logs command.
+    ([#270](https://github.com/kubernetes-el/kubernetes-el/pull/270))
 -   New overview for persistent volume claims.
     ([#223](https://github.com/kubernetes-el/kubernetes-el/pull/223))
 -   Added a new interactive function, `kubernetes-contexts-rename`, for
