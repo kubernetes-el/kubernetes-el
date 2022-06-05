@@ -75,7 +75,7 @@
   (kbd "L") #'kubernetes-labels)
 
 (evil-define-key 'motion kubernetes-overview-mode-map
-  (kbd "v") #'kubernetes-overview-set-sections)
+  (kbd "v") #'kubernetes-overview-select-views)
 
 (evil-define-key 'motion kubernetes-logs-mode-map
   (kbd "n") #'kubernetes-logs-forward-line
