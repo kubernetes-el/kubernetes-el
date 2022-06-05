@@ -203,6 +203,16 @@ window state."
     (setq dir (file-name-directory (directory-file-name dir))))
   dir)
 
+;; Useful for decoding (and copying) of kubernetes secrets
+(defun kubernetes-base64-decode-symbol-at-point (arg)
+  "Decode symbol at point (useful for displaying the contents of k8s secrets).
+
+With universal arg the value will also be copied (added to the kill-ring).
+"
+  (interactive "P")
+  (let ((result (print (base64-decode-string (thing-at-point 'symbol)))))
+    (when arg (kill-new result))))
+
 (provide 'kubernetes-utils)
 
 ;;; kubernetes-utils.el ends here
