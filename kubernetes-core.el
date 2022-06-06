@@ -7,6 +7,8 @@
 
 (require 'kubernetes-ast)
 (require 'kubernetes-vars)
+(eval-when-compile
+  (require 'kubernetes-utils))
 
 
 (defvar kubernetes-state--current-state nil)
