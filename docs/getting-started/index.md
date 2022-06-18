@@ -1,6 +1,4 @@
----
-title: Getting Started
----
+# Getting Started
 
 ## About This Package
 
@@ -19,7 +17,7 @@ typing. :smile:
     your Kubernetes journey, this documentation will do little to help you in
     that regard; we recommend looking elsewhere for general Kubernetes resources first.
 
-!!! tip 
+!!! tip
 
     `kubernetes-el` is secretly a wrapper around `kubectl`. Don't tell anyone.
 
@@ -76,15 +74,15 @@ To start the package, use the entry-point command `kubernetes-overview`.
 M-x kubernetes-overview
 ```
 
-!!! tip 
+!!! tip
 
     You could consider defining a more concise alias for this command. For
     example, the following would allow you to enter the package via `M-x k8s`.
 
     ```emacs-lisp
-    (fset 'k8s 'kubernetes-overview) 
+    (fset 'k8s 'kubernetes-overview)
     ```
-    
+
 You'll enter the Overview pane. This is where you'll likely spend the majority
 of your time with `kubernetes-el` and where the majority of your interactions
 will take place.

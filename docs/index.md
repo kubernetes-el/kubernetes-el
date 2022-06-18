@@ -1,8 +1,9 @@
 ---
-title: kubernetes-el
 hide:
   - navigation
 ---
+
+# kubernetes-el
 
 Manage your Kubernetes clusters with Emacs.
 
@@ -26,7 +27,7 @@ With `kubernetes-el`, you can:
 
 ## Development Roadmap
 
-The project is actively being developed. 
+The project is actively being developed.
 
 For known work items, see our [Issues page][issues].
 
@@ -59,7 +60,7 @@ processes, see our [Discussions page][discussions].
 
     More explicit guarantees around Kubernetes compatibility is in the
     works. See [discussion #236][] for details.
-    
+
 We have no guarantees around Kubernetes server compatibility currently. Please
 report any issues to us that you encounter with specific versions.
 
@@ -69,7 +70,7 @@ report any issues to us that you encounter with specific versions.
 
     More explicit guarantees around Kubernetes compatibility is in the
     works. See [discussion #236][] for details.
-    
+
 We have no guarantees around `kubectl` compatibility currently. Please report
 any issues to us that you encounter with specific versions.
 

@@ -26,7 +26,6 @@ example one can use the following configuration:
         kubernetes-redraw-frequency 3600))
 ```
 
-
 [Cask]: https://github.com/cask/cask
 [COPYING]: ./COPYING
 [Evil]: https://github.com/emacs-evil/evil

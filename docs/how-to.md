@@ -1,8 +1,9 @@
 ---
-title: How-To Guide
 hide:
   - navigation
 ---
+
+# How-To Guide
 
 !!! tip inline end
 
@@ -25,7 +26,7 @@ comprehensive) overview of all that is possible with the package.
 | Keybinding | Interactive function                        |
 |:-----------|:--------------------------------------------|
 | `Q`        | `M-x kubernetes-kill-buffers-and-processes` |
-    
+
 `kubernetes-kill-buffers-and-processes` (`Q`) will kill all buffers
 associated with `kubernetes-el`, as well as terminate all associated
 background processes, e.g. those for querying resources.
@@ -45,10 +46,10 @@ background processes, e.g. those for querying resources.
 !!! missing "Not Yet Implemented"
 
     `kubernetes-el` is currently set up to only work with core resource kinds,
-    and a limited subset of those at that. 
-    
+    and a limited subset of those at that.
+
     Work is currently in-progress to implement support for CRDs; see [issue #69][issue #69].
-    
+
 ### Changing namespace
 
 | Keybinding | Interactive function           |
@@ -86,7 +87,7 @@ server.
 === "Enabled"
 
     ![Overview buffer showing an enabled proxy server](./img/proxy-enabled.png)
-    
+
 === "Disabled"
 
     ![Overview buffer showing a disabled proxy server](./img/proxy-disabled.png)
