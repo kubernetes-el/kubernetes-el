@@ -96,17 +96,15 @@ using the
 routine, and the package implements a suite of accessor functions for
 reading and modifying specific parts of the state.
 
-The core of the state manager is the function
-[kubernetes-state-next](kubernetes-state.el::(defun%20kubernetes-state-next%20(state%20action%20&optional%20args)),
-which is a pure function taking the current state, an action to perform,
-and any arguments required for that action. Its return value is the next
-application state.
+The core of the state manager is the function `kubernetes-state-next`, which is
+a pure function taking the current state, an action to perform, and any
+arguments required for that action. Its return value is the next application
+state.
 
-In order to actually make changes to the state, the
-[kubernetes-state-update](kubernetes-state.el::(defun%20kubernetes-state-update%20(action%20&optional%20args))
-routine is used to evaluate an action and arguments and store the
-updated state. Other update routines are built around it, providing a
-more structured interface to the state manager.
+In order to actually make changes to the state, the `kubernetes-state-update`
+routine is used to evaluate an action and arguments and store the updated
+state. Other update routines are built around it, providing a more structured
+interface to the state manager.
 
 ### State Updates
 
@@ -117,13 +115,10 @@ opened, and repeats until that buffer is killed.
 The polling timer runs a hook, `kubernetes-poll-hook`, which in turn
 runs the polling routines that update the application state.
 
-The routine
-[kubernetes-state-trigger-redraw](kubernetes-state.el::(defun%20kubernetes-state-trigger-redraw%20())
-is the main routine used to trigger a redraw. It runs a hook,
-`kubernetes-redraw-hook`, which is used to signal that a redraw should
-occur. This routine is sometimes triggered manually, but is most often
-triggered by the redraw timer. See
-[kubernetes-timers](kubernetes-timers.el::(defvar%20kubernetes-timers--redraw-timer%20nil).
+The routine `kubernetes-state-trigger-redraw` is the main routine used to
+trigger a redraw. It runs a hook, `kubernetes-redraw-hook`, which is used to
+signal that a redraw should occur. This routine is sometimes triggered manually,
+but is most often triggered by the redraw timer. See `kubernetes-timers.el`.
 
 Aside from the polling processes, certain interactive commands, popup
 buffers and other UI elements can update parts of the state.
@@ -148,12 +143,10 @@ Rendering the overview buffer is divided into two stages:
 Future optimizations could include dirty checking to only update certain
 parts of the buffer.
 
-[kubernetes-ast.el](kubernetes-ast.el) contains the implementation of
-the interpreter for the AST. It implements the core forms and provides a
-macro,
-[kubernetes-ast-define-component](kubernetes-ast.el::(defmacro%20kubernetes-ast-define-component%20(name%20arglist%20&rest%20body)),
-that allows the interpreter to be extended with custom components
-implemented in terms of the AST.
+`kubernetes-ast.el` contains the implementation of the interpreter for the
+AST. It implements the core forms and provides a macro,
+`kubernetes-ast-define-component`, that allows the interpreter to be extended
+with custom components implemented in terms of the AST.
 
 ### Feature dependencies
 
