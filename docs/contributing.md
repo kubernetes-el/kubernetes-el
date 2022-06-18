@@ -1,8 +1,9 @@
 ---
-title: Contributing
 hide:
   - navigation
 ---
+
+# Contributing
 
 Hello there, intrepid contributor! Please see the [home page](index.md)
 for basic information about this project.
@@ -31,23 +32,30 @@ your `kubectl` version.
 
 For code changes, please follow the following guidelines.
 
--   Create a GitHub issue to track your work
--   Fork the repository on GitHub
--   Create a feature branch for your PR
--   Take the time to write good commit messages;
-    [here](https://www.freecodecamp.org/news/writing-good-commit-messages-a-practical-guide/)
-    are some practical tips.
--   Run tests and make sure they all pass before submitting your PR.
--   If your contribution is a user-facing change, please add an entry to
-    `CHANGELOG.org` in the `Unreleased` section detailing it. See
-    [keepachangelog.com](https://keepachangelog.com/en/1.0.0/) for an
-    overview of this process.
+- Create a GitHub issue to track your work
+- Fork the repository on GitHub
+- Create a feature branch for your PR
+- Take the time to write good commit messages;
+  [here](https://www.freecodecamp.org/news/writing-good-commit-messages-a-practical-guide/)
+  are some practical tips.
+- Run tests and make sure they all pass before submitting your PR.
+- If your contribution is a user-facing change, please add an entry to
+  `CHANGELOG.org` in the `Unreleased` section detailing it. See
+  [keepachangelog.com](https://keepachangelog.com/en/1.0.0/) for an
+  overview of this process.
 
 ## Development setup
 
-You will need some third-party tools to build this project. Emacs 25+,
-GNU Make and [Cask](https://github.com/cask/cask) are the most
-important.
+### Dependencies
+
+You will need:
+
+- GNU Make;
+- [Cask](https://github.com/cask/cask);
+- [pre-commit](https://pre-commit.com).
+
+All of these should be installable via Homebrew if you're developing on a Mac
+machine.
 
 You do not need `kubectl` installed in order to run tests, but you do
 need it to run the package inside Emacs.
@@ -77,11 +85,11 @@ should pass.
 Below are some general notes to help make sense of this beast. The main
 points to understand are:
 
--   This package implements a state manager
--   A timer is used to fetch information from Kubernetes and update the
-    state
--   Another timer is used to compile the state into a representation of
-    the overview buffer, which is then interpreted.
+- This package implements a state manager
+- A timer is used to fetch information from Kubernetes and update the
+  state
+- Another timer is used to compile the state into a representation of
+  the overview buffer, which is then interpreted.
 
 The separation of state from rendering improves testability, and makes
 it easier to develop view components that can be reused throughout the
@@ -136,9 +144,9 @@ how objects should be rendered in the UI.
 
 Rendering the overview buffer is divided into two stages:
 
-1.  Take the current state and compile an AST of the desired changes
-2.  Erase the buffer and interpret the AST to execute the changes
-    ([here](kubernetes.el::;;%20Render%20AST%20Interpreter)).
+1. Take the current state and compile an AST of the desired changes
+2. Erase the buffer and interpret the AST to execute the changes
+   ([here](kubernetes.el::;;%20Render%20AST%20Interpreter)).
 
 Future optimizations could include dirty checking to only update certain
 parts of the buffer.

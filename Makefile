@@ -59,6 +59,9 @@ install : $(TAR)
 		--eval "(package-install-file \"$(TAR)\")"
 
 
+test-static:
+	pre-commit run --all-files
+
 test : $(SRCS)
 	${CASK} clean-elc
 	${CASK} exec ert-runner --reporter ert+duration
