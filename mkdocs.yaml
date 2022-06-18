@@ -1,3 +1,5 @@
+strict: true
+
 site_name: "kubernetes-el: Kubernetes client for Emacs"
 site_description: Kubernetes client for Emacs
 site_url: https://kubernetes-el.github.io/kubernetes-el
