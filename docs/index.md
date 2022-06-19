@@ -5,9 +5,9 @@ hide:
 
 # kubernetes-el
 
-Manage your Kubernetes clusters with Emacs.
+![Screenshot of Kubernetes Emacs client](./assets/screenshot.png){ width=60%; height=60%; align="right" }
 
-![Screenshot of Kubernetes Emacs client](./assets/screenshot.png)
+Manage your Kubernetes clusters with Emacs.
 
 ## Feature Overview
 
@@ -25,7 +25,34 @@ With `kubernetes-el`, you can:
 
 [kubectl proxy]: https://kubernetes.io/docs/tasks/extend-kubernetes/http-proxy-access-api/
 
-## Development Roadmap
+## Getting Started
+
+=== "use-package"
+
+    ```emacs-lisp
+    (use-package kubernetes)
+    ```
+
+=== "straight.el"
+
+    ```emacs-lisp
+    (straight-use-package 'kubernetes)
+    ```
+
+    Or, if you use `straight.el` with `use-package`:
+
+    ```emacs-lisp
+    (use-package kubernetes
+      :straight t)
+    ```
+
+Once you've installed, head over to [Getting Started](./getting-started/index.md) for more details.
+
+## About these docs
+
+These docs are structured roughly around the [Diátaxis](https://diataxis.fr/) documentation framework.
+
+## Development roadmap
 
 The project is actively being developed.
 
@@ -34,49 +61,9 @@ For known work items, see our [Issues page][issues].
 For discussions about higher-level direction of the project and development
 processes, see our [Discussions page][discussions].
 
-## Compatibility
-
-### Key
-
-| Definition                                   | Icon                       |
-|----------------------------------------------|:--------------------------:|
-| Fully supported                              | :octicons-check-circle-24: |
-| Tested against, but not officially supported | :octicons-circle-24:       |
-| Unsupported                                  | :octicons-x-circle-24:     |
-
-### Emacs
-
-| Version | Compatibility              |
-|:--------|:---------------------------|
-| 25.x    | :octicons-check-circle-24: |
-| 26.x    | :octicons-check-circle-24: |
-| 27.x    | :octicons-check-circle-24: |
-| 28.x    | :octicons-check-circle-24: |
-| 29.x    | :octicons-circle-24:       |
-
-### Kubernetes Servers
-
-!!! note
-
-    More explicit guarantees around Kubernetes compatibility is in the
-    works. See [discussion #236][] for details.
-
-We have no guarantees around Kubernetes server compatibility currently. Please
-report any issues to us that you encounter with specific versions.
-
-### `kubectl`
-
-!!! note
-
-    More explicit guarantees around Kubernetes compatibility is in the
-    works. See [discussion #236][] for details.
-
-We have no guarantees around `kubectl` compatibility currently. Please report
-any issues to us that you encounter with specific versions.
-
 ## Contributing
 
-Yes please! 😻 See [Contributing](contributing.md) for details.
+Yes please! 😻 See [Contributing](contributing/index.md) for details.
 
 [COPYING]: ./COPYING
 [Evil]: https://github.com/emacs-evil/evil
