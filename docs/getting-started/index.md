@@ -35,18 +35,51 @@ This package is available on the [MELPA][] package repository. See the
 instructions there for how to configure Emacs to pull packages from MELPA.
 
 Once you've set that up, use your preferred method of configuring and installing
-packages. If you use [use-package][], the forms below will get you started.
+packages.
 
-```elisp
-(use-package kubernetes
-  :ensure t
-  :commands (kubernetes-overview))
+=== "use-package"
 
-;; If you want to pull in the Evil compatibility package.
-(use-package kubernetes-evil
-  :ensure t
-  :after kubernetes)
-```
+    ```emacs-lisp
+    (use-package kubernetes)
+    ```
+
+=== "straight.el"
+
+    ```emacs-lisp
+    (straight-use-package 'kubernetes)
+    ```
+
+    Or, if you use `straight.el` with `use-package`:
+
+    ```emacs-lisp
+    (use-package kubernetes
+      :straight t)
+    ```
+
+If you'd like to pull in the Evil compatibility package, install the `kubernetes-evil` package as well.
+
+=== "use-package"
+
+    ```elisp
+    (use-package kubernetes-evil
+      :ensure t
+      :after kubernetes)
+    ```
+
+=== "straight.el"
+
+    ```emacs-lisp
+    (straight-use-package 'kubernetes)
+    (straight-use-package 'kubernetes-evil)
+    ```
+
+    Or, if you use `straight.el` with `use-package`:
+
+    ```emacs-lisp
+    (use-package kubernetes-evil
+      :straight t
+      :after kubernetes)
+    ```
 
 Otherwise, you can install the packages with `M-x package-install`.
 
