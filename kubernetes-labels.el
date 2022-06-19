@@ -47,7 +47,7 @@
       ;; Only redraw the buffer if it is in the selected window.
       (when (equal (get-buffer-window buf)
                    (selected-window))
-        (kubernetes-utils--save-window-state
+        (kubernetes--save-window-state
          (let ((inhibit-read-only t))
            (erase-buffer)
            (kubernetes-ast-eval `(labelled-pods-list ,(kubernetes-state)))))

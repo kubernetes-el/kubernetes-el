@@ -182,22 +182,6 @@ buffer is killed."
 (defun kubernetes-utils-overview-buffer-selected-p ()
   (equal (current-buffer) (get-buffer kubernetes-overview-buffer-name)))
 
-(defmacro kubernetes-utils--save-window-state (&rest body)
-  "Restore window state after executing BODY.
-
-This is useful if the buffer is erased and repopulated in BODY,
-in which case `save-excursion' is insufficient to restore the
-window state."
-  `(let ((pos (point))
-         (col (current-column))
-         (window-start-line (window-start))
-         (inhibit-redisplay t))
-     (save-excursion
-       ,@body)
-     (goto-char pos)
-     (move-to-column col)
-     (set-window-start (selected-window) window-start-line)))
-
 (defun kubernetes-utils-up-to-existing-dir (dir)
   (while (not (file-directory-p dir))
     (setq dir (file-name-directory (directory-file-name dir))))

@@ -62,6 +62,8 @@ versioning][semver].
   limitations to what we can pass to `tramp-login-args`
   ([#264](https://github.com/kubernetes-el/kubernetes-el/issues/264)).
   The fix adds one more step to update the `kubectl` configuration.
+- Fixed an implicit dependency cycle between `kubernetes-core.el` and
+  `kubernetes-utils.el`. ([#278])
 
 ## 0.17.0
 
@@ -97,3 +99,5 @@ versioning][semver].
   [#193](https://github.com/kubernetes-el/kubernetes-el/pull/193),
   [#198](https://github.com/kubernetes-el/kubernetes-el/pull/198),
   etc.)
+
+[#278]: https://github.com/kubernetes-el/kubernetes-el/pull/278
