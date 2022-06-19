@@ -58,12 +58,11 @@ versioning][semver].
 
 ### Fixed
 
-- Kubernetes tramp was not respecting set namespace as there are
-  limitations to what we can pass to `tramp-login-args`
-  ([#264](https://github.com/kubernetes-el/kubernetes-el/issues/264)).
-  The fix adds one more step to update the `kubectl` configuration.
-- Fixed an implicit dependency cycle between `kubernetes-core.el` and
-  `kubernetes-utils.el`. ([#278])
+- Kubernetes tramp was not respecting set namespace as there are limitations to what we can pass to `tramp-login-args`
+  ([#264](https://github.com/kubernetes-el/kubernetes-el/issues/264)).  The fix adds one more step to update the
+  `kubectl` configuration.
+- Fixed an implicit dependency cycle between `kubernetes-core.el` and `kubernetes-utils.el`. ([#278])
+- Fixed an issue where loading the package reports that `kubernetes-tramp-find-file` is not defined.
 
 ## 0.17.0
 

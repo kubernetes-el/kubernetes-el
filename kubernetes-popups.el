@@ -8,6 +8,7 @@
 (require 'kubernetes-process)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
+(require 'kubernetes-el-tramp)
 
 (defgroup kubernetes nil
   "Emacs porcelain for Kubernetes."
