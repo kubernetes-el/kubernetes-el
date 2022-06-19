@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 's)
 
 (require 'kubernetes-ast)
 (require 'kubernetes-loading-container)
@@ -37,20 +38,11 @@
            ingress)
           (line `(line ,(concat
                          ;; Name
-                         (format "%-45s " (kubernetes-utils-ellipsize name 43))
-
+                         (format "%-45s " (s-truncate 43 name))
                          ;; Hosts
-                         (format "%-25s "
-                                 (kubernetes-utils-ellipsize
-                                  (mapconcat (-partial 'alist-get 'host) ingress-rules ", ")
-                                  23))
-
+                         (format "%-25s " (s-truncate 23 (mapconcat (-partial 'alist-get 'host) ingress-rules ", ")))
                          ;; Address
-                         (format "%20s "
-                                 (kubernetes-utils-ellipsize
-                                  (mapconcat (-partial 'alist-get 'ip) ingress-lb-list ", ")
-                                  18))
-
+                         (format "%20s " (s-truncate 18 (mapconcat (-partial 'alist-get 'ip) ingress-lb-list ", ")))
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
                            (propertize (format "%10s" (kubernetes-utils-time-diff-string start current-time))

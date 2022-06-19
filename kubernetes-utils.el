@@ -68,21 +68,6 @@ initialized."
         (`(:pod-name ,value)
          value)))))
 
-(defun kubernetes-utils-ellipsize (s threshold)
-  "Ellipsize a string S that's longer than THRESHOLD.
-
-If that string spans multiple lines, this is further indicated by
-a backward slash."
-  (let* ((lines (split-string s "\n"))
-         (first-line (car lines))
-         (ellipsized
-          (if (> (length first-line) threshold)
-              (concat (substring first-line 0 (1- threshold)) "...")
-            first-line)))
-    (if (> (length lines) 1)
-        (concat ellipsized (propertize " \\" 'face 'kubernetes-dimmed))
-      ellipsized)))
-
 (defun kubernetes-utils-parse-utc-timestamp (timestamp)
   "Parse TIMESTAMP string from the API into the representation used by Emacs."
   (let ((parsed (parse-time-string (replace-regexp-in-string "Z" "" (replace-regexp-in-string "T" " " timestamp)))))

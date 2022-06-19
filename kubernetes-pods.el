@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 's)
 (require 'seq)
 
 (require 'kubernetes-ast)
@@ -68,10 +69,10 @@
           (str
            (concat
             ;; Name
-            (format (pop list-fmt) (kubernetes-utils-ellipsize name 43))
+            (format (pop list-fmt) (s-truncate 43 name))
             " "
             ;; Status
-            (let ((s (format (pop list-fmt) (kubernetes-utils-ellipsize pod-state 10))))
+            (let ((s (format (pop list-fmt) (s-truncate 10 pod-state))))
               (if (equal pod-state "Running") (propertize s 'face 'kubernetes-dimmed) s))
             " "
             ;; Ready

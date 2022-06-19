@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 's)
 
 (require 'kubernetes-ast)
 (require 'kubernetes-loading-container)
@@ -38,7 +39,7 @@
           (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 21))
+                         (format (pop list-fmt) (s-truncate 21 name))
                          " "
                          ;; Phase
                          (propertize (format (pop list-fmt) phase) 'face 'kubernetes-dimmed)
@@ -47,7 +48,7 @@
                          (propertize (format (pop list-fmt) capacity) 'face 'kubernetes-dimmed)
                          " "
                          ;; Storage Class
-                         (propertize (format (pop list-fmt) (kubernetes-utils-ellipsize storage-class 12)) 'face 'kubernetes-dimmed)
+                         (propertize (format (pop list-fmt) (s-truncate 12 storage-class)) 'face 'kubernetes-dimmed)
                          " "
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))

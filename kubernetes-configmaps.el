@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 's)
 
 (require 'kubernetes-ast)
 (require 'kubernetes-loading-container)
@@ -29,8 +30,8 @@
             (cl-destructuring-bind (key . val) pair
               `(key-value
                 16
-                ,(kubernetes-utils-ellipsize (symbol-name key) 12)
-                ,(kubernetes-utils-ellipsize val 18))))
+                ,(s-truncate 12 (symbol-name key))
+                ,(s-truncate 18 val))))
           data)))))
 
 (kubernetes-ast-define-component configmap-detail (configmap)
@@ -51,7 +52,7 @@
           (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 43))
+                         (format (pop list-fmt) (s-truncate 43 name))
                          " "
                          ;; Data
                          (propertize (format (pop list-fmt) (seq-length data)) 'face 'kubernetes-dimmed)

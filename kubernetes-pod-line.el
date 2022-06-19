@@ -2,6 +2,8 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 's)
+
 (require 'kubernetes-ast)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
@@ -32,7 +34,7 @@
             (t
              'warning)))
           (line
-           (concat (propertize (format "%-11s " (kubernetes-utils-ellipsize pod-state 11)) 'face state-face)
+           (concat (propertize (format "%-11s " (s-truncate 11 pod-state)) 'face state-face)
                    name)))
 
     `(section (,(intern (kubernetes-state-resource-name pod)) t)

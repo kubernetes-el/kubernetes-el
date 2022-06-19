@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 's)
 
 (require 'kubernetes-ast)
 (require 'kubernetes-loading-container)
@@ -35,7 +36,7 @@
           (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 43))
+                         (format (pop list-fmt) (s-truncate 43 name))
                          " "
                          ;; Data
                          (propertize (format (pop list-fmt) (seq-length data)) 'face 'kubernetes-dimmed)

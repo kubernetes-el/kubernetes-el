@@ -4,6 +4,7 @@
 
 (require 'dash)
 (require 'seq)
+(require 's)
 
 (require 'kubernetes-ast)
 (require 'kubernetes-loading-container)
@@ -50,10 +51,10 @@
           (str
            (concat
             ;; Name
-            (format (pop list-fmt) (kubernetes-utils-ellipsize name 43))
+            (format (pop list-fmt) (s-truncate 43 name))
             " "
             ;; Status
-            (let ((s (kubernetes-utils-ellipsize type 10)))
+            (let ((s (s-truncate 10 type)))
               (format (pop list-fmt)
                       (if (string-match-p "running" type)
                           (propertize s 'face 'kubernetes-dimmed)
@@ -61,7 +62,8 @@
             " "
             ;; Roles
             (format (pop list-fmt)
-                    (kubernetes-utils-ellipsize
+                    (s-truncate
+                     8
                      (or
                       (seq-some (lambda (x)
                                   (when (string-match
@@ -69,8 +71,7 @@
                                          x)
                                     (match-string 1 x)))
                                 (mapcar (lambda (x) (symbol-name (car x))) labels))
-                      "<none>")
-                     8))
+                      "<none>")))
             " "
             ;; Age
             (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp creationTimestamp))))
@@ -79,7 +80,7 @@
             " "
             ;; Version
             (format (pop list-fmt)
-                    (propertize (kubernetes-utils-ellipsize kubeProxyVersion 8)
+                    (propertize (s-truncate 8 kubeProxyVersion)
                                 'face 'kubernetes-dimmed))))
           (str (cond
                 ((string-match-p "ready" type) str)
