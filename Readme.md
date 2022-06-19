@@ -12,6 +12,10 @@ Manage your Kubernetes clusters with Emacs.
 
 For full documentation, please visit [kubernetes-el.github.io/kubernetes-el][].
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=kubernetes-el/kubernetes-el&type=Date)](https://star-history.com/#kubernetes-el/kubernetes-el&Date)
+
 ## Known Issues
 
 Disabling automatic refresh helped many to solve [issue #100][]. For
