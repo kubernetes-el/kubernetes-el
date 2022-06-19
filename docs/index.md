@@ -51,8 +51,8 @@ processes, see our [Discussions page][discussions].
 | 25.x    | :octicons-check-circle-24: |
 | 26.x    | :octicons-check-circle-24: |
 | 27.x    | :octicons-check-circle-24: |
-| 28.x    | :octicons-circle-24:       |
-| 29.x    | :octicons-x-circle-24:     |
+| 28.x    | :octicons-check-circle-24: |
+| 29.x    | :octicons-circle-24:       |
 
 ### Kubernetes Servers
 
