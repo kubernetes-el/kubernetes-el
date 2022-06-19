@@ -1,4 +1,9 @@
 repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v3.3.0
+  hooks:
+  - id: check-merge-conflict
+  - id: trailing-whitespace
 - repo: https://github.com/markdownlint/markdownlint
   rev: e31711c0db57df9b350fbaeaae6de745972f3e66
   hooks:

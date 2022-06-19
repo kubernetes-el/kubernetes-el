@@ -63,11 +63,17 @@ need it to run the package inside Emacs.
 If you want to contribute code changes, you should fork the repository.
 Otherwise clone the main repo.
 
-    # If forked
-    git clone "git@github.com:<username>/kubernetes-el.git"
+=== "Forked"
 
-    # Otherwise
+    ```bash
+    git clone "git@github.com:<username>/kubernetes-el.git"
+    ```
+
+=== "Otherwise"
+
+    ```bash
     git clone "git@github.com:kubernetes-el/kubernetes-el.git"
+    ```
 
 Running make will tell you if you need to install anything to hack on
 the project:
