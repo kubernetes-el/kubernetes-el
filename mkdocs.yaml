@@ -9,14 +9,18 @@ repo_url: https://github.com/kubernetes-el/kubernetes-el
 
 nav:
   - Home: index.md
-  - Getting Started: 
+  - Getting Started:
       - getting-started/index.md
       - Tutorials:
-        - getting-started/tutorials/index.md
-        - Feature Overview: getting-started/tutorials/0-feature-overview.md
+          - getting-started/tutorials/index.md
+          - Feature Overview: getting-started/tutorials/0-feature-overview.md
   - How-To: how-to.md
-  - Changelog: CHANGELOG.md
-  - Contributing: contributing.md
+  - References:
+      - references/index.md
+      - Changelog: CHANGELOG.md
+      - Compatibility: references/compatibility.md
+  - Contributors Guide:
+      - contributing/index.md
 
 theme:
   name: material
@@ -31,11 +35,12 @@ theme:
 markdown_extensions:
   - abbr
   - admonition
+  - attr_list
   - pymdownx.details
   - pymdownx.snippets
   - pymdownx.superfences
   - pymdownx.tabbed:
-      alternate_style: true 
+      alternate_style: true
   - smarty
   - tables
   - meta

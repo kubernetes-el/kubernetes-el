@@ -168,4 +168,4 @@ The chart below shows the dependencies between features, excluding
 `kubernetes-state`, `kubernets-props` and `kubernetes-modes` which are
 direct dependencies of many modules.
 
-![](assets/project-deps.png)
+![](../assets/project-deps.png)
