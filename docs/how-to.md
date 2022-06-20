@@ -31,6 +31,18 @@ comprehensive) overview of all that is possible with the package.
 associated with `kubernetes-el`, as well as terminate all associated
 background processes, e.g. those for querying resources.
 
+## Interface Customization
+
+### Selecting views
+| Keybinding | Interactive function                   |
+|:-----------|:---------------------------------------|
+| `v`        | `M-x kubernetes-overview-select-views` |
+
+Through `kubernetes-overview-select-views` (`v`) a list of views can be selected. The selected views will be rendered above one another in the overview buffer.
+
+![Selecting views](./img/views-select.gif)
+
+
 ## Create
 
 ## Read
