@@ -135,5 +135,10 @@ polling according to `kubernetes-redraw-frequency' and
   (setq kubernetes--redraw-timer nil)
   (setq kubernetes--poll-timer nil))
 
+(defun kubernetes--time-diff-string (start now)
+  "Find the interval between START and NOW, and return a string of the coarsest unit."
+  (let ((diff (time-to-seconds (time-subtract now start))))
+    (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff) ","))))
+
 (provide 'kubernetes-core)
 ;;; kubernetes-core.el ends here

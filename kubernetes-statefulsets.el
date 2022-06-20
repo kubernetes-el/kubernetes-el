@@ -5,6 +5,7 @@
 (require 'dash)
 (require 's)
 
+(require 'kubernetes-core)
 (require 'kubernetes-kubectl)
 (require 'kubernetes-modes)
 (require 'kubernetes-props)
@@ -89,7 +90,7 @@
                          " "
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
+                           (propertize (format (pop list-fmt) (kubernetes--time-diff-string start current-time))
                                        'face 'kubernetes-dimmed))))))
     `(nav-prop (:statefulset-name ,name)
                (copy-prop ,name

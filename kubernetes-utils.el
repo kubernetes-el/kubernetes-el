@@ -74,11 +74,6 @@ initialized."
     (setf (nth 8 parsed) 0)
     parsed))
 
-(defun kubernetes-utils-time-diff-string (start now)
-  "Find the interval between START and NOW, and return a string of the coarsest unit."
-  (let ((diff (time-to-seconds (time-subtract now start))))
-    (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff) ","))))
-
 (defun kubernetes-utils-make-cleanup-fn (buf)
   "Make a function to add to `kill-buffer-hook' for a Kubernetes buffer.
 

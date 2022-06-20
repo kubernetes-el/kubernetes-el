@@ -20,4 +20,11 @@
   (it "returns nil on flag not found"
     (expect (kubernetes--val-from-arg-list '("--foo" "bar") 'baz) :to-equal nil)))
 
+
+(describe "kubernetes--time-diff-string"
+  (it "truncates to coarsest unit"
+    (expect (kubernetes--time-diff-string 10 15) :to-equal "5s")
+    (expect (kubernetes--time-diff-string 10 140) :to-equal "2m")
+    (expect (kubernetes--time-diff-string 10 4000) :to-equal "1h")))
+
 ;;; test-core.el ends here
