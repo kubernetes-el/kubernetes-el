@@ -24,6 +24,7 @@ TAR     := dist/kubernetes-$(VERSION).tar
 	git-release github-browse-release
 
 
+#: Compile Lisp files
 build : compile $(DEPS_PNG)
 
 compile: $(SRCS) $(CASKDIR)
@@ -51,6 +52,7 @@ help :
 	@echo '  clean-all       Like clean, but also delete vendored local dependencies and the installed package.'
 
 
+# Install kubernetes.el using the Emacs package manager
 install : $(TAR)
 	$(EMACS_BATCH) \
 		--eval "(add-to-list 'package-archives '(\"MELPA Stable\" . \"https://stable.melpa.org/packages/\"))" \
@@ -59,24 +61,28 @@ install : $(TAR)
 		--eval "(package-install-file \"$(TAR)\")"
 
 
+#: Run all static tests
 test-static:
 	pre-commit run --all-files
 
+#: Run all unit tests
 test : $(SRCS)
 	${CASK} clean-elc
 	${CASK} exec ert-runner --reporter ert+duration
 	${CASK} exec buttercup -L . tests/
 
 
+#: Delete generated output files
 clean :
 	${CASK} clean-elc
 	rm -rf dist
 
-
+#: Like clean, but also delete vendored local dependencies and the installed package
 clean-all: clean
 	rm -rf $(CASKDIR) "~/.emacs.d/elpa/kubernetes-$(VERSION)"
 
 
+#: Release a new version of the package
 release : assert-clean-worktree assert-on-master clean test set-package-version dist git-release github-browse-release
 	@echo 'Release successful.'
 
