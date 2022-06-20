@@ -5,6 +5,7 @@
 (require 'json)
 (require 'noflet)
 (require 'kubernetes-kubectl)
+(require 'kubernetes-state)
 (declare-function test-helper-string-resource "test-helper.el")
 
 
@@ -21,12 +22,12 @@ FORMS are the Elisp forms to be evaluated, in which `kubernetes-kubectl'
 will be mocked."
   (declare (indent defun))
   `(noflet ((kubernetes-kubectl
-             (_props _state args on-success &optional _on-error cleanup-cb)
+             (_state args on-success &optional _on-error cleanup-cb)
 
              ;; Silence byte-compiler warnings
              this-fn
 
-             
+
              (let ((buf (generate-new-buffer " test")))
                (with-current-buffer buf
                  (unwind-protect
@@ -56,7 +57,7 @@ FORMS are the Elisp forms to be evaluated, in which `kubernetes-kubectl'
 will be mocked."
   (declare (indent 2))
   `(noflet ((kubernetes-kubectl
-             (_props _state args _on-success &optional on-error cleanup-cb)
+             (_state args _on-success &optional on-error cleanup-cb)
 
              ;; Silence byte-compiler warnings
              this-fn
@@ -82,13 +83,6 @@ will be mocked."
               :noquery t)))
      ,@forms))
 
-(defconst kubernetes-kubectl-test-props
-  '((message . ignore)
-    (update-last-error . ignore)
-    (overview-buffer-selected-p . ignore)
-    (get-last-error . ignore)))
-
-
 ;; Subprocess calls
 
 (ert-deftest kubernetes-kubectl-test--flags-from-state-applies-namespace ()
@@ -113,10 +107,9 @@ will be mocked."
 
 (ert-deftest kubernetes-kubectl-test--running-kubectl-works ()
   (if (executable-find kubernetes-kubectl-executable)
-      (let ((result-string (kubernetes-kubectl-await-on-async kubernetes-kubectl-test-props nil
-                                            (lambda (props _ cb)
+      (let ((result-string (kubernetes-kubectl-await-on-async nil
+                                            (lambda (_ cb)
                                               (kubernetes-kubectl
-                                               props
                                                nil
                                                '("version" "--client")
                                                (lambda (buf)
@@ -171,7 +164,7 @@ will be mocked."
          (parsed-response (json-read-from-string sample-response))
          (cleanup-callback-called))
     (with-successful-response-at '("config" "view" "-o" "json") sample-response
-      (kubernetes-kubectl-config-view kubernetes-kubectl-test-props
+      (kubernetes-kubectl-config-view
                     nil
                     (lambda (response)
                       (should (equal parsed-response response)))
@@ -190,7 +183,7 @@ will be mocked."
         (sample-response "foo bar baz")
         (on-success-called))
     (with-successful-response-at `("describe" "pod" ,pod-name) sample-response
-      (kubernetes-kubectl-describe-pod kubernetes-kubectl-test-props
+      (kubernetes-kubectl-describe-pod
                      nil
                      pod-name
                      (lambda (str)
@@ -206,7 +199,7 @@ will be mocked."
          (sample-response (format "Switched to context \"%s\".\n" context-name))
          (on-success-called))
     (with-successful-response-at (list "config" "use-context" context-name) sample-response
-      (kubernetes-kubectl-config-use-context kubernetes-kubectl-test-props
+      (kubernetes-kubectl-config-use-context
                            nil
                            context-name
                            (lambda (str)
@@ -235,7 +228,6 @@ will be mocked."
        sample-response
        (kubernetes-kubectl-get
         type
-        kubernetes-kubectl-test-props
         nil
         (lambda (response)
           (setq on-success-called t)
@@ -256,7 +248,7 @@ will be mocked."
       (with-successful-response-at
        `("delete" ,type ,name "-o" "name")
        (s-join "/" (list type name))
-       (kubernetes-kubectl-delete type name kubernetes-kubectl-test-props nil
+       (kubernetes-kubectl-delete type name nil
                                   (lambda (result)
                                     (should (equal name result))))))))
 
@@ -267,7 +259,7 @@ will be mocked."
       (with-error-response-at
        `("delete" ,type ,name "-o" "name")
        (s-join "/" (list type name))
-       (kubernetes-kubectl-delete type name kubernetes-kubectl-test-props nil
+       (kubernetes-kubectl-delete type name nil
                                   (lambda (_)
                                     (error "Unexpected success response"))
                                   (lambda (_)
@@ -288,38 +280,21 @@ will be mocked."
 
 ;; Error handler
 
-(ert-deftest kubernetes-kubectl-test--error-handler-writes-messages-when-overview-buffer-not-selected ()
-  (let* ((message-called-p)
-         (props
-          (append `((message . ,(lambda (&rest _) (setq message-called-p t))))
-                  kubernetes-kubectl-test-props)))
-
-    (kubernetes-kubectl--default-error-handler props "")
-    (should message-called-p)))
-
 (ert-deftest kubernetes-kubectl-test--error-handler-does-not-write-message-if-overview-buffer-selected ()
-  (let* ((message-called-p)
-         (props
-          (append `((message . ,(lambda (&rest _) (setq message-called-p t)))
-                    (overview-buffer-selected-p . (lambda (&rest _) t)))
-                  kubernetes-kubectl-test-props)))
+  (let* ((message-called-p))
 
-    (kubernetes-kubectl--default-error-handler props "")
+    (kubernetes-kubectl--default-error-handler "")
     (should-not message-called-p)))
 
 (ert-deftest kubernetes-kubectl-test--error-handler-write-message ()
-  (let* ((props kubernetes-props))
-    (setf (alist-get 'message props) 'format)
-    (kubernetes-props-update-last-error props "bar" "foo" (current-time))
-    (should (string= (kubernetes-kubectl--default-error-handler props "")
-                     "foo: bar"))))
+  (kubernetes-state-update-last-error "bar" "foo" (current-time))
+  (should (string= (kubernetes-kubectl--default-error-handler "")
+                   "foo: bar")))
 
 (ert-deftest kubernetes-kubectl-test--error-handler-does-not-write-message-if-process-was-sigkilled ()
-  (let* ((message-called-p)
-         (props (append `((message . ,(lambda (&rest _) (setq message-called-p t))))
-                        kubernetes-kubectl-test-props)))
+  (let* ((message-called-p))
 
-    (kubernetes-kubectl--default-error-handler props "killed: 9")
+    (kubernetes-kubectl--default-error-handler "killed: 9")
     (should-not message-called-p)))
 
 ;; Edit resource
@@ -328,8 +303,7 @@ will be mocked."
   (let ((deployment-name "example-deployment"))
     (with-successful-response-at
      (list "edit" "deployment" deployment-name) deployment-name
-     (kubernetes-kubectl-edit-resource kubernetes-kubectl-test-props
-                                       nil
+     (kubernetes-kubectl-edit-resource nil
                                        "deployment"
                                        deployment-name
                                        (lambda (buf)
@@ -341,8 +315,7 @@ will be mocked."
         (deployment-name "example-deployment"))
     (with-error-response-at
      (list "edit" "deployment" "example-deployment") deployment-name
-     (kubernetes-kubectl-edit-resource kubernetes-kubectl-test-props
-                                       nil
+     (kubernetes-kubectl-edit-resource nil
                                        "deployment"
                                        deployment-name
                                        (lambda (_)
@@ -358,8 +331,7 @@ will be mocked."
   (let ((success-response "Updated current context ‘context0’ namespace to ‘ns0.’"))
     (with-successful-response-at
      (list "config" "set-context" "--current") success-response
-     (kubernetes-kubectl-config-set-current-namespace kubernetes-kubectl-test-props
-                                                      nil
+     (kubernetes-kubectl-config-set-current-namespace nil
                                                       (lambda (buf)
                                                         (let ((s (with-current-buffer buf (buffer-string))))
                                                           (should (equal success-response s))))))))
@@ -369,8 +341,7 @@ will be mocked."
         (error-response "Unable to set namespace `ns0' for current context `context0'."))
     (with-error-response-at
      (list "config" "set-context" "--current") error-response
-     (kubernetes-kubectl-config-set-current-namespace kubernetes-kubectl-test-props
-                                                      nil
+     (kubernetes-kubectl-config-set-current-namespace nil
                                                       (lambda (_)
                                                         (error "Unexpected success response"))
                                                       (lambda (_)

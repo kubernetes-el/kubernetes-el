@@ -434,7 +434,6 @@ arguments."
   (interactive "SResource: \np\ni")
   (kubernetes-kubectl-await
    (apply-partially #'kubernetes-kubectl
-                    kubernetes-props
                     (kubernetes-state)
                     (if raw (split-string raw) (list "get" (symbol-name type) "-o" "json")))
    (lambda (buf)
@@ -464,7 +463,6 @@ arguments."
            (set-process-for-resource kubernetes--global-process-ledger (quote ,attr)
             (funcall
              ,canned
-             kubernetes-props
              (kubernetes-state)
              (lambda (response)
                (,(intern (format "kubernetes-state-update-%s" s-attr)) response)

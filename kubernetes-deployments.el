@@ -7,7 +7,6 @@
 
 (require 'kubernetes-kubectl)
 (require 'kubernetes-modes)
-(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-vars)
@@ -147,7 +146,7 @@
   (let ((names (kubernetes-state--get state 'marked-deployments)))
     (dolist (name names)
       (kubernetes-state-delete-deployment name)
-      (kubernetes-kubectl-delete "deployment" name kubernetes-props state
+      (kubernetes-kubectl-delete "deployment" name state
                                  (lambda (_)
                                    (message "Deleting deployment %s succeeded." name))
                                  (lambda (_)
@@ -168,7 +167,7 @@ Update the deployment state if it not set yet."
            (or (kubernetes-state--get state 'deployments)
                (progn
                  (message "Getting deployments...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "deployments"))))
+                 (let ((response (kubernetes-kubectl-await-on-async state (-partial #'kubernetes-kubectl-get "deployments"))))
                    (kubernetes-state-update-deployments response)
                    response))))
           (deployments (append deployments nil))

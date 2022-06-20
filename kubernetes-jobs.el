@@ -9,7 +9,6 @@
 (require 'kubernetes-kubectl)
 (require 'kubernetes-modes)
 (require 'kubernetes-pod-line)
-(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-vars)
@@ -132,7 +131,7 @@
   (let ((names (kubernetes-state--get state 'marked-jobs)))
     (dolist (name names)
       (kubernetes-state-delete-job name)
-      (kubernetes-kubectl-delete "job" name kubernetes-props state
+      (kubernetes-kubectl-delete "job" name state
                                  (lambda (_)
                                    (message "Deleting job %s succeeded." name))
                                  (lambda (_)
@@ -153,7 +152,7 @@ Update the job state if it not set yet."
            (or (kubernetes-state--get state 'jobs)
                (progn
                  (message "Getting jobs...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "jobs"))))
+                 (let ((response (kubernetes-kubectl-await-on-async state (-partial #'kubernetes-kubectl-get "jobs"))))
                    (kubernetes-state-update-jobs response)
                    response))))
           (jobs (append jobs nil))

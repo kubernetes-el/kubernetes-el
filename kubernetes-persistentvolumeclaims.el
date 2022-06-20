@@ -8,7 +8,6 @@
 (require 'kubernetes-ast)
 (require 'kubernetes-loading-container)
 (require 'kubernetes-process)
-(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-yaml)
@@ -95,7 +94,7 @@
   (let ((names (kubernetes-state--get state 'marked-persistentvolumeclaims)))
     (dolist (name names)
       (kubernetes-state-delete-persistentvolumeclaim name)
-      (kubernetes-kubectl-delete "persistentvolumeclaim" name kubernetes-props state
+      (kubernetes-kubectl-delete "persistentvolumeclaim" name state
                                  (lambda (_)
                                    (message "Deleting PVC %s succeeded." name))
                                  (lambda (_)
@@ -116,7 +115,7 @@ Update the PVC state if it not set yet."
            (or (kubernetes-state--get state 'persistentvolumeclaims)
                (progn
                  (message "Getting persistent volume claims...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "persistentvolumeclaims"))))
+                 (let ((response (kubernetes-kubectl-await-on-async state (-partial #'kubernetes-kubectl-get "persistentvolumeclaims"))))
                    (kubernetes-state-update-persistentvolumeclaims response)
                    response))))
           (persistentvolumeclaims (append persistentvolumeclaims nil))

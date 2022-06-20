@@ -5,7 +5,6 @@
 (load-file "./tests/undercover-init.el")
 (require 'kubernetes-contexts)
 (require 'kubernetes-state)
-(require 'kubernetes-props)
 
 (describe "Context"
   (describe "renaming"
