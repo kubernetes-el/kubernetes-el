@@ -30,27 +30,10 @@ build : compile $(DEPS_PNG)
 compile: $(SRCS) $(CASKDIR)
 	! (${CASK} eval "(cask-cli/build)" | tee 2>&1 | egrep -a "(Error):") ; (ret=$$? ; ${CASK} clean-elc && exit $$ret)
 
-
 dist : $(TAR)
-
 
 $(TAR) : $(SRCS)
 	${CASK} package
-
-
-help :
-	@echo 'Makefile for kubernetes-el'
-	@echo
-	@echo 'Main tasks:'
-	@echo
-	@echo '  build (default) Compile Lisp files.'
-	@echo '  help            Show this usage information.'
-	@echo '  install         Install kubernetes.el using the Emacs package manager.'
-	@echo '  test            Run automated test suites.'
-	@echo '  release         Prepare for a GitHub release.'
-	@echo '  clean           Delete generated output files.'
-	@echo '  clean-all       Like clean, but also delete vendored local dependencies and the installed package.'
-
 
 # Install kubernetes.el using the Emacs package manager
 install : $(TAR)
