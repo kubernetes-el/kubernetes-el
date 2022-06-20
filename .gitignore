@@ -11,4 +11,6 @@ kubernetes-autoloads.el
 # Undo-tree save-files
 *.~undo-tree
 /dist
-/assets/project-deps.dot
+docs/assets/project-deps.dot
+
+Brewfile.lock.json

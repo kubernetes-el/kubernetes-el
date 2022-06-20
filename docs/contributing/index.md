@@ -48,20 +48,17 @@ For code changes, please follow the following guidelines.
 
 ### Dependencies
 
-You will need:
+See `Brewfile` for the project's non-Elisp dependencies. If you're developing on a Mac machine, you can install like so
+from the project root:
+```bash
+$ brew bundle
+```
 
-- GNU Make;
-- [Cask](https://github.com/cask/cask);
-- [pre-commit](https://pre-commit.com).
+If you're developing on a Linux machine, install these dependencies manually.
 
-All of these should be installable via Homebrew if you're developing on a Mac
-machine.
+You do not need `kubectl` installed in order to run tests, but you do need it to run the package inside Emacs.
 
-You do not need `kubectl` installed in order to run tests, but you do
-need it to run the package inside Emacs.
-
-If you want to contribute code changes, you should fork the repository.
-Otherwise clone the main repo.
+If you want to contribute code changes, you should fork the repository.  Otherwise clone the main repo.
 
 === "Forked"
 
