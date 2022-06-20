@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 's)
 
 (require 'kubernetes-kubectl)
 (require 'kubernetes-modes)
@@ -65,7 +66,7 @@
           (list-fmt (split-string fmt))
           (line `(line ,(concat
                          ;; Name
-                         (format (pop list-fmt) (kubernetes-utils-ellipsize name 43))
+                         (format (pop list-fmt) (s-truncate 43 name))
                          " "
                          ;; Replicas (current/desired)
                          (let ((next (pop list-fmt))

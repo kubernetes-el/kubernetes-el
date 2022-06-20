@@ -80,10 +80,10 @@ Configmaps (3)
     Namespace:  example-ns
     Created:    2017-03-12T11:10:30Z
     Data: (4)
-      test.trunca...: value
-      test.key2:      this value spans \\
-      test.key3:      longer value that...
-      test.key4:      longer value that... \\
+      test.trun...:   value
+      test.key2:      this value span...
+      test.key3:      longer value th...
+      test.key4:      longer value th...
 
 
 "))

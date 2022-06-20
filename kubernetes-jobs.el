@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 's)
 
 (require 'kubernetes-ast)
 (require 'kubernetes-kubectl)
@@ -66,7 +67,7 @@
           (list-fmt (split-string fmt))
           (line (concat
                  ;; Name
-                 (let ((name-str (format (pop list-fmt) (kubernetes-utils-ellipsize name 43))))
+                 (let ((name-str (format (pop list-fmt) (s-truncate 43 name))))
                    (cond
                     ((and completion-time (< 0 successful))
                      (propertize name-str 'face 'kubernetes-dimmed))

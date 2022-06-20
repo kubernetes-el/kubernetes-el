@@ -63,7 +63,7 @@ Ingress (0)
 
 Ingress (4)
   Name                                          Hosts                                  Address        Age
-  clojurescript-ingress                         domain.example.io         3.10.144.54, 3.10...        -2y
+  clojurescript-ingress                         domain.example.io           3.10.144.54, 3....        -2y
     Namespace:  default
     Created:    2019-11-13T14:51:00Z
 
@@ -75,7 +75,7 @@ Ingress (4)
     Namespace:  default
     Created:    2018-06-10T11:43:41Z
 
-  example-ingress                               myminikube.info, mylar... 192.168.99.100, 1...        29d
+  example-ingress                               myminikube.info, myl...     192.168.99.100,...        29d
     Namespace:  default
     Created:    2018-06-10T11:43:41Z
 

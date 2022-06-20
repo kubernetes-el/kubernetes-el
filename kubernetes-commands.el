@@ -2,6 +2,8 @@
 ;;; Commentary:
 ;;; Code:
 
+(require 's)
+
 (require 'kubernetes-ast)
 (require 'kubernetes-contexts)
 (require 'kubernetes-core)
@@ -206,7 +208,7 @@ what to copy."
         (setq first-line (buffer-substring (line-beginning-position) (line-end-position)))
         (while (search-forward "\n" nil t)
           (setq n-lines (1+ n-lines))))
-      (let ((ellipsized (kubernetes-utils-ellipsize first-line 70)))
+      (let ((ellipsized (s-truncate 70 first-line)))
         (if (< 1 n-lines)
             (message "Copied %s lines, starting with: %s" n-lines ellipsized)
           (message "Copied: %s" ellipsized))))))
