@@ -6,6 +6,7 @@
 (require 's)
 
 (require 'kubernetes-ast)
+(require 'kubernetes-core)
 (require 'kubernetes-loading-container)
 (require 'kubernetes-process)
 (require 'kubernetes-state)
@@ -51,7 +52,7 @@
                          " "
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format (pop list-fmt) (kubernetes-utils-time-diff-string start current-time))
+                           (propertize (format (pop list-fmt) (kubernetes--time-diff-string start current-time))
                                        'face 'kubernetes-dimmed))))))
     `(nav-prop (:persistentvolumeclaim-name ,name)
                (copy-prop ,name

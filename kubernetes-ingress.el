@@ -6,6 +6,7 @@
 (require 's)
 
 (require 'kubernetes-ast)
+(require 'kubernetes-core)
 (require 'kubernetes-loading-container)
 (require 'kubernetes-modes)
 (require 'kubernetes-state)
@@ -44,7 +45,7 @@
                          (format "%20s " (s-truncate 18 (mapconcat (-partial 'alist-get 'ip) ingress-lb-list ", ")))
                          ;; Age
                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format "%10s" (kubernetes-utils-time-diff-string start current-time))
+                           (propertize (format "%10s" (kubernetes--time-diff-string start current-time))
                                        'face 'kubernetes-dimmed))))))
 
     `(nav-prop (:ingress-name ,name)
