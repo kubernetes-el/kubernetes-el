@@ -9,7 +9,6 @@
 (require 'kubernetes-core)
 (require 'kubernetes-loading-container)
 (require 'kubernetes-modes)
-(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-yaml)
@@ -83,7 +82,7 @@
   (let ((names (kubernetes-state--get state 'marked-ingress)))
     (dolist (name names)
       (kubernetes-state-delete-ingress name)
-      (kubernetes-kubectl-delete "ingress" name kubernetes-props state
+      (kubernetes-kubectl-delete "ingress" name state
                                         (lambda (_)
                                           (message "Deleting ingress %s succeeded." name))
                                         (lambda (_)
@@ -103,7 +102,7 @@ Update the ingress state if it not set yet."
            (or (kubernetes-state--get state 'ingress)
                (progn
                  (message "Getting ingress...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "ingress"))))
+                 (let ((response (kubernetes-kubectl-await-on-async state (-partial #'kubernetes-kubectl-get "ingress"))))
                    (kubernetes-state-update-ingress response)
                    response))))
           (ingress (append ingress nil))

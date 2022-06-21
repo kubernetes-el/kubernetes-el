@@ -9,7 +9,6 @@
 (require 'kubernetes-ast)
 (require 'kubernetes-core)
 (require 'kubernetes-kubectl)
-(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-vars)
 
@@ -158,9 +157,6 @@ buffer is killed."
         (set-process-filter proc process-filter))
       (set-process-query-on-exit-flag proc nil))
     buf))
-
-(defun kubernetes-utils-overview-buffer-selected-p ()
-  (equal (current-buffer) (get-buffer kubernetes-overview-buffer-name)))
 
 (defun kubernetes-utils-up-to-existing-dir (dir)
   (while (not (file-directory-p dir))

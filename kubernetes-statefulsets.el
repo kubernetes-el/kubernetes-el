@@ -8,7 +8,6 @@
 (require 'kubernetes-core)
 (require 'kubernetes-kubectl)
 (require 'kubernetes-modes)
-(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-vars)
@@ -135,7 +134,7 @@
   (let ((names (kubernetes-state--get state 'marked-statefulsets)))
     (dolist (name names)
       (kubernetes-state-delete-statefulset name)
-      (kubernetes-kubectl-delete "statefulset" name kubernetes-props state
+      (kubernetes-kubectl-delete "statefulset" name state
                                          (lambda (_)
                                            (message "Deleting statefulset %s succeeded." name))
                                          (lambda (_)
@@ -156,7 +155,7 @@ Update the statefulset state if it not set yet."
            (or (kubernetes-state--get state 'statefulsets)
                (progn
                  (message "Getting statefulsets...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "statefulsets"))))
+                 (let ((response (kubernetes-kubectl-await-on-async state (-partial #'kubernetes-kubectl-get "statefulsets"))))
                    (kubernetes-state-update-statefulsets response)
                    response))))
           (statefulsets (append statefulsets nil))

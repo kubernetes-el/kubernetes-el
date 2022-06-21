@@ -140,5 +140,8 @@ polling according to `kubernetes-redraw-frequency' and
   (let ((diff (time-to-seconds (time-subtract now start))))
     (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff) ","))))
 
+(defun kubernetes--overview-buffer-selected-p ()
+  (equal (current-buffer) (get-buffer kubernetes-overview-buffer-name)))
+
 (provide 'kubernetes-core)
 ;;; kubernetes-core.el ends here

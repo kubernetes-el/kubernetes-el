@@ -10,7 +10,6 @@
 (require 'kubernetes-loading-container)
 (require 'kubernetes-modes)
 (require 'kubernetes-process)
-(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-yaml)
@@ -104,7 +103,7 @@
   (let ((names (kubernetes-state--get state 'marked-configmaps)))
     (dolist (name names)
       (kubernetes-state-delete-configmap name)
-      (kubernetes-kubectl-delete "configmap" name kubernetes-props state
+      (kubernetes-kubectl-delete "configmap" name state
                                  (lambda (_)
                                    (message "Deleting configmap %s succeeded." name))
                                  (lambda (_)
@@ -125,7 +124,7 @@ Update the configmap state if it not set yet."
            (or (kubernetes-state--get state 'configmaps)
                (progn
                  (message "Getting configmaps...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "configmaps"))))
+                 (let ((response (kubernetes-kubectl-await-on-async state (-partial #'kubernetes-kubectl-get "configmaps"))))
                    (kubernetes-state-update-configmaps response)
                    response))))
           (configmaps (append configmaps nil))

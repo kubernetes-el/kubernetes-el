@@ -9,7 +9,6 @@
 (require 'kubernetes-core)
 (require 'kubernetes-loading-container)
 (require 'kubernetes-modes)
-(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-yaml)
@@ -86,7 +85,7 @@
   (let ((names (kubernetes-state--get state 'marked-secrets)))
     (dolist (name names)
       (kubernetes-state-delete-secret name)
-      (kubernetes-kubectl-delete "secret" name kubernetes-props state
+      (kubernetes-kubectl-delete "secret" name state
                                  (lambda (_)
                                    (message "Deleting secret %s succeeded." name))
                                  (lambda (_)
@@ -107,7 +106,7 @@ Update the secret state if it not set yet."
            (or (kubernetes-state--get state 'secrets)
                (progn
                  (message "Getting secrets...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "secrets"))))
+                 (let ((response (kubernetes-kubectl-await-on-async state (-partial #'kubernetes-kubectl-get "secrets"))))
                    (kubernetes-state-update-secrets response)
                    response))))
           (secrets (append secrets nil))

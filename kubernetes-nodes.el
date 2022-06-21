@@ -10,7 +10,6 @@
 (require 'kubernetes-core)
 (require 'kubernetes-loading-container)
 (require 'kubernetes-modes)
-(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-yaml)
@@ -129,7 +128,7 @@ Update the node state if it not set yet."
                (progn
                  (message "Getting nodes...")
                  (let ((response (kubernetes-kubectl-await-on-async
-                                  kubernetes-props state
+                                  state
                                   (-partial #'kubernetes-kubectl-get "nodes"))))
                    (kubernetes-state-update-nodes response)
                    response))))

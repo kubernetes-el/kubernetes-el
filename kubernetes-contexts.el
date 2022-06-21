@@ -7,7 +7,6 @@
 (require 'kubernetes-kubectl)
 (require 'kubernetes-modes)
 (require 'kubernetes-process)
-(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-yaml)
@@ -74,14 +73,14 @@
 ;;;###autoload
 (defun kubernetes-display-config (config)
   "Display information for CONFIG in a new window."
-  (interactive (list (kubernetes-kubectl-await-on-async kubernetes-props (kubernetes-state) #'kubernetes-kubectl-config-view)))
+  (interactive (list (kubernetes-kubectl-await-on-async (kubernetes-state) #'kubernetes-kubectl-config-view)))
   (select-window
    (display-buffer
     (kubernetes-yaml-make-buffer kubernetes-display-config-buffer-name config))))
 
 (defun kubernetes-contexts--context-names (state)
   "Get a list of all available kubectl contexts from STATE."
-  (-let* ((config (or (kubernetes-state--get state 'config) (kubernetes-kubectl-await-on-async kubernetes-props state #'kubernetes-kubectl-config-view)))
+  (-let* ((config (or (kubernetes-state--get state 'config) (kubernetes-kubectl-await-on-async state #'kubernetes-kubectl-config-view)))
           ((&alist 'contexts contexts) config))
     (--map (alist-get 'name it) contexts)))
 
@@ -104,7 +103,6 @@ CONTEXT is the name of a context as a string."
 
   (let ((state (kubernetes-state)))
     (kubernetes-kubectl-config-use-context
-     kubernetes-props
      state
      context
      (lambda (_)
@@ -128,11 +126,10 @@ If CONTEXT is the current context, reloads."
       (error "Context `%s' does not exist" context-to-rename))
     (when (-contains-p contexts new-name)
       (error "Already exists a context named `%s'" new-name)))
-  
+
   (-let* (((&alist 'name current-context)
            (kubernetes-state-current-context (kubernetes-state))))
     (kubernetes-kubectl
-     kubernetes-props
      (kubernetes-state)
      `("config" "rename-context" ,context ,new-name)
      (lambda (_)

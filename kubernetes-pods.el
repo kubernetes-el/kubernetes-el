@@ -10,7 +10,6 @@
 (require 'kubernetes-core)
 (require 'kubernetes-loading-container)
 (require 'kubernetes-modes)
-(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'kubernetes-yaml)
@@ -162,7 +161,7 @@ Update the pod state if it not set yet."
            (or (kubernetes-state--get state 'pods)
                (progn
                  (message "Getting pods...")
-                 (let ((response (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "pods"))))
+                 (let ((response (kubernetes-kubectl-await-on-async state (-partial #'kubernetes-kubectl-get "pods"))))
                    (kubernetes-state-update-pods response)
                    response))))
           (pods (append pods nil))
@@ -173,7 +172,7 @@ Update the pod state if it not set yet."
   (let ((names (kubernetes-state--get state 'marked-pods)))
     (dolist (name names)
       (kubernetes-state-delete-pod name)
-      (kubernetes-kubectl-delete "pod" name kubernetes-props state
+      (kubernetes-kubectl-delete "pod" name state
                                  (lambda (_)
                                    (message "Deleting pod %s succeeded." name))
                                  (lambda (_)
