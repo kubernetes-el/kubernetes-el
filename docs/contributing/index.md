@@ -43,6 +43,10 @@ For code changes, please follow the following guidelines.
   `CHANGELOG.org` in the `Unreleased` section detailing it. See
   [keepachangelog.com](https://keepachangelog.com/en/1.0.0/) for an
   overview of this process.
+- Add yourself to the contributors list by commenting something like the following in your PR: `@all-contributors please
+  add @<username> for <code/documentation/etc.>`. See [@all-contributors bot
+  documentation](https://allcontributors.org/docs/en/bot/usage) for more details. See `.all-contributorsrc` for examples
+  of contribution "types."
 
 ## Development setup
 
