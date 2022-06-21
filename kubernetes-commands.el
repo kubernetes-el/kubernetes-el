@@ -9,7 +9,6 @@
 (require 'kubernetes-core)
 (require 'kubernetes-modes)
 (require 'kubernetes-popups)
-(require 'kubernetes-props)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'mode-local)
@@ -304,8 +303,7 @@ POD-NAME is the name of the pod to describe."
                                   (insert s)
                                   (untabify (point-min) (point-max))
                                   (goto-char (point-min))))))
-           (proc (kubernetes-kubectl-describe-pod kubernetes-props
-                                                  (kubernetes-state)
+           (proc (kubernetes-kubectl-describe-pod (kubernetes-state)
                                                   pod-name
                                                   populate-buffer)))
       (with-current-buffer buf
@@ -435,8 +433,7 @@ STATE is the current application state."
   ;; State for the context and view should be preserved.
   (kubernetes-state-update-config (kubernetes-state--get state 'config))
   (kubernetes-state-update-current-namespace ns)
-  (kubernetes-kubectl-config-set-current-namespace kubernetes-props
-                                                   (kubernetes-state)
+  (kubernetes-kubectl-config-set-current-namespace (kubernetes-state)
                                                    (lambda (_)
                                                      (message "Updated current context `%s' namespace to `%s.'"
                                                               (alist-get 'name (kubernetes-state-current-context state))
@@ -453,13 +450,12 @@ STATE is the current application state."
   (kubernetes-state-trigger-redraw))
 
 (defun kubernetes--namespace-names (state)
-  (-let* ((config (or (kubernetes-state--get state 'namespaces) (kubernetes-kubectl-await-on-async kubernetes-props state (-partial #'kubernetes-kubectl-get "namespaces"))))
+  (-let* ((config (or (kubernetes-state--get state 'namespaces) (kubernetes-kubectl-await-on-async state (-partial #'kubernetes-kubectl-get "namespaces"))))
           ((&alist 'items items) config))
     (-map (-lambda ((&alist 'metadata (&alist 'name name))) name) items)))
 
 (defun kubernetes--edit-resource (kind name)
-  (kubernetes-kubectl-edit-resource kubernetes-props
-                                    (kubernetes-state)
+  (kubernetes-kubectl-edit-resource (kubernetes-state)
                                     kind
                                     name
                                     (lambda (buf)

@@ -112,7 +112,6 @@ If there is already a process recorded in the ledger, return that
                             (generate-new-buffer
                              (format "*kubectl proxy<%s>" port)))
                            (proxy-proc (kubernetes-kubectl
-                                        kubernetes-props
                                         (kubernetes-state)
                                         `("proxy" "--port" ,(format "%s" port))
                                         nil)))

@@ -135,5 +135,8 @@ polling according to `kubernetes-redraw-frequency' and
   (setq kubernetes--redraw-timer nil)
   (setq kubernetes--poll-timer nil))
 
+(defun kubernetes--overview-buffer-selected-p ()
+  (equal (current-buffer) (get-buffer kubernetes-overview-buffer-name)))
+
 (provide 'kubernetes-core)
 ;;; kubernetes-core.el ends here
