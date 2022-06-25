@@ -435,15 +435,15 @@ STATE is the current application state."
   (kubernetes-state-update-current-namespace ns)
   (kubernetes-kubectl-config-set-current-namespace (kubernetes-state)
                                                    (lambda (_)
-                                                     (message "Updated current context `%s' namespace to `%s.'"
+                                                     (kubernetes--info "Updated current context `%s' namespace to `%s.'"
                                                               (alist-get 'name (kubernetes-state-current-context state))
-                                                              (kubernetes-state--get state 'current-namespace)))
+                                                              ns))
                                                    (lambda (buf)
                                                      (let ((s (with-current-buffer buf (buffer-string))))
-                                                       (message "Unable to set namespace `%s' for current context `%s'."
-                                                                (kubernetes-state--get state 'current-namespace)
-                                                                (alist-get 'name (kubernetes-state-current-context state))
-                                                       (message s)))))
+                                                       (kubernetes--error "Unable to set namespace `%s' for current context `%s'."
+                                                                ns
+                                                                (alist-get 'name (kubernetes-state-current-context state)))
+                                                       (kubernetes--message s))))
 
   (kubernetes-state-update-overview-sections (kubernetes-state-overview-sections state))
 
