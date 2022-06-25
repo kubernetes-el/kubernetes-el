@@ -11,6 +11,8 @@ versioning][semver].
 
 ## Upcoming
 
+## 0.18.0
+
 ### Changed
 
 - New flag `--timestamps` support added for logs command.
