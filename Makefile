@@ -124,27 +124,3 @@ $(DEPS_PNG) : $(DEPS_SCRIPT) $(SRCS)
 .PHONY: autoloads
 autoloads:
 	$(EMACS) -Q --batch --eval "(package-initialize)" --eval "(package-generate-autoloads \"kubernetes\" \".\")"
-
-
-
-# Assert cask is installed
-
-ifeq (, $(shell which cask))
-
-define MESSAGE
-Building this project requires Cask.
-
-	https://github.com/cask/cask
-
-macOS:
-
-	brew install cask
-
-*Nix:
-
-	curl -fsSL https://raw.githubusercontent.com/cask/cask/master/go | python
-
-endef
-
-$(error $(MESSAGE))
-endif
