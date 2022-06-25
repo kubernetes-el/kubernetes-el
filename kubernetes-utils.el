@@ -64,11 +64,7 @@ initialized."
         (`(:pod-name ,value)
          value)))))
 
-(defun kubernetes-utils-parse-utc-timestamp (timestamp)
-  "Parse TIMESTAMP string from the API into the representation used by Emacs."
-  (let ((parsed (parse-time-string (replace-regexp-in-string "Z" "" (replace-regexp-in-string "T" " " timestamp)))))
-    (setf (nth 8 parsed) 0)
-    parsed))
+(defalias 'kubernetes-utils-parse-utc-timestamp 'kubernetes--parse-utc-timestamp)
 
 (defun kubernetes-utils-make-cleanup-fn (buf)
   "Make a function to add to `kill-buffer-hook' for a Kubernetes buffer.
