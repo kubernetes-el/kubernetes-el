@@ -11,6 +11,10 @@ versioning][semver].
 
 ## Upcoming
 
+### Changed
+
+- Removed strict dependency pin on Emacs 25.1
+
 ## 0.18.0
 
 ### Changed

@@ -19,8 +19,7 @@ relating to the bug or feature you're interested in. Do your best here!
 
 ### Bug reports
 
-Make sure you're using the latest release of the package, and are using
-Emacs 25.
+Make sure you're using the latest release of the package.
 
 If no ticket exists yet, you can write a new issue. Provide reproduction
 steps if you can, as well as your Emacs version and basic OS info.
