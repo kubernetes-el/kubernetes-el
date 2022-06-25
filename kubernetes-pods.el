@@ -190,7 +190,7 @@ STATE is the current application state.
 
 POD-NAME is the name of the pod to display."
   (interactive (let ((state (kubernetes-state)))
-                 (list (kubernetes-utils-read-pod-name state) state)))
+                 (list (kubernetes-pods--read-name state) state)))
   (if-let (pod (kubernetes-state-lookup-pod pod-name state))
       (select-window
        (display-buffer

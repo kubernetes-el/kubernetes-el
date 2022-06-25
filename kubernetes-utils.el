@@ -14,9 +14,6 @@
 
 (autoload 'org-read-date "org")
 
-(defalias 'kubernetes-utils-read-pod-name 'kubernetes-pods--read-name
-  "Exporting `kubernetes-pods--read-name'")
-
 (defun kubernetes-utils-read-iso-datetime (&rest _)
   (let* ((date (org-read-date nil t))
          (tz (format-time-string "%z" date)))
