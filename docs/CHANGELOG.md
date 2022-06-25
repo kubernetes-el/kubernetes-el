@@ -13,7 +13,7 @@ versioning][semver].
 
 ### Fixed
 
-- Fixed bug where log message on changing namespace did not properly reflect the selected namespace.
+- Fixed bug where log message on changing namespace did not properly reflect the selected namespace. (#297)
 
 ## 0.18.0
 
