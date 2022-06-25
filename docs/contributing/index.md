@@ -37,6 +37,8 @@ For code changes, please follow the following guidelines.
 - Try to keep PRs to a manageable size. PRs that change no more than 300-400 lines at a time get faster and better
   reviews.
 - If your contribution adds new functionality, please add corresponding unit tests.
+- Please document all new functions and methods. If you're feeling particularly industrious, please also add
+  documentation to any existing functions that you modify along the way.
 - If your contribution is a user-facing change, please add an entry to `CHANGELOG.org` in the `Unreleased` section
   detailing it. See [keepachangelog.com](https://keepachangelog.com/en/1.0.0/) for an overview of this process.
 - Add yourself to the contributors list by commenting something like the following in your PR: `@all-contributors please
