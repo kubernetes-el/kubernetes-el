@@ -61,9 +61,7 @@ For known work items, see our [Issues page][issues].
 For discussions about higher-level direction of the project and development
 processes, see our [Discussions page][discussions].
 
-## Contributing
-
-Yes please! 😻 See [Contributing](contributing/index.md) for details.
+--8<-- "docs/CONTRIBUTORS.md"
 
 [COPYING]: ./COPYING
 [Evil]: https://github.com/emacs-evil/evil

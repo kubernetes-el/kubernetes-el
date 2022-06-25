@@ -4,3 +4,7 @@ repos:
   hooks:
   - id: markdownlint_docker
     name: Markdown linting
+    exclude: |
+      (?x)^(
+          docs/CONTRIBUTORS.md
+      )$
