@@ -25,19 +25,6 @@ not already active.  See `kubernetes-proxy'."
                                    :parser 'json-read))))))
     (--map (alist-get 'name it) (alist-get 'groups api-group-list))))
 
-(defun kubernetes--preferred-version-for (group-name)
-  "Query for the preferred version of the GROUP-NAME.
-
-This function will error if a proxy server is not already active.
-See `kubernetes-proxy'."
-  (kubernetes--require-proxy
-   (-let* ((url (format "%s/apis/%s"
-                        (base-url (oref kubernetes--global-process-ledger proxy))
-                        group-name))
-           ((&alist 'preferredVersion (&alist 'version version))
-            (request-response-data (kubernetes--request-option url :parser 'json-read))))
-     version)))
-
 (provide 'kubernetes-resources)
 
 ;;; kubernetes-resources.el ends here
