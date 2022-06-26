@@ -31,15 +31,6 @@ query the cluster via proxy.  See `kubernetes-proxy'."
     (kill-proxy-process kubernetes--global-process-ledger)
     groups))
 
-(defun kubernetes--get-all-kinds ()
-  "Retrieve all resource kinds present on the current cluster.
-
-Does nothing and prints a non-fatal error message if there is not
-already an active kubectl proxy.  See `kubernetes-proxy'."
-  (when (not (and (proxy-active-p kubernetes--global-process-ledger)
-                (proxy-ready-p kubernetes--global-process-ledger)))
-      (kubernetes--error "Kubectl proxy not active; start with `kubernetes-proxy' first")))
-
 (provide 'kubernetes-resources)
 
 ;;; kubernetes-resources.el ends here
