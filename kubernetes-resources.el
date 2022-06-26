@@ -9,7 +9,7 @@
 (require 'kubernetes-process)
 
 (defun kubernetes--get-all-groups (&optional api-group-list)
-  "Retrieve all API groups from the API-GROUP-LIST.
+  "Retrieve all API group names from the API-GROUP-LIST.
 
 API-GROUP-LIST should be an alist representation of a APIGroupList resource.
 
