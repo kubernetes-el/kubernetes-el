@@ -156,7 +156,7 @@ If there is already a process recorded in the ledger, return that
     (oset ledger proxy nil)))
 
 (cl-defmacro kubernetes--with-proxy ((&key cleanup) &rest body)
-  "Start a Kubernetes proxy server and executo BODY.
+  "Start a Kubernetes proxy server and execute BODY.
 
 If CLEANUP is non-nil, terminate the proxy process immediately after BODY."
   ;; TODO: Refactor `get-proxy-process' to return the ported process record object rather than the raw process itself
