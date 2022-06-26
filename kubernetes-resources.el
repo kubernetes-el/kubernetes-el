@@ -14,21 +14,17 @@
 API-GROUP-LIST should be an alist representation of a APIGroupList resource.
 
 If API-GROUP-LIST is not provided, this function will attempt to
-query the cluster via proxy.  See `kubernetes-proxy'."
+query the cluster via proxy.  It will error if a proxy server is
+not already active.  See `kubernetes-proxy'."
   (-when-let* ((api-group-list (or
                                 api-group-list
-                                (progn
-                                  ;; TODO: Refactor `get-proxy-process' to return the ported process record object
-                                  ;; rather than the raw process itself
-                                  (get-proxy-process kubernetes--global-process-ledger)
-                                  (request-response-data
-                                   (kubernetes--request-option
-                                    (format "%s/apis" (base-url (oref kubernetes--global-process-ledger proxy)))
-                                    :parser 'json-read)))))
+                                (kubernetes--require-proxy
+                                 (request-response-data
+                                  (kubernetes--request-option
+                                   (format "%s/apis" (base-url (oref kubernetes--global-process-ledger proxy)))
+                                   :parser 'json-read)))))
                (groups (--map (alist-get 'name it)
                               (alist-get 'groups api-group-list))))
-    ;; TODO: Define a with-proxy-process macro that can take care of spinup and teardown
-    (kill-proxy-process kubernetes--global-process-ledger)
     groups))
 
 (provide 'kubernetes-resources)

@@ -155,6 +155,22 @@ If there is already a process recorded in the ledger, return that
     (kubernetes--redraw-overview-buffer)
     (oset ledger proxy nil)))
 
+(cl-defmacro kubernetes--with-proxy ((&key cleanup) &rest body)
+  "Start a Kubernetes proxy server and executo BODY.
+
+If CLEANUP is non-nil, terminate the proxy process immediately after BODY."
+  ;; TODO: Refactor `get-proxy-process' to return the ported process record object rather than the raw process itself
+  (get-proxy-process kubernetes--global-process-ledger)
+  `(let ((res (progn ,@body)))
+     (when ,cleanup (kill-proxy-process kubernetes--global-process-ledger))
+     res))
+
+(defmacro kubernetes--require-proxy (&rest body)
+  "Execute BODY if and only if Kubernetes proxy server already enabled."
+  `(if (not (oref kubernetes--global-process-ledger proxy))
+      (error "Kubernetes proxy server required but not active; use `kubernetes--with-proxy' or enable manually with `kubernetes-proxy'.")
+     ,@body))
+
 (cl-defmethod poll-process-live-p ((ledger kubernetes--process-ledger) resource)
   "Determine liveness of polling process for RESOURCE in LEDGER."
   (process-live-p (get-process-for-resource ledger resource)))
