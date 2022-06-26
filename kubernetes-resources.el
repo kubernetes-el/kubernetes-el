@@ -22,10 +22,8 @@ not already active.  See `kubernetes-proxy'."
                                  (request-response-data
                                   (kubernetes--request-option
                                    (format "%s/apis" (base-url (oref kubernetes--global-process-ledger proxy)))
-                                   :parser 'json-read)))))
-               (groups (--map (alist-get 'name it)
-                              (alist-get 'groups api-group-list))))
-    groups))
+                                   :parser 'json-read))))))
+    (--map (alist-get 'name it) (alist-get 'groups api-group-list))))
 
 (defun kubernetes--preferred-version-for (group-name)
   "Query for the preferred version of the GROUP-NAME.
