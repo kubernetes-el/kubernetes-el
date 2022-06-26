@@ -14,7 +14,7 @@ versioning][semver].
 ### Fixed
 
 - Fixed an issue where faulty macro definition prevented the overview
-  buffer from successfully refreshing on Emacs 29.x.
+  buffer from successfully refreshing on Emacs 29.x. (#303)
 
 ## 0.18.0
 
