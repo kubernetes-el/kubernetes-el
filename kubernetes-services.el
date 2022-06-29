@@ -121,8 +121,9 @@
                       (padding)))))
 
 (kubernetes-ast-define-component services-list (state &optional hidden)
-  (-let (((services-response &as &alist 'items services) (kubernetes-state--get state 'services))
-         ([fmt labels] kubernetes-services--column-heading))
+  (-let* (((&alist 'services-columns column-settings) state)
+         ((services-response &as &alist 'items services) (kubernetes-state--get state 'services))
+         ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
     `(section (services-container ,hidden)
               (header-with-count "Services" ,services)
               (indent

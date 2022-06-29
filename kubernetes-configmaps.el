@@ -105,14 +105,15 @@
                       (padding)))))
 
 (kubernetes-ast-define-component configmaps-list (state &optional hidden)
-  (-let (((&alist 'items configmaps) (kubernetes-state--get state 'configmaps))
-         ([fmt labels] kubernetes-configmaps--column-heading))
+  (-let* (((&alist 'configmaps-columns column-settings) state)
+         ((&alist 'items configmaps) (kubernetes-state--get state 'configmaps))
+         ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
     `(section (configmaps-container ,hidden)
               (header-with-count "Configmaps" ,configmaps)
               (indent
                (columnar-loading-container ,configmaps
                                            ,(propertize
-                                             (apply #'format fmt (split-string labels))
+                                             (apply #'format fmt (split-string labels "|"))
                                              'face
                                              'magit-section-heading)
                                            ,(--map `(configmap ,state ,it) configmaps)))

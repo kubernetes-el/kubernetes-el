@@ -86,14 +86,15 @@
                       (padding)))))
 
 (kubernetes-ast-define-component secrets-list (state &optional hidden)
-  (-let (((&alist 'items secrets) (kubernetes-state--get state 'secrets))
-         ([fmt labels] kubernetes-secrets--column-heading))
+  (-let* (((&alist 'secrets-columns column-settings) state)
+         ((&alist 'items secrets) (kubernetes-state--get state 'secrets))
+         ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
     `(section (secrets-container ,hidden)
               (header-with-count "Secrets" ,secrets)
               (indent
                (columnar-loading-container ,secrets
                                            ,(propertize
-                                             (apply #'format fmt (split-string labels))
+                                             (apply #'format fmt (split-string labels "|"))
                                              'face
                                              'magit-section-heading)
                                            ,(--map `(secret ,state ,it) secrets)))

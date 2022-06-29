@@ -134,14 +134,15 @@
                         (job-detail ,state ,pod ,job))))))
 
 (kubernetes-ast-define-component jobs-list (state &optional hidden)
-  (-let (((state-set-p &as &alist 'items jobs) (kubernetes-state--get state 'jobs))
-         ([fmt labels] kubernetes-jobs--column-heading))
+  (-let* (((&alist 'jobs-columns column-settings) state)
+         ((state-set-p &as &alist 'items jobs) (kubernetes-state--get state 'jobs))
+         ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
     `(section (jobs-container ,hidden)
               (header-with-count "Jobs" ,jobs)
               (indent
                (columnar-loading-container ,jobs
                                            ,(propertize
-                                             (apply #'format fmt (split-string labels))
+                                             (apply #'format fmt (split-string labels "|"))
                                              'face
                                              'magit-section-heading)
                                            ,(--map `(job ,state ,it) jobs)))

@@ -94,14 +94,15 @@
                       (padding)))))
 
 (kubernetes-ast-define-component persistentvolumeclaims-list (state &optional hidden)
-  (-let (((&alist 'items persistentvolumeclaims) (kubernetes-state--get state 'persistentvolumeclaims))
-         ([fmt labels] kubernetes-persistentvolumeclaims--column-heading))
+  (-let* (((&alist 'persistentvolumeclaims-columns column-settings) state)
+         ((&alist 'items persistentvolumeclaims) (kubernetes-state--get state 'persistentvolumeclaims))
+         ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
     `(section (persistentvolumeclaims-container ,hidden)
               (header-with-count "Persistent Volume Claims" ,persistentvolumeclaims)
               (indent
                (columnar-loading-container ,persistentvolumeclaims
                                            ,(propertize
-                                             (apply #'format fmt (split-string labels))
+                                             (apply #'format fmt (split-string labels "|"))
                                              'face
                                              'magit-section-heading)
                                            ,(--map `(persistentvolumeclaim ,state ,it) persistentvolumeclaims)))

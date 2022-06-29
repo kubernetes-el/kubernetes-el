@@ -132,9 +132,10 @@
                       (padding)))))
 
 (kubernetes-ast-define-component statefulsets-list (state &optional hidden)
-  (-let (((state-set-p &as &alist 'items statefulsets)
+  (-let* (((&alist 'statefulsets-columns column-settings) state)
+         ((state-set-p &as &alist 'items statefulsets)
           (kubernetes-state--get state 'statefulsets))
-         ([fmt labels] kubernetes-statefulsets--column-heading))
+         ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
     `(section (statefulsets-container ,hidden)
               (header-with-count "Statefulsets" ,statefulsets)
               (indent

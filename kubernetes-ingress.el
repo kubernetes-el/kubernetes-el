@@ -94,14 +94,21 @@
                      (indent
                       (ingress-detail ,ingress)
                       (padding)))))
+
 (kubernetes-ast-define-component ingress-list (state &optional hidden)
-  (-let [(&alist 'items ingress) (kubernetes-state--get state 'ingress)]
-    `(section (ingress-container ,hidden)
-              (header-with-count "Ingress" ,ingress)
-              (indent
-               (columnar-loading-container ,ingress ,kubernetes-ingress--column-heading
-                                           ,(--map `(ingress ,state ,it) ingress)))
-              (padding))))
+  (-let* (((&alist 'ingress-columns column-settings) state)
+         ((&alist 'items ingress) (kubernetes-state--get state 'ingress))
+         ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
+        `(section (ingress-container ,hidden)
+                  (header-with-count "Ingress" ,ingress)
+                  (indent
+                   (columnar-loading-container ,ingress
+                                               ,(propertize
+                                                 (apply #'format fmt (split-string labels "|"))
+                                                 'face
+                                                 'magit-section-heading)
+                                               ,(--map `(ingress ,state ,it) ingress)))
+                  (padding))))
 
 ;; Requests and state management
 

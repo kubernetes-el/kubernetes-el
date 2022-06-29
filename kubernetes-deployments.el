@@ -154,14 +154,15 @@
                       (padding)))))
 
 (kubernetes-ast-define-component deployments-list (state &optional hidden)
-  (-let (((state-set-p &as &alist 'items deployments) (kubernetes-state--get state 'deployments))
-         ([fmt labels] kubernetes-deployments--column-heading))
+  (-let* (((&alist 'deployments-columns column-settings) state)
+         ((state-set-p &as &alist 'items deployments) (kubernetes-state--get state 'deployments))
+         ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
     `(section (deployments-container ,hidden)
               (header-with-count "Deployments" ,deployments)
               (indent
                (columnar-loading-container ,deployments
                                            ,(propertize
-                                             (apply #'format fmt (split-string labels))
+                                             (apply #'format fmt (split-string labels "|"))
                                              'face
                                              'magit-section-heading)
                                            ,(--map `(deployment ,state ,it) deployments)))

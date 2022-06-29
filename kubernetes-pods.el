@@ -154,14 +154,15 @@
       (equal phase "Succeeded"))))
 
 (kubernetes-ast-define-component pods-list (state &optional hidden)
-  (-let (((&alist 'items pods) (kubernetes-state--get state 'pods))
-         ([fmt labels] kubernetes-pods--column-heading))
+  (-let* (((&alist 'pods-columns column-settings) state)
+          ((&alist 'items pods) (kubernetes-state--get state 'pods))
+          ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
     `(section (pods-container ,hidden)
               (header-with-count "Pods" ,pods)
               (indent
                (columnar-loading-container ,pods
                                            ,(propertize
-                                             (apply #'format fmt (split-string labels))
+                                             (apply #'format fmt (split-string labels "|"))
                                              'face
                                              'magit-section-heading)
                                            ,@(--map `(pod ,state ,it)

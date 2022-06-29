@@ -118,14 +118,15 @@
                       (padding)))))
 
 (kubernetes-ast-define-component nodes-list (state &optional hidden)
-  (-let (((&alist 'items nodes) (kubernetes-state--get state 'nodes))
-         ([fmt labels] kubernetes-nodes--column-heading))
+  (-let* (((&alist 'nodes-columns column-settings) state)
+         ((&alist 'items nodes) (kubernetes-state--get state 'nodes))
+         ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
     `(section (nodes-container ,hidden)
               (header-with-count "Nodes" ,nodes)
               (indent
                (columnar-loading-container ,nodes
                                            ,(propertize
-                                             (apply #'format fmt (split-string labels))
+                                             (apply #'format fmt (split-string labels "|"))
                                              'face
                                              'magit-section-heading)
                                            ,@(--map `(node ,state ,it) nodes)))
