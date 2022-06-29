@@ -48,25 +48,43 @@
       (key-value 12 "Created" ,time))))
 
 (kubernetes-ast-define-component configmap-line (state configmap)
+  ;; (when (not (alist-get 'configmaps-columns state))
+  ;;   (setf (alist-get 'configmaps-columns state) kubernetes-configmaps--default-columns))
   (-let* ((current-time (kubernetes-state--get state 'current-time))
           (pending-deletion (kubernetes-state--get state 'configmaps-pending-deletion))
           (marked-configmaps (kubernetes-state--get state 'marked-configmaps))
           ((&alist 'data data
                    'metadata (&alist 'name name 'creationTimestamp created-time))
            configmap)
-          ([fmt] kubernetes-configmaps--column-heading)
-          (list-fmt (split-string fmt))
-          (line `(line ,(concat
-                         ;; Name
-                         (format (pop list-fmt) (s-truncate 43 name))
-                         " "
-                         ;; Data
-                         (propertize (format (pop list-fmt) (seq-length data)) 'face 'kubernetes-dimmed)
-                         " "
-                         ;; Age
-                         (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format (pop list-fmt) (kubernetes--time-diff-string start current-time))
-                                       'face 'kubernetes-dimmed))))))
+          (line
+           (-let* ((row "")
+                 ((&alist 'configmaps-columns configmaps-columns) state))
+             ;; Read the formatting for the table from the kubernetes-pods--default-columns variable
+             (dotimes (i (length configmaps-columns))
+               ;; Read the column-width (and create format-string) and header for the current column
+               (let* ((col (nth i configmaps-columns))
+                      (col-name (car col))
+                      (props (cdr col))
+                      (width (car (alist-get 'width props)))
+                      (fmt (concat "%" (number-to-string width) "s")))
+                 ;; Depending on the value of the header we use a specific print function.
+                 (setq row (concat  row (pcase  col-name
+                                          ('Name
+                                           (format fmt (s-truncate (abs width) name))
+                                           )
+                                          ('Data
+                                           (propertize (format fmt (seq-length data)) 'face 'kubernetes-dimmed)
+                                           )
+                                          ('Age
+                                           (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
+                                             (propertize (format fmt (kubernetes--time-diff-string start current-time))
+                                                         'face 'kubernetes-dimmed))
+                                           )
+                                          (_
+                                           (format "%s " (format fmt "?"))
+                                           ))
+                                    (unless (= i (1- (length configmaps-columns))) " ")))))
+             row)))
     `(nav-prop (:configmap-name ,name)
                (copy-prop ,name
                           ,(cond

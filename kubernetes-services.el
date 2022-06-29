@@ -63,6 +63,8 @@
      (funcall detail "Ports" (string-join (seq-map format-ports ports) ", ")))))
 
 (kubernetes-ast-define-component service-line (state service)
+  ;; (when (not (alist-get 'services-columns state))
+  ;;   (setf (alist-get 'services-columns state) kubernetes-services--default-columns))
   (-let* ((current-time (kubernetes-state-current-time state))
           (pending-deletion (kubernetes-state--get state 'services-pending-deletion))
           (marked-services (kubernetes-state--get state 'marked-services))
@@ -70,23 +72,36 @@
                    'spec (&alist 'clusterIP internal-ip
                                  'externalIPs external-ips))
            service)
-          ([fmt] kubernetes-services--column-heading)
-          (list-fmt (split-string fmt))
-          (line `(line ,(concat
-                         ;; Name
-                         (format (pop list-fmt) (s-truncate 43 name))
-                         " "
-                         ;; Internal IP
-                         (propertize (format (pop list-fmt) internal-ip) 'face 'kubernetes-dimmed)
-                         " "
-                         ;; External IP
-                         (let ((ips (append external-ips nil)))
-                           (propertize (format (pop list-fmt) (or (car ips) "")) 'face 'kubernetes-dimmed))
-                         " "
-                         ;; Age
-                         (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format (pop list-fmt) (kubernetes--time-diff-string start current-time))
-                                       'face 'kubernetes-dimmed))))))
+          (line
+           (-let* ((row "")
+                   ((&alist 'services-columns services-columns) state))
+             ;; Read the formatting for the table from the kubernetes-pods--default-columns variable
+             (dotimes (i (length services-columns))
+               ;; Read the column-width (and create format-string) and header for the current column
+               (let* ((col (nth i services-columns))
+                      (col-name (car col))
+                      (props (cdr col))
+                      (width (car (alist-get 'width props)))
+                      (fmt (concat "%" (number-to-string width) "s")))
+                 ;; Depending on the value of the header we use a specific print function.
+                 (setq row (concat row (pcase  col-name
+                                         ('Name
+                                          (format fmt (s-truncate (abs width) name))
+                                          )
+                                         ('Internal-IP
+                                          (propertize (format fmt internal-ip) 'face 'kubernetes-dimmed))
+                                         ('External-IP
+                                          (let ((ips (append external-ips nil)))
+                                            (propertize (format fmt (or (car ips) "")) 'face 'kubernetes-dimmed)))
+                                         ('Age
+                                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
+                                            (propertize (format fmt (kubernetes--time-diff-string start current-time))
+                                                        'face 'kubernetes-dimmed)))
+                                         (_
+                                          (format "%s " (format fmt "?"))
+                                          ))
+                                   (unless (= i (1- (length services-columns))) " ")))))
+               row)))
     `(nav-prop (:service-name ,name)
                (copy-prop ,name
                           ,(cond

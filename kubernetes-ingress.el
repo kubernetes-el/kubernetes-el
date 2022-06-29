@@ -36,6 +36,8 @@
       (key-value 12 "Created" ,time))))
 
 (kubernetes-ast-define-component ingress-line (state ingress)
+  ;; (when (not (alist-get 'ingress-columns state))
+  ;;   (setf (alist-get 'ingress-columns state) kubernetes-ingress--default-columns))
   (-let* ((current-time (kubernetes-state-current-time state))
           (pending-deletion (kubernetes-state--get state 'ingress-pending-deletion))
           (marked-ingress (kubernetes-state--get state 'marked-ingress))
@@ -43,18 +45,38 @@
                    'spec (&alist 'rules ingress-rules)
                    'status (&alist 'loadBalancer (&alist 'ingress ingress-lb-list)))
            ingress)
-          (line `(line ,(concat
-                         ;; Name
-                         (format "%-45s " (s-truncate 43 name))
-                         ;; Hosts
-                         (format "%-25s " (s-truncate 23 (mapconcat (-partial 'alist-get 'host) ingress-rules ", ")))
-                         ;; Address
-                         (format "%20s " (s-truncate 18 (mapconcat (-partial 'alist-get 'ip) ingress-lb-list ", ")))
-                         ;; Age
-                         (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format "%10s" (kubernetes--time-diff-string start current-time))
-                                       'face 'kubernetes-dimmed))))))
-
+          (line
+           (-let* ((row "")
+                   ((&alist 'ingress-columns ingress-columns) state))
+             ;; Read the formatting for the table from the kubernetes-pods--default-columns variable
+             (dotimes (i (length ingress-columns))
+               ;; Read the column-width (and create format-string) and header for the current column
+               (let* ((col (nth i ingress-columns))
+                      (col-name (car col))
+                      (props (cdr col))
+                      (width (car (alist-get 'width props)))
+                      (fmt (concat "%" (number-to-string width) "s")))
+                 ;; Depending on the value of the header we use a specific print function.
+                 (setq row (concat  row (pcase  col-name
+                                          ('Name
+                                           (format fmt (s-truncate (abs width) name))
+                                           )
+                                          ('Hosts
+                                           (format fmt (s-truncate (abs width) (mapconcat (-partial 'alist-get 'host) ingress-rules ", ")))
+                                           )
+                                          ('Address
+                                           (format fmt (s-truncate (abs width) (mapconcat (-partial 'alist-get 'ip) ingress-lb-list ", ")))
+                                           )
+                                          ('Age
+                                           (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
+                                             (propertize (format fmt (kubernetes--time-diff-string start current-time))
+                                                         'face 'kubernetes-dimmed))
+                                           )
+                                          (_
+                                           (format "%s " (format fmt "?"))
+                                           ))
+                                    (unless (= i (1- (length ingress-columns))) " ")))))
+             row)))
     `(nav-prop (:ingress-name ,name)
                (copy-prop ,name
                           ,(cond

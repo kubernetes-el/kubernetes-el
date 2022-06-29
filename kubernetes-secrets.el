@@ -33,24 +33,40 @@
       (key-value 12 "Created" ,time))))
 
 (kubernetes-ast-define-component secret-line (state secret)
+  ;; (when (not (alist-get 'secrets-columns state))
+  ;;   (setf (alist-get 'secrets-columns state) kubernetes-secrets--default-columns))
   (-let* ((current-time (kubernetes-state--get state 'current-time))
           (pending-deletion (kubernetes-state--get state 'secrets-pending-deletion))
           (marked-secrets (kubernetes-state--get state 'marked-secrets))
           ((&alist 'data data 'metadata (&alist 'name name 'creationTimestamp created-time))
            secret)
-          ([fmt] kubernetes-secrets--column-heading)
-          (list-fmt (split-string fmt))
-          (line `(line ,(concat
-                         ;; Name
-                         (format (pop list-fmt) (s-truncate 43 name))
-                         " "
-                         ;; Data
-                         (propertize (format (pop list-fmt) (seq-length data)) 'face 'kubernetes-dimmed)
-                         " "
-                         ;; Age
-                         (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format (pop list-fmt) (kubernetes--time-diff-string start current-time))
-                                       'face 'kubernetes-dimmed))))))
+          (line
+           (-let* ((row "")
+                   ((&alist 'secrets-columns secrets-columns) state))
+             ;; Read the formatting for the table from the kubernetes-pods--default-columns variable
+             (dotimes (i (length secrets-columns))
+               ;; Read the column-width (and create format-string) and header for the current column
+               (let* ((col (nth i secrets-columns))
+                      (col-name (car col))
+                      (props (cdr col))
+                      (width (car (alist-get 'width props)))
+                      (fmt (concat "%" (number-to-string width) "s")))
+                 ;; Depending on the value of the header we use a specific print function.
+                 (setq row (concat row (pcase  col-name
+                                         ('Name
+                                          (format fmt (s-truncate (abs width) name))
+                                          )
+                                         ('Data
+                                          (propertize (format fmt (seq-length data)) 'face 'kubernetes-dimmed))
+                                         ('Age
+                                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
+                                            (propertize (format fmt (kubernetes--time-diff-string start current-time))
+                                                        'face 'kubernetes-dimmed)))
+                                         (_
+                                          (format "%s " (format fmt "?"))
+                                          ))
+                                   (unless (= i (1- (length secrets-columns))) " ")))))
+             row)))
     `(nav-prop (:secret-name ,name)
                (copy-prop ,name
                           ,(cond
