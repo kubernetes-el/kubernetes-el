@@ -20,6 +20,14 @@
 (defconst kubernetes-nodes--column-heading
   ["%-45s %-10s %-9s %-4s %8s" "Name Status Roles Age Version"])
 
+(defconst kubernetes-nodes--default-columns
+  '((Name (width -45))
+    (Status (width -10))
+    (Roles (width -9))
+    (Age (width -4))
+    (Version (width 8)))
+  "Possible columns to select for resource-type nodes")
+
 (kubernetes-ast-define-component node-detail (node)
   (-let (((&alist 'metadata (&alist 'name)
                   'status (&alist 'addresses 'nodeInfo))

@@ -21,6 +21,12 @@
 (defconst kubernetes-jobs--column-heading
   ["%-45s %10s %6s" "Name Successful Age"])
 
+(defconst kubernetes-jobs--default-columns
+  '((Name (width -45))
+    (Successful (width 10))
+    (Age (width 6)))
+  "Possible columns to select for resource-type jobs")
+
 (kubernetes-ast-define-component job-detail (state pod job)
   (-let* (((&alist 'metadata (&alist 'namespace ns
                                      'creationTimestamp time)

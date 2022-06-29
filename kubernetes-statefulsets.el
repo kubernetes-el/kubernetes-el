@@ -20,6 +20,15 @@
   ["%-45s %10s %10s %10s %6s" "Name|Replicas|||Age"]
   "The two empty headers are used to align statefulsets with deployments.")
 
+(defconst kubernetes-statefulsets--default-columns
+  ;; TODO The two empty headers are used to align statefulsets with deployments.
+  '((Name (width -45))
+    (Replicas (width 10))
+    (- (width 10))
+    (- (width 10))
+    (Age (width 6)))
+  "Possible columns to select for resource-type statefulsets")
+
 (kubernetes-ast-define-component statefulset-detail (statefulset)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
                  'spec (&alist 'selector (&alist 'matchLabels

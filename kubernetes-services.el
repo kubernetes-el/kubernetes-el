@@ -21,6 +21,13 @@
 (defconst kubernetes-services--column-heading
   ["%-45s %15s %15s %6s" "Name|Internal IP|External IP|Age"])
 
+(defconst kubernetes-services--default-columns
+  '((Name (width -45))
+    (Internal-IP (width 15))
+    (External-IP (width 15))
+    (Age (width 6)))
+  "Possible columns to select for resource-type services")
+
 (kubernetes-ast-define-component service-details (service)
   (-let ((detail
           (lambda (key value)

@@ -21,6 +21,13 @@
   (propertize (format "%-45s %-25s %20s %10s" "Name" "Hosts" "Address"  "Age")
               'face 'magit-section-heading))
 
+(defconst kubernetes-ingress--default-columns
+  '((Name (width -45))
+    (Hosts (width -25))
+    (Address (width 20))
+    (Age (width 10)))
+  "Possible columns to select for resource-type ingress")
+
 (kubernetes-ast-define-component ingress-detail (ingress)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) ingress]
     `((section (namespace nil)

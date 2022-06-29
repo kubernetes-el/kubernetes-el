@@ -19,6 +19,13 @@
 (defconst kubernetes-persistentvolumeclaims--column-heading
   ["%-24s %10s %10s %15s %6s" "Name Phase Capacity Class Age"])
 
+(defconst kubernetes-persistentvolumeclaims--default-columns
+  '((Name (width -24))
+    (Phase (width 10))
+    (Capacity (width 10))
+    (Class (width 15))
+    (Age (width 6)))
+  "Possible columns to select for resource-type persistentvolumeclaims")
 
 (kubernetes-ast-define-component persistentvolumeclaim-detail (persistentvolumeclaim)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) persistentvolumeclaim]

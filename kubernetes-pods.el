@@ -19,6 +19,14 @@
 (defconst kubernetes-pods--column-heading
   ["%-45s %-13s %5s %10s %6s" "Name Status Ready Restarts Age"])
 
+(defconst kubernetes-pods--default-columns
+  '((Name (width -45))
+    (Status (width -13))
+    (Ready (width 5))
+    (Restarts (width 10))
+    (Age (width 6)))
+    "Default columns for resource-type pods")
+
 (kubernetes-ast-define-component pod-view-detail (pod)
   (-let* ((detail (lambda (k v)
                    (when v

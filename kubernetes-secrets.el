@@ -19,6 +19,12 @@
 (defconst kubernetes-secrets--column-heading
   ["%-45s %6s %6s" "Name Data Age"])
 
+(defconst kubernetes-secrets--default-columns
+  '((Name (width -45))
+    (Data (width 6))
+    (Age (width 6)))
+  "Possible columns to select for resource-type secrets")
+
 (kubernetes-ast-define-component secret-detail (secret)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) secret]
     `((section (namespace nil)

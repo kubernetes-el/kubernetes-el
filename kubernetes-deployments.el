@@ -19,6 +19,14 @@
 (defconst kubernetes-deployments--column-heading
   ["%-45s %10s %10s %10s %6s" "Name Replicas UpToDate Available Age"])
 
+(defconst kubernetes-deployments--default-columns
+  '((Name (width -45))
+    (Replicas (width 10))
+    (UpToDate (width 10))
+    (Available (width 10))
+    (Age (width 6)))
+  "Possible columns to select for resource-type deployments")
+
 (kubernetes-ast-define-component deployment-detail (deployment)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
                  'spec (&alist 'selector (&alist 'matchLabels

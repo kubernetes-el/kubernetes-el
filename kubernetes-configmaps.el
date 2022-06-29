@@ -20,6 +20,12 @@
 (defconst kubernetes-configmaps--column-heading
   ["%-45s %6s %6s" "Name Data Age"])
 
+(defconst kubernetes-configmaps--default-columns
+  '((Name (width -45))
+    (Data (width 6))
+    (Age (width 6)))
+  "Possible columns to select for resource-type configmaps")
+
 (kubernetes-ast-define-component configmap-data (configmap)
   (-let [(&alist 'data data) configmap]
     `(section (data-container t)
