@@ -32,17 +32,15 @@ your `kubectl` version.
 
 For code changes, please follow the following guidelines.
 
-- Create a GitHub issue to track your work
-- Fork the repository on GitHub
-- Create a feature branch for your PR
 - Take the time to write good commit messages;
-  [here](https://www.freecodecamp.org/news/writing-good-commit-messages-a-practical-guide/)
-  are some practical tips.
-- Run tests and make sure they all pass before submitting your PR.
-- If your contribution is a user-facing change, please add an entry to
-  `CHANGELOG.org` in the `Unreleased` section detailing it. See
-  [keepachangelog.com](https://keepachangelog.com/en/1.0.0/) for an
-  overview of this process.
+  [here](https://www.freecodecamp.org/news/writing-good-commit-messages-a-practical-guide/) are some practical tips.
+- Try to keep PRs to a manageable size. PRs that change no more than 300-400 lines at a time get faster and better
+  reviews.
+- If your contribution adds new functionality, please add corresponding unit tests.
+- Please document all new functions and methods. If you're feeling particularly industrious, please also add
+  documentation to any existing functions that you modify along the way.
+- If your contribution is a user-facing change, please add an entry to `CHANGELOG.org` in the `Unreleased` section
+  detailing it. See [keepachangelog.com](https://keepachangelog.com/en/1.0.0/) for an overview of this process.
 - Add yourself to the contributors list by commenting something like the following in your PR: `@all-contributors please
   add @<username> for <code/documentation/etc.>`. See [@all-contributors bot
   documentation](https://allcontributors.org/docs/en/bot/usage) for more details. See `.all-contributorsrc` for examples

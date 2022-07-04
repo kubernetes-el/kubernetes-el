@@ -12,9 +12,9 @@ Manage your Kubernetes clusters with Emacs.
 
 For full documentation, please visit [kubernetes-el.github.io/kubernetes-el][].
 
-## Star History
+## Stargazers over time
 
-[![Star History Chart](https://api.star-history.com/svg?repos=kubernetes-el/kubernetes-el&type=Date)](https://star-history.com/#kubernetes-el/kubernetes-el&Date)
+[![Stargazers over time](https://starchart.cc/kubernetes-el/kubernetes-el.svg)](https://starchart.cc/kubernetes-el/kubernetes-el)
 
 ## Known Issues
 

@@ -9,7 +9,30 @@
 (require 'kubernetes-vars)
 
 
+(defun kubernetes--parse-utc-timestamp (timestamp)
+  "Parse TIMESTAMP string from the API into the representation used by Emacs."
+  (let ((parsed (parse-time-string (replace-regexp-in-string "Z" "" (replace-regexp-in-string "T" " " timestamp)))))
+    (setf (nth 8 parsed) 0)
+    parsed))
+
 (defvar kubernetes-state--current-state nil)
+
+(defmacro kubernetes--save-window-state (&rest body)
+  "Restore window state after executing BODY.
+
+This is useful if the buffer is erased and repopulated in BODY,
+in which case `save-excursion' is insufficient to restore the
+window state."
+  `(let ((pos (point))
+         (col (current-column))
+         (window-start-line (window-start))
+         (inhibit-redisplay t))
+     (save-excursion
+       ,@body)
+     (goto-char pos)
+     (move-to-column col)
+     (set-window-start (selected-window) window-start-line)))
+
 
 (defun kubernetes-state ()
   kubernetes-state--current-state)
@@ -44,23 +67,6 @@
 
           ;; Force the section at point to highlight.
           (magit-section-update-highlight))))))
-
-
-(defmacro kubernetes--save-window-state (&rest body)
-  "Restore window state after executing BODY.
-
-This is useful if the buffer is erased and repopulated in BODY,
-in which case `save-excursion' is insufficient to restore the
-window state."
-  `(let ((pos (point))
-         (col (current-column))
-         (window-start-line (window-start))
-         (inhibit-redisplay t))
-     (save-excursion
-       ,@body)
-     (goto-char pos)
-     (move-to-column col)
-     (set-window-start (selected-window) window-start-line)))
 
 (defun kubernetes--message (format &rest args)
   "Call `message' with FORMAT and ARGS.
