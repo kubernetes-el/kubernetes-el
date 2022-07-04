@@ -13,6 +13,7 @@ versioning][semver].
 
 ### Fixed
 
+- Fixed bug where log message on changing namespace did not properly reflect the selected namespace. (#297)
 - Fixed an issue where faulty macro definition prevented the overview
   buffer from successfully refreshing on Emacs 29.x. (#303)
 
