@@ -11,7 +11,6 @@
 (require 'kubernetes-loading-container)
 (require 'kubernetes-modes)
 (require 'kubernetes-state)
-(require 'kubernetes-utils)
 (require 'kubernetes-yaml)
 
 
@@ -96,7 +95,7 @@
                 s)))
             " "
             ;; Age
-            (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp start-time))))
+            (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp start-time))))
               (propertize (format (pop list-fmt) (kubernetes--time-diff-string start current-time))
                           'face 'kubernetes-dimmed))))
           (str (cond
@@ -190,7 +189,7 @@ STATE is the current application state.
 
 POD-NAME is the name of the pod to display."
   (interactive (let ((state (kubernetes-state)))
-                 (list (kubernetes-utils-read-pod-name state) state)))
+                 (list (kubernetes-pods--read-name state) state)))
   (if-let (pod (kubernetes-state-lookup-pod pod-name state))
       (select-window
        (display-buffer

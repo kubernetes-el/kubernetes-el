@@ -5,6 +5,7 @@
 (require 'subr-x)
 
 (require 'kubernetes-modes)
+(require 'kubernetes-pods)
 (require 'kubernetes-utils)
 
 (autoload 'json-pretty-print-buffer "json")
@@ -68,7 +69,7 @@ STATE is the current application state."
   (interactive
    (let ((state (kubernetes-state)))
      (list (or (kubernetes-utils-maybe-pod-name-at-point)
-               (kubernetes-utils-read-pod-name state))
+               (kubernetes-pods--read-name state))
            (transient-args 'kubernetes-logs)
            state)))
   (kubernetes-logs-fetch-all pod-name (cons "-f" args) state))
@@ -84,7 +85,7 @@ ARGS are additional args to pass to kubectl.
 STATE is the current application state"
   (interactive
    (let ((state (kubernetes-state)))
-     (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state))
+     (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-pods--read-name state))
            (transient-args 'kubernetes-logs)
            state)))
   (let ((args (append (list "logs") args (list pod-name) (kubernetes-kubectl--flags-from-state (kubernetes-state))

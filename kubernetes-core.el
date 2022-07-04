@@ -9,6 +9,12 @@
 (require 'kubernetes-vars)
 
 
+(defun kubernetes--parse-utc-timestamp (timestamp)
+  "Parse TIMESTAMP string from the API into the representation used by Emacs."
+  (let ((parsed (parse-time-string (replace-regexp-in-string "Z" "" (replace-regexp-in-string "T" " " timestamp)))))
+    (setf (nth 8 parsed) 0)
+    parsed))
+
 (defvar kubernetes-state--current-state nil)
 
 (defmacro kubernetes--save-window-state (&rest body)
