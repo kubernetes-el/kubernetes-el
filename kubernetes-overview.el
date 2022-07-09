@@ -295,10 +295,12 @@
 
 (kubernetes-ast-define-component aggregated-view (state &optional hidden)
   (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state--get state 'deployments)]
-    (-let (((state-set-p &as &alist 'items statefulsets)
+    (-let* (((&alist 'statefulsets-columns column-settings-statefulsets) state)
+           ((&alist 'deployments-columns column-settings-deployments) state)
+           ((state-set-p &as &alist 'items statefulsets)
             (kubernetes-state--get state 'statefulsets))
-           ([fmt0 labels0] kubernetes-statefulsets--column-heading)
-           ([fmt1 labels1] kubernetes-deployments--column-heading))
+           ([fmt0 labels0] (kubernetes-utils--create-table-headers column-settings-statefulsets))
+           ([fmt1 labels1] (kubernetes-utils--create-table-headers column-settings-deployments)))
       `(section (ubercontainer, nil)
                 (section (overview-container ,hidden)
                          (header-with-count "Statefulsets" ,statefulsets)
@@ -317,7 +319,7 @@
                           (columnar-loading-container
                            ,deployments
                            ,(propertize
-                             (apply #'format fmt1 (split-string labels1))
+                             (apply #'format fmt1 (split-string labels1 "|"))
                              'face
                              'magit-section-heading)
                            ,@(--map `(aggregated-deployment ,state ,it) deployments)))
