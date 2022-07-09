@@ -19,20 +19,22 @@
   (s-trim-left "
 
 Statefulsets
-  Name                                            Replicas                          Age
+  Name                                            Replicas          -          -    Age
   Fetching...
 
 "))
 
-(ert-deftest kubernetes-statefulsets-test--empty-state ()
+(ert-deftest kubernetes-statefulsets-test--initial-state ()
+  (let ((state '()))
+    (setf (alist-get 'statefulsets-columns state) kubernetes-statefulsets--default-columns)
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
-                      (draw-statefulsets-section nil)))
+                      (draw-statefulsets-section state)))
     (should (equal kubernetes-statefulsets-test--loading-result
                    (substring-no-properties (buffer-string))))
     (forward-line 1)
     (forward-to-indentation)
-    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face)))))
+    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face))))))
 
 
 ;; Shows "None" when there are no statefulsets.
@@ -62,7 +64,7 @@ Statefulsets (0)
   (s-trim-left "
 
 Statefulsets (1)
-  Name                                            Replicas                          Age
+  Name                                            Replicas          -          -    Age
   postgres-pod                                         1/1                           1d
     Namespace:  example-ns
     Created:    2017-04-01T09:48:14Z
@@ -71,7 +73,12 @@ Statefulsets (1)
 "))
 
 (ert-deftest kubernetes-statefulsets-test--sample-response ()
-  (let ((state `((statefulsets . ,sample-get-statefulsets-response)
+  (let ((state `((statefulsets-columns . ((Name (width -45))
+                                          (Replicas (width 10))
+                                          (- (width 10))
+                                          (- (width 10))
+                                          (Age (width 6))))
+                 (statefulsets . ,sample-get-statefulsets-response)
                  (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)

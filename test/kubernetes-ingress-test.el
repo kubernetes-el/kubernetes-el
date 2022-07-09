@@ -24,15 +24,17 @@ Ingress
 
 "))
 
-(ert-deftest kubernetes-ingress-test--empty-state ()
+(ert-deftest kubernetes-ingress-test--initial-state ()
+  (let ((state '()))
+    (setf (alist-get 'ingress-columns state) kubernetes-ingress--default-columns)
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
-                      (draw-ingress-section nil)))
+                      (draw-ingress-section state)))
     (should (equal kubernetes-ingress-test--loading-result
                    (substring-no-properties (buffer-string))))
     (forward-line 1)
     (forward-to-indentation)
-    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face)))))
+    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face))))))
 
 
 ;; Shows "None" when there are no ingress.
@@ -63,7 +65,7 @@ Ingress (0)
 
 Ingress (4)
   Name                                          Hosts                                  Address        Age
-  clojurescript-ingress                         domain.example.io           3.10.144.54, 3....        -2y
+  clojurescript-ingress                         domain.example.io         3.10.144.54, 3.10...        -2y
     Namespace:  default
     Created:    2019-11-13T14:51:00Z
 
@@ -75,7 +77,7 @@ Ingress (4)
     Namespace:  default
     Created:    2018-06-10T11:43:41Z
 
-  example-ingress                               myminikube.info, myl...     192.168.99.100,...        29d
+  example-ingress                               myminikube.info, mylar... 192.168.99.100, 1...        29d
     Namespace:  default
     Created:    2018-06-10T11:43:41Z
 
@@ -83,7 +85,12 @@ Ingress (4)
 "))
 
 (ert-deftest kubernetes-ingress-test--sample-response ()
-  (let ((state `((ingress . ,sample-get-ingress-response)
+
+  (let ((state `((ingress-columns . ((Name (width -45))
+                                     (Hosts (width -25))
+                                     (Address (width 20))
+                                     (Age (width 10))))
+                 (ingress . ,sample-get-ingress-response)
                  (current-time . ,(date-to-time "2018-07-10 10:43Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)

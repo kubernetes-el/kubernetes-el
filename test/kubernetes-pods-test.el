@@ -24,15 +24,17 @@ Pods
 
 "))
 
-(ert-deftest kubernetes-pods-test--empty-state ()
+(ert-deftest kubernetes-pods-test--initial-state ()
+  (let ((state '()))
+    (setf (alist-get 'pods-columns state) kubernetes-pods--default-columns)
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
-                      (draw-pods-section nil)))
+                      (draw-pods-section state)))
     (should (equal kubernetes-pods-test--loading-result
                    (substring-no-properties (buffer-string))))
     (forward-line 1)
     (forward-to-indentation)
-    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face)))))
+    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face))))))
 
 
 ;; Shows "None" when there are no pods.
@@ -97,7 +99,12 @@ Pods (4)
 "))
 
 (ert-deftest kubernetes-pods-test--sample-response-without-completed ()
-  (let ((state `((pods . ,sample-get-pods-response)
+  (let ((state `((pods-columns . ((Name (width -45))
+                                  (Status (width -13))
+                                  (Ready (width 5))
+                                  (Restarts (width 10))
+                                  (Age (width 6))))
+                 (pods . ,sample-get-pods-response)
                  (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
@@ -122,7 +129,12 @@ Pods (4)
 "))
 
 (ert-deftest kubernetes-pods-test--sample-response-with-completed ()
-  (let ((state `((pods . ,sample-get-pods-response)
+  (let ((state `((pods-columns . ((Name (width -45))
+                                  (Status (width -13))
+                                  (Ready (width 5))
+                                  (Restarts (width 10))
+                                  (Age (width 6))))
+                 (pods . ,sample-get-pods-response)
                  (current-time . ,(date-to-time "2017-04-03 00:00Z"))))
         (kubernetes-pods-display-completed t))
     (with-temp-buffer
