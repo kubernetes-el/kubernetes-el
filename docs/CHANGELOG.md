@@ -15,6 +15,12 @@ versioning][semver].
 
 - Removed strict dependency pin on Emacs 25.1
 
+### Fixed
+
+- Fixed bug where log message on changing namespace did not properly reflect the selected namespace. (#297)
+- Fixed an issue where faulty macro definition prevented the overview
+  buffer from successfully refreshing on Emacs 29.x. (#303)
+
 ## 0.18.0
 
 ### Changed

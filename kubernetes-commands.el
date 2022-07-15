@@ -8,6 +8,7 @@
 (require 'kubernetes-contexts)
 (require 'kubernetes-core)
 (require 'kubernetes-modes)
+(require 'kubernetes-pods)
 (require 'kubernetes-popups)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
@@ -284,7 +285,7 @@ THING must be a valid target for `kubectl describe'."
   "Display a buffer for describing a pod.
 
 POD-NAME is the name of the pod to describe."
-  (interactive (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name (kubernetes-state)))))
+  (interactive (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-pods--read-name (kubernetes-state)))))
   (let ((buf (get-buffer-create kubernetes-pod-buffer-name))
         (marker (make-marker)))
     (with-current-buffer buf
@@ -326,7 +327,7 @@ STATE is the current application state.
 
 Should be invoked via command `kubernetes-exec'."
   (interactive (let* ((state (kubernetes-state))
-                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state)))
+                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-pods--read-name state)))
                       (command
                        (let ((cmd (string-trim (read-string (format "Command (default: %s): " kubernetes-default-exec-command)
                                                             nil 'kubernetes-exec-history))))
@@ -370,7 +371,7 @@ STATE is the current application state.
 
 Should be invoked via command `kubernetes-exec'."
   (interactive (let* ((state (kubernetes-state))
-                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state)))
+                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-pods--read-name state)))
                       (command
                        (let ((cmd (string-trim (read-string (format "Command (default: %s): " kubernetes-default-exec-command)
                                                             nil 'kubernetes-exec-history))))
@@ -435,15 +436,15 @@ STATE is the current application state."
   (kubernetes-state-update-current-namespace ns)
   (kubernetes-kubectl-config-set-current-namespace (kubernetes-state)
                                                    (lambda (_)
-                                                     (message "Updated current context `%s' namespace to `%s.'"
+                                                     (kubernetes--info "Updated current context `%s' namespace to `%s.'"
                                                               (alist-get 'name (kubernetes-state-current-context state))
-                                                              (kubernetes-state--get state 'current-namespace)))
+                                                              ns))
                                                    (lambda (buf)
                                                      (let ((s (with-current-buffer buf (buffer-string))))
-                                                       (message "Unable to set namespace `%s' for current context `%s'."
-                                                                (kubernetes-state--get state 'current-namespace)
-                                                                (alist-get 'name (kubernetes-state-current-context state))
-                                                       (message s)))))
+                                                       (kubernetes--error "Unable to set namespace `%s' for current context `%s'."
+                                                                ns
+                                                                (alist-get 'name (kubernetes-state-current-context state)))
+                                                       (kubernetes--message s))))
 
   (kubernetes-state-update-overview-sections (kubernetes-state-overview-sections state))
 

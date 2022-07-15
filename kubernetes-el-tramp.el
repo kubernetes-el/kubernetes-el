@@ -30,6 +30,8 @@
 (require 'dash)
 (require 'tramp)
 
+(require 'kubernetes-pods)
+
 (defun kubernetes-tramp--running-containers (&optional _ignored)
   "A tramp-completion function for kubernetes."
   (if (null (kubernetes-state))
@@ -47,7 +49,7 @@
 
 (defun kubernetes-tramp-find-file (pod-name container-name)
   (interactive (let* ((state (kubernetes-state))
-                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state)))
+                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-pods--read-name state)))
                       (container-name (kubernetes--val-from-arg-list (transient-args 'kubernetes-file) 'container)))
                  (list pod-name container-name)))
   (let ((default-directory (get--tramp-file-path pod-name container-name)))
@@ -55,7 +57,7 @@
 
 (defun kubernetes-tramp-dired (pod-name container-name)
   (interactive (let* ((state (kubernetes-state))
-                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-utils-read-pod-name state)))
+                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-pods--read-name state)))
                       (container-name (kubernetes--val-from-arg-list (transient-args 'kubernetes-file) 'container)))
                  (list pod-name container-name)))
   (dired (get--tramp-file-path pod-name container-name)))
