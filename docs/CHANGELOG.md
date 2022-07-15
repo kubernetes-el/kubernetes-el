@@ -11,6 +11,10 @@ versioning][semver].
 
 ## Upcoming
 
+### Changed
+
+- Removed strict dependency pin on Emacs 25.1
+
 ### Fixed
 
 - Fixed bug where log message on changing namespace did not properly reflect the selected namespace. (#297)
