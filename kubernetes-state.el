@@ -478,10 +478,6 @@ arguments."
   "Get the entry for corresponding resource TYPE from STATE."
   (alist-get type state))
 
-(defmacro kubernetes-state--define-getter (attr)
-  `(defun ,(intern (format "kubernetes-state-%s" attr)) (state)
-     (kubernetes-state--get state (quote ,attr))))
-
 (defmacro kubernetes-state--define-setter (attr arglist &rest forms-before-update)
   (declare (indent 2))
   (let ((arg
@@ -499,12 +495,6 @@ arguments."
            (kubernetes-state-trigger-redraw))
 
          arg))))
-
-(defmacro kubernetes-state--define-accessors (attr arglist &rest forms-before-update)
-  (declare (indent 2))
-  `(progn
-     (kubernetes-state--define-getter ,attr)
-     (kubernetes-state--define-setter ,attr ,arglist ,@forms-before-update)))
 
 (kubernetes-state--define-setter
     current-namespace
@@ -594,10 +584,11 @@ arguments."
     (kubernetes-state-update :update-last-error arg)
     arg))
 
-;; No update function is provided. The time is updated internally before the
-;; redrawing hook is run.
-(kubernetes-state--define-getter current-time)
-
+;; No update function is provided for time. The time is updated internally
+;; before the redrawing hook is run.
+(defun kubernetes-state-current-time (state)
+  "Get the current time from STATE."
+  (kubernetes-state--get state 'current-time))
 
 ;; Convenience functions.
 
