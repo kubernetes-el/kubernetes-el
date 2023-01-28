@@ -25,6 +25,12 @@ With `kubernetes-el`, you can:
 
 [kubectl proxy]: https://kubernetes.io/docs/tasks/extend-kubernetes/http-proxy-access-api/
 
+!!! tip
+
+    To learn more about how `kubernetes-el` compares to some other Kubernetes packages for
+    Emacs, see: [Explanations > Comparisons with Similar
+    Packages/Tools](./explanations/comparisons.md).
+
 ## Getting Started
 
 === "use-package"
