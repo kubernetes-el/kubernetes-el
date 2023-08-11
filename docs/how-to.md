@@ -10,8 +10,9 @@ hide:
     This page is structured loosely around the [CRUD][] paradigm.
 
 This page provides "recipes" around how to perform common tasks with
-`kubernetes-el`. It can be considered an authoritive (if not necessarily
-comprehensive) overview of all that is possible with the package.
+`kubernetes-el`. It can be considered an authoritative (if not
+necessarily comprehensive) overview of all that is possible with the
+package.
 
 ## Interacting with `kubernetes-el`
 
