@@ -25,15 +25,17 @@ Jobs
 
 "))
 
-(ert-deftest kubernetes-jobs-test--empty-state ()
+(ert-deftest kubernetes-jobs-test--initial-state ()
+  (let ((state '()))
+    (setf (alist-get 'jobs-columns state) kubernetes-jobs--default-columns)
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
-                      (draw-jobs-section nil)))
+                      (draw-jobs-section state)))
     (should (equal kubernetes-jobs-test--loading-result
                    (substring-no-properties (buffer-string))))
     (forward-line 1)
     (forward-to-indentation)
-    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face)))))
+    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face))))))
 
 
 ;; Shows "None" when there are no jobs.
@@ -90,7 +92,10 @@ Jobs (2)
 "))
 
 (ert-deftest kubernetes-jobs-test--sample-response--pods-loading ()
-  (let ((state `((jobs . ,sample-get-jobs-response)
+  (let ((state `((jobs-columns .  ((Name (width -45))
+                                   (Successful (width 10))
+                                   (Age (width 6))))
+                 (jobs . ,sample-get-jobs-response)
                  (current-time . ,(date-to-time "2017-05-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
@@ -131,7 +136,10 @@ Jobs (2)
 "))
 
 (ert-deftest kubernetes-jobs-test--sample-response--pod-exists ()
-  (let ((state `((jobs . ,sample-get-jobs-response)
+  (let ((state `((jobs-columns .  ((Name (width -45))
+                                   (Successful (width 10))
+                                   (Age (width 6))))
+                 (jobs . ,sample-get-jobs-response)
                  (current-time . ,(date-to-time "2017-05-03 00:00Z"))
                  (pods . ,sample-get-pods-response))))
     (with-temp-buffer

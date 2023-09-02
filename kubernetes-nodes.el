@@ -20,6 +20,14 @@
 (defconst kubernetes-nodes--column-heading
   ["%-45s %-10s %-9s %-4s %8s" "Name Status Roles Age Version"])
 
+(defconst kubernetes-nodes--default-columns
+  '((Name (width -45))
+    (Status (width -10))
+    (Roles (width -9))
+    (Age (width -4))
+    (Version (width 8)))
+  "Possible columns to select for resource-type nodes")
+
 (kubernetes-ast-define-component node-detail (node)
   (-let (((&alist 'metadata (&alist 'name)
                   'status (&alist 'addresses 'nodeInfo))
@@ -37,51 +45,63 @@
          nodeInfo))))
 
 (kubernetes-ast-define-component node-line (state node)
+  ;; (when (not (alist-get 'nodes-columns state))
+  ;;   (setf (alist-get 'nodes-columns state) kubernetes-nodes--default-columns))
   (-let* ((current-time (kubernetes-state-current-time state))
           ((&alist 'metadata (&alist 'name 'labels 'creationTimestamp)
                    'status (&alist 'conditions
                                    'nodeInfo (&alist 'kubeProxyVersion)))
            node)
-          ([fmt] kubernetes-nodes--column-heading)
-          (list-fmt (split-string fmt))
           (type (or (seq-some (lambda (x) (when (string= (alist-get 'status x) "True")
                                             (alist-get 'type x)))
                               conditions)
                     "Unknown"))
           (str
-           (concat
-            ;; Name
-            (format (pop list-fmt) (s-truncate 43 name))
-            " "
-            ;; Status
-            (let ((s (s-truncate 10 type)))
-              (format (pop list-fmt)
-                      (if (string-match-p "running" type)
-                          (propertize s 'face 'kubernetes-dimmed)
-                        s)))
-            " "
-            ;; Roles
-            (format (pop list-fmt)
-                    (s-truncate
-                     8
-                     (or
-                      (seq-some (lambda (x)
-                                  (when (string-match
-                                         "node-role.kubernetes.io/\\(.+\\)$"
-                                         x)
-                                    (match-string 1 x)))
-                                (mapcar (lambda (x) (symbol-name (car x))) labels))
-                      "<none>")))
-            " "
-            ;; Age
-            (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp creationTimestamp))))
-              (propertize (format (pop list-fmt) (kubernetes--time-diff-string start current-time))
-                          'face 'kubernetes-dimmed))
-            " "
-            ;; Version
-            (format (pop list-fmt)
-                    (propertize (s-truncate 8 kubeProxyVersion)
-                                'face 'kubernetes-dimmed))))
+           (-let* ((row "")
+                   ((&alist 'nodes-columns nodes-columns) state))
+             ;; Read the formatting for the table from the kubernetes-pods--default-columns variable
+             (dotimes (i (length nodes-columns))
+               ;; Read the column-width (and create format-string) and header for the current column
+               (let* ((col (nth i nodes-columns))
+                      (col-name (car col))
+                      (props (cdr col))
+                      (width (car (alist-get 'width props)))
+                      (fmt (concat "%" (number-to-string width) "s")))
+                 ;; Depending on the value of the header we use a specific print function.
+                 (setq row (concat row (pcase  col-name
+                                         ('Name
+                                          (format fmt (s-truncate (abs width) name))
+                                          )
+                                         ('Status
+                                          (let ((s (s-truncate (abs width) type)))
+                                            (format fmt
+                                                    (if (string-match-p "running" type)
+                                                        (propertize s 'face 'kubernetes-dimmed)
+                                                      s))))
+                                         ('Roles
+                                          (format fmt
+                                                  (s-truncate
+                                                   (abs width)
+                                                   (or
+                                                    (seq-some (lambda (x)
+                                                                (when (string-match
+                                                                       "node-role.kubernetes.io/\\(.+\\)$"
+                                                                       x)
+                                                                  (match-string 1 x)))
+                                                              (mapcar (lambda (x) (symbol-name (car x))) labels))
+                                                    "<none>"))))
+                                         ('Age
+                                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp creationTimestamp))))
+                                            (propertize (format fmt (kubernetes--time-diff-string start current-time))
+                                                        'face 'kubernetes-dimmed)))
+                                         ('Version
+                                          (format fmt
+                                                  (propertize (s-truncate 8 kubeProxyVersion))))
+                                         (_
+                                          (format "%s " (format fmt "?"))
+                                          ))
+                                   (unless (= i (1- (length nodes-columns))) " ")))))
+             row))
           (str (cond
                 ((string-match-p "ready" type) str)
                 (t (propertize str 'face 'warning))))
@@ -98,14 +118,15 @@
                       (padding)))))
 
 (kubernetes-ast-define-component nodes-list (state &optional hidden)
-  (-let (((&alist 'items nodes) (kubernetes-state--get state 'nodes))
-         ([fmt labels] kubernetes-nodes--column-heading))
+  (-let* (((&alist 'nodes-columns column-settings) state)
+         ((&alist 'items nodes) (kubernetes-state--get state 'nodes))
+         ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
     `(section (nodes-container ,hidden)
               (header-with-count "Nodes" ,nodes)
               (indent
                (columnar-loading-container ,nodes
                                            ,(propertize
-                                             (apply #'format fmt (split-string labels))
+                                             (apply #'format fmt (split-string labels "|"))
                                              'face
                                              'magit-section-heading)
                                            ,@(--map `(node ,state ,it) nodes)))

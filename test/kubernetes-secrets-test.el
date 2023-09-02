@@ -24,15 +24,17 @@ Secrets
 
 "))
 
-(ert-deftest kubernetes-secrets-test---empty-state ()
+(ert-deftest kubernetes-secrets-test---initial-state ()
+  (let ((state '()))
+    (setf (alist-get 'secrets-columns state) kubernetes-secrets--default-columns)
   (with-temp-buffer
     (save-excursion (magit-insert-section (root)
-                      (draw-secrets-section nil)))
+                      (draw-secrets-section state)))
     (should (equal kubernetes-secrets-test--loading-result
                    (substring-no-properties (buffer-string))))
     (forward-line 1)
     (forward-to-indentation)
-    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face)))))
+    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face))))))
 
 
 ;; Shows "None" when there are no secrets.
@@ -75,7 +77,10 @@ Secrets (2)
 "))
 
 (ert-deftest kubernetes-secrets-test---sample-response ()
-  (let ((state `((secrets . ,sample-get-secrets-response)
+  (let ((state `((secrets-columns . ((Name (width -45))
+                                     (Data (width 6))
+                                     (Age (width 6))))
+                 (secrets . ,sample-get-secrets-response)
                  (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)

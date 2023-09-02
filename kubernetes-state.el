@@ -36,6 +36,28 @@
       (:update-overview-sections
        (setf (alist-get 'overview-sections next) args))
 
+      ;; Update column settings for resource-types
+      (:update-configmaps-columns
+       (setf (alist-get 'configmaps-columns next) args))
+      (:update-deployments-columns
+       (setf (alist-get 'deployments-columns next) args))
+      (:update-ingress-columns
+       (setf (alist-get 'ingress-columns next) args))
+      (:update-jobs-columns
+       (setf (alist-get 'jobs-columns next) args))
+      (:update-nodes-columns
+       (setf (alist-get 'nodes-columns next) args))
+      (:update-persistentvolumeclaims-columns
+       (setf (alist-get 'persistentvolumeclaims-columns next) args))
+      (:update-pods-columns
+       (setf (alist-get 'pods-columns next) args))
+      (:update-secrets-columns
+       (setf (alist-get 'secrets-columns next) args))
+      (:update-services-columns
+       (setf (alist-get 'services-columns next) args))
+      (:update-statefulsets-columns
+       (setf (alist-get 'statefulsets-columns next) args))
+
       (:update-config
        (setf (alist-get 'config next) args)
        (unless (alist-get 'current-namespace next)

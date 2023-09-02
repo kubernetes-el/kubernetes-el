@@ -33,7 +33,7 @@
 
 (defconst kubernetes-overview-test--expected-overview--empty-state (string-trim "
 Statefulsets
-  Name                                            Replicas                          Age
+  Name                                            Replicas          -          -    Age
   Fetching...
 
 Deployments
@@ -43,13 +43,27 @@ Deployments
 
 (ert-deftest kubernetes-overview-test--aggregated-overview--shows-pending-when-state-is-empty ()
   (test-helper-with-empty-state
-    (kubernetes-ast-eval `(aggregated-view ,(kubernetes-state)))
+   (let ((state
+          (cons `(statefulsets-columns . ((Name (width -45))
+                                          (Replicas (width 10))
+                                          (- (width 10))
+                                          (- (width 10))
+                                          (Age (width 6)))
+                                       )
+                (cons `(deployments-columns . ((Name (width -45))
+                                               (Replicas (width 10))
+                                               (UpToDate (width 10))
+                                               (Available (width 10))
+                                               (Age (width 6)))
+                                            )
+                      (kubernetes-state)))))
+     (kubernetes-ast-eval `(aggregated-view ,state)))
     (should (equal kubernetes-overview-test--expected-overview--empty-state (string-trim (substring-no-properties (buffer-string)))))))
 
 
 (defconst kubernetes-overview-test--expected-overview--only-deployments-set (string-trim "
 Statefulsets
-  Name                                            Replicas                          Age
+  Name                                            Replicas          -          -    Age
   Fetching...
 
 Deployments (2)
@@ -82,17 +96,28 @@ Deployments (2)
 (ert-deftest kubernetes-overview-test--aggregated-overview--no-pods-set ()
   (test-helper-with-empty-state
     (kubernetes-state-update-deployments kubernetes-overview-test--sample-deployments-response)
-    (let ((state (cons `(current-time . ,(date-to-time "2017-04-23 00:00Z"))
-                       (kubernetes-state))))
+    (let ((state
+           (cons `(statefulsets-columns . ((Name (width -45))
+                                           (Replicas (width 10))
+                                           (- (width 10))
+                                           (- (width 10))
+                                           (Age (width 6)))
+                                       )
+            (cons `(deployments-columns . ((Name (width -45))
+                                           (Replicas (width 10))
+                                           (UpToDate (width 10))
+                                           (Available (width 10))
+                                           (Age (width 6)))
+                                        ) (cons `(current-time . ,(date-to-time "2017-04-23 00:00Z"))
+                                        (kubernetes-state))))))
       (kubernetes-ast-eval `(aggregated-view ,state)))
-
     (should (equal kubernetes-overview-test--expected-overview--only-deployments-set
                    (string-trim (substring-no-properties (buffer-string)))))))
 
 
 (defconst kubernetes-overview-test--expected-overview--populated-state (string-trim "
 Statefulsets
-  Name                                            Replicas                          Age
+  Name                                            Replicas          -          -    Age
   Fetching...
 
 Deployments (2)
@@ -134,8 +159,20 @@ Deployments (2)
     (kubernetes-state-update-deployments kubernetes-overview-test--sample-deployments-response)
     (kubernetes-state-update-pods kubernetes-overview-test--sample-pods-response)
     (kubernetes-state-update-secrets kubernetes-overview-test--sample-secrets-response)
-    (let ((state (cons `(current-time . ,(date-to-time "2017-04-23 00:00Z"))
-                       (kubernetes-state))))
+    (let ((state 
+           (cons `(statefulsets-columns . ((Name (width -45))
+                                                 (Replicas (width 10))
+                                                 (- (width 10))
+                                                 (- (width 10))
+                                                 (Age (width 6)))
+                                              )
+                       (cons `(deployments-columns . ((Name (width -45))
+                                                      (Replicas (width 10))
+                                                      (UpToDate (width 10))
+                                                      (Available (width 10))
+                                                      (Age (width 6)))
+                                                   ) (cons `(current-time . ,(date-to-time "2017-04-23 00:00Z"))
+                       (kubernetes-state))))))
       (kubernetes-ast-eval `(aggregated-view ,state)))
     (should (equal kubernetes-overview-test--expected-overview--populated-state
                    (string-trim (substring-no-properties (buffer-string)))))))

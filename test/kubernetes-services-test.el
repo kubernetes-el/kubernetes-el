@@ -19,20 +19,22 @@
   (s-trim-left "
 
 Services
-  Name                                              Internal IP     External IP    Age
+  Name                                              Internal-IP     External-IP    Age
   Fetching...
 
 "))
 
-(ert-deftest kubernetes-services-test--empty-state ()
-  (with-temp-buffer
-    (save-excursion (magit-insert-section (root)
-                      (draw-services-section nil)))
-    (should (equal kubernetes-services-test--loading-result
-                   (substring-no-properties (buffer-string))))
-    (forward-line 1)
-    (forward-to-indentation)
-    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face)))))
+(ert-deftest kubernetes-services-test--initial-state ()
+  (let ((state '()))
+    (setf (alist-get 'services-columns state) kubernetes-services--default-columns)
+    (with-temp-buffer
+      (save-excursion (magit-insert-section (root)
+                        (draw-services-section state)))
+      (should (equal kubernetes-services-test--loading-result
+                     (substring-no-properties (buffer-string))))
+      (forward-line 1)
+      (forward-to-indentation)
+      (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face))))))
 
 
 ;; Shows "None" when there are no services.
@@ -62,7 +64,7 @@ Services (0)
   (s-trim-left "
 
 Services (2)
-  Name                                              Internal IP     External IP    Age
+  Name                                              Internal-IP     External-IP    Age
   example-svc-1                                     192.168.0.0     192.168.0.0     4d
     Selector:      example-pod-v1
     Label:         example-svc-1
@@ -84,7 +86,11 @@ Services (2)
 "))
 
 (ert-deftest kubernetes-services-test--sample-response ()
-  (let ((state `((services . ,sample-get-services-response)
+  (let ((state `((services-columns . ((Name (width -45))
+                                      (Internal-IP (width 15))
+                                      (External-IP (width 15))
+                                      (Age (width 6))))
+                 (services . ,sample-get-services-response)
                  (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)

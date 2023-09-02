@@ -156,6 +156,17 @@ buffer is killed."
     (setq dir (file-name-directory (directory-file-name dir))))
   dir)
 
+(defun kubernetes-utils--create-table-headers (kubernetes-pods--columns-alist)
+  (let (widths headers)
+    (dolist (col kubernetes-pods--columns-alist)
+      (let ((props (cdr col)))
+        (push (car (alist-get 'width props)) widths)
+        (push (symbol-name (car col)) headers)))
+    (vector (mapconcat (lambda (w)
+                         (concat "%" (number-to-string w) "s"))
+                       (nreverse widths) " ")
+            (mapconcat #'identity (nreverse headers) "|"))))
+
 (provide 'kubernetes-utils)
 
 ;;; kubernetes-utils.el ends here
