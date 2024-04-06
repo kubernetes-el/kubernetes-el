@@ -1,3 +1,7 @@
+;;; test-kubectl.el --- Tests for kubectl. -*- lexical-binding: t; -*-
+;;; Commentary:
+;;; Code:
+
 (load-file "./tests/undercover-init.el")
 
 (require 'buttercup)

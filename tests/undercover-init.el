@@ -1,3 +1,7 @@
+;;; undercover-init.el --- Initialize undercover. -*- lexical-binding: t; -*-
+;;; Commentary:
+;;; Code:
+
 (when (require 'undercover nil t)
   (with-no-warnings
     (undercover "*.el"
