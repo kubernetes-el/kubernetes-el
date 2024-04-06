@@ -13,11 +13,10 @@ jobs:
     strategy:
       matrix:
         emacs_version:
-          - 25.3
           - 26.3
           - 27.2
           - 28.1
-          - 29.1
+          - 29.2
         include:
           - emacs_version: snapshot
             ignore_error: true
