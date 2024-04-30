@@ -19,6 +19,14 @@
 (defconst kubernetes-deployments--column-heading
   ["%-45s %10s %10s %10s %6s" "Name Replicas UpToDate Available Age"])
 
+(defconst kubernetes-deployments--default-columns
+  '((Name (width -45))
+    (Replicas (width 10))
+    (UpToDate (width 10))
+    (Available (width 10))
+    (Age (width 6)))
+  "Possible columns to select for resource-type deployments")
+
 (kubernetes-ast-define-component deployment-detail (deployment)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
                  'spec (&alist 'selector (&alist 'matchLabels
@@ -46,6 +54,8 @@
       (key-value 12 "Created" ,time))))
 
 (kubernetes-ast-define-component deployment-line (state deployment)
+  ;; (when (not (alist-get 'deployments-columns state))
+  ;;   (setf (alist-get 'deployments-columns state) kubernetes-deployments--default-columns))
   (-let* ((current-time (kubernetes-state--get state 'current-time))
           (pending-deletion (kubernetes-state--get state 'deployments-pending-deletion))
           (marked-deployments (kubernetes-state--get state 'marked-deployments))
@@ -62,49 +72,67 @@
           (desired (or desired 0))
           (available (or available 0))
           (up-to-date (or up-to-date 0))
-          ([fmt] kubernetes-deployments--column-heading)
-          (list-fmt (split-string fmt))
-          (line `(line ,(concat
-                         ;; Name
-                         (format (pop list-fmt) (s-truncate 43 name))
-                         " "
-                         ;; Replicas (current/desired)
-                         (let ((next (pop list-fmt))
-                               (str (format "%s/%s" current desired)))
-                           (cond
-                            ((zerop desired)
-                             (format next str))
-                            ((zerop current)
-                             (propertize (format next str) 'face 'warning))
-                            ((/= current desired)
-                             (format next str))
-                            (t
-                             (propertize (format next str) 'face 'kubernetes-dimmed))))
-                         " "
-                         ;; Up-to-date
-                         (let ((next (pop list-fmt)))
-                           (cond
-                            ((zerop desired)
-                             (format next up-to-date))
-                            ((zerop up-to-date)
-                             (propertize (format next up-to-date) 'face 'warning))
-                            (t
-                             (propertize (format next up-to-date) 'face 'kubernetes-dimmed))))
-                         " "
-                         ;; Available
-                         (let ((next (pop list-fmt)))
-                           (cond
-                            ((zerop desired)
-                             (format next available))
-                            ((zerop available)
-                             (propertize (format next available) 'face 'warning))
-                            (t
-                             (propertize (format next available) 'face 'kubernetes-dimmed))))
-                         " "
-                         ;; Age
-                         (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format (pop list-fmt) (kubernetes--time-diff-string start current-time))
-                                       'face 'kubernetes-dimmed))))))
+          (line
+           (-let* ((row "")
+                   ((&alist 'deployments-columns deployments-columns) state))
+             ;; Read the formatting for the table from the kubernetes-pods--default-columns variable
+
+             (dotimes (i (length deployments-columns))
+               ;; Read the column-width (and create format-string) and header for the current column
+
+               (let* ((col (nth i deployments-columns))
+                      (col-name (car col))
+                      (props (cdr col))
+                      (width (car (alist-get 'width props)))
+                      (fmt (concat "%" (number-to-string width) "s")))
+                 ;; Depending on the value of the header we use a specific print function.
+                 (setq row (concat  row (pcase  col-name
+                                          ('Name
+                                           (format fmt (s-truncate (abs width) name))
+                                           )
+                                          ('Replicas
+                                           (let ((next fmt)
+                                                 (str (format "%s/%s" current desired)))
+                                             (cond
+                                              ((zerop desired)
+                                               (format fmt str))
+                                              ((zerop current)
+                                               (propertize (format fmt str) 'face 'warning))
+                                              ((/= current desired)
+                                               (format fmt str))
+                                              (t
+                                               (propertize (format fmt str) 'face 'kubernetes-dimmed))))
+                                           )
+                                          ('UpToDate
+                                           (let ((next fmt))
+                                             (cond
+                                              ((zerop desired)
+                                               (format fmt up-to-date))
+                                              ((zerop up-to-date)
+                                               (propertize (format fmt up-to-date) 'face 'warning))
+                                              (t
+                                               (propertize (format fmt up-to-date) 'face 'kubernetes-dimmed))))
+                                           )
+                                          ('Available
+                                           (let ((next fmt))
+                                             (cond
+                                              ((zerop desired)
+                                               (format fmt available))
+                                              ((zerop available)
+                                               (propertize (format fmt available) 'face 'warning))
+                                              (t
+                                               (propertize (format fmt available) 'face 'kubernetes-dimmed))))
+                                           )
+                                          ('Age
+                                           (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
+                                             (propertize (format fmt (kubernetes--time-diff-string start current-time))
+                                                         'face 'kubernetes-dimmed))
+                                           )
+                                          (_
+                                           (format "%s " (format fmt "?"))
+                                           ))
+                                    (unless (= i (1- (length deployments-columns))) " ")))))
+             row)))
     `(nav-prop (:deployment-name ,name)
                (copy-prop ,name
                           ,(cond
@@ -126,14 +154,15 @@
                       (padding)))))
 
 (kubernetes-ast-define-component deployments-list (state &optional hidden)
-  (-let (((state-set-p &as &alist 'items deployments) (kubernetes-state--get state 'deployments))
-         ([fmt labels] kubernetes-deployments--column-heading))
+  (-let* (((&alist 'deployments-columns column-settings) state)
+         ((state-set-p &as &alist 'items deployments) (kubernetes-state--get state 'deployments))
+         ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
     `(section (deployments-container ,hidden)
               (header-with-count "Deployments" ,deployments)
               (indent
                (columnar-loading-container ,deployments
                                            ,(propertize
-                                             (apply #'format fmt (split-string labels))
+                                             (apply #'format fmt (split-string labels "|"))
                                              'face
                                              'magit-section-heading)
                                            ,(--map `(deployment ,state ,it) deployments)))

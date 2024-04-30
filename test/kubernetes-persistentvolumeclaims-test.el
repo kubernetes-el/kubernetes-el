@@ -24,15 +24,17 @@ Persistent Volume Claims
 
 "))
 
-(ert-deftest kubernetes-persistentvolumeclaims-test--empty-state ()
-  (with-temp-buffer
-    (save-excursion (magit-insert-section (root)
-                      (draw-persistentvolumeclaims-section nil)))
-    (should (equal kubernetes-persistentvolumeclaims-test--loading-result
-                   (substring-no-properties (buffer-string))))
-    (forward-line 1)
-    (forward-to-indentation)
-    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face)))))
+(ert-deftest kubernetes-persistentvolumeclaims-test--initial-state ()
+  (let ((state '()))
+    (setf (alist-get 'persistentvolumeclaims-columns state) kubernetes-persistentvolumeclaims--default-columns)
+    (with-temp-buffer
+      (save-excursion (magit-insert-section (root)
+                        (draw-persistentvolumeclaims-section state)))
+      (should (equal kubernetes-persistentvolumeclaims-test--loading-result
+                     (substring-no-properties (buffer-string))))
+      (forward-line 1)
+      (forward-to-indentation)
+      (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face))))))
 
 
 ;; Shows "None" when there are no persistentvolumeclaims.
@@ -75,7 +77,12 @@ Persistent Volume Claims (2)
 "))
 
 (ert-deftest kubernetes-persistentvolumeclaims-test--sample-response ()
-  (let ((state `((persistentvolumeclaims . ,sample-get-persistentvolumeclaims-response)
+  (let ((state `((persistentvolumeclaims-columns . ((Name (width -24))
+                                   (Phase (width 10))
+                                   (Capacity (width 10))
+                                   (Class (width 15))
+                                   (Age (width 6))))
+                 (persistentvolumeclaims . ,sample-get-persistentvolumeclaims-response)
                  (current-time . ,(date-to-time "2021-11-06 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
