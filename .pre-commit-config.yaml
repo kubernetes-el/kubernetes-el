@@ -8,3 +8,10 @@ repos:
       (?x)^(
           docs/CONTRIBUTORS.md
       )$
+- repo: local
+  hooks:
+  - id: dep-graph-gen
+    name: Generate dependency graph
+    language: system
+    entry: |
+      make docs/assets/project-deps.png
