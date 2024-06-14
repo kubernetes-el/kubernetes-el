@@ -140,6 +140,22 @@ Deployments (2)
     (should (equal kubernetes-overview-test--expected-overview--populated-state
                    (string-trim (substring-no-properties (buffer-string)))))))
 
+(ert-deftest kubernetes-overview-test--multiple-views-dedupe-1 ()
+  (let* ((views (append kubernetes-overview-custom-views-alist kubernetes-overview-views-alist))
+         (selection '("deployments" "pods"))
+         (sections (kubernetes-overview-views--dedupe views selection)))
+    (should (equal sections '(context deployments pods)))))
+
+(ert-deftest kubernetes-overview-test--multiple-views-dedupe-2 ()
+  (let* ((kubernetes-overview-custom-views-alist '((custom-view-1 . (context pods services configmaps))
+                                                   (custom-view-2 . (context pods services secrets))
+                                                   (custom-view-3 . (context overview services secrets))))
+         (views (append kubernetes-overview-custom-views-alist kubernetes-overview-views-alist))
+         (selection '("overview" "deployments" "statefulsets" "custom-view-1" "custom-view-2" "custom-view-3"))
+         (sections (kubernetes-overview-views--dedupe views selection)))
+    (should (equal sections '(context overview deployments statefulsets pods services configmaps secrets)))))
+
+
 (provide 'kubernetes-overview-test)
 
 ;;; kubernetes-overview-test.el ends here
