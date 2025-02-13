@@ -19,11 +19,13 @@
 (require 'kubernetes-modes)
 (require 'kubernetes-namespaces)
 (require 'kubernetes-persistentvolumeclaims)
+(require 'kubernetes-networkpolicies)
 (require 'kubernetes-pods)
 (require 'kubernetes-pod-line)
 (require 'kubernetes-popups)
 (require 'kubernetes-secrets)
 (require 'kubernetes-services)
+
 
 (autoload 'kubernetes-utils-up-to-existing-dir "kubernetes-utils")
 
@@ -355,6 +357,8 @@
       (kubernetes-namespaces-refresh verbose))
     (when (member 'persistentvolumeclaims sections)
       (kubernetes-persistentvolumeclaims-refresh verbose))
+    (when (member 'networkpolicies sections)
+      (kubernetes-networkpolicies-refresh verbose))
     (when (member 'pods sections)
       (kubernetes-pods-refresh verbose))
     (when (member 'secrets sections)

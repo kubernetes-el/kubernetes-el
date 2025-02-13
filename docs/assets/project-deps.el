@@ -26,7 +26,7 @@ digraph {
     rankdir=LR;
     edge [color=gray];
 
-    {rank=same; configmaps contexts errors ingress jobs namespaces persistentvolumeclaims pods secrets services};
+    {rank=same; configmaps contexts errors ingress jobs namespaces persistentvolumeclaims pods secrets services networkpolicies};
     {rank=same; ast process popups};
 
 %s
