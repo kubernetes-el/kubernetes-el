@@ -35,6 +35,10 @@
 (defconst sample-get-persistentvolumeclaims-response
   (test-helper-json-resource "get-persistentvolumeclaims-response.json"))
 
+(defconst sample-get-networkpolicies-response
+  (test-helper-json-resource "get-networkpolicies-response.json"))
+
+
 ;; Updating sets the main state
 
 (ert-deftest kubernetes-state-test--updating-and-retrieving-state ()
@@ -86,6 +90,9 @@
 
 (kubernetes-state-test-getter marked-persistentvolumeclaims)
 (kubernetes-state-test-getter persistentvolumeclaims-pending-deletion)
+
+(kubernetes-state-test-getter marked-networkpolicies)
+(kubernetes-state-test-getter networkpolicies-pending-deletion)
 
 (kubernetes-state-test-getter current-time)
 
@@ -143,6 +150,9 @@
 
 (kubernetes-state-test-accessor persistentvolumeclaims
   (kubernetes-state-update-persistentvolumeclaims sample-get-persistentvolumeclaims-response))
+
+(kubernetes-state-test-accessor networkpolicies
+  (kubernetes-state-update-networkpolicies sample-get-networkpolicies-response))
 
 (ert-deftest kubernetes-state-test--error-is-alist ()
   (test-helper-with-empty-state
@@ -264,6 +274,7 @@
 (kubernetes-state-marking-tests pod)
 (kubernetes-state-marking-tests secret)
 (kubernetes-state-marking-tests service)
+(kubernetes-state-marking-tests networkpolicy)
 
 (ert-deftest kubernetes-state-test-unmark-all ()
   (test-helper-with-empty-state
@@ -274,6 +285,7 @@
     (kubernetes-state-mark-pod "pod")
     (kubernetes-state-mark-secret "secret")
     (kubernetes-state-mark-service "svc")
+    (kubernetes-state-mark-networkpolicy "networkpolicy")
     (kubernetes-state-unmark-all)
     (should-not (kubernetes-state))))
 
