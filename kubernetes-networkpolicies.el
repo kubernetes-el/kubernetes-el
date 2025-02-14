@@ -18,16 +18,17 @@
 
 ;; Column Heading
 (defconst kubernetes-networkpolicies--column-heading
-  ["%-36s %-15s %10s %10s" "Name Namespace Ingress Egress"])
+  ["%-36s %-15s %7s %6s" "Name Namespace Ingress Egress"])
 
 ;; Component Definitions
 (kubernetes-ast-define-component networkpolicy-detail (networkpolicy)
-  (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
+  (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time 'name name)
                  'spec (&alist 'ingress ingress 'egress egress))
          networkpolicy]
     `((section (namespace nil)
                (nav-prop (:namespace-name ,ns)
                          (key-value 12 "Namespace" ,(propertize ns 'face 'kubernetes-namespace))))
+      (key-value 12 "Name" ,name)
       (key-value 12 "Created" ,time))))
 
 
@@ -39,8 +40,8 @@
                    'spec (&alist 'policyTypes policyTypes 'ingress ingress 'egress egress))
            networkpolicy)
           (ingress-descr (if (seq-contains-p policyTypes "Ingress")
-                             "Ingress" "-"))
-          (egress-descr (if (seq-contains-p policyTypes "Egress") "Egress" "-" ))
+                             "yes" "no"))
+          (egress-descr (if (seq-contains-p policyTypes "Egress") "yes" "no"))
           ([fmt] kubernetes-networkpolicies--column-heading)
           (list-fmt  (split-string fmt))
           (line `(line ,(concat
@@ -55,7 +56,7 @@
                          (propertize (format (pop list-fmt) egress-descr) 'face 'kubernetes-dimmed)
                          ))))
     `(nav-prop (:networkpolicy-name ,name)
-                   (copy-prop ,name
+               (copy-prop ,name
                           ,(cond
                             ((member name pending-deletion)
                              `(propertize (face kubernetes-pending-deletion) ,line))
@@ -92,6 +93,9 @@
 (kubernetes-state-define-refreshers networkpolicies)
 
 (defun kubernetes-networkpolicies-delete-marked (state)
+  "Delete marked networkpolicies.
+
+STATE is the current application state."
   (let ((names (kubernetes-state--get state 'marked-networkpolicies)))
     (dolist (name names)
       (kubernetes-state-delete-networkpolicy name)
