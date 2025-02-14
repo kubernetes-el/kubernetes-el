@@ -1,4 +1,4 @@
-;;; kubernetes-networkpolicies-test.el --- Test rendering of the network policies list  -*- lexical-binding: t; -*-
+;;; kubernetes-networkpolicies-test.el --- Test rendering of the network policies list  -*- lexical-binding: t; show-trailing-whitespace: t; -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -16,7 +16,11 @@
 ;; Shows "Fetching..." when state isn't initialized yet.
 
 (defconst kubernetes-networkpolicies-test--loading-result
-  (s-trim-left "Network Policies\n  Name                     Namespace      \n  Fetching...\n\n"))
+  (s-trim-left "Network Policies
+  Name                                 Namespace       Ingress Egress
+  Fetching...
+
+"))
 
 (ert-deftest kubernetes-networkpolicies-test--empty-state ()
   (with-temp-buffer
@@ -54,9 +58,16 @@ Network Policies (0)
   (s-trim-left "
 
 Network Policies (2)
-  Name                     Namespace      \n  kube-prometheus-stack-grafana monitoring     \n    Namespace:  monitoring
+  Name                                 Namespace       Ingress Egress
+  kube-prometheus-stack-grafana        monitoring          yes     no
+    Namespace:  monitoring
+    Name:       kube-prometheus-stack-grafana
+    Created:    2025-02-13T07:40:18Z
 
-  kube-prometheus-stack-prometheus monitoring     \n    Namespace:  monitoring
+  kube-prometheus-stack-prometheus     monitoring          yes    yes
+    Namespace:  monitoring
+    Name:       kube-prometheus-stack-prometheus
+    Created:    2025-02-13T07:40:18Z
 
 
 "))
