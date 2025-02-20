@@ -126,7 +126,7 @@ will take place.
 
 You're done! Feel free to start poking around on your own; `describe-mode` will
 give you a good overview. Otherwise, for more structured guidance, check out the
-[Tutorials](./tutorials) section.
+[Tutorials](./tutorials/index.md) section.
 
 [Cask]: https://github.com/cask/cask
 [MELPA]: http://melpa.milkbox.net/#/getting-started
