@@ -13,13 +13,12 @@ jobs:
     strategy:
       matrix:
         emacs_version:
-          - 26.3
           - 27.2
-          - 28.1
-          - 29.2
-        include:
-          - emacs_version: snapshot
-            ignore_error: true
+          - 28.2
+          - 29.4
+        # include:
+        #   - emacs_version: snapshot
+        #     ignore_error: true
     env:
       EMACS_VERSION: ${{ matrix.emacs_version }}
     steps:
@@ -56,7 +55,7 @@ jobs:
 
       - name: Upload coverage
         if: steps.install.outcome == 'success' && steps.install.conclusion == 'success'
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v5
         with:
           env_vars: EMACS_VERSION
           files: ./coverage/lcov-ert.info,./coverage/lcov-buttercup.info
