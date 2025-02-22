@@ -57,7 +57,6 @@
   (-let* ((current-time (kubernetes-state-current-time state))
           (pending-deletion (kubernetes-state--get state 'jobs-pending-deletion))
           (marked-jobs (kubernetes-state--get state 'marked-jobs))
-
           ((&alist 'metadata (&alist 'name name 'creationTimestamp created-time)
                    'status (&alist 'succeeded successful
                                    'completionTime completion-time))
@@ -65,6 +64,17 @@
           (successful (or successful 0))
           ([fmt] kubernetes-jobs--column-heading)
           (list-fmt (split-string fmt))
+          (_ (message "Debug values:
+Emacs version: %s
+Created time: %s
+Parsed time: %S
+Encoded time: %S
+Current time: %S"
+                     emacs-version
+                     created-time
+                     (kubernetes-utils-parse-utc-timestamp created-time)
+                     (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))
+                     current-time))
           (line (concat
                  ;; Name
                  (let ((name-str (format (pop list-fmt) (s-truncate 43 name))))
