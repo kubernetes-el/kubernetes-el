@@ -17,6 +17,7 @@ jobs:
           - 28.2
           - 29.4
           - 30
+        include:
           - emacs_version: snapshot
             ignore_error: true
     env:
