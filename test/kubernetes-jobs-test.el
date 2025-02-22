@@ -213,4 +213,26 @@ Emacs version: %s
              time-value
              (alist-get 'current-time state)
              (kubernetes-state--get state 'current-time))))
+
+(ert-deftest kubernetes-time-isolation-test ()
+  ;; Test 1: Direct date-to-time call
+  (let ((time1 (date-to-time "2017-05-03 00:00Z")))
+    (message "Test 1 - Direct call: %S" time1))
+
+  ;; Test 2: Through let binding
+  (let* ((timestamp "2017-05-03 00:00Z")
+         (time2 (date-to-time timestamp)))
+    (message "Test 2 - Let binding: %S" time2))
+
+  ;; Test 3: In state construction
+  (let* ((time3 (date-to-time "2017-05-03 00:00Z"))
+         (state `((current-time . ,time3))))
+    (message "Test 3 - In state: %S" (alist-get 'current-time state)))
+
+  ;; Test 4: Original test setup
+  (let ((state `((jobs . ,sample-get-jobs-response)
+                 (current-time . ,(date-to-time "2017-05-03 00:00Z"))
+                 (pods . ,sample-get-pods-response))))
+    (message "Test 4 - Full test state: %S" (alist-get 'current-time state))))
+
 ;;; kubernetes-jobs-test.el ends here
