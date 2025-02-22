@@ -141,4 +141,23 @@ Jobs (2)
                      (substring-no-properties (buffer-string)))))))
 
 
+(defun kubernetes--debug-time-diff (start now)
+  "Debug time difference calculations."
+  (message "\nTime diff debug (Emacs %s):
+Start time: %S
+Now time: %S
+time-subtract result: %S
+float-time result: %f
+days calculation: %f"
+          emacs-version
+          start now
+          (time-subtract now start)
+          (float-time (time-subtract now start))
+          (/ (float-time (time-subtract now start)) 86400.0)))
+
+(ert-deftest kubernetes-time-diff-behavior ()
+  (let ((start '(22779 53858))  ; from test
+        (now '(26553 30603 562890 0)))  ; actual current time
+    (kubernetes--debug-time-diff start now)))
+
 ;;; kubernetes-jobs-test.el ends here
