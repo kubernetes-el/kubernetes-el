@@ -150,4 +150,40 @@ Float differences:
             (time-subtract iso-creation iso-ref)
             (/ (float-time (time-subtract dt-creation dt-ref)) 86400.0)
             (/ (float-time (time-subtract iso-creation iso-ref)) 86400.0))))
+
+(ert-deftest kubernetes-time-diff-order-debug ()
+  (let* ((time-2019 (parse-iso8601-time-string "2019-11-13T14:51:00Z"))
+         (time-2018 (parse-iso8601-time-string "2018-07-10T10:43:00Z"))
+         (diff-wrong-order (time-to-seconds (time-subtract time-2019 time-2018)))
+         (diff-right-order (time-to-seconds (time-subtract time-2018 time-2019))))
+    (message "Time diff calculation:
+Wrong order (2019 - 2018):
+  Seconds: %f
+  Formatted: %s
+Right order (2018 - 2019):
+  Seconds: %f
+  Formatted: %s"
+            diff-wrong-order
+            (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff-wrong-order) ","))
+            diff-right-order
+            (car (split-string (format-seconds "%yy,%dd,%hh,%mm,%ss%z" diff-right-order) ",")))))
+
+(ert-deftest kubernetes-format-seconds-version-diff ()
+  (let ((negative-seconds -42437280))
+    (message "Format-seconds behavior (Emacs %s):
+Input seconds: %d
+Using format-seconds directly: %s
+Using time-subtract chain:
+  time-subtract result: %S
+  format-seconds result: %s"
+            emacs-version
+            negative-seconds
+            (format-seconds "%yy" negative-seconds)
+            (time-subtract (seconds-to-time 0) (seconds-to-time (abs negative-seconds)))
+            (car (split-string
+                  (format-seconds "%yy,%dd,%hh,%mm,%ss%z"
+                                (time-to-seconds
+                                 (time-subtract (seconds-to-time 0)
+                                              (seconds-to-time (abs negative-seconds)))))
+                  ",")))))
 ;;; kubernetes-ingress-test.el ends here
