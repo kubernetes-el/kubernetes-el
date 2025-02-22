@@ -39,6 +39,11 @@
   (test-helper-json-resource "get-networkpolicies-response.json"))
 
 
+(defun resource-plural (resource)
+  "Return a plural noun for RESOURCE."
+  (cond ((equal resource 'networkpolicy) "networkpolicies")
+        (t (format "%ss" resource))))
+
 ;; Updating sets the main state
 
 (ert-deftest kubernetes-state-test--updating-and-retrieving-state ()
@@ -214,14 +219,14 @@
 ;; Test marking/unmarking/deleting actions
 
 (defmacro kubernetes-state-marking-tests (resource)
-  (let ((get-marks-fn (-rpartial #'kubernetes-state--get (intern (format "marked-%ss" resource))))
+  (let ((get-marks-fn (-rpartial #'kubernetes-state--get (intern (format "marked-%s" (resource-plural resource)))))
         (get-pending-deletion-fn
-         (-rpartial #'kubernetes-state--get (intern (format "%ss-pending-deletion" resource))))
-        (update-fn (intern (format "kubernetes-state-update-%ss" resource)))
+         (-rpartial #'kubernetes-state--get (intern (format "%s-pending-deletion" (resource-plural resource)))))
+        (update-fn (intern (format "kubernetes-state-update-%s" (resource-plural resource))))
         (mark-fn (intern (format "kubernetes-state-mark-%s" resource)))
         (unmark-fn (intern (format "kubernetes-state-unmark-%s" resource)))
         (delete-fn (intern (format "kubernetes-state-delete-%s" resource)))
-        (marks-state-key (intern (format "marked-%ss" resource))))
+        (marks-state-key (intern (format "marked-%s" (resource-plural resource)))))
     `(progn
 
        (ert-deftest ,(intern (format "kubernetes-state-test--mark-%s" resource)) ()
@@ -249,7 +254,7 @@
            (should (equal '("bar") (,get-marks-fn (kubernetes-state))))
            (should (-same-items? '("foo" "baz") (,get-pending-deletion-fn (kubernetes-state))))))
 
-       (ert-deftest ,(intern (format "kubernetes-state-test--updating-%ss-cleans-stale-marks" resource)) ()
+       (ert-deftest ,(intern (format "kubernetes-state-test--updating-%s-cleans-stale-marks" (resource-plural resource))) ()
          (test-helper-with-empty-state
            (,mark-fn "foo")
            (,mark-fn "bar")
@@ -258,7 +263,7 @@
                                    ((metadata . ((name . "baz"))))])))
            (should (-same-items? '("bar" "baz") (,get-marks-fn (kubernetes-state))))))
 
-       (ert-deftest ,(intern (format "kubernetes-state-test--updating-%ss-cleans-stale-deletions" resource)) ()
+       (ert-deftest ,(intern (format "kubernetes-state-test--updating-%s-cleans-stale-deletions" (resource-plural resource))) ()
          (test-helper-with-empty-state
            (,delete-fn "foo")
            (,delete-fn "bar")

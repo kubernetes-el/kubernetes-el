@@ -51,7 +51,8 @@
        (setf (alist-get 'marked-persistentvolumeclaims next nil t) nil)
        (setf (alist-get 'marked-pods next nil t) nil)
        (setf (alist-get 'marked-secrets next nil t) nil)
-       (setf (alist-get 'marked-services next nil t) nil))
+       (setf (alist-get 'marked-services next nil t) nil)
+       (setf (alist-get 'marked-networkpolicies next nil t) nil))
 
       ;; Pods
 
