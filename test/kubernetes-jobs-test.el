@@ -91,7 +91,7 @@ Jobs (2)
 
 (ert-deftest kubernetes-jobs-test--sample-response--pods-loading ()
   (let ((state `((jobs . ,sample-get-jobs-response)
-                 (current-time . ,(date-to-time "2017-05-03 00:00Z")))))
+                 (current-time . ,(date-to-time "2017-05-03T00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-jobs-section state)))
@@ -132,7 +132,7 @@ Jobs (2)
 
 (ert-deftest kubernetes-jobs-test--sample-response--pod-exists ()
   (let ((state `((jobs . ,sample-get-jobs-response)
-                 (current-time . ,(date-to-time "2017-05-03 00:00Z"))
+                 (current-time . ,(date-to-time "2017-05-03T00:00Z"))
                  (pods . ,sample-get-pods-response))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
