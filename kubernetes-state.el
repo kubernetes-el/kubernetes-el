@@ -503,15 +503,15 @@ arguments."
        (defun ,(intern (format "kubernetes-%s-refresh" s-attr)) (&optional interactive)
          (unless (poll-process-live-p kubernetes--global-process-ledger (quote ,attr))
            (set-process-for-resource kubernetes--global-process-ledger (quote ,attr)
-                                     (funcall
-                                      ,canned
-                                      (kubernetes-state)
-                                      (lambda (response)
-                                        (,(intern (format "kubernetes-state-update-%s" s-attr)) response)
-                                        (when interactive
-                                          (message (concat "Updated " ,s-attr "."))))
-                                      (-partial 'release-process-for-resource kubernetes--global-process-ledger (quote ,attr))
-                                      ))))
+            (funcall
+             ,canned
+             (kubernetes-state)
+             (lambda (response)
+               (,(intern (format "kubernetes-state-update-%s" s-attr)) response)
+               (when interactive
+                 (message (concat "Updated " ,s-attr "."))))
+             (-partial 'release-process-for-resource kubernetes--global-process-ledger (quote ,attr))
+             ))))
        (defun ,(intern (format "kubernetes-%s-refresh-now" s-attr)) (&optional interactive)
          (interactive "p")
          (kubernetes-state--refresh-now (quote ,attr) interactive ,raw)))))
