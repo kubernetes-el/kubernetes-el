@@ -11,14 +11,14 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         emacs_version:
           - 27.2
           - 28.2
           - 29.4
-        # include:
-        #   - emacs_version: snapshot
-        #     ignore_error: true
+          - release-snapshot
+          - snapshot
     env:
       EMACS_VERSION: ${{ matrix.emacs_version }}
     steps:
@@ -41,17 +41,22 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install
-        id: install
-        continue-on-error: ${{ matrix.ignore_error != '' && matrix.ignore_error }}
         run: |
           emacs --version
           cask build --verbose
           make build
 
       - name: Test
-        if: steps.install.outcome == 'success' && steps.install.conclusion == 'success'
         run: |
           make test
+
+      - name: Handle Snapshot Failure
+        if: >
+          (matrix.emacs_version == 'snapshot') &&
+          (steps.install.outcome == 'failure' || steps.test.outcome == 'failure')
+        run: |
+          echo "Snapshot job failed"
+          exit 1
 
       - name: Upload coverage
         if: steps.install.outcome == 'success' && steps.install.conclusion == 'success'
@@ -61,3 +66,25 @@ jobs:
           env_vars: EMACS_VERSION
           files: ./coverage/lcov-ert.info,./coverage/lcov-buttercup.info
           fail_ci_if_error: true
+
+  status-check:
+    name: Status Check
+    needs: build-and-test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine Status
+        env:
+          MATRIX_JOBS: ${{ toJson(needs.build-and-test.outputs) }}
+        run: |
+          # Parse the matrix outcomes
+          NON_SNAPSHOT_JOBS=$(echo '${{ toJson(needs.build-and-test) }}' | jq '.outputs.matrix.emacs_version | map(select(. != "snapshot"))')
+          NON_SNAPSHOT_RESULTS=$(echo '${{ toJson(needs.build-and-test) }}' | jq '.outputs.jobs."build-and-test".outputs.matrix | with_entries(select(.key | IN($NON_SNAPSHOT_JOBS[]))) | .[] | .result')
+
+          # Check if any non-snapshot jobs failed
+          if echo "$NON_SNAPSHOT_RESULTS" | grep -q "failure"; then
+            echo "Non-snapshot jobs failed"
+            exit 1
+          fi
+
+          echo "All non-snapshot jobs passed successfully"
