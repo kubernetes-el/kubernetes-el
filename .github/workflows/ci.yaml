@@ -41,17 +41,22 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install
-        id: install
-        continue-on-error: ${{ matrix.emacs_version == 'snapshot' }}
         run: |
           emacs --version
           cask build --verbose
           make build
 
       - name: Test
-        continue-on-error: ${{ matrix.emacs_version == 'snapshot' }}
         run: |
           make test
+
+      - name: Handle Snapshot Failure
+        if: >
+          (matrix.emacs_version == 'snapshot') &&
+          (steps.install.outcome == 'failure' || steps.test.outcome == 'failure')
+        run: |
+          echo "Snapshot job failed"
+          exit 1
 
       - name: Upload coverage
         if: steps.install.outcome == 'success' && steps.install.conclusion == 'success'
