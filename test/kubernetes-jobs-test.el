@@ -160,4 +160,21 @@ days calculation: %f"
         (now '(26553 30603 562890 0)))  ; actual current time
     (kubernetes--debug-time-diff start now)))
 
+(ert-deftest kubernetes-time-diff-debug-test ()
+  (let* ((now (date-to-time "2017-05-03 00:00Z"))
+         (start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp "2017-04-22T22:00:02Z"))))
+    (message "\nDebug time calculation (Emacs %s):
+Raw start: %S
+Raw now: %S
+Parsed start: %S
+time-subtract: %S
+float-time: %f
+days: %f"
+             emacs-version
+             start
+             now
+             (kubernetes-utils-parse-utc-timestamp "2017-04-22T22:00:02Z")
+             (time-subtract now start)
+             (float-time (time-subtract now start))
+             (/ (float-time (time-subtract now start)) 86400.0))))
 ;;; kubernetes-jobs-test.el ends here
