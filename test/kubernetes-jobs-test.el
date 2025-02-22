@@ -177,4 +177,22 @@ days: %f"
              (time-subtract now start)
              (float-time (time-subtract now start))
              (/ (float-time (time-subtract now start)) 86400.0))))
+
+(ert-deftest kubernetes-date-to-time-test ()
+  (let ((time (date-to-time "2017-05-03 00:00Z")))
+    (message "Debug date-to-time result: %S" time)))
+
+
+(ert-deftest kubernetes-jobs-test--time-debug ()
+  (let* ((state-time (date-to-time "2017-05-03 00:00Z"))
+         (state `((jobs . ,sample-get-jobs-response)
+                 (current-time . ,state-time)
+                 (pods . ,sample-get-pods-response))))
+    (message "Debug time in test:
+Original time: %S
+Time in state: %S
+Time from state: %S"
+             state-time
+             (alist-get 'current-time state)
+             (kubernetes-state-current-time state))))
 ;;; kubernetes-jobs-test.el ends here
