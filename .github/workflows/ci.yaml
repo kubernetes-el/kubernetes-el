@@ -10,7 +10,6 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.emacs_version == 'snapshot' || matrix.emacs_version == 'release-snapshot' }}
     strategy:
       fail-fast: false
       matrix:
