@@ -154,7 +154,12 @@
     (let ((n (length (kubernetes-state--get state 'marked-persistentvolumeclaims))))
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s PVC%s? " n (if (equal 1 n) "" "s"))))
-        (kubernetes-persistentvolumeclaims-delete-marked state))))
+        (kubernetes-persistentvolumeclaims-delete-marked state)))
+    (let ((n (length (kubernetes-state--get state 'marked-networkpolicies))))
+      (when (and (not (zerop n))
+                 (y-or-n-p (format "Delete %s networkpolic%s? " n (if (equal 1 n) "y" "ies"))))
+        (kubernetes-networkpolicies-delete-marked state)))
+    )
 
   (kubernetes-unmark-all))
 
