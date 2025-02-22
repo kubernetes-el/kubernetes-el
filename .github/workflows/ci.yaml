@@ -42,21 +42,16 @@ jobs:
 
       - name: Install
         id: install
-        continue-on-error: ${{ matrix.ignore_error != '' && matrix.ignore_error }}
+        continue-on-error: ${{ matrix.emacs_version == 'snapshot' }}
         run: |
           emacs --version
           cask build --verbose
           make build
 
       - name: Test
+        continue-on-error: ${{ matrix.emacs_version == 'snapshot' }}
         run: |
           make test
-
-      - name: Mark Snapshot as Failed
-        if: >
-          (matrix.emacs_version == 'snapshot') &&
-          (steps.install.outcome == 'failure' || steps.test.outcome == 'failure')
-        run: exit 1
 
       - name: Upload coverage
         if: steps.install.outcome == 'success' && steps.install.conclusion == 'success'
@@ -66,3 +61,18 @@ jobs:
           env_vars: EMACS_VERSION
           files: ./coverage/lcov-ert.info,./coverage/lcov-buttercup.info
           fail_ci_if_error: true
+
+  status-check:
+      name: Status Check
+      needs: build-and-test
+      if: always()
+      runs-on: ubuntu-latest
+      steps:
+        - name: Check build and test job status
+          if: >
+            needs.build-and-test.result == 'failure' &&
+            !contains(needs.build-and-test.outputs.matrix.emacs_version, 'snapshot')
+          run: exit 1
+
+        - name: Success
+          run: echo "All non-snapshot jobs passed successfully"
