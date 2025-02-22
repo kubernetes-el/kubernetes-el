@@ -50,10 +50,14 @@ jobs:
           make build
 
       - name: Test
-        if: steps.install.outcome == 'success' && steps.install.conclusion == 'success'
-        continue-on-error: ${{ matrix.emacs_version == 'snapshot' || matrix.emacs_version == 'release-snapshot' }}
         run: |
           make test
+
+      - name: Mark Snapshot as Failed
+        if: >
+          (matrix.emacs_version == 'snapshot') &&
+          (steps.install.outcome == 'failure' || steps.test.outcome == 'failure')
+        run: exit 1
 
       - name: Upload coverage
         if: steps.install.outcome == 'success' && steps.install.conclusion == 'success'
