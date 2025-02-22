@@ -76,7 +76,7 @@ Persistent Volume Claims (2)
 
 (ert-deftest kubernetes-persistentvolumeclaims-test--sample-response ()
   (let ((state `((persistentvolumeclaims . ,sample-get-persistentvolumeclaims-response)
-                 (current-time . ,(date-to-time "2021-11-06 00:00Z")))))
+                 (current-time . ,(parse-iso8601-time-string "2021-11-06T00:00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-persistentvolumeclaims-section state)))

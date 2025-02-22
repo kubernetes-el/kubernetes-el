@@ -82,7 +82,7 @@ Nodes (1)
 
 (ert-deftest kubernetes-nodes-test--sample-response ()
   (let ((state `((nodes . ,sample-get-nodes-response)
-                 (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
+                 (current-time . ,(parse-iso8601-time-string "2017-04-03T00:00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-nodes-section state)))
@@ -91,7 +91,7 @@ Nodes (1)
 
 (ert-deftest kubernetes-nodes-test--sample-response-text-properties ()
   (let ((state `((nodes . ,sample-get-nodes-response)
-                 (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
+                 (current-time . ,(parse-iso8601-time-string "2017-04-03T00:00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-nodes-section state)))

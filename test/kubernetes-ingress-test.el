@@ -84,7 +84,7 @@ Ingress (4)
 
 (ert-deftest kubernetes-ingress-test--sample-response ()
   (let ((state `((ingress . ,sample-get-ingress-response)
-                 (current-time . ,(date-to-time "2018-07-10 10:43Z")))))
+                 (current-time . ,(parse-iso8601-time-string "2018-07-10T10:43:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-ingress-section state)))
