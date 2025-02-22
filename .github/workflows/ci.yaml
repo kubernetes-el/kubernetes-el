@@ -10,16 +10,16 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.emacs_version == 'snapshot' || matrix.emacs_version == 'release-snapshot' }}
     strategy:
+      fail-fast: false
       matrix:
         emacs_version:
           - 27.2
           - 28.2
           - 29.4
           - release-snapshot
-        include:
-          - emacs_version: snapshot
-            ignore_error: true
+          - snapshot
     env:
       EMACS_VERSION: ${{ matrix.emacs_version }}
     steps:
@@ -51,6 +51,7 @@ jobs:
 
       - name: Test
         if: steps.install.outcome == 'success' && steps.install.conclusion == 'success'
+        continue-on-error: ${{ matrix.emacs_version == 'snapshot' || matrix.emacs_version == 'release-snapshot' }}
         run: |
           make test
 
