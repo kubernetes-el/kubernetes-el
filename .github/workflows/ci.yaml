@@ -16,7 +16,7 @@ jobs:
           - 27.2
           - 28.2
           - 29.4
-          - 30.0.90
+          - release-snapshot
         include:
           - emacs_version: snapshot
             ignore_error: true
