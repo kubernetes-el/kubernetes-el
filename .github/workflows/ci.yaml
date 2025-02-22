@@ -68,16 +68,23 @@ jobs:
           fail_ci_if_error: true
 
   status-check:
-      name: Status Check
-      needs: build-and-test
-      if: always()
-      runs-on: ubuntu-latest
-      steps:
-        - name: Check build and test job status
-          if: >
-            needs.build-and-test.result == 'failure' &&
-            !contains(needs.build-and-test.outputs.matrix.emacs_version, 'snapshot')
-          run: exit 1
+    name: Status Check
+    needs: build-and-test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine Status
+        env:
+          MATRIX_JOBS: ${{ toJson(needs.build-and-test.outputs) }}
+        run: |
+          # Parse the matrix outcomes
+          NON_SNAPSHOT_JOBS=$(echo '${{ toJson(needs.build-and-test) }}' | jq '.outputs.matrix.emacs_version | map(select(. != "snapshot"))')
+          NON_SNAPSHOT_RESULTS=$(echo '${{ toJson(needs.build-and-test) }}' | jq '.outputs.jobs."build-and-test".outputs.matrix | with_entries(select(.key | IN($NON_SNAPSHOT_JOBS[]))) | .[] | .result')
 
-        - name: Success
-          run: echo "All non-snapshot jobs passed successfully"
+          # Check if any non-snapshot jobs failed
+          if echo "$NON_SNAPSHOT_RESULTS" | grep -q "failure"; then
+            echo "Non-snapshot jobs failed"
+            exit 1
+          fi
+
+          echo "All non-snapshot jobs passed successfully"
