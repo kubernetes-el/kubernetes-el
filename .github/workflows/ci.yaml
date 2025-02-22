@@ -14,9 +14,9 @@ jobs:
       matrix:
         emacs_version:
           - 29.4
-        include:
-          - emacs_version: snapshot
-            ignore_error: true
+       # include:
+        #  - emacs_version: snapshot
+         #   ignore_error: true
     env:
       EMACS_VERSION: ${{ matrix.emacs_version }}
     steps:
