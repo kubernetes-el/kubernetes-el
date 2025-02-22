@@ -195,4 +195,22 @@ Time from state: %S"
              state-time
              (alist-get 'current-time state)
              (kubernetes-state-current-time state))))
+
+(ert-deftest kubernetes-time-flow-trace ()
+  (let* ((timestamp "2017-05-03 00:00Z")
+         (time-value (date-to-time timestamp))
+         (state `((jobs . ,sample-get-jobs-response)
+                 (current-time . ,time-value)
+                 (pods . ,sample-get-pods-response))))
+    (message "Time Flow Debug:
+Emacs version: %s
+1. date-to-time input: %s
+2. date-to-time output: %S
+3. State construction: %S
+4. Get from state: %S"
+             emacs-version
+             timestamp
+             time-value
+             (alist-get 'current-time state)
+             (kubernetes-state--get state 'current-time))))
 ;;; kubernetes-jobs-test.el ends here
