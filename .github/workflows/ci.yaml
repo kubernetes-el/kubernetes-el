@@ -3,12 +3,16 @@ on:
   push:
     branches:
       - master
-  pull_request:
+  pull_request_target:
     branches:
       - master
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 jobs:
-  build-and-test:
+  test-against-emacs-stable-releases:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -16,9 +20,7 @@ jobs:
           - 27.2
           - 28.2
           - 29.4
-        # include:
-        #   - emacs_version: snapshot
-        #     ignore_error: true
+          - release-snapshot
     env:
       EMACS_VERSION: ${{ matrix.emacs_version }}
     steps:
@@ -39,10 +41,11 @@ jobs:
           version: "snapshot"
 
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
 
       - name: Install
         id: install
-        continue-on-error: ${{ matrix.ignore_error != '' && matrix.ignore_error }}
         run: |
           emacs --version
           cask build --verbose
@@ -61,3 +64,46 @@ jobs:
           env_vars: EMACS_VERSION
           files: ./coverage/lcov-ert.info,./coverage/lcov-buttercup.info
           fail_ci_if_error: true
+
+  test-against-emacs-snapshot-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Emacs
+        uses: purcell/setup-emacs@master
+        with:
+          version: "snapshot"
+
+      - name: Setup Python (for Cask)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          architecture: 'x64'
+
+      - name: Setup Cask
+        uses: conao3/setup-cask@master
+        with:
+          version: "snapshot"
+
+      - uses: actions/checkout@v4
+
+      - name: Install
+        id: install
+        run: |
+          emacs --version
+          cask build --verbose
+          make build
+
+      - name: Test
+        continue-on-error: true
+        id: test
+        if: steps.install.outcome == 'success' && steps.install.conclusion == 'success'
+        run: |
+          make test
+
+      - name: Add comment if optional job failed; delete otherwise
+        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          message: |
+            ### ⚠️ Optional test-against-emacs-snapshot job failed ⚠️
+          mode: ${{ steps.test.outcome == 'failure' && 'upsert' || 'delete' }}
