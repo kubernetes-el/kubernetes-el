@@ -1,0 +1,95 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "networking.k8s.io/v1",
+            "kind": "NetworkPolicy",
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-name": "kube-prometheus-stack",
+                    "meta.helm.sh/release-namespace": "monitoring"
+                },
+                "creationTimestamp": "2025-02-13T07:40:18Z",
+                "generation": 1,
+                "labels": {
+                    "app.kubernetes.io/instance": "kube-prometheus-stack",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/name": "grafana",
+                    "app.kubernetes.io/version": "11.5.1",
+                    "helm.sh/chart": "grafana-8.9.0",
+                    "helm.toolkit.fluxcd.io/name": "kube-prometheus-stack",
+                    "helm.toolkit.fluxcd.io/namespace": "flux-system"
+                },
+                "name": "kube-prometheus-stack-grafana",
+                "namespace": "monitoring",
+                "resourceVersion": "2075993003",
+                "uid": "99afa81e-c108-4a6f-af5a-9fe7c8339883"
+            },
+            "spec": {
+                "ingress": [
+                    {
+                        "ports": [
+                            {
+                                "port": 3000,
+                                "protocol": "TCP"
+                            }
+                        ]
+                    }
+                ],
+                "podSelector": {
+                    "matchLabels": {
+                        "app.kubernetes.io/instance": "kube-prometheus-stack",
+                        "app.kubernetes.io/name": "grafana"
+                    }
+                },
+                "policyTypes": [
+                    "Ingress"
+                ]
+            }
+        },
+        {
+            "apiVersion": "networking.k8s.io/v1",
+            "kind": "NetworkPolicy",
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-name": "kube-prometheus-stack",
+                    "meta.helm.sh/release-namespace": "monitoring"
+                },
+                "creationTimestamp": "2025-02-13T07:40:18Z",
+                "generation": 1,
+                "labels": {
+                    "app": "kube-prometheus-stack-prometheus",
+                    "app.kubernetes.io/instance": "kube-prometheus-stack",
+                    "app.kubernetes.io/managed-by": "Helm",
+                    "app.kubernetes.io/part-of": "kube-prometheus-stack",
+                    "app.kubernetes.io/version": "69.2.4",
+                    "chart": "kube-prometheus-stack-69.2.4",
+                    "helm.toolkit.fluxcd.io/name": "kube-prometheus-stack",
+                    "helm.toolkit.fluxcd.io/namespace": "flux-system",
+                    "heritage": "Helm",
+                    "release": "kube-prometheus-stack"
+                },
+                "name": "kube-prometheus-stack-prometheus",
+                "namespace": "monitoring",
+                "resourceVersion": "2075993005",
+                "uid": "34ec88f5-f3c8-484d-b3dd-213e27a3587c"
+            },
+            "spec": {
+                "podSelector": {
+                    "matchLabels": {
+                        "app.kubernetes.io/name": "prometheus",
+                        "operator.prometheus.io/name": "kube-prometheus-stack-prometheus"
+                    }
+                },
+                "policyTypes": [
+                    "Egress",
+                    "Ingress"
+                ]
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

@@ -39,7 +39,8 @@
     (secrets . (context secrets))
     (services . (context services))
     (nodes . (context nodes))
-    (persistentvolumeclaims . (context persistentvolumeclaims)))
+    (persistentvolumeclaims . (context persistentvolumeclaims))
+    (networkpolicies . (context networkpolicies)))
   "Enumerates the different views that can be displayed in the overview.
 
 Each element is a cons-cell of the form (SYMBOL . LIST), where
@@ -64,7 +65,8 @@ types that should be displayed."
                                  (const secrets)
                                  (const services)
                                  (const nodes)
-                                 (const persistentvolumeclaims))))
+                                 (const persistentvolumeclaims)
+                                 (const networkpolicies))))
 
 (defcustom kubernetes-default-overview-view 'overview
   "The view to use when first opening the overview.
@@ -218,6 +220,8 @@ form \"--flag=value\" or \"-flag\"."
 (defconst kubernetes-display-secrets-buffer-name "*kubernetes secrets*")
 
 (defconst kubernetes-display-persistentvolumeclaim-buffer-name "*kubernetes persistentvolumeclaims*")
+
+(defconst kubernetes-display-networkpolicy-buffer-name "*kubernetes networkpolicies*")
 
 (defconst kubernetes-overview-buffer-name "*kubernetes overview*")
 
