@@ -141,4 +141,149 @@ Jobs (2)
                      (substring-no-properties (buffer-string)))))))
 
 
+(ert-deftest kubernetes-jobs-delete-marked-test ()
+  "Test deleting marked jobs."
+  (let* ((test-state (make-hash-table :test 'equal))
+         (deleted-jobs '())
+         (state-updated nil))
+
+    ;; Mock functions
+    (cl-letf (((symbol-function 'kubernetes-state--get)
+               (lambda (_state key)
+                 (when (eq key 'marked-jobs)
+                   '("example-job-1" "example-job-2"))))
+              ((symbol-function 'kubernetes-state-delete-job)
+               (lambda (name) (push name deleted-jobs)))
+              ((symbol-function 'kubernetes-kubectl-delete)
+               (lambda (_type name _state success-fn _error-fn)
+                 (funcall success-fn nil)))
+              ((symbol-function 'kubernetes-state-trigger-redraw)
+               (lambda () (setq state-updated t))))
+
+      ;; Execute function
+      (kubernetes-jobs-delete-marked test-state)
+
+      ;; Verify results
+      (should (equal (sort deleted-jobs #'string<)
+                     (sort '("example-job-1" "example-job-2") #'string<)))
+      (should state-updated))))
+
+(ert-deftest kubernetes-jobs-delete-marked-failure-test ()
+  "Test handling of failed job deletion."
+  (let* ((test-state (make-hash-table :test 'equal))
+         (remarked-jobs '()))
+
+    ;; Mock functions
+    (cl-letf (((symbol-function 'kubernetes-state--get)
+               (lambda (_state key)
+                 (when (eq key 'marked-jobs)
+                   '("example-job-1"))))
+              ((symbol-function 'kubernetes-state-delete-job)
+               (lambda (_name) t))
+              ((symbol-function 'kubernetes-kubectl-delete)
+               (lambda (_type _name _state _success-fn error-fn)
+                 (funcall error-fn nil)))
+              ((symbol-function 'kubernetes-state-mark-job)
+               (lambda (name) (push name remarked-jobs))))
+
+      ;; Execute function
+      (kubernetes-jobs-delete-marked test-state)
+
+      ;; Verify job was remarked after failure
+      (should (equal remarked-jobs '("example-job-1"))))))
+
+;; Tests for kubernetes-jobs--read-name
+
+(ert-deftest kubernetes-jobs--read-name-test ()
+  "Test reading job name with existing state."
+  (let* ((test-state (make-hash-table :test 'equal))
+         (completing-read-called nil)
+         (completing-read-choices nil))
+
+    ;; Mock functions
+    (cl-letf (((symbol-function 'kubernetes-state--get)
+               (lambda (_state _key) sample-get-jobs-response))
+              ((symbol-function 'completing-read)
+               (lambda (_prompt choices &rest _)
+                 (setq completing-read-called t
+                       completing-read-choices choices)
+                 "example-job-1")))
+
+      ;; Execute function
+      (let ((result (kubernetes-jobs--read-name test-state)))
+
+      ;; Verify results
+      (should completing-read-called)
+      (should (equal result "example-job-1"))
+      ;; Verify choices include both jobs from fixture
+      (should (equal (sort completing-read-choices #'string<)
+                     '("example-job-1" "example-job-2")))))))
+
+(ert-deftest kubernetes-jobs--read-name-fetch-test ()
+  "Test reading job name when state needs to be fetched."
+  (let* ((test-state (make-hash-table :test 'equal))
+         (state-updated nil))
+
+    ;; Mock functions
+    (cl-letf (((symbol-function 'kubernetes-state--get)
+               (lambda (_state _key) nil))
+              ((symbol-function 'kubernetes-kubectl-await-on-async)
+               (lambda (_state _fn) sample-get-jobs-response))
+              ((symbol-function 'kubernetes-state-update-jobs)
+               (lambda (_) (setq state-updated t)))
+              ((symbol-function 'completing-read)
+               (lambda (_prompt _choices &rest _) "example-job-1")))
+
+      ;; Execute function
+      (let ((result (kubernetes-jobs--read-name test-state)))
+
+      ;; Verify state was updated and name was returned
+      (should state-updated)
+      (should (equal result "example-job-1"))))))
+
+;; Tests for kubernetes-display-job
+
+(ert-deftest kubernetes-display-job-test ()
+  "Test displaying job information."
+  (let* ((test-state (make-hash-table :test 'equal))
+         (displayed-job nil)
+         (buffer-displayed nil))
+
+    ;; Mock functions
+    (cl-letf (((symbol-function 'kubernetes-state-lookup-job)
+               (lambda (name _state)
+                 (let* ((items (alist-get 'items sample-get-jobs-response))
+                        (job (seq-find (lambda (j)
+                                       (equal name (alist-get 'name (alist-get 'metadata j))))
+                                     items)))
+                   (setq displayed-job job)
+                   job)))
+              ((symbol-function 'kubernetes-yaml-make-buffer)
+               (lambda (_name _job) (generate-new-buffer "test-buffer")))
+              ((symbol-function 'display-buffer)
+               (lambda (_buffer) (selected-window)))
+              ((symbol-function 'select-window)
+               (lambda (_) (setq buffer-displayed t))))
+
+      ;; Execute function
+      (kubernetes-display-job "example-job-1" test-state)
+
+      ;; Verify buffer was displayed with correct job
+      (should buffer-displayed)
+      (should displayed-job)
+      (should (equal (alist-get 'name (alist-get 'metadata displayed-job))
+                     "example-job-1")))))
+
+(ert-deftest kubernetes-display-job-error-test ()
+  "Test error handling when displaying unknown job."
+  (let ((test-state (make-hash-table :test 'equal)))
+
+    ;; Mock functions
+    (cl-letf (((symbol-function 'kubernetes-state-lookup-job)
+               (lambda (_name _state) nil)))
+
+      ;; Should signal error for unknown job
+      (should-error (kubernetes-display-job "unknown-job" test-state)
+                    :type 'error))))
+
 ;;; kubernetes-jobs-test.el ends here
