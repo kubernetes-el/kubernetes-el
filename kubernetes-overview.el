@@ -295,10 +295,12 @@
 
 (kubernetes-ast-define-component aggregated-view (state &optional hidden)
   (-let [(state-set-p &as &alist 'items deployments) (kubernetes-state--get state 'deployments)]
-    (-let (((state-set-p &as &alist 'items statefulsets)
+    (-let* (((&alist 'statefulsets-columns column-settings-statefulsets) state)
+           ((&alist 'deployments-columns column-settings-deployments) state)
+           ((state-set-p &as &alist 'items statefulsets)
             (kubernetes-state--get state 'statefulsets))
-           ([fmt0 labels0] kubernetes-statefulsets--column-heading)
-           ([fmt1 labels1] kubernetes-deployments--column-heading))
+           ([fmt0 labels0] (kubernetes-utils--create-table-headers column-settings-statefulsets))
+           ([fmt1 labels1] (kubernetes-utils--create-table-headers column-settings-deployments)))
       `(section (ubercontainer, nil)
                 (section (overview-container ,hidden)
                          (header-with-count "Statefulsets" ,statefulsets)
@@ -317,7 +319,7 @@
                           (columnar-loading-container
                            ,deployments
                            ,(propertize
-                             (apply #'format fmt1 (split-string labels1))
+                             (apply #'format fmt1 (split-string labels1 "|"))
                              'face
                              'magit-section-heading)
                            ,@(--map `(aggregated-deployment ,state ,it) deployments)))
@@ -420,6 +422,7 @@ Type \\[kubernetes-refresh] to refresh the buffer.
   (interactive)
   (unless (executable-find kubernetes-kubectl-executable)
     (error "Executable for `kubectl' not found on PATH; make sure `kubernetes-kubectl-executable' is valid"))
+  (kubernetes-overview--load-default-columns)
   (let ((dir default-directory)
         (buf (kubernetes-overview--initialize-buffer)))
     (when kubernetes-default-overview-namespace
@@ -429,6 +432,42 @@ Type \\[kubernetes-refresh] to refresh the buffer.
     (with-current-buffer buf
       (cd (kubernetes-utils-up-to-existing-dir dir)))
     (message (substitute-command-keys "\\<kubernetes-overview-mode-map>Type \\[kubernetes-overview-set-sections] to switch between resources, and \\[kubernetes-dispatch] for usage."))))
+
+(defun kubernetes-overview--load-default-columns ()
+  "Copy default-column settings for all resource-types to state."
+  (let ((resources '(configmaps-columns
+                     deployments-columns
+                     ingress-columns
+                     jobs-columns
+                     nodes-columns
+                     persistentvolumeclaims-columns
+                     pods-columns
+                     secrets-columns
+                     services-columns
+                     statefulsets-columns)))
+    (dolist (key resources)
+      (when (not (alist-get key kubernetes-state--current-state))
+        (pcase key
+          ('configmaps-columns
+           (kubernetes-state-update :update-configmaps-columns kubernetes-configmaps--default-columns))
+          ('deployments-columns
+           (kubernetes-state-update :update-deployments-columns kubernetes-deployments--default-columns))
+          ('ingress-columns
+           (kubernetes-state-update :update-ingress-columns kubernetes-ingress--default-columns))
+          ('jobs-columns
+           (kubernetes-state-update :update-jobs-columns kubernetes-jobs--default-columns))
+          ('nodes-columns
+           (kubernetes-state-update :update-nodes-columns kubernetes-nodes--default-columns))
+          ('persistentvolumeclaims-columns
+           (kubernetes-state-update :update-persistentvolumeclaims-columns kubernetes-persistentvolumeclaims--default-columns))
+          ('pods-columns
+           (kubernetes-state-update :update-pods-columns kubernetes-pods--default-columns))
+          ('secrets-columns
+           (kubernetes-state-update :update-secrets-columns kubernetes-secrets--default-columns))
+          ('services-columns
+           (kubernetes-state-update :update-services-columns kubernetes-services--default-columns))
+          ('statefulsets-columns
+           (kubernetes-state-update :update-statefulsets-columns kubernetes-statefulsets--default-columns)))))))
 
 
 (provide 'kubernetes-overview)

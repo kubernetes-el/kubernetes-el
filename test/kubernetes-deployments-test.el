@@ -24,15 +24,17 @@ Deployments
 
 "))
 
-(ert-deftest kubernetes-deployments-test--empty-state ()
-  (with-temp-buffer
-    (save-excursion (magit-insert-section (root)
-                      (draw-deployments-section nil)))
-    (should (equal kubernetes-deployments-test--loading-result
-                   (substring-no-properties (buffer-string))))
-    (forward-line 1)
-    (forward-to-indentation)
-    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face)))))
+(ert-deftest kubernetes-deployments-test--initial-state ()
+  (let ((state '()))
+    (setf (alist-get 'deployments-columns state) kubernetes-deployments--default-columns)
+    (with-temp-buffer
+      (save-excursion (magit-insert-section (root)
+                        (draw-deployments-section state)))
+      (should (equal kubernetes-deployments-test--loading-result
+                     (substring-no-properties (buffer-string))))
+      (forward-line 1)
+      (forward-to-indentation)
+      (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face))))))
 
 
 ;; Shows "None" when there are no deployments.
@@ -77,7 +79,12 @@ Deployments (2)
 "))
 
 (ert-deftest kubernetes-deployments-test--sample-response ()
-  (let ((state `((deployments . ,sample-get-deployments-response)
+  (let ((state `((deployments-columns . ((Name (width -45))
+                                        (Replicas (width 10))
+                                        (UpToDate (width 10))
+                                        (Available (width 10))
+                                        (Age (width 6))))
+                 (deployments . ,sample-get-deployments-response)
                  (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)

@@ -24,15 +24,17 @@ Configmaps
 
 "))
 
-(ert-deftest kubernetes-configmaps-test--empty-state ()
-  (with-temp-buffer
-    (save-excursion (magit-insert-section (root)
-                      (draw-configmaps-section nil)))
-    (should (equal kubernetes-configmaps-test--loading-result
-                   (substring-no-properties (buffer-string))))
-    (forward-line 1)
-    (forward-to-indentation)
-    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face)))))
+(ert-deftest kubernetes-configmaps-test--initial-state ()
+  (let ((state '()))
+    (setf (alist-get 'configmaps-columns state) kubernetes-configmaps--default-columns)
+    (with-temp-buffer
+      (save-excursion (magit-insert-section (root)
+                        (draw-configmaps-section state)))
+      (should (equal kubernetes-configmaps-test--loading-result
+                     (substring-no-properties (buffer-string))))
+      (forward-line 1)
+      (forward-to-indentation)
+      (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face))))))
 
 
 ;; Shows "None" when there are no configmaps.
@@ -89,7 +91,10 @@ Configmaps (3)
 "))
 
 (ert-deftest kubernetes-configmaps-test--sample-response ()
-  (let ((state `((configmaps . ,sample-get-configmaps-response)
+  (let ((state `((configmaps-columns . ((Name (width -45))
+                                       (Data (width 6))
+                                       (Age (width 6))))
+                 (configmaps . ,sample-get-configmaps-response)
                  (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)

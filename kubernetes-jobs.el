@@ -21,6 +21,12 @@
 (defconst kubernetes-jobs--column-heading
   ["%-45s %10s %6s" "Name Successful Age"])
 
+(defconst kubernetes-jobs--default-columns
+  '((Name (width -45))
+    (Successful (width 10))
+    (Age (width 6)))
+  "Possible columns to select for resource-type jobs")
+
 (kubernetes-ast-define-component job-detail (state pod job)
   (-let* (((&alist 'metadata (&alist 'namespace ns
                                      'creationTimestamp time)
@@ -54,6 +60,8 @@
                                               (padding)))))))
 
 (kubernetes-ast-define-component job-line (state pod job)
+  ;; (when (not (alist-get 'jobs-columns state))
+  ;;   (setf (alist-get 'jobs-columns state) kubernetes-jobs--default-columns))
   (-let* ((current-time (kubernetes-state-current-time state))
           (pending-deletion (kubernetes-state--get state 'jobs-pending-deletion))
           (marked-jobs (kubernetes-state--get state 'marked-jobs))
@@ -63,27 +71,42 @@
                                    'completionTime completion-time))
            job)
           (successful (or successful 0))
-          ([fmt] kubernetes-jobs--column-heading)
-          (list-fmt (split-string fmt))
-          (line (concat
-                 ;; Name
-                 (let ((name-str (format (pop list-fmt) (s-truncate 43 name))))
-                   (cond
-                    ((and completion-time (< 0 successful))
-                     (propertize name-str 'face 'kubernetes-dimmed))
-                    ((not (kubernetes-pod-line-ok-p pod))
-                     (propertize name-str 'face 'warning))
-                    (t
-                     name-str)))
-                 " "
-                 ;; Successful
-                 (propertize (format (pop list-fmt) successful) 'face 'kubernetes-dimmed)
-                 " "
-                 ;; Age
-                 (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                   (propertize (format (pop list-fmt) (kubernetes--time-diff-string start current-time))
-                               'face 'kubernetes-dimmed)))))
-
+          (line
+           (-let* ((row "")
+                   ((&alist 'jobs-columns jobs-columns) state))
+             ;; Read the formatting for the table from the kubernetes-pods--default-columns variable
+             (dotimes (i (length jobs-columns))
+               ;; Read the column-width (and create format-string) and header for the current column
+               (let* ((col (nth i jobs-columns))
+                      (col-name (car col))
+                      (props (cdr col))
+                      (width (car (alist-get 'width props)))
+                      (fmt (concat "%" (number-to-string width) "s")))
+                 ;; Depending on the value of the header we use a specific print function.
+                 (setq row (concat  row (pcase  col-name
+                                          ('Name
+                                           (let ((name-str (format fmt (s-truncate (abs width) name))))
+                                             (cond
+                                              ((and completion-time (< 0 successful))
+                                               (propertize name-str 'face 'kubernetes-dimmed))
+                                              ((not (kubernetes-pod-line-ok-p pod))
+                                               (propertize name-str 'face 'warning))
+                                              (t
+                                               name-str)))
+                                           )
+                                          ('Successful
+                                           (propertize (format fmt successful) 'face 'kubernetes-dimmed)
+                                           )       
+                                          ('Age
+                                           (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
+                                             (propertize (format fmt (kubernetes--time-diff-string start current-time))
+                                                         'face 'kubernetes-dimmed))
+                                           )
+                                          (_
+                                           (format "%s " (format fmt "?"))
+                                           ))
+                                    (unless (= i (1- (length jobs-columns))) " ")))))
+             row)))
     `(nav-prop (:job-name ,name)
                (copy-prop ,name
                           (line ,(cond
@@ -111,14 +134,15 @@
                         (job-detail ,state ,pod ,job))))))
 
 (kubernetes-ast-define-component jobs-list (state &optional hidden)
-  (-let (((state-set-p &as &alist 'items jobs) (kubernetes-state--get state 'jobs))
-         ([fmt labels] kubernetes-jobs--column-heading))
+  (-let* (((&alist 'jobs-columns column-settings) state)
+         ((state-set-p &as &alist 'items jobs) (kubernetes-state--get state 'jobs))
+         ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
     `(section (jobs-container ,hidden)
               (header-with-count "Jobs" ,jobs)
               (indent
                (columnar-loading-container ,jobs
                                            ,(propertize
-                                             (apply #'format fmt (split-string labels))
+                                             (apply #'format fmt (split-string labels "|"))
                                              'face
                                              'magit-section-heading)
                                            ,(--map `(job ,state ,it) jobs)))

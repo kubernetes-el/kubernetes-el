@@ -20,6 +20,15 @@
   ["%-45s %10s %10s %10s %6s" "Name|Replicas|||Age"]
   "The two empty headers are used to align statefulsets with deployments.")
 
+(defconst kubernetes-statefulsets--default-columns
+  ;; TODO The two empty headers are used to align statefulsets with deployments.
+  '((Name (width -45))
+    (Replicas (width 10))
+    (- (width 10))
+    (- (width 10))
+    (Age (width 6)))
+  "Possible columns to select for resource-type statefulsets")
+
 (kubernetes-ast-define-component statefulset-detail (statefulset)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)
                  'spec (&alist 'selector (&alist 'matchLabels
@@ -47,6 +56,8 @@
       (key-value 12 "Created" ,time))))
 
 (kubernetes-ast-define-component statefulset-line (state statefulset)
+  ;; (when (not (alist-get 'statefulsets-columns state))
+  ;;   (setf (alist-get 'statefulsets-columns state) kubernetes-statefulsets--default-columns))
   (-let* ((current-time (kubernetes-state--get state 'current-time))
           (pending-deletion (kubernetes-state--get state 'statefulsets-pending-deletion))
           (marked-statefulsets (kubernetes-state--get state 'marked-statefulsets))
@@ -62,35 +73,44 @@
           (desired (or desired 0))
           (_available (or available 0))
           (_up-to-date (or up-to-date 0))
-          ([fmt] kubernetes-statefulsets--column-heading)
-          (list-fmt (split-string fmt))
-          (line `(line ,(concat
-                         ;; Name
-                         (format (pop list-fmt) (s-truncate 43 name))
-                         " "
-                         ;; Replicas (current/desired)
-                         (let ((str (format "%s/%s" current desired))
-                               (next (pop list-fmt)))
-                           (cond
-                            ((zerop desired)
-                             (format next str))
-                            ((zerop current)
-                             (propertize (format next str) 'face 'warning))
-                            ((/= current desired)
-                             (format next str))
-                            (t
-                             (propertize (format next str) 'face 'kubernetes-dimmed))))
-                         " "
-                         ;; Up-to-date
-                         (propertize (format (pop list-fmt) "") 'face 'warning)
-                         " "
-                         ;; Available
-                         (propertize (format (pop list-fmt) "") 'face 'kubernetes-dimmed)
-                         " "
-                         ;; Age
-                         (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format (pop list-fmt) (kubernetes--time-diff-string start current-time))
-                                       'face 'kubernetes-dimmed))))))
+          (line
+           (-let* ((row "")
+                   ((&alist 'statefulsets-columns statefulsets-columns) state))
+             ;; Read the formatting for the table from the kubernetes-pods--default-columns variable
+             (dotimes (i (length statefulsets-columns))
+               ;; Read the column-width (and create format-string) and header for the current column
+               (let* ((col (nth i statefulsets-columns))
+                      (col-name (car col))
+                      (props (cdr col))
+                      (width (car (alist-get 'width props)))
+                      (fmt (concat "%" (number-to-string width) "s")))
+                 ;; Depending on the value of the header we use a specific print function.
+                 (setq row (concat row (pcase  col-name
+                                         ('Name
+                                          (format fmt (s-truncate (abs width) name))
+                                          )
+                                         ('Replicas
+                                          (let ((str (format "%s/%s" current desired))
+                                                ;; TODO remove next, use fmt directly
+                                                (next fmt))
+                                            (cond
+                                             ((zerop desired)
+                                              (format next str))
+                                             ((zerop current)
+                                              (propertize (format next str) 'face 'warning))
+                                             ((/= current desired)
+                                              (format next str))
+                                             (t
+                                              (propertize (format next str) 'face 'kubernetes-dimmed)))))
+                                         ('Age
+                                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
+                                            (propertize (format fmt (kubernetes--time-diff-string start current-time))
+                                                        'face 'kubernetes-dimmed)))
+                                         (_
+                                          (format "%s" (format fmt ""))
+                                          ))
+                                   (unless (= i (1- (length statefulsets-columns))) " ")))))
+             row)))
     `(nav-prop (:statefulset-name ,name)
                (copy-prop ,name
                           ,(cond
@@ -112,9 +132,10 @@
                       (padding)))))
 
 (kubernetes-ast-define-component statefulsets-list (state &optional hidden)
-  (-let (((state-set-p &as &alist 'items statefulsets)
+  (-let* (((&alist 'statefulsets-columns column-settings) state)
+         ((state-set-p &as &alist 'items statefulsets)
           (kubernetes-state--get state 'statefulsets))
-         ([fmt labels] kubernetes-statefulsets--column-heading))
+         ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
     `(section (statefulsets-container ,hidden)
               (header-with-count "Statefulsets" ,statefulsets)
               (indent

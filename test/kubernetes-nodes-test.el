@@ -24,15 +24,17 @@ Nodes
 
 "))
 
-(ert-deftest kubernetes-nodes-test--empty-state ()
-  (with-temp-buffer
-    (save-excursion (magit-insert-section (root)
-                      (draw-nodes-section nil)))
+(ert-deftest kubernetes-nodes-test--initial-state ()
+  (let ((state '()))
+    (setf (alist-get 'nodes-columns state) kubernetes-nodes--default-columns)
+    (with-temp-buffer
+      (save-excursion (magit-insert-section (root)
+                        (draw-nodes-section state)))
     (should (equal kubernetes-nodes-test--loading-result
                    (substring-no-properties (buffer-string))))
     (forward-line 1)
     (forward-to-indentation)
-    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face)))))
+    (should (equal 'kubernetes-progress-indicator (get-text-property (point) 'face))))))
 
 
 ;; Shows "None" when there are no nodes.
@@ -81,7 +83,12 @@ Nodes (1)
 "))
 
 (ert-deftest kubernetes-nodes-test--sample-response ()
-  (let ((state `((nodes . ,sample-get-nodes-response)
+  (let ((state `((nodes-columns . ((Name (width -45))
+                                    (Status (width -10))
+                                    (Roles (width -9))
+                                    (Age (width -4))
+                                    (Version (width 8))))
+                 (nodes . ,sample-get-nodes-response)
                  (current-time . ,(date-to-time "2017-04-03 00:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)

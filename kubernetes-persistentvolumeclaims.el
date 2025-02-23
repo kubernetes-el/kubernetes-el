@@ -19,6 +19,13 @@
 (defconst kubernetes-persistentvolumeclaims--column-heading
   ["%-24s %10s %10s %15s %6s" "Name Phase Capacity Class Age"])
 
+(defconst kubernetes-persistentvolumeclaims--default-columns
+  '((Name (width -24))
+    (Phase (width 10))
+    (Capacity (width 10))
+    (Class (width 15))
+    (Age (width 6)))
+  "Possible columns to select for resource-type persistentvolumeclaims")
 
 (kubernetes-ast-define-component persistentvolumeclaim-detail (persistentvolumeclaim)
   (-let [(&alist 'metadata (&alist 'namespace ns 'creationTimestamp time)) persistentvolumeclaim]
@@ -28,6 +35,8 @@
       (key-value 12 "Created" ,time))))
 
 (kubernetes-ast-define-component persistentvolumeclaim-line (state persistentvolumeclaim)
+  ;; (when (not (alist-get 'persistentvolumeclaims-columns state))
+  ;;   (setf (alist-get 'persistentvolumeclaims-columns state) kubernetes-persistentvolumeclaims--default-columns))
   (-let* ((current-time (kubernetes-state--get state 'current-time))
           (pending-deletion (kubernetes-state--get state 'persistentvolumeclaims-pending-deletion))
           (marked-persistentvolumeclaims (kubernetes-state--get state 'marked-persistentvolumeclaims))
@@ -35,25 +44,37 @@
                    'status (&alist 'phase phase 'capacity (&alist 'storage capacity))
                    'metadata (&alist 'name name 'creationTimestamp created-time))
            persistentvolumeclaim)
-          ([fmt] kubernetes-persistentvolumeclaims--column-heading)
-          (list-fmt (split-string fmt))
-          (line `(line ,(concat
-                         ;; Name
-                         (format (pop list-fmt) (s-truncate 21 name))
-                         " "
-                         ;; Phase
-                         (propertize (format (pop list-fmt) phase) 'face 'kubernetes-dimmed)
-                         " "
-                         ;; Capacity
-                         (propertize (format (pop list-fmt) capacity) 'face 'kubernetes-dimmed)
-                         " "
-                         ;; Storage Class
-                         (propertize (format (pop list-fmt) (s-truncate 12 storage-class)) 'face 'kubernetes-dimmed)
-                         " "
-                         ;; Age
-                         (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
-                           (propertize (format (pop list-fmt) (kubernetes--time-diff-string start current-time))
-                                       'face 'kubernetes-dimmed))))))
+          (line
+           (-let* ((row "")
+                   ((&alist 'persistentvolumeclaims-columns persistentvolumeclaims-columns) state))
+             ;; Read the formatting for the table from the kubernetes-pods--default-columns variable
+             (dotimes (i (length persistentvolumeclaims-columns))
+               ;; Read the column-width (and create format-string) and header for the current column
+               (let* ((col (nth i persistentvolumeclaims-columns))
+                      (col-name (car col))
+                      (props (cdr col))
+                      (width (car (alist-get 'width props)))
+                      (fmt (concat "%" (number-to-string width) "s")))
+                 ;; Depending on the value of the header we use a specific print function.
+                 (setq row (concat row (pcase  col-name
+                                         ('Name
+                                          (format fmt (s-truncate (abs width) name))
+                                          )
+                                         ('Phase
+                                          (propertize (format fmt phase) 'face 'kubernetes-dimmed))
+                                         ('Capacity
+                                          (propertize (format fmt capacity) 'face 'kubernetes-dimmed))
+                                         ('Class
+                                          (propertize (format fmt (s-truncate (abs width) storage-class)) 'face 'kubernetes-dimmed))
+                                         ('Age
+                                          (let ((start (apply #'encode-time (kubernetes-utils-parse-utc-timestamp created-time))))
+                                            (propertize (format fmt (kubernetes--time-diff-string start current-time))
+                                                        'face 'kubernetes-dimmed)))
+                                         (_
+                                          (format "%s " (format fmt "?"))
+                                          ))
+                                   (unless (= i (1- (length persistentvolumeclaims-columns))) " ")))))
+             row)))
     `(nav-prop (:persistentvolumeclaim-name ,name)
                (copy-prop ,name
                           ,(cond
@@ -73,14 +94,15 @@
                       (padding)))))
 
 (kubernetes-ast-define-component persistentvolumeclaims-list (state &optional hidden)
-  (-let (((&alist 'items persistentvolumeclaims) (kubernetes-state--get state 'persistentvolumeclaims))
-         ([fmt labels] kubernetes-persistentvolumeclaims--column-heading))
+  (-let* (((&alist 'persistentvolumeclaims-columns column-settings) state)
+         ((&alist 'items persistentvolumeclaims) (kubernetes-state--get state 'persistentvolumeclaims))
+         ([fmt labels] (kubernetes-utils--create-table-headers column-settings)))
     `(section (persistentvolumeclaims-container ,hidden)
               (header-with-count "Persistent Volume Claims" ,persistentvolumeclaims)
               (indent
                (columnar-loading-container ,persistentvolumeclaims
                                            ,(propertize
-                                             (apply #'format fmt (split-string labels))
+                                             (apply #'format fmt (split-string labels "|"))
                                              'face
                                              'magit-section-heading)
                                            ,(--map `(persistentvolumeclaim ,state ,it) persistentvolumeclaims)))
