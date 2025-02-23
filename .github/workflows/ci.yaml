@@ -85,6 +85,8 @@ jobs:
           version: "snapshot"
 
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
 
       - name: Install
         id: install
