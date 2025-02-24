@@ -51,7 +51,8 @@
        (setf (alist-get 'marked-persistentvolumeclaims next nil t) nil)
        (setf (alist-get 'marked-pods next nil t) nil)
        (setf (alist-get 'marked-secrets next nil t) nil)
-       (setf (alist-get 'marked-services next nil t) nil))
+       (setf (alist-get 'marked-services next nil t) nil)
+       (setf (alist-get 'marked-networkpolicies next nil t) nil))
 
       ;; Pods
 
@@ -129,6 +130,34 @@
          (setf (alist-get 'persistentvolumeclaims-pending-deletion next)
                (seq-intersection (alist-get 'persistentvolumeclaims-pending-deletion next)
                                  persistentvolumeclaim-names))))
+
+      ;; Network Policies
+
+      (:mark-networkpolicy
+       (let ((cur (alist-get 'marked-networkpolicies state)))
+         (setf (alist-get 'marked-networkpolicies next)
+               (delete-dups (cons args cur)))))
+      (:unmark-networkpolicy
+       (setf (alist-get 'marked-networkpolicies next)
+             (remove args (alist-get 'marked-networkpolicies next))))
+      (:delete-networkpolicy
+       (let ((updated (cons args (alist-get 'networkpolicies-pending-deletion state))))
+         (setf (alist-get 'networkpolicies-pending-deletion next)
+               (delete-dups updated))))
+
+
+      (:update-networkpolicies
+       (setf (alist-get 'networkpolicies next) args)
+
+       ;; Prune deleted network policies from state.
+       (-let* (((&alist 'items networkpolicies) args)
+               (networkpolicy-names (seq-map #'kubernetes-state-resource-name (append networkpolicies nil))))
+         (setf (alist-get 'marked-networkpolicies next)
+               (seq-intersection (alist-get 'marked-networkpolicies next)
+                                 networkpolicy-names))
+         (setf (alist-get 'networkpolicies-pending-deletion next)
+               (seq-intersection (alist-get 'networkpolicies-pending-deletion next)
+                                 networkpolicy-names))))
 
       ;; Secrets
 
@@ -421,6 +450,19 @@
   (kubernetes-state-update :delete-persistentvolumeclaim persistentvolumeclaim-name)
   (kubernetes-state-update :unmark-persistentvolumeclaim persistentvolumeclaim-name))
 
+(defun kubernetes-state-mark-networkpolicy (networkpolicy-name)
+  (cl-assert (stringp networkpolicy-name))
+  (kubernetes-state-update :mark-networkpolicy networkpolicy-name))
+
+(defun kubernetes-state-unmark-networkpolicy (networkpolicy-name)
+  (cl-assert (stringp networkpolicy-name))
+  (kubernetes-state-update :unmark-networkpolicy networkpolicy-name))
+
+(defun kubernetes-state-delete-networkpolicy (networkpolicy-name)
+  (cl-assert (stringp networkpolicy-name))
+  (kubernetes-state-update :delete-networkpolicy networkpolicy-name)
+  (kubernetes-state-update :unmark-networkpolicy networkpolicy-name))
+
 (defun kubernetes-state-unmark-all ()
   (kubernetes-state-update :unmark-all))
 
@@ -540,6 +582,9 @@ arguments."
 (kubernetes-state--define-setter persistentvolumeclaims (persistentvolumeclaims)
   (cl-assert (listp persistentvolumeclaims)))
 
+(kubernetes-state--define-setter networkpolicies (networkpolicies)
+  (cl-assert (listp networkpolicies)))
+
 (defun kubernetes-state-overview-sections (state)
   (or (alist-get 'overview-sections state)
       (let* ((configurations (append kubernetes-overview-custom-views-alist kubernetes-overview-views-alist))
@@ -559,7 +604,8 @@ arguments."
                                   secrets
                                   services
                                   nodes
-                                  persistentvolumeclaims))
+                                  persistentvolumeclaims
+                                  networkpolicies))
                      resources)))
 
 (defun kubernetes-state-kubectl-flags (state)
@@ -627,6 +673,7 @@ If lookup fails, return nil."
 (kubernetes-state-define-named-lookup service services)
 (kubernetes-state-define-named-lookup node nodes)
 (kubernetes-state-define-named-lookup persistentvolumeclaim persistentvolumeclaims)
+(kubernetes-state-define-named-lookup networkpolicy networkpolicies)
 
 (defun kubernetes-state-resource-name (resource)
   "Get the name of RESOURCE from its metadata.
