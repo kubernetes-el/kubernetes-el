@@ -64,6 +64,7 @@ jobs:
           env_vars: EMACS_VERSION
           files: ./coverage/lcov-ert.info,./coverage/lcov-buttercup.info
           fail_ci_if_error: true
+          verbose: true
 
   test-against-emacs-snapshot-release:
     runs-on: ubuntu-latest
