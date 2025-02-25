@@ -52,7 +52,8 @@
        (setf (alist-get 'marked-pods next nil t) nil)
        (setf (alist-get 'marked-secrets next nil t) nil)
        (setf (alist-get 'marked-services next nil t) nil)
-       (setf (alist-get 'marked-networkpolicies next nil t) nil))
+       (setf (alist-get 'marked-networkpolicies next nil t) nil)
+       (setf (alist-get 'marked-cronjobs next nil t) nil))
 
       ;; Pods
 
@@ -318,6 +319,35 @@
       (:update-nodes
        (setf (alist-get 'nodes next) args))
 
+      ;; Cronjobs
+
+      (:mark-cronjob
+       (let ((cur (alist-get 'marked-cronjobs state)))
+         (setf (alist-get 'marked-cronjobs next)
+               (delete-dups (cons args cur)))))
+      (:unmark-cronjob
+       (setf (alist-get 'marked-cronjobs next)
+             (remove args (alist-get 'marked-cronjobs next))))
+      (:delete-cronjob
+       (let ((updated (cons args (alist-get 'cronjobs-pending-deletion state))))
+         (setf (alist-get 'cronjobs-pending-deletion next)
+               (delete-dups updated))))
+
+
+      (:update-cronjobs
+       (setf (alist-get 'cronjobs next) args)
+
+       ;; Prune deleted network policies from state.
+       (-let* (((&alist 'items cronjobs) args)
+               (cronjob-names (seq-map #'kubernetes-state-resource-name (append cronjobs nil))))
+         (setf (alist-get 'marked-cronjobs next)
+               (seq-intersection (alist-get 'marked-cronjobs next)
+                                 cronjob-names))
+         (setf (alist-get 'cronjobs-pending-deletion next)
+               (seq-intersection (alist-get 'cronjobs-pending-deletion next)
+                                 cronjob-names))))
+
+
       (_
        (error "Unknown action: %s" action)))
 
@@ -463,6 +493,19 @@
   (kubernetes-state-update :delete-networkpolicy networkpolicy-name)
   (kubernetes-state-update :unmark-networkpolicy networkpolicy-name))
 
+(defun kubernetes-state-mark-cronjob (cronjob-name)
+  (cl-assert (stringp cronjob-name))
+  (kubernetes-state-update :mark-cronjob cronjob-name))
+
+(defun kubernetes-state-unmark-cronjob (cronjob-name)
+  (cl-assert (stringp cronjob-name))
+  (kubernetes-state-update :unmark-cronjob cronjob-name))
+
+(defun kubernetes-state-delete-cronjob (cronjob-name)
+    (cl-assert (stringp cronjob-name))
+    (kubernetes-state-update :delete-cronjob cronjob-name)
+    (kubernetes-state-update :unmark-cronjob cronjob-name))
+
 (defun kubernetes-state-unmark-all ()
   (kubernetes-state-update :unmark-all))
 
@@ -585,6 +628,9 @@ arguments."
 (kubernetes-state--define-setter networkpolicies (networkpolicies)
   (cl-assert (listp networkpolicies)))
 
+(kubernetes-state--define-setter cronjobs (cronjobs)
+  (cl-assert (listp cronjobs)))
+
 (defun kubernetes-state-overview-sections (state)
   (or (alist-get 'overview-sections state)
       (let* ((configurations (append kubernetes-overview-custom-views-alist kubernetes-overview-views-alist))
@@ -605,7 +651,8 @@ arguments."
                                   services
                                   nodes
                                   persistentvolumeclaims
-                                  networkpolicies))
+                                  networkpolicies
+                                  cronjobs))
                      resources)))
 
 (defun kubernetes-state-kubectl-flags (state)
@@ -674,6 +721,7 @@ If lookup fails, return nil."
 (kubernetes-state-define-named-lookup node nodes)
 (kubernetes-state-define-named-lookup persistentvolumeclaim persistentvolumeclaims)
 (kubernetes-state-define-named-lookup networkpolicy networkpolicies)
+(kubernetes-state-define-named-lookup cronjob cronjobs)
 
 (defun kubernetes-state-resource-name (resource)
   "Get the name of RESOURCE from its metadata.

@@ -9,6 +9,7 @@
 (require 'kubernetes-configmaps)
 (require 'kubernetes-contexts)
 (require 'kubernetes-core)
+(require 'kubernetes-cronjobs)
 (require 'kubernetes-deployments)
 (require 'kubernetes-statefulsets)
 (require 'kubernetes-nodes)
@@ -364,7 +365,9 @@
     (when (member 'secrets sections)
       (kubernetes-secrets-refresh verbose))
     (when (member 'services sections)
-      (kubernetes-services-refresh verbose))))
+      (kubernetes-services-refresh verbose))
+    (when (member 'cronjobs sections)
+      (kubernetes-cronjobs-refresh verbose))))
 
 (defun kubernetes-overview--initialize-buffer ()
   "Called the first time the overview buffer is opened to set up the buffer."
