@@ -40,7 +40,8 @@
     (services . (context services))
     (nodes . (context nodes))
     (persistentvolumeclaims . (context persistentvolumeclaims))
-    (networkpolicies . (context networkpolicies)))
+    (networkpolicies . (context networkpolicies))
+    (cronjobs . (context cronjobs)))
   "Enumerates the different views that can be displayed in the overview.
 
 Each element is a cons-cell of the form (SYMBOL . LIST), where
@@ -66,7 +67,8 @@ types that should be displayed."
                                  (const services)
                                  (const nodes)
                                  (const persistentvolumeclaims)
-                                 (const networkpolicies))))
+                                 (const networkpolicies)
+                                 (const cronjobs))))
 
 (defcustom kubernetes-default-overview-view 'overview
   "The view to use when first opening the overview.
@@ -237,6 +239,7 @@ form \"--flag=value\" or \"-flag\"."
 
 (defconst kubernetes-label-query-buffer-name "*kubernetes-label-query*")
 
+(defconst kubernetes-display-cronjob-buffer-name "*kubernetes cronjob*")
 
 (defvar kubernetes-poll-hook nil
   "Hook run every time polling should occur.")

@@ -1,0 +1,144 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "batch/v1",
+            "kind": "CronJob",
+            "metadata": {
+                "annotations": {
+                },
+                "creationTimestamp": "2024-02-20T14:39:22Z",
+                "generation": 274,
+                "labels": {
+                },
+                "name": "cronjobs-1",
+                "namespace": "default",
+                "resourceVersion": "2094111826",
+                "uid": "f9d31269-329f-4767-a191-3b2ab9e460a3"
+            },
+            "spec": {
+                "concurrencyPolicy": "Forbid",
+                "failedJobsHistoryLimit": 3,
+                "jobTemplate": {
+                    "metadata": {
+                        "creationTimestamp": null
+                    },
+                    "spec": {
+                        "template": {
+                            "metadata": {
+                                "creationTimestamp": null
+                            },
+                            "spec": {
+                                "containers": [
+                                    {
+                                        "command": ["true"],
+                                        "env": [
+                                            {
+                                                "name": "ENV1",
+                                                "valueFrom": {
+                                                    "secretKeyRef": {
+                                                        "key": "env1",
+                                                        "name": "env1"
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "name": "ENV2",
+                                                "value": "env2"
+                                            }
+                                        ],
+                                        "image": "us.docker.io/image:latest",
+                                        "imagePullPolicy": "IfNotPresent",
+                                        "name": "cronjob-1",
+                                        "resources": {},
+                                        "terminationMessagePath": "/dev/termination-log",
+                                        "terminationMessagePolicy": "File"
+                                    }
+                                ],
+                                "dnsPolicy": "ClusterFirst",
+                                "restartPolicy": "Never",
+                                "schedulerName": "default-scheduler",
+                                "securityContext": {},
+                                "terminationGracePeriodSeconds": 30
+                            }
+                        }
+                    }
+                },
+                "schedule": "*/5 * * * *",
+                "startingDeadlineSeconds": 180,
+                "successfulJobsHistoryLimit": 3,
+                "suspend": false
+            },
+            "status": {
+                "lastScheduleTime": "2025-02-25T19:40:00Z",
+                "lastSuccessfulTime": "2025-02-25T19:40:05Z"
+            }
+        },
+        {
+            "apiVersion": "batch/v1",
+            "kind": "CronJob",
+            "metadata": {
+                "annotations": {
+                },
+                "creationTimestamp": "2024-11-25T07:28:31Z",
+                "generation": 85,
+                "labels": {
+                },
+                "name": "cronjobs-2",
+                "namespace": "core",
+                "resourceVersion": "2093610381",
+                "uid": "4f1b39e7-434c-485f-9471-6cdb1ac58072"
+            },
+            "spec": {
+                "concurrencyPolicy": "Forbid",
+                "failedJobsHistoryLimit": 3,
+                "jobTemplate": {
+                    "metadata": {
+                        "creationTimestamp": null
+                    },
+                    "spec": {
+                        "template": {
+                            "metadata": {
+                                "creationTimestamp": null
+                            },
+                            "spec": {
+                                "command": ["true"],
+                                "env": [
+                                    {
+                                        "name": "ENV1",
+                                        "valueFrom": {
+                                            "secretKeyRef": {
+                                                "key": "env1",
+                                                "name": "env1"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "name": "ENV2",
+                                        "value": "env2"
+                                    }
+                                ],
+                                "image": "us.docker.io/image:latest",
+                                "imagePullPolicy": "IfNotPresent",
+                                "name": "cronjob-1",
+                                "resources": {},
+                                "terminationMessagePath": "/dev/termination-log",
+                                "terminationMessagePolicy": "File"
+                            }                        }
+                    }
+                },
+                "schedule": "@daily",
+                "startingDeadlineSeconds": 43200,
+                "successfulJobsHistoryLimit": 3,
+                "suspend": true
+            },
+            "status": {
+                "lastScheduleTime": "2025-02-25T00:00:00Z"
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

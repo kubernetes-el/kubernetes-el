@@ -37,6 +37,7 @@
 (autoload 'kubernetes-secrets-delete-marked "kubernetes-secrets")
 (autoload 'kubernetes-services-delete-marked "kubernetes-services")
 (autoload 'kubernetes-show-pods-for-label "kubernetes-labels")
+(autoload 'kubernetes-display-cronjob "kubernetes-cronjobs")
 
 
 ;; Mark management
@@ -66,6 +67,8 @@
      (kubernetes-state-mark-persistentvolumeclaim name))
     (`(:networkpolicy-name ,name)
      (kubernetes-state-mark-networkpolicy name))
+    (`(:cronjob-name ,name)
+     (kubernetes-state-mark-cronjob name))
     (_
      (user-error "Nothing here can be marked")))
 
@@ -97,7 +100,9 @@
     (`(:persistentvolumeclaim-name ,name)
      (kubernetes-state-unmark-persistentvolumeclaim name))
     (`(:networkpolicy-name ,name)
-     (kubernetes-state-unmark-networkpolicy name)))
+     (kubernetes-state-unmark-networkpolicy name))
+    (`(:cronjob-name ,name)
+     (kubernetes-state-unmark-cronjob name)))
   (kubernetes-state-trigger-redraw)
   (goto-char point)
   (magit-section-forward))
@@ -164,6 +169,10 @@
       (when (and (not (zerop n))
                  (y-or-n-p (format "Delete %s networkpolic%s? " n (if (equal 1 n) "y" "ies"))))
         (kubernetes-networkpolicies-delete-marked state)))
+    (let ((n (length (kubernetes-state--get state 'marked-cronjobs))))
+      (when (and (not (zerop n))
+                 (y-or-n-p (format "Delete %s cronjob%s? " n (if (equal 1 n) "" "s"))))
+        (kubernetes-cronjobs-delete-marked state)))
     )
 
   (kubernetes-unmark-all))
@@ -269,6 +278,8 @@ the magit section at point."
      (kubernetes-display-persistentvolumeclaim persistentvolumeclaim-name state))
     (`(:networkpolicy-name ,networkpolicy-name)
      (kubernetes-display-networkpolicy networkpolicy-name state))
+    (`(:cronjob-name ,cronjob-name)
+     (kubernetes-display-cronjob cronjob-name state))
     (`(:selector ,selector)
      (kubernetes-show-pods-for-label selector))
     (_
@@ -509,6 +520,8 @@ THING must be a valid target for `kubectl edit'."
      (kubernetes--edit-resource "service" name))
     (`(:statefulset-name ,name)
      (kubernetes--edit-resource "statefulset" name))
+    (`(:cronjob-name ,name)
+     (kubernetes--edit-resource "cronjob" name))
     (_
      (user-error "Nothing at point to edit"))))
 
