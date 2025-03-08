@@ -115,7 +115,7 @@ Jobs (2)
     Completed:  2017-04-23T00:00:05Z
 
     Pod
-      Running     example-svc-v3-1603416598-2f9lb
+      Succeeded   example-svc-v6-1603416598-2f9lb
 
   example-job-2                                          1    10d
     Namespace:  mm

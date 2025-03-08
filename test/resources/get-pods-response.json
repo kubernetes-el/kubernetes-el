@@ -608,7 +608,7 @@
         "labels": {
           "name": "example-pod-v6",
           "controller-uid": "502b3b8b-cccf-4ac0-bbe2-642d13bdb7a9",
-          "job-name": "example-svc-v6"
+          "job-name": "example-job-1"
         },
         "name": "example-svc-v6-1603416598-2f9lb",
         "namespace": "ns.example",
@@ -618,8 +618,8 @@
             "blockOwnerDeletion": true,
             "controller": true,
             "kind": "Job",
-            "name": "example-svc-v6",
-            "uid": "502b3b8b-cccf-4ac0-bbe2-642d13bdb7a9"
+            "name": "example-job-1",
+            "uid": "09768996-27a7-11e7-aed8-12c06cb0b29d"
           }
         ],
         "resourceVersion": "14537",
