@@ -95,12 +95,22 @@
                                    line)))))))
 
 (defun kubernetes-jobs--lookup-pod-for-job (job state)
-  (-let* (((&alist 'metadata (&alist 'labels (&alist 'job-name job-name))) job)
-          ((&alist 'items items) (kubernetes-state--get state 'pods)))
-    (seq-find (lambda (pod)
-                (let ((pod-name (kubernetes-state-resource-name pod)))
-                  (string-prefix-p job-name pod-name)))
-              items)))
+  "Find a pod for JOB in STATE.
+This function finds pods by matching the job's UID with pod's ownerReferences."
+  (let* ((job-name (kubernetes-state-resource-name job))
+         (job-uid (cdr (assoc 'uid (cdr (assoc 'metadata job)))))
+         (pod-items (cdr (assoc 'items (kubernetes-state--get state 'pods)))))
+    (when (and job-uid pod-items)
+      (seq-find
+       (lambda (pod)
+         (let* ((owner-refs (cdr (assoc 'ownerReferences (cdr (assoc 'metadata pod))))))
+           (and owner-refs
+                (seq-find (lambda (ref)
+                            (and (string= (cdr (assoc 'kind ref)) "Job")
+                                 (string= (cdr (assoc 'uid ref)) job-uid)))
+                          owner-refs))))
+       pod-items))))
+
 
 (kubernetes-ast-define-component job (state job)
   (let ((pod (kubernetes-jobs--lookup-pod-for-job job state)))
