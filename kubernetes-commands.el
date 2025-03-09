@@ -497,33 +497,11 @@ STATE is the current application state."
 
 THING must be a valid target for `kubectl edit'."
   (interactive (list (kubernetes--describable-thing-at-pt)))
-  (pcase thing
-    (`(:configmap-name ,name)
-     (kubernetes--edit-resource "configmap" name))
-    (`(:deployment-name ,name)
-     (kubernetes--edit-resource "deployment" name))
-    (`(:ingress-name ,name)
-     (kubernetes--edit-resource "ingress" name))
-    (`(:job-name ,name)
-     (kubernetes--edit-resource "job" name))
-    (`(:node-name ,name)
-     (kubernetes--edit-resource "node" name))
-    (`(:persistentvolumeclaim-name ,name)
-     (kubernetes--edit-resource "persistentvolumeclaim" name))
-    (`(:networkpolicy-name ,name)
-     (kubernetes--edit-resource "networkpolicy" name))
-    (`(:pod-name ,name)
-     (kubernetes--edit-resource "pod" name))
-    (`(:secret-name ,name)
-     (kubernetes--edit-resource "secret" name))
-    (`(:service-name ,name)
-     (kubernetes--edit-resource "service" name))
-    (`(:statefulset-name ,name)
-     (kubernetes--edit-resource "statefulset" name))
-    (`(:cronjob-name ,name)
-     (kubernetes--edit-resource "cronjob" name))
-    (_
-     (user-error "Nothing at point to edit"))))
+  (if-let ((resource-info (kubernetes-utils-get-resource-info-at-point)))
+      (let ((resource-type (car resource-info))
+            (resource-name (cdr resource-info)))
+        (kubernetes--edit-resource resource-type resource-name))
+    (user-error "Nothing at point to edit")))
 
 (provide 'kubernetes-commands)
 

@@ -58,11 +58,8 @@ initialized."
     result))
 
 (defun kubernetes-utils-maybe-pod-name-at-point ()
-  (when-let ((nav-buffer (get-buffer kubernetes-overview-buffer-name)))
-    (with-current-buffer nav-buffer
-      (pcase (get-text-property (point) 'kubernetes-nav nav-buffer)
-        (`(:pod-name ,value)
-         value)))))
+  "Return the pod name if point is on a pod, nil otherwise."
+  (kubernetes-utils-get-resource-name-at-point "pod"))
 
 (defalias 'kubernetes-utils-parse-utc-timestamp 'kubernetes--parse-utc-timestamp)
 
@@ -155,6 +152,33 @@ buffer is killed."
   (while (not (file-directory-p dir))
     (setq dir (file-name-directory (directory-file-name dir))))
   dir)
+
+(defun kubernetes-utils-get-resource-info-at-point ()
+  "Extract resource type and name from the thing at point.
+Return value is either nil or a cons cell of the form (TYPE . NAME),
+where TYPE is a string representing the Kubernetes resource type
+and NAME is the name of the resource."
+  (when-let ((nav-buffer (get-buffer kubernetes-overview-buffer-name)))
+    (with-current-buffer nav-buffer
+      (when-let ((nav-prop (get-text-property (point) 'kubernetes-nav)))
+        (pcase nav-prop
+          ;; Extract both resource type and name from the property
+          (`(,(and (pred keywordp) resource-key) ,name)
+           ;; Convert :resource-type-name to "resource-type"
+           (let* ((key-name (substring (symbol-name resource-key) 1)) ; Remove leading ":"
+                  (parts (split-string key-name "-name" t))          ; Split on "-name"
+                  (resource-type (car parts)))                       ; Get the resource type
+             (cons resource-type name))))))))
+
+(defun kubernetes-utils-get-resource-name-at-point (&optional resource-type)
+  "Return the name of resource at point.
+If RESOURCE-TYPE is provided, only return the name if the resource type matches.
+Otherwise, return the name of whatever resource is at point, or nil if not on a resource."
+  (when-let ((resource-info (kubernetes-utils-get-resource-info-at-point)))
+    (if resource-type
+        (when (string= (car resource-info) resource-type)
+          (cdr resource-info))
+      (cdr resource-info))))
 
 (provide 'kubernetes-utils)
 
