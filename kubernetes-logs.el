@@ -12,7 +12,21 @@
 
 (require 'kubernetes-vars)
 
+(defconst kubernetes-logs-supported-resource-types
+  '("pod" "deployment" "statefulset" "job")
+  "List of Kubernetes resource types that support the `kubectl logs` command.")
+
+(defun kubernetes-logs--read-resource-if-needed (state)
+  "Read a resource from the minibuffer if none is at point using STATE.
+Returns a cons cell of (type . name)."
+  (or (when-let ((resource-info (kubernetes-utils-get-resource-info-at-point)))
+        (when (member (car resource-info) kubernetes-logs-supported-resource-types)
+          resource-info))
+      ;; No loggable resource at point, default to pod selection
+      (cons "pod" (kubernetes-pods--read-name state))))
+
 (defun kubernetes-logs--log-line-buffer-for-string (s)
+  "Create a buffer to display log line S."
   (let ((propertized (with-temp-buffer
                        (insert s)
                        (goto-char (point-min))
@@ -58,39 +72,42 @@
       (kubernetes-logs-inspect-line (point)))))
 
 ;;;###autoload
-(defun kubernetes-logs-follow (pod-name args state)
-  "Open a streaming logs buffer for a pod.
-
-POD-NAME is the name of the pod to log.
-
+(defun kubernetes-logs-follow (args state)
+  "Open a streaming logs buffer for a resource at point or selected by user.
 ARGS are additional args to pass to kubectl.
-
 STATE is the current application state."
   (interactive
    (let ((state (kubernetes-state)))
-     (list (or (kubernetes-utils-maybe-pod-name-at-point)
-               (kubernetes-pods--read-name state))
-           (transient-args 'kubernetes-logs)
+     (list (transient-args 'kubernetes-logs)
            state)))
-  (kubernetes-logs-fetch-all pod-name (cons "-f" args) state))
+  (let* ((resource-info (kubernetes-logs--read-resource-if-needed state))
+         (resource-type (car resource-info))
+         (resource-name (cdr resource-info)))
+    (kubernetes-logs-fetch-all resource-type resource-name (cons "-f" args) state)))
 
 ;;;###autoload
-(defun kubernetes-logs-fetch-all (pod-name args state)
-  "Open a streaming logs buffer for POD.
+(defun kubernetes-logs-fetch-all (resource-type resource-name args state)
+  "Open a streaming logs buffer for a resource.
 
-POD-NAME is the name of the pod to log.
-
+RESOURCE-TYPE is the type of resource (pod, deployment, statefulset, job, cronjob).
+RESOURCE-NAME is the name of the resource to log.
 ARGS are additional args to pass to kubectl.
-
-STATE is the current application state"
+STATE is the current application state."
   (interactive
-   (let ((state (kubernetes-state)))
-     (list (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-pods--read-name state))
+   (let* ((state (kubernetes-state))
+          (resource-info (kubernetes-logs--read-resource-if-needed state)))
+     (list (car resource-info)
+           (cdr resource-info)
            (transient-args 'kubernetes-logs)
            state)))
-  (let ((args (append (list "logs") args (list pod-name) (kubernetes-kubectl--flags-from-state (kubernetes-state))
-                      (when-let (ns (kubernetes-state--get state 'current-namespace))
-                        (list (format "--namespace=%s" ns))))))
+
+  ;; Format the resource in the kubectl resource/name format
+  (let* ((resource-path (if (string= resource-type "pod")
+                            resource-name
+                          (format "%s/%s" resource-type resource-name)))
+         (args (append (list "logs") args (list resource-path) (kubernetes-kubectl--flags-from-state state)
+                       (when-let (ns (kubernetes-state--get state 'current-namespace))
+                         (list (format "--namespace=%s" ns))))))
     (with-current-buffer (kubernetes-utils-process-buffer-start kubernetes-logs-buffer-name #'kubernetes-logs-mode kubernetes-kubectl-executable args)
       (select-window (display-buffer (current-buffer))))))
 
@@ -109,7 +126,6 @@ STATE is the current application state"
   [["Actions"
     ("l" "Logs" kubernetes-logs-fetch-all)
     ("f" "Logs (stream and follow)" kubernetes-logs-follow)]])
-
 
 ;;;###autoload
 (defvar kubernetes-logs-mode-map
