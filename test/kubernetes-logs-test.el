@@ -138,48 +138,219 @@
                   (should (equal (cdr result) "fallback-pod")))))
           (when buf (kill-buffer buf)))))))
 
-;; Test kubernetes-logs-fetch-all command construction
+;; Test kubernetes-logs--generate-buffer-name function
+(ert-deftest kubernetes-logs-test-generate-buffer-name ()
+  (cl-letf (((symbol-function 'kubernetes-state--get)
+             (lambda (state key)
+               (when (eq key 'current-namespace)
+                 "test-namespace"))))
+
+    ;; Test basic pod without container
+    (let ((args '())
+          (state '()))
+      (should (equal (kubernetes-logs--generate-buffer-name "pod" "nginx" args state)
+                    "*kubernetes logs: test-namespace/pod/nginx*")))
+
+    ;; Test pod with container
+    (let ((args '("--container=app"))
+          (state '()))
+      (should (equal (kubernetes-logs--generate-buffer-name "pod" "nginx" args state)
+                    "*kubernetes logs: test-namespace/pod/nginx:app*")))
+
+    ;; Test deployment
+    (let ((args '())
+          (state '()))
+      (should (equal (kubernetes-logs--generate-buffer-name "deployment" "frontend" args state)
+                    "*kubernetes logs: test-namespace/deployment/frontend*")))
+
+    ;; Test deployment with container
+    (let ((args '("--container=web"))
+          (state '()))
+      (should (equal (kubernetes-logs--generate-buffer-name "deployment" "frontend" args state)
+                    "*kubernetes logs: test-namespace/deployment/frontend:web*")))))
+
+
 (ert-deftest kubernetes-logs-test-fetch-all-command ()
-  (cl-letf (((symbol-function 'kubernetes-kubectl--flags-from-state)
-             (lambda (_) '("--kubeconfig=/test/config")))
-            ((symbol-function 'kubernetes-state--get)
-             (lambda (_ key) (when (eq key 'current-namespace) "test-namespace")))
-            ((symbol-function 'kubernetes-utils-process-buffer-start)
-             (lambda (buffername _mode _exe args)
-               ;; Create a real buffer and return it instead of a cons cell
-               (let ((buf (get-buffer-create buffername)))
-                 (with-current-buffer buf
-                   (erase-buffer)
-                   (insert (format "Mock command: %s" (mapconcat #'identity args " "))))
-                 buf)))
-            ((symbol-function 'select-window)
-             (lambda (_) nil))
-            ((symbol-function 'display-buffer)
-             (lambda (buf) buf)))
+  "Test that kubectl commands are constructed correctly for different resources."
+  (let ((commands-executed nil))
+    (cl-letf (((symbol-function 'kubernetes-kubectl--flags-from-state)
+               (lambda (_) '("--kubeconfig=/test/config")))
+              ((symbol-function 'kubernetes-state--get)
+               (lambda (_ key) (when (eq key 'current-namespace) "test-namespace")))
+              ((symbol-function 'kubernetes-utils-process-buffer-start)
+               (lambda (buffer-name mode executable args)
+                 ;; Store the command for verification
+                 (push (list buffer-name executable args) commands-executed)
+                 ;; Return a dummy buffer
+                 (generate-new-buffer "*test-buffer*")))
+              ((symbol-function 'kubernetes-logs--generate-buffer-name)
+               (lambda (resource-type resource-name args state)
+                 (format "*kubernetes logs: %s/%s/%s%s*"
+                         (or (kubernetes-state--get state 'current-namespace) "default")
+                         resource-type
+                         resource-name
+                         (let ((container-arg (seq-find (lambda (arg) (string-prefix-p "--container=" arg)) args)))
+                           (if container-arg
+                               (format ":%s" (substring container-arg (length "--container=")))
+                             "")))))
+              ((symbol-function 'select-window) #'ignore)
+              ((symbol-function 'display-buffer) #'identity))
 
+      (unwind-protect
+          (progn
+            ;; Test pod logs command
+            (kubernetes-logs-fetch-all "pod" "test-pod" '("--tail=10") 'mock-state)
+
+            ;; Test pod logs with container
+            (kubernetes-logs-fetch-all "pod" "test-pod" '("--container=main-container") 'mock-state)
+
+            ;; Test deployment logs command
+            (kubernetes-logs-fetch-all "deployment" "test-deployment" '("--tail=10") 'mock-state)
+
+            ;; Test job logs command
+            (kubernetes-logs-fetch-all "job" "test-job" '("--timestamps=true") 'mock-state)
+
+            ;; Now verify all the commands (commands are pushed in reverse order)
+            (let ((job-cmd (pop commands-executed))
+                  (deployment-cmd (pop commands-executed))
+                  (pod-container-cmd (pop commands-executed))
+                  (pod-cmd (pop commands-executed)))
+
+              ;; Verify pod command
+              (should (string-match-p "\\*kubernetes logs: test-namespace/pod/test-pod\\*" (nth 0 pod-cmd)))
+              (should (equal (nth 1 pod-cmd) kubernetes-kubectl-executable))
+              (let ((args (nth 2 pod-cmd)))
+                (should (equal (nth 0 args) "logs"))
+                (should (member "--tail=10" args))
+                (should (member "test-pod" args))
+                (should (member "--namespace=test-namespace" args)))
+
+              ;; Verify pod with container command
+              (should (string-match-p "\\*kubernetes logs: test-namespace/pod/test-pod:main-container\\*" (nth 0 pod-container-cmd)))
+              (let ((args (nth 2 pod-container-cmd)))
+                (should (equal (nth 0 args) "logs"))
+                (should (member "--container=main-container" args))
+                (should (member "test-pod" args))
+                (should (member "--namespace=test-namespace" args)))
+
+              ;; Verify deployment command
+              (should (string-match-p "\\*kubernetes logs: test-namespace/deployment/test-deployment\\*" (nth 0 deployment-cmd)))
+              (let ((args (nth 2 deployment-cmd)))
+                (should (equal (nth 0 args) "logs"))
+                (should (member "--tail=10" args))
+                (should (member "deployment/test-deployment" args))
+                (should (member "--namespace=test-namespace" args)))
+
+              ;; Verify job command
+              (should (string-match-p "\\*kubernetes logs: test-namespace/job/test-job\\*" (nth 0 job-cmd)))
+              (let ((args (nth 2 job-cmd)))
+                (should (equal (nth 0 args) "logs"))
+                (should (member "--timestamps=true" args))
+                (should (member "job/test-job" args))
+                (should (member "--namespace=test-namespace" args)))))
+
+        ;; Clean up any temp buffers
+        (let ((test-buffer (get-buffer "*test-buffer*")))
+          (when (buffer-live-p test-buffer)
+            (kill-buffer test-buffer)))))))
+
+;; Test kubernetes-logs-refresh functionality
+(ert-deftest kubernetes-logs-test-refresh ()
+  (let ((test-buffer (generate-new-buffer "*kubernetes logs: test-namespace/pod/nginx*")))
     (unwind-protect
-        (progn
-          ;; Test pod logs command
-          (kubernetes-logs-fetch-all "pod" "test-pod" '("--tail=10") 'mock-state)
-          (with-current-buffer kubernetes-logs-buffer-name
-            (should (string-match-p "logs.*--tail=10.*test-pod" (buffer-string)))
-            (should (string-match-p "--namespace=test-namespace" (buffer-string))))
+        (cl-letf (((symbol-function 'derived-mode-p) (lambda (&rest _) t))
+                  ((symbol-function 'kubernetes-utils-process-buffer-start)
+                   (lambda (buffer-name mode executable args)
+                     (should (equal buffer-name "*kubernetes logs: test-namespace/pod/nginx*"))
+                     (should (equal mode #'kubernetes-logs-mode))
+                     (should (equal executable kubernetes-kubectl-executable))
+                     (should (equal args '("logs" "nginx" "--context=minikube" "--namespace=test-namespace")))
+                     test-buffer)))
+          ;; Set up the buffer with stored kubectl command args
+          (with-current-buffer test-buffer
+            (setq-local kubernetes-logs-resource-type "pod")
+            (setq-local kubernetes-logs-resource-name "nginx")
+            (setq-local kubernetes-logs-namespace "test-namespace")
+            (setq-local kubernetes-logs-kubectl-args
+                        '("logs" "nginx" "--context=minikube" "--namespace=test-namespace"))
+            (kubernetes-logs-refresh)))
+      (when (buffer-live-p test-buffer)
+        (kill-buffer test-buffer)))))
 
-          ;; Test deployment logs command
-          (kubernetes-logs-fetch-all "deployment" "test-deployment" '("--tail=10") 'mock-state)
-          (with-current-buffer kubernetes-logs-buffer-name
-            (should (string-match-p "logs.*--tail=10.*deployment/test-deployment" (buffer-string)))
-            (should (string-match-p "--namespace=test-namespace" (buffer-string))))
+;; Test kubernetes-logs-refresh error handling when args are missing
+(ert-deftest kubernetes-logs-test-refresh-missing-args ()
+  (let ((message-log nil)
+        (test-buffer (generate-new-buffer "*kubernetes logs: test-namespace/pod/nginx*")))
+    (unwind-protect
+        (cl-letf (((symbol-function 'derived-mode-p) (lambda (&rest _) t))
+                  ((symbol-function 'message)
+                   (lambda (format-string &rest args)
+                     (setq message-log (apply #'format format-string args)))))
+          (with-current-buffer test-buffer
+            ;; Don't set kubernetes-logs-kubectl-args
+            (kubernetes-logs-refresh)
+            (should (equal message-log "Cannot refresh logs: command information not available"))))
+      (when (buffer-live-p test-buffer)
+        (kill-buffer test-buffer)))))
 
-          ;; Test job logs command
-          (kubernetes-logs-fetch-all "job" "test-job" '("--timestamps=true") 'mock-state)
-          (with-current-buffer kubernetes-logs-buffer-name
-            (should (string-match-p "logs.*--timestamps=true.*job/test-job" (buffer-string)))
-            (should (string-match-p "--namespace=test-namespace" (buffer-string)))))
+;; Test kubernetes-logs-list-buffers
+(ert-deftest kubernetes-logs-test-list-buffers ()
+  (let* ((test-buffer1 (generate-new-buffer "*kubernetes logs: default/pod/nginx*"))
+         (test-buffer2 (generate-new-buffer "*kubernetes logs: production/deployment/api:main*"))
+         (test-buffers (list test-buffer1 test-buffer2))
+         (selected-buffer nil))
+    (unwind-protect
+        (cl-letf (((symbol-function 'buffer-list) (lambda () (append test-buffers (list (get-buffer-create "*scratch*")))))
+                  ((symbol-function 'derived-mode-p) (lambda (&rest _) t))
+                  ((symbol-function 'completing-read)
+                   (lambda (prompt collection &rest _)
+                     (should collection)
+                     "default/pod/nginx"))
+                  ((symbol-function 'switch-to-buffer)
+                   (lambda (buffer) (setq selected-buffer buffer))))
+          ;; Set buffer local variables
+          (with-current-buffer test-buffer1
+            (setq-local kubernetes-logs-resource-type "pod")
+            (setq-local kubernetes-logs-resource-name "nginx")
+            (setq-local kubernetes-logs-namespace "default"))
+          (with-current-buffer test-buffer2
+            (setq-local kubernetes-logs-resource-type "deployment")
+            (setq-local kubernetes-logs-resource-name "api")
+            (setq-local kubernetes-logs-namespace "production")
+            (setq-local kubernetes-logs-container-name "main"))
 
-      ;; Clean up test buffer
-      (when (get-buffer kubernetes-logs-buffer-name)
-        (kill-buffer kubernetes-logs-buffer-name)))))
+          ;; Run the function
+          (kubernetes-logs-list-buffers)
+
+          ;; Verify results
+          (should (eq selected-buffer test-buffer1)))
+      ;; Clean up test buffers
+      (dolist (buf test-buffers)
+        (when (buffer-live-p buf)
+          (kill-buffer buf))))))
+
+;; Test kubernetes-logs-follow functionality
+(ert-deftest kubernetes-logs-test-logs-follow ()
+  (let ((test-buffer (generate-new-buffer "*kubernetes logs: default/pod/nginx*")))
+    (unwind-protect
+        (cl-letf (((symbol-function 'kubernetes-state--get) (lambda (&rest _) "default"))
+                  ((symbol-function 'kubernetes-kubectl--flags-from-state) (lambda (&rest _) '("--context=minikube")))
+                  ((symbol-function 'kubernetes-state) (lambda () '()))
+                  ((symbol-function 'kubernetes-utils-process-buffer-start)
+                   (lambda (buffer-name mode executable args)
+                     (should (member "-f" args))
+                     test-buffer))
+                  ((symbol-function 'kubernetes-logs--read-resource-if-needed)
+                   (lambda (state) '("pod" . "nginx")))
+                  ((symbol-function 'display-buffer) (lambda (buf) (selected-window)))
+                  ((symbol-function 'select-window) (lambda (&rest _) nil)))
+          (condition-case err
+              (progn
+                (kubernetes-logs-follow '() '())
+                (should t)) ; Test passes if no error
+            (error (ert-fail (format "Function raised an error: %S" err)))))
+      (when (buffer-live-p test-buffer)
+        (kill-buffer test-buffer)))))
 
 ;; Test kubernetes-utils--get-container-names-from-pod
 (ert-deftest kubernetes-logs-test-get-container-names-from-pod ()
@@ -341,5 +512,31 @@
                 (let ((result (kubernetes-utils-read-container-name "Select container: ")))
                   (should (equal result "main-container")))))
           (when buf (kill-buffer buf)))))))
+
+;; Test keymap bindings
+(ert-deftest kubernetes-logs-test-mode-keymap ()
+  "Test that key bindings are properly set in kubernetes-logs-mode-map."
+  (should (eq (lookup-key kubernetes-logs-mode-map (kbd "g")) 'kubernetes-logs-refresh))
+  (should (eq (lookup-key kubernetes-logs-mode-map (kbd "n")) 'kubernetes-logs-forward-line))
+  (should (eq (lookup-key kubernetes-logs-mode-map (kbd "p")) 'kubernetes-logs-previous-line))
+  (should (eq (lookup-key kubernetes-logs-mode-map (kbd "RET")) 'kubernetes-logs-inspect-line)))
+
+;; Test log line inspection
+(ert-deftest kubernetes-logs-test-inspect-line ()
+  "Test that kubernetes-logs-inspect-line works properly."
+  (let ((log-buffer (generate-new-buffer "*kubernetes logs: default/pod/nginx*"))
+        (line-buffer (get-buffer-create kubernetes-log-line-buffer-name)))
+    (unwind-protect
+        (cl-letf (((symbol-function 'display-buffer) (lambda (buf) (get-buffer-window buf))))
+          (with-current-buffer log-buffer
+            (insert "This is a test log line\n")
+            (goto-char (point-min))
+            (kubernetes-logs-inspect-line (point))
+            (with-current-buffer line-buffer
+              (should (string= (buffer-string) "This is a test log line")))))
+      (when (buffer-live-p log-buffer)
+        (kill-buffer log-buffer))
+      (when (buffer-live-p line-buffer)
+        (kill-buffer line-buffer)))))
 
 ;;; kubernetes-logs-test.el ends here
