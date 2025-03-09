@@ -468,4 +468,98 @@ Point is moved to the position indicated by | in INITIAL-CONTENTS."
                              "Test prompt: podcontainer1"))))
         (kubernetes-utils-test-teardown-overview-buffer)))))
 
+;; Tests for the resource-specific maybe-*-name-at-point functions
+(ert-deftest kubernetes-utils-test-maybe-deployment-name-at-point ()
+  "Test `kubernetes-utils-maybe-deployment-name-at-point'."
+  (let ((kubernetes-overview-buffer-name "*kubernetes-test-overview*"))
+    (unwind-protect
+        (progn
+          (kubernetes-utils-test-setup-overview-buffer)
+          (with-current-buffer kubernetes-overview-buffer-name
+            (erase-buffer)
+
+            ;; Add resource
+            (insert "Deployment: ")
+            (let ((start (point))
+                  (deployment-name "web-deployment"))
+              (insert deployment-name)
+              (kubernetes-utils-test-add-nav-property "deployment" deployment-name start (point)))
+
+            ;; Test deployment detection
+            (goto-char (point-min))
+            (search-forward "web-deployment")
+            (backward-char 3)
+            (should (equal (kubernetes-utils-maybe-deployment-name-at-point) "web-deployment"))))
+      (kubernetes-utils-test-teardown-overview-buffer))))
+
+(ert-deftest kubernetes-utils-test-maybe-statefulset-name-at-point ()
+  "Test `kubernetes-utils-maybe-statefulset-name-at-point'."
+  (let ((kubernetes-overview-buffer-name "*kubernetes-test-overview*"))
+    (unwind-protect
+        (progn
+          (kubernetes-utils-test-setup-overview-buffer)
+          (with-current-buffer kubernetes-overview-buffer-name
+            (erase-buffer)
+
+            ;; Add resource
+            (insert "StatefulSet: ")
+            (let ((start (point))
+                  (statefulset-name "db-statefulset"))
+              (insert statefulset-name)
+              (kubernetes-utils-test-add-nav-property "statefulset" statefulset-name start (point)))
+
+            ;; Test detection
+            (goto-char (point-min))
+            (search-forward "db-statefulset")
+            (backward-char 3)
+            (should (equal (kubernetes-utils-maybe-statefulset-name-at-point) "db-statefulset"))))
+      (kubernetes-utils-test-teardown-overview-buffer))))
+
+(ert-deftest kubernetes-utils-test-maybe-job-name-at-point ()
+  "Test `kubernetes-utils-maybe-job-name-at-point'."
+  (let ((kubernetes-overview-buffer-name "*kubernetes-test-overview*"))
+    (unwind-protect
+        (progn
+          (kubernetes-utils-test-setup-overview-buffer)
+          (with-current-buffer kubernetes-overview-buffer-name
+            (erase-buffer)
+
+            ;; Add resource
+            (insert "Job: ")
+            (let ((start (point))
+                  (job-name "backup-job"))
+              (insert job-name)
+              (kubernetes-utils-test-add-nav-property "job" job-name start (point)))
+
+            ;; Test detection
+            (goto-char (point-min))
+            (search-forward "backup-job")
+            (backward-char 3)
+            (should (equal (kubernetes-utils-maybe-job-name-at-point) "backup-job"))))
+      (kubernetes-utils-test-teardown-overview-buffer))))
+
+;; Test for extract-container-names-from-spec
+(ert-deftest kubernetes-utils-test-extract-container-names-from-spec ()
+  "Test `kubernetes-utils--extract-container-names-from-spec'."
+  (let ((pod-spec '((containers . [((name . "main-container"))
+                                  ((name . "sidecar-container"))])
+                    (initContainers . [((name . "init-container"))]))))
+    (let ((result (kubernetes-utils--extract-container-names-from-spec pod-spec)))
+      (should (equal (length result) 3))
+      (should (member "main-container" result))
+      (should (member "sidecar-container" result))
+      (should (member "init-container" result)))))
+
+;; Test for get-container-names-from-pod
+(ert-deftest kubernetes-utils-test-get-container-names-from-pod ()
+  "Test `kubernetes-utils--get-container-names-from-pod'."
+  (let ((pod '((spec . ((containers . [((name . "main-container"))
+                                       ((name . "sidecar-container"))])
+                        (initContainers . [((name . "init-container"))]))))))
+    (let ((result (kubernetes-utils--get-container-names-from-pod pod)))
+      (should (equal (length result) 3))
+      (should (member "main-container" result))
+      (should (member "sidecar-container" result))
+      (should (member "init-container" result)))))
+
 ;;; kubernetes-utils-test.el ends here
