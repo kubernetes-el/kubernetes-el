@@ -16,6 +16,25 @@
   '("pod" "deployment" "statefulset" "job")
   "List of Kubernetes resource types that support the `kubectl logs` command.")
 
+;; New variable to define buffer name format
+(defvar kubernetes-logs-buffer-name-format "*kubernetes logs: %s%s/%s%s*"
+  "Format for Kubernetes logs buffer names.
+First %s is replaced with the namespace prefix if specified (including trailing slash),
+second %s is the resource type,
+third %s is the resource name,
+fourth %s is replaced with container suffix if specified (including the leading colon).")
+
+(defun kubernetes-logs--generate-buffer-name (resource-type resource-name args state)
+  "Generate a buffer name for logs of RESOURCE-TYPE named RESOURCE-NAME with ARGS in STATE.
+Extracts container name from ARGS if present and includes namespace information."
+  (let* ((container-arg (seq-find (lambda (arg) (string-prefix-p "--container=" arg)) args))
+         (container-name (when container-arg
+                           (substring container-arg (length "--container="))))
+         (container-suffix (if container-name (format ":%s" container-name) ""))
+         (namespace (kubernetes-state--get state 'current-namespace))
+         (namespace-prefix (if namespace (format "%s/" namespace) "")))
+    (format kubernetes-logs-buffer-name-format namespace-prefix resource-type resource-name container-suffix)))
+
 (defun kubernetes-logs--read-resource-if-needed (state)
   "Read a resource from the minibuffer if none is at point using STATE.
 Returns a cons cell of (type . name)."
@@ -57,19 +76,17 @@ Returns a cons cell of (type . name)."
 (defun kubernetes-logs-previous-line ()
   "Move backward and inspect the line at point."
   (interactive)
-  (with-current-buffer kubernetes-logs-buffer-name
-    (forward-line -1)
-    (when (get-buffer kubernetes-log-line-buffer-name)
-      (kubernetes-logs-inspect-line (point)))))
+  (forward-line -1)
+  (when (get-buffer kubernetes-log-line-buffer-name)
+    (kubernetes-logs-inspect-line (point))))
 
 ;;;###autoload
 (defun kubernetes-logs-forward-line ()
   "Move forward and inspect the line at point."
   (interactive)
-  (with-current-buffer kubernetes-logs-buffer-name
-    (forward-line 1)
-    (when (get-buffer kubernetes-log-line-buffer-name)
-      (kubernetes-logs-inspect-line (point)))))
+  (forward-line 1)
+  (when (get-buffer kubernetes-log-line-buffer-name)
+    (kubernetes-logs-inspect-line (point))))
 
 ;;;###autoload
 (defun kubernetes-logs-follow (args state)
@@ -105,11 +122,43 @@ STATE is the current application state."
   (let* ((resource-path (if (string= resource-type "pod")
                             resource-name
                           (format "%s/%s" resource-type resource-name)))
-         (args (append (list "logs") args (list resource-path) (kubernetes-kubectl--flags-from-state state)
-                       (when-let (ns (kubernetes-state--get state 'current-namespace))
-                         (list (format "--namespace=%s" ns))))))
-    (with-current-buffer (kubernetes-utils-process-buffer-start kubernetes-logs-buffer-name #'kubernetes-logs-mode kubernetes-kubectl-executable args)
+         ;; Build clean args with namespace at the end
+         (namespace-arg (when-let (ns (kubernetes-state--get state 'current-namespace))
+                          (list (format "--namespace=%s" ns))))
+         (kubectl-args (append (list "logs")
+                              args
+                              (list resource-path)
+                              (kubernetes-kubectl--flags-from-state state)
+                              namespace-arg))
+         (buffer-name (kubernetes-logs--generate-buffer-name resource-type resource-name args state)))
+    (with-current-buffer (kubernetes-utils-process-buffer-start buffer-name #'kubernetes-logs-mode kubernetes-kubectl-executable kubectl-args)
+      ;; Set buffer-local variables to store information about this log buffer
+      (setq-local kubernetes-logs-resource-type resource-type)
+      (setq-local kubernetes-logs-resource-name resource-name)
+      (setq-local kubernetes-logs-namespace (kubernetes-state--get state 'current-namespace))
+      (setq-local kubernetes-logs-container-name
+                  (let ((container-arg (seq-find (lambda (arg) (string-prefix-p "--container=" arg)) args)))
+                    (when container-arg
+                      (substring container-arg (length "--container=")))))
+      ;; Store the complete kubectl command args for direct reuse during refresh
+      (setq-local kubernetes-logs-kubectl-args kubectl-args)
       (select-window (display-buffer (current-buffer))))))
+
+;; Function to refresh logs in the current buffer
+;;;###autoload
+(defun kubernetes-logs-refresh ()
+  "Refresh logs in the current buffer."
+  (interactive)
+  (when (derived-mode-p 'kubernetes-logs-mode)
+    (if (boundp 'kubernetes-logs-kubectl-args)
+        ;; Simply reuse the exact kubectl args stored in the buffer
+        (with-current-buffer (kubernetes-utils-process-buffer-start (buffer-name)
+                                                                    #'kubernetes-logs-mode
+                                                                    kubernetes-kubectl-executable
+                                                                    kubernetes-logs-kubectl-args)
+          ;; No need to set local variables again as they're already set
+          (message "Logs refreshed"))
+      (message "Cannot refresh logs: command information not available"))))
 
 (transient-define-prefix kubernetes-logs ()
   "Fetch or tail logs from Kubernetes resources."
@@ -133,6 +182,7 @@ STATE is the current application state."
     (define-key keymap (kbd "n") #'kubernetes-logs-forward-line)
     (define-key keymap (kbd "p") #'kubernetes-logs-previous-line)
     (define-key keymap (kbd "RET") #'kubernetes-logs-inspect-line)
+    (define-key keymap (kbd "g") #'kubernetes-logs-refresh)
     (define-key keymap (kbd "M-w") nil)
     keymap)
   "Keymap for `kubernetes-logs-mode'.")
@@ -143,8 +193,11 @@ STATE is the current application state."
 
 \\<kubernetes-logs-mode-map>\
 Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
+Type \\[kubernetes-logs-refresh] to refresh the logs in the current buffer.
 
-\\{kubernetes-logs-mode-map}")
+\\{kubernetes-logs-mode-map}"
+  ;; Override parent mode's keymap to ensure our bindings take precedence
+  (use-local-map kubernetes-logs-mode-map))
 
 ;;;###autoload
 (defvar kubernetes-log-line-mode-map
@@ -159,6 +212,44 @@ Type \\[kubernetes-logs-inspect-line] to open the line at point in a new buffer.
   "Mode for inspecting Kubernetes log lines.
 
 \\{kubernetes-log-line-mode-map}")
+
+;; Function to list all log buffers
+;;;###autoload
+(defun kubernetes-logs-list-buffers ()
+  "List all Kubernetes log buffers."
+  (interactive)
+  (let ((log-buffers nil))
+    (dolist (buffer (buffer-list))
+      (with-current-buffer buffer
+        (when (derived-mode-p 'kubernetes-logs-mode)
+          (push buffer log-buffers))))
+    (if log-buffers
+        (let* ((buffer-desc-alist
+                (mapcar (lambda (buf)
+                          (with-current-buffer buf
+                            (let* ((buf-name (buffer-name))
+                                   (desc (if (and (boundp 'kubernetes-logs-resource-type)
+                                                 (boundp 'kubernetes-logs-resource-name))
+                                            (format "%s%s/%s%s"
+                                                    (if (and (boundp 'kubernetes-logs-namespace)
+                                                             kubernetes-logs-namespace)
+                                                        (format "%s/" kubernetes-logs-namespace)
+                                                      "")
+                                                    kubernetes-logs-resource-type
+                                                    kubernetes-logs-resource-name
+                                                    (if (and (boundp 'kubernetes-logs-container-name)
+                                                             kubernetes-logs-container-name)
+                                                        (format " (container: %s)" kubernetes-logs-container-name)
+                                                      ""))
+                                          buf-name)))
+                              (cons desc buf))))
+                        log-buffers))
+               (selected-desc (completing-read "Select logs buffer: "
+                                              (mapcar #'car buffer-desc-alist)
+                                              nil t))
+               (selected-buffer (cdr (assoc selected-desc buffer-desc-alist))))
+          (switch-to-buffer selected-buffer))
+      (message "No Kubernetes logs buffers found"))))
 
 (provide 'kubernetes-logs)
 

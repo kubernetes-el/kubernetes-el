@@ -323,10 +323,11 @@ Point is moved to the position indicated by | in INITIAL-CONTENTS."
                 (should (equal (cdr result) "fallback-pod")))))
         (kubernetes-utils-test-teardown-overview-buffer)))))
 
-;; Tests for the kubernetes-logs-follow and kubernetes-logs-fetch-all functions
 (ert-deftest kubernetes-utils-test-logs-follow-and-fetch-all ()
   "Test the refactored `kubernetes-logs-follow' and `kubernetes-logs-fetch-all' functions."
-  (let ((kubernetes-overview-buffer-name "*kubernetes-test-overview*"))
+  (let ((kubernetes-overview-buffer-name "*kubernetes-test-overview*")
+        (test-buffers '())
+        (expected-buffer-patterns '()))
 
     ;; Mock functions to avoid actual kubectl execution and buffer creation
     (cl-letf (((symbol-function 'kubernetes-pods--read-name)
@@ -337,9 +338,15 @@ Point is moved to the position indicated by | in INITIAL-CONTENTS."
                (lambda (_ key) (when (eq key 'current-namespace) "test-namespace")))
               ((symbol-function 'kubernetes-utils-process-buffer-start)
                (lambda (buffername _mode _exe args)
-                 (with-current-buffer (get-buffer-create buffername)
-                   (insert (format "Mock process with args: %s" (mapconcat #'identity args " ")))
-                   (current-buffer))))
+                 ;; Save the buffer name pattern we expect
+                 (push buffername expected-buffer-patterns)
+                 ;; Create and return a buffer
+                 (let ((buf (get-buffer-create buffername)))
+                   (push buf test-buffers)
+                   (with-current-buffer buf
+                     (erase-buffer)
+                     (insert (format "Mock process with args: %s" (mapconcat #'identity args " "))))
+                   buf)))
               ((symbol-function 'select-window)
                (lambda (_) nil))
               ((symbol-function 'display-buffer)
@@ -366,31 +373,70 @@ Point is moved to the position indicated by | in INITIAL-CONTENTS."
                 (insert deployment-name)
                 (kubernetes-utils-test-add-nav-property "deployment" deployment-name start (point)))
 
-              ;; Test kubernetes-logs-follow with pod
+              ;; Test kubernetes-logs-follow with pod - just call it, don't check return value
               (goto-char (point-min))
               (search-forward "nginx-pod")
               (backward-char 3)
               (kubernetes-logs-follow '("--tail=10") 'mock-state)
-              (with-current-buffer kubernetes-logs-buffer-name
-                (should (string-match-p "logs.*-f.*--tail=10.*nginx-pod" (buffer-string)))
-                (should (string-match-p "--namespace=test-namespace" (buffer-string))))
+
+              ;; Instead check if a buffer with the expected name pattern exists
+              (let ((pod-pattern "*kubernetes logs: test-namespace/pod/nginx-pod*"))
+                (should (member pod-pattern expected-buffer-patterns))
+
+                ;; Find the buffer with our pattern
+                (let ((matching-buffer (seq-find
+                                        (lambda (buf)
+                                          (string= (buffer-name buf) pod-pattern))
+                                        test-buffers)))
+                  (should matching-buffer)
+                  (when matching-buffer
+                    (with-current-buffer matching-buffer
+                      (should (string-match-p "logs.*-f.*--tail=10.*nginx-pod" (buffer-string)))
+                      (should (string-match-p "--namespace=test-namespace" (buffer-string)))))))
 
               ;; Test kubernetes-logs-follow with deployment
               (goto-char (point-min))
               (search-forward "web-deployment")
               (backward-char 3)
               (kubernetes-logs-follow '("--tail=10") 'mock-state)
-              (with-current-buffer kubernetes-logs-buffer-name
-                (should (string-match-p "logs.*-f.*--tail=10.*deployment/web-deployment" (buffer-string)))
-                (should (string-match-p "--namespace=test-namespace" (buffer-string))))
+
+              ;; Check for deployment buffer
+              (let ((deployment-pattern "*kubernetes logs: test-namespace/deployment/web-deployment*"))
+                (should (member deployment-pattern expected-buffer-patterns))
+
+                ;; Find the buffer with our pattern
+                (let ((matching-buffer (seq-find
+                                        (lambda (buf)
+                                          (string= (buffer-name buf) deployment-pattern))
+                                        test-buffers)))
+                  (should matching-buffer)
+                  (when matching-buffer
+                    (with-current-buffer matching-buffer
+                      (should (string-match-p "logs.*-f.*--tail=10.*deployment/web-deployment" (buffer-string)))
+                      (should (string-match-p "--namespace=test-namespace" (buffer-string)))))))
 
               ;; Test direct call to kubernetes-logs-fetch-all
               (kubernetes-logs-fetch-all "statefulset" "db-statefulset" '("--timestamps=true") 'mock-state)
-              (with-current-buffer kubernetes-logs-buffer-name
-                (should (string-match-p "logs.*--timestamps=true.*statefulset/db-statefulset" (buffer-string)))
-                (should (string-match-p "--namespace=test-namespace" (buffer-string))))))
-        (when (get-buffer kubernetes-logs-buffer-name)
-          (kill-buffer kubernetes-logs-buffer-name))
+
+              ;; Check for statefulset buffer
+              (let ((statefulset-pattern "*kubernetes logs: test-namespace/statefulset/db-statefulset*"))
+                (should (member statefulset-pattern expected-buffer-patterns))
+
+                ;; Find the buffer with our pattern
+                (let ((matching-buffer (seq-find
+                                        (lambda (buf)
+                                          (string= (buffer-name buf) statefulset-pattern))
+                                        test-buffers)))
+                  (should matching-buffer)
+                  (when matching-buffer
+                    (with-current-buffer matching-buffer
+                      (should (string-match-p "logs.*--timestamps=true.*statefulset/db-statefulset" (buffer-string)))
+                      (should (string-match-p "--namespace=test-namespace" (buffer-string)))))))))
+
+        ;; Clean up all test buffers
+        (dolist (buf test-buffers)
+          (when (buffer-live-p buf)
+            (kill-buffer buf)))
         (kubernetes-utils-test-teardown-overview-buffer)))))
 
 ;; Test for kubernetes-utils-read-container-name with the new logs module implementation
