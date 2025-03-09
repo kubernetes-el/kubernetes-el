@@ -33,17 +33,6 @@ Returns nil on invalid input."
 
 (define-error 'kubernetes-state-error "Kubernetes state not initialized")
 
-(defun kubernetes-utils-read-container-name (&rest _)
-  "Read a container name from the pod at POINT or a user-supplied pod.
-
-This function will error if `kubernetes-state' is not
-initialized."
-  (letrec ((state (or (kubernetes-state) (signal 'kubernetes-state-error nil)))
-           (pod-name (or (kubernetes-utils-maybe-pod-name-at-point)
-                         (kubernetes-utils-read-pod-name state)))
-           (pod (kubernetes-state-lookup-pod pod-name state))
-           (pod-containers (kubernetes-get-pod-container-names pod)))
-    (completing-read "Container name: " pod-containers nil t)))
 
 (defun kubernetes-utils-read-time-value (&rest _)
   "Read a relative time value in the style accepted by kubectl.  E.g. 20s, 3h, 5m."
@@ -60,6 +49,23 @@ initialized."
 (defun kubernetes-utils-maybe-pod-name-at-point ()
   "Return the pod name if point is on a pod, nil otherwise."
   (kubernetes-utils-get-resource-name-at-point "pod"))
+
+;; Additional utility functions for detecting resources at point
+
+;;;###autoload
+(defun kubernetes-utils-maybe-deployment-name-at-point ()
+  "Return the deployment name if point is on a deployment, nil otherwise."
+  (kubernetes-utils-get-resource-name-at-point "deployment"))
+
+;;;###autoload
+(defun kubernetes-utils-maybe-statefulset-name-at-point ()
+  "Return the statefulset name if point is on a statefulset, nil otherwise."
+  (kubernetes-utils-get-resource-name-at-point "statefulset"))
+
+;;;###autoload
+(defun kubernetes-utils-maybe-job-name-at-point ()
+  "Return the job name if point is on a job, nil otherwise."
+  (kubernetes-utils-get-resource-name-at-point "job"))
 
 (defalias 'kubernetes-utils-parse-utc-timestamp 'kubernetes--parse-utc-timestamp)
 
@@ -179,6 +185,117 @@ Otherwise, return the name of whatever resource is at point, or nil if not on a 
         (when (string= (car resource-info) resource-type)
           (cdr resource-info))
       (cdr resource-info))))
+
+(defun kubernetes-utils--get-container-names-from-pod (pod)
+  "Extract container names from POD definition, including all init containers."
+  (when pod
+    (kubernetes-utils--extract-container-names-from-spec (alist-get 'spec pod))))
+
+(defun kubernetes-utils--get-all-pods-for-owner (owner-type owner-name state)
+  "Find all pods for OWNER-TYPE with OWNER-NAME using STATE.
+Returns a list of matching pods."
+  (let* ((pods-state (alist-get 'pods state))
+         (pods (alist-get 'items pods-state)))
+
+    (seq-filter
+     (lambda (pod)
+       (let-alist pod
+         (pcase owner-type
+          ("statefulset"
+           ;; For statefulsets, find pods with names that follow the pattern
+           (string-match-p (concat "^" owner-name "-[0-9]+$") .metadata.name))
+
+          ((or "deployment" "daemonset" "replicaset" "job")
+           ;; Generic handler for resources that use ownerReferences
+           (let* ((expected-kind (pcase owner-type
+                                   ("deployment" "ReplicaSet")
+                                   ("daemonset" "DaemonSet")
+                                   ("replicaset" "ReplicaSet")
+                                   ("job" "Job")))
+                  (name-match-fn (if (string= owner-type "deployment")
+                                     (lambda (ref-name) (string-match-p owner-name ref-name))
+                                   (lambda (ref-name) (equal owner-name ref-name)))))
+             (and .metadata.ownerReferences
+                  (seq-find
+                   (lambda (ref)
+                     (and (equal expected-kind (alist-get 'kind ref))
+                          (funcall name-match-fn (alist-get 'name ref))))
+                   .metadata.ownerReferences))))
+
+          (_ nil))))
+     pods)))
+
+(defun kubernetes-utils--extract-container-names-from-spec (spec)
+  "Extract container names from resource SPEC.
+Works with pod specs and pod template specs."
+  (when spec
+    (-let [(&alist 'containers containers 'initContainers init-containers) spec]
+      (-concat
+       (-map (-lambda ((&alist 'name name)) name) (or init-containers '()))
+       (-map (-lambda ((&alist 'name name)) name) (or containers '()))))))
+
+(defun kubernetes-utils--get-container-names-sync (resource-type resource-name state)
+  "Get container names for RESOURCE-TYPE with RESOURCE-NAME using STATE synchronously.
+This function includes support for injected sidecar and init containers."
+  (let* ((container-names
+          (pcase resource-type
+            ("pod"
+             ;; For pods, get containers directly from the pod
+             (when-let ((pod (kubernetes-state-lookup-pod resource-name state)))
+               (kubernetes-utils--get-container-names-from-pod pod)))
+
+            ;; For other resources, extract from template.spec
+            ((or "deployment" "statefulset" "daemonset" "replicaset" "job")
+             (when-let* ((lookup-fn (intern (format "kubernetes-state-lookup-%s" resource-type)))
+                         (resource (funcall lookup-fn resource-name state))
+                         (spec (alist-get 'spec resource))
+                         (template (alist-get 'template spec))
+                         (pod-spec (alist-get 'spec template)))
+               (kubernetes-utils--extract-container-names-from-spec pod-spec)))))
+
+         (pod-container-names
+          (when (not (string= resource-type "pod"))
+            ;; Find all pods for this resource
+            (let ((matching-pods (kubernetes-utils--get-all-pods-for-owner resource-type resource-name state)))
+              (when matching-pods
+                ;; Extract containers from all matching pods and combine them
+                (-uniq (-mapcat #'kubernetes-utils--get-container-names-from-pod matching-pods)))))))
+
+    ;; Return the appropriate container names
+    (cond
+     ((and pod-container-names (> (length pod-container-names) 0))
+      pod-container-names)
+     ((and container-names (> (length container-names) 0))
+      container-names)
+     (t '()))))
+
+(defun kubernetes-utils--get-container-names (resource-type resource-name state)
+  "Get container names for RESOURCE-TYPE with RESOURCE-NAME using STATE.
+Includes support for injected sidecar containers like those from Vault, Istio, etc."
+  (kubernetes-utils--get-container-names-sync resource-type resource-name state))
+
+(defun kubernetes-utils-read-container-name (prompt &optional initial-input history)
+  "Read a container name from the minibuffer using PROMPT.
+If a resource is specified at point, show container names for that resource.
+Otherwise, fall back to pod selection.
+Optional arguments INITIAL-INPUT and HISTORY are passed to `completing-read'."
+  (let* ((state (or (kubernetes-state) (signal 'kubernetes-state-error nil)))
+         (resource-info (kubernetes-utils-get-resource-info-at-point))
+         (container-names
+          (if (and resource-info (member (car resource-info) kubernetes-logs-supported-resource-types))
+              ;; Resource found at point - use its type and name
+              (let ((resource-type (car resource-info))
+                    (resource-name (cdr resource-info)))
+                (or (kubernetes-utils--get-container-names resource-type resource-name state)
+                    (error "No containers found for %s/%s" resource-type resource-name)))
+            ;; No resource at point - fall back to pod selection like original behavior
+            (let* ((pod-name (kubernetes-pods--read-name state))
+                   (pod (kubernetes-state-lookup-pod pod-name state)))
+              (or (kubernetes-utils--get-container-names-from-pod pod)
+                  (error "No containers found for pod %s" pod-name))))))
+    (if (null container-names)
+        (error "No containers available")
+      (completing-read (or prompt "Container name: ") container-names nil t initial-input history))))
 
 (provide 'kubernetes-utils)
 
