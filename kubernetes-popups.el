@@ -86,9 +86,10 @@ If disabling the proxy, ARGS is ignored."
 
 (transient-define-prefix kubernetes-describe ()
   "Describe Kubernetes resources."
+  :info-manual "(kubernetes-el)Describing Resources"
   [["Actions"
     ("d" "Dwim" kubernetes-describe-dwim)
-    ("p" "Pod" kubernetes-describe-pod)]])
+    ("r" "Resource" kubernetes-describe-generic-resource)]])
 
 (transient-define-prefix kubernetes-labels ()
   "Act on Kubernetes labels."

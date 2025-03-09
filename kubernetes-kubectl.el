@@ -266,6 +266,14 @@ ERROR-CB is called if an error occurred."
                       cb
                       error-cb))
 
+(defun kubernetes-kubectl-describe-resource (state resource-type resource-name cb)
+  "Describe resource of RESOURCE-TYPE with RESOURCE-NAME, then execute CB with the response.
+STATE is the application state."
+  (kubernetes-kubectl state (list "describe" resource-type resource-name)
+                     (lambda (buf)
+                       (let ((s (with-current-buffer buf (buffer-string))))
+                         (funcall cb s)))))
+
 (provide 'kubernetes-kubectl)
 
 ;;; kubernetes-kubectl.el ends here

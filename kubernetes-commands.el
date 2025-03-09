@@ -38,6 +38,7 @@
 (autoload 'kubernetes-services-delete-marked "kubernetes-services")
 (autoload 'kubernetes-show-pods-for-label "kubernetes-labels")
 (autoload 'kubernetes-display-cronjob "kubernetes-cronjobs")
+(autoload 'kubernetes-describe-generic-resource "kubernetes-describe")
 
 
 ;; Mark management
