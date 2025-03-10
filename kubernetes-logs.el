@@ -165,7 +165,9 @@ STATE is the current application state."
   [["Flags"
     ("-a" "Print logs from all containers in this pod" "--all-containers=true")
     ("-p" "Print logs for previous instances of the container in this pod" "-p")
-    ("-t" "Include timestamps on each line in the log output" "--timestamps=true")]
+    ("-t" "Include timestamps on each line in the log output" "--timestamps=true")
+    ("-A" "Get logs from all pods" "--all-pods=true")
+    ("-P" "Prefix each log line with pod name and container name" "--prefix=true")]
    ["Options"
     ("=c" "Select container" "--container=" kubernetes-utils-read-container-name)
     ("=t" "Number of lines to display" "--tail=" transient-read-number-N+)]
