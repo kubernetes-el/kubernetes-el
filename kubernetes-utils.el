@@ -96,6 +96,7 @@ buffer is killed."
 
   (let ((buf (get-buffer-create bufname)))
     (with-current-buffer buf
+      (setq buffer-read-only nil)
       (erase-buffer)
       (buffer-disable-undo)
       (term-mode)
