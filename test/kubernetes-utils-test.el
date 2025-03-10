@@ -266,7 +266,7 @@ Point is moved to the position indicated by | in INITIAL-CONTENTS."
 
 (ert-deftest kubernetes-utils-test-logs-supported-resource-types ()
   "Test that kubernetes-logs-supported-resource-types contains the expected values."
-  (should (equal kubernetes-logs-supported-resource-types '("pod" "deployment" "statefulset" "job"))))
+  (should (equal kubernetes-logs-supported-resource-types '("pod" "deployment" "statefulset" "job" "service"))))
 
 (ert-deftest kubernetes-utils-test-logs-read-resource-if-needed ()
   "Test `kubernetes-logs--read-resource-if-needed' behavior."
@@ -290,12 +290,12 @@ Point is moved to the position indicated by | in INITIAL-CONTENTS."
                 (kubernetes-utils-test-add-nav-property "pod" pod-name start (point))
                 (insert "\n"))
 
-              ;; Add a service resource (unsupported)
-              (insert "Service: ")
+              ;; Add a ingress resource (unsupported)
+              (insert "Ingress: ")
               (let ((start (point))
-                    (service-name "frontend-service"))
-                (insert service-name)
-                (kubernetes-utils-test-add-nav-property "service" service-name start (point)))
+                    (ingress-name "frontend-ingress"))
+                (insert ingress-name)
+                (kubernetes-utils-test-add-nav-property "ingress" ingress-name start (point)))
 
               ;; Test with supported resource
               (goto-char (point-min))
@@ -308,7 +308,7 @@ Point is moved to the position indicated by | in INITIAL-CONTENTS."
 
               ;; Test with unsupported resource (should fall back to pod selection)
               (goto-char (point-min))
-              (search-forward "frontend-service")
+              (search-forward "frontend-ingress")
               (backward-char 3)
               (let ((result (kubernetes-logs--read-resource-if-needed nil)))
                 (should result)
@@ -485,12 +485,12 @@ Point is moved to the position indicated by | in INITIAL-CONTENTS."
                 (kubernetes-utils-test-add-nav-property "deployment" deployment-name start (point))
                 (insert "\n"))
 
-              ;; Add a service resource (unsupported)
-              (insert "Service: ")
+              ;; Add a ingress resource (unsupported)
+              (insert "Ingress: ")
               (let ((start (point))
-                    (service-name "frontend-service"))
-                (insert service-name)
-                (kubernetes-utils-test-add-nav-property "service" service-name start (point)))
+                    (ingress-name "frontend-ingress"))
+                (insert ingress-name)
+                (kubernetes-utils-test-add-nav-property "ingress" ingress-name start (point)))
 
               ;; Test with pod (supported)
               (goto-char (point-min))
@@ -506,9 +506,9 @@ Point is moved to the position indicated by | in INITIAL-CONTENTS."
               (should (equal (kubernetes-utils-read-container-name "Test prompt: ")
                              "Test prompt: container1"))
 
-              ;; Test with service (unsupported, should fall back to pod selection)
+              ;; Test with ingress (unsupported, should fall back to pod selection)
               (goto-char (point-min))
-              (search-forward "frontend-service")
+              (search-forward "frontend-ingress")
               (backward-char 3)
               (should (equal (kubernetes-utils-read-container-name "Test prompt: ")
                              "Test prompt: podcontainer1"))))

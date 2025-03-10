@@ -63,7 +63,7 @@
 ;; Test kubernetes-logs--read-resource-if-needed for different resource types
 (ert-deftest kubernetes-logs-test--read-resource-if-needed ()
   (let ((kubernetes-overview-buffer-name "*kubernetes-test-overview*")
-        (kubernetes-logs-supported-resource-types '("pod" "deployment" "statefulset" "job")))
+        (kubernetes-logs-supported-resource-types '("pod" "deployment" "statefulset" "job" "service")))
 
     ;; Mock functions to avoid actual state usage
     (cl-letf (((symbol-function 'kubernetes-pods--read-name)
@@ -95,11 +95,11 @@
                   (insert "\n"))
 
                 ;; Add a service resource (unsupported)
-                (insert "Service: ")
+                (insert "Ingress: ")
                 (let ((start (point))
-                      (service-name "test-service"))
-                  (insert service-name)
-                  (let ((nav-property (list :service-name service-name)))
+                      (ingress-name "test-ingress"))
+                  (insert ingress-name)
+                  (let ((nav-property (list :ingress-name ingress-name)))
                     (put-text-property start (point) 'kubernetes-nav nav-property))
                   (insert "\n"))
 
@@ -121,9 +121,9 @@
                   (should (equal (car result) "deployment"))
                   (should (equal (cdr result) "test-deployment")))
 
-                ;; Test with service (unsupported resource - should fallback to pod)
+                ;; Test with ingress (unsupported resource - should fallback to pod)
                 (goto-char (point-min))
-                (search-forward "test-service")
+                (search-forward "test-ingress")
                 (backward-char 3)
                 (let ((result (kubernetes-logs--read-resource-if-needed nil)))
                   (should result)
@@ -483,11 +483,11 @@
                   (insert "\n"))
 
                 ;; Add a service resource (unsupported)
-                (insert "Service: ")
+                (insert "Ingress: ")
                 (let ((start (point))
-                      (service-name "test-service"))
-                  (insert service-name)
-                  (let ((nav-property (list :service-name service-name)))
+                      (ingress-name "test-ingress"))
+                  (insert ingress-name)
+                  (let ((nav-property (list :ingress-name ingress-name)))
                     (put-text-property start (point) 'kubernetes-nav nav-property))
                   (insert "\n"))
 
@@ -505,9 +505,9 @@
                 (let ((result (kubernetes-utils-read-container-name "Select container: ")))
                   (should (equal result "deployment-container")))
 
-                ;; Test with service (unsupported - should fall back to pod)
+                ;; Test with ingress (unsupported - should fall back to pod)
                 (goto-char (point-min))
-                (search-forward "test-service")
+                (search-forward "test-ingress")
                 (backward-char 3)
                 (let ((result (kubernetes-utils-read-container-name "Select container: ")))
                   (should (equal result "main-container")))))
