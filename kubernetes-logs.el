@@ -13,7 +13,7 @@
 (require 'kubernetes-vars)
 
 (defconst kubernetes-logs-supported-resource-types
-  '("pod" "deployment" "statefulset" "job")
+  '("pod" "deployment" "statefulset" "job" "service")
   "List of Kubernetes resource types that support the `kubectl logs` command.")
 
 ;; New variable to define buffer name format
@@ -106,7 +106,7 @@ STATE is the current application state."
 (defun kubernetes-logs-fetch-all (resource-type resource-name args state)
   "Open a streaming logs buffer for a resource.
 
-RESOURCE-TYPE is the type of resource (pod, deployment, statefulset, job, cronjob).
+RESOURCE-TYPE is the type of resource (pod, deployment, statefulset, job, service).
 RESOURCE-NAME is the name of the resource to log.
 ARGS are additional args to pass to kubectl.
 STATE is the current application state."
