@@ -381,8 +381,8 @@
       (add-hook 'kill-buffer-hook (kubernetes-utils-make-cleanup-fn buf) nil t))
     buf))
 
-(defun kubernetes-overview-set-sections (sections)
-  "Set which sections are displayed in the overview.
+(defun kubernetes-overview-select-views (&rest sections)
+  "Set which views are displayed in the overview (by multiselect).
 
 SECTIONS is a list of sections to display.  See
 `kubernetes-overview-custom-views-alist' and
@@ -390,15 +390,21 @@ SECTIONS is a list of sections to display.  See
   (interactive
    (let* ((views (append kubernetes-overview-custom-views-alist kubernetes-overview-views-alist))
           (names (-uniq (--map (symbol-name (car it)) views)))
-          (choice (intern (completing-read "Overview view: " names nil t))))
-     (list (alist-get choice views))))
-
+          (choices (completing-read-multiple "Overview view: " names nil t)))
+     (kubernetes-overview-views--dedupe views choices)))
   (kubernetes-state-update-overview-sections sections)
   (kubernetes-state-trigger-redraw))
 
+(defun kubernetes-overview-views--dedupe (views choices)
+  "Remove duplicate sections from a selection of multiple views."
+  (let ((section-list (alist-get (intern (car choices)) views)))
+       (dolist (choice (cdr choices))
+         (setq section-list  (append section-list (cdr (alist-get (intern choice) views)))))
+       (delete-dups section-list)))
+
 (defvar kubernetes-overview-mode-map
   (let ((keymap (make-sparse-keymap)))
-    (define-key keymap (kbd "v") #'kubernetes-overview-set-sections)
+    (define-key keymap (kbd "v") #'kubernetes-overview-select-views)
     keymap)
   "Keymap for `kubernetes-overview-mode'.")
 
@@ -435,7 +441,7 @@ Type \\[kubernetes-refresh] to refresh the buffer.
     (kubernetes-commands-display-buffer buf)
     (with-current-buffer buf
       (cd (kubernetes-utils-up-to-existing-dir dir)))
-    (message (substitute-command-keys "\\<kubernetes-overview-mode-map>Type \\[kubernetes-overview-set-sections] to switch between resources, and \\[kubernetes-dispatch] for usage."))))
+    (message (substitute-command-keys "\\<kubernetes-overview-mode-map>Type \\[kubernetes-overview-select-views] to switch between resources, and \\[kubernetes-dispatch] for usage."))))
 
 
 (provide 'kubernetes-overview)
