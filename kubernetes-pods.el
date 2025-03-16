@@ -52,17 +52,49 @@
   (-let* ((current-time (kubernetes-state--get state 'current-time))
           (marked-pods (kubernetes-state--get state 'marked-pods))
           (pending-deletion (kubernetes-state--get state 'pods-pending-deletion))
-          ((&alist 'metadata (&alist 'name name)
-                   'status (&alist 'containerStatuses containers
-                                   'startTime start-time
-                                   'phase phase))
-           pod)
-          ([(&alist 'restartCount restarts 'state pod-state)]
-           (or containers
-               (make-vector 1 (list '(restartCount . 0) '(state . '(failed . '(startedAt . nil)))))))
+
+          ;; Extract pod metadata and status safely
+          (pod-metadata (alist-get 'metadata pod))
+          (pod-status (alist-get 'status pod))
+
+          ;; Extract basic info
+          (name (and pod-metadata (alist-get 'name pod-metadata)))
+          (phase (and pod-status (alist-get 'phase pod-status)))
+          (status-reason (and pod-status (alist-get 'reason pod-status)))
+          (start-time (and pod-status (alist-get 'startTime pod-status)))
+
+          ;; Containers may be missing in Pending pods
+          (containers (and pod-status (alist-get 'containerStatuses pod-status)))
+
+          ;; Ensure containers is a vector
+          (containers (if (vectorp containers) containers (make-vector 0 nil)))
+
+          ;; Initialize variables with safe defaults
+          (restarts 0)
+          (pod-state (or status-reason phase "Unknown"))
+
+          ;; Only try to access container state if we have containers
+          (_ (when (> (length containers) 0)
+               (let* ((container (aref containers 0)))
+                 (when container
+                   ;; Get restart count
+                   (let ((restart-count (alist-get 'restartCount container)))
+                     (when restart-count
+                       (setq restarts restart-count)))
+
+                   ;; Get container state
+                   (let ((state (alist-get 'state container)))
+                     (when state
+                       (let ((waiting (alist-get 'waiting state)))
+                         (when waiting
+                           (let ((reason (alist-get 'reason waiting)))
+                             (when reason
+                               (setq pod-state reason)))))))))))
+
+          ;; Handle missing start time
           (start-time (or start-time (format-time-string "%Y-%m-%dT%TZ")))
-          (pod-state (or (alist-get 'reason (alist-get 'waiting pod-state) phase)
-                         phase))
+
+          ;; Column formatting
           ([fmt] kubernetes-pods--column-heading)
           (list-fmt (split-string fmt))
           (str
@@ -98,14 +130,18 @@
             (let ((start (apply #'encode-time (kubernetes--parse-utc-timestamp start-time))))
               (propertize (format (pop list-fmt) (kubernetes--time-diff-string start current-time))
                           'face 'kubernetes-dimmed))))
+
+          ;; Apply face based on pod state
           (str (cond
-                ((member (downcase pod-state) '("running" "containercreating" "terminated"))
+                ((member (downcase pod-state) '("running" "containercreating" "terminated" "succeeded"))
                  str)
-                ((member (downcase pod-state) '("runcontainererror" "crashloopbackoff"))
+                ((member (downcase pod-state) '("runcontainererror" "crashloopbackoff" "evicted" "unschedulable"))
                  (propertize str 'face 'error))
                 (t
                  (propertize str 'face 'warning))))
+
           (line `(line ,str)))
+
     `(nav-prop (:pod-name ,name)
                (copy-prop ,name
                           ,(cond

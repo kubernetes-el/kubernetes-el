@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 'kubernetes-overview)
+(require 'kubernetes-pods)
 
 (declare-function test-helper-json-resource "test-helper.el")
 
@@ -11,6 +12,7 @@
 (defconst kubernetes-overview-test--sample-statefulsets-response (test-helper-json-resource "get-statefulsets-response.json"))
 (defconst kubernetes-overview-test--sample-pods-response (test-helper-json-resource "get-pods-response.json"))
 (defconst kubernetes-overview-test--sample-secrets-response (test-helper-json-resource "get-secrets-response.json"))
+(defconst kubernetes-overview-test--sample-replicasets-response (test-helper-json-resource "get-replicasets-response.json"))
 
 
 ;; Uses state to determine which sections to draw
@@ -90,6 +92,8 @@ Deployments (2)
                    (string-trim (substring-no-properties (buffer-string)))))))
 
 
+;; Updated expected output for tests
+
 (defconst kubernetes-overview-test--expected-overview--populated-state (string-trim "
 Statefulsets
   Name                                            Replicas                          Age
@@ -126,20 +130,19 @@ Deployments (2)
 
     Pods
       Selector:   deployment-2
-      Replicas:   1"))
+      Replicas:   1
+      Running     example-svc-v4-1603416598-2f9lb"))
+
 
 (ert-deftest kubernetes-overview-test--aggregated-overview--state-set ()
   (test-helper-with-empty-state
     (kubernetes-state-update-configmaps kubernetes-overview-test--sample-configmaps-response)
     (kubernetes-state-update-deployments kubernetes-overview-test--sample-deployments-response)
+    (kubernetes-state-update-replicasets kubernetes-overview-test--sample-replicasets-response)
     (kubernetes-state-update-pods kubernetes-overview-test--sample-pods-response)
     (kubernetes-state-update-secrets kubernetes-overview-test--sample-secrets-response)
-    (let ((state (cons `(current-time . ,(date-to-time "2017-04-23 00:00Z"))
+    (let ((state (cons `(current-time . ,(encode-time 0 0 0 23 4 2017))
                        (kubernetes-state))))
       (kubernetes-ast-eval `(aggregated-view ,state)))
     (should (equal kubernetes-overview-test--expected-overview--populated-state
                    (string-trim (substring-no-properties (buffer-string)))))))
-
-(provide 'kubernetes-overview-test)
-
-;;; kubernetes-overview-test.el ends here
