@@ -26,6 +26,7 @@
 (require 'kubernetes-popups)
 (require 'kubernetes-secrets)
 (require 'kubernetes-services)
+(require 'kubernetes-replicasets)
 
 
 (autoload 'kubernetes-utils-up-to-existing-dir "kubernetes-utils")
@@ -164,34 +165,64 @@
             (indent ,(--map `(aggregated-secret-line ,state ,it) secrets))
             (padding)))
 
-
 ;; Pods
 
 (defun kubernetes-overview--pods-for-deployment (state deployment)
-  (-let* (((&alist 'spec (&alist 'selector (&alist 'matchLabels selectors))) deployment)
-          ((&alist 'items pods) (kubernetes-state--get state 'pods))
-          (pods (append pods nil)))
-    (nreverse (seq-reduce
-               (lambda (acc pod)
-                 (-let [(&alist 'metadata (&alist 'labels labels)) pod]
-                   ;; The labels present on the pod must contain all selector labels
-                   (if (-all? (lambda (label) (-contains? labels label)) selectors)
-                       (cons pod acc)
-                     acc)))
-               pods
-               nil))))
+  "Find pods for DEPLOYMENT in STATE using ReplicaSet UIDs in ownerReferences.
+This function finds pods by identifying ReplicaSets owned by the deployment
+and then finding pods owned by those ReplicaSets using UIDs exclusively."
+  (let* ((deployment-uid (alist-get 'uid (alist-get 'metadata deployment)))
+         (pod-items (alist-get 'items (kubernetes-state--get state 'pods)))
+         (replicaset-items (alist-get 'items (kubernetes-state--get state 'replicasets))))
+
+    (when (and deployment-uid pod-items replicaset-items)
+      ;; Find ReplicaSets owned by this deployment
+      (let* ((matching-replicasets
+              (seq-filter
+               (lambda (replicaset)
+                 (let* ((owner-refs (alist-get 'ownerReferences (alist-get 'metadata replicaset))))
+                   (and owner-refs
+                        (seq-find
+                         (lambda (ref)
+                           (and (string= (alist-get 'kind ref) "Deployment")
+                                (string= (alist-get 'uid ref) deployment-uid)))
+                         owner-refs))))
+               replicaset-items))
+
+             ;; Collect UIDs of matching ReplicaSets
+             (replicaset-uids
+              (mapcar (lambda (rs) (alist-get 'uid (alist-get 'metadata rs)))
+                      matching-replicasets)))
+
+        ;; Find pods owned by those ReplicaSets using UID references
+        (when replicaset-uids
+          (seq-filter
+           (lambda (pod)
+             (let* ((owner-refs (alist-get 'ownerReferences (alist-get 'metadata pod))))
+               (and owner-refs
+                    (seq-find
+                     (lambda (ref)
+                       (and (string= (alist-get 'kind ref) "ReplicaSet")
+                            (member (alist-get 'uid ref) replicaset-uids)))
+                     owner-refs))))
+           pod-items))))))
 
 (defun kubernetes-overview--pods-for-statefulset (state statefulset)
-  (-let* (((&alist 'spec (&alist 'selector (&alist 'matchLabels (&alist 'name selector-name)))) statefulset)
-          ((&alist 'items pods) (kubernetes-state--get state 'pods))
-          (pods (append pods nil)))
-    (nreverse (seq-reduce
-               (lambda (acc pod)
-                 (if (equal selector-name (kubernetes-state-resource-label pod))
-                     (cons pod acc)
-                   acc))
-               pods
-               nil))))
+  "Find pods for STATEFULSET in STATE using ownerReferences.
+This function finds pods by matching the statefulset's UID with pod's ownerReferences."
+  (let* ((statefulset-uid (cdr (assoc 'uid (cdr (assoc 'metadata statefulset)))))
+         (pod-items (cdr (assoc 'items (kubernetes-state--get state 'pods)))))
+    (when (and statefulset-uid pod-items)
+      (seq-filter
+       (lambda (pod)
+         (let* ((owner-refs (cdr (assoc 'ownerReferences (cdr (assoc 'metadata pod))))))
+           (and owner-refs
+                (seq-find (lambda (ref)
+                           (and (string= (cdr (assoc 'kind ref)) "StatefulSet")
+                                (string= (cdr (assoc 'uid ref)) statefulset-uid)))
+                         owner-refs))))
+       pod-items))))
+
 
 (kubernetes-ast-define-component aggregated-pods (state deployment pods)
   (-let [(&alist 'spec (&alist
@@ -336,6 +367,7 @@
   (let ((sections (kubernetes-state-overview-sections (kubernetes-state))))
     (when (member 'overview sections)
       (kubernetes-pods-refresh verbose)
+      (kubernetes-replicasets-refresh verbose)
       (kubernetes-configmaps-refresh verbose)
       (kubernetes-secrets-refresh verbose)
       (kubernetes-statefulsets-refresh verbose)
@@ -436,7 +468,6 @@ Type \\[kubernetes-refresh] to refresh the buffer.
     (with-current-buffer buf
       (cd (kubernetes-utils-up-to-existing-dir dir)))
     (message (substitute-command-keys "\\<kubernetes-overview-mode-map>Type \\[kubernetes-overview-set-sections] to switch between resources, and \\[kubernetes-dispatch] for usage."))))
-
 
 (provide 'kubernetes-overview)
 

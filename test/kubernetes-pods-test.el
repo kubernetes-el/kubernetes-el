@@ -152,4 +152,66 @@ Pods (4)
           (search-forward key)
           (should (equal 'magit-section-heading (get-text-property (point) 'face))))))))
 
+(ert-deftest kubernetes-pods-test--pod-view-line-pending-pod ()
+  "Test that pod-view-line component can handle a Pending pod with nil containerStatuses."
+  (with-temp-buffer
+    (let* ((current-time (current-time))
+           (pending-pod '((metadata . ((name . "pending-test-pod")))
+                          (status . ((phase . "Pending")
+                                    (startTime . "2023-01-01T00:00:00Z")))))
+           (state `((current-time . ,current-time)))
+           (rendered (progn
+                       ;; Using with-temp-buffer to keep the buffer alive
+                       (erase-buffer)
+                       (insert " ") ;; Ensure buffer isn't empty
+                       (let ((inhibit-read-only t))
+                         (kubernetes-ast-eval `(pod-view-line ,state ,pending-pod)))
+                       (buffer-string))))
+      (should rendered)
+      (should (string-match-p "Pending" rendered)))))
+
+(ert-deftest kubernetes-pods-test--pod-view-line-evicted-pod ()
+  "Test that pod-view-line component can handle an Evicted pod."
+  (with-temp-buffer
+    (let* ((current-time (current-time))
+           (evicted-pod '((metadata . ((name . "evicted-test-pod")))
+                          (status . ((phase . "Failed")
+                                    (reason . "Evicted")
+                                    (startTime . "2023-01-01T00:00:00Z")))))
+           (state `((current-time . ,current-time)))
+           (rendered (progn
+                       ;; Using with-temp-buffer to keep the buffer alive
+                       (erase-buffer)
+                       (insert " ") ;; Ensure buffer isn't empty
+                       (let ((inhibit-read-only t))
+                         (kubernetes-ast-eval `(pod-view-line ,state ,evicted-pod)))
+                       (buffer-string))))
+      (should rendered)
+      (should (string-match-p "Evicted" rendered)))))
+
+(ert-deftest kubernetes-pods-test--pod-view-line-unschedulable-pod ()
+  "Test that pod-view-line component can handle a real unschedulable pod from production."
+  (with-temp-buffer
+    (let* ((current-time (current-time))
+           (unschedulable-pod '((metadata . ((name . "vgw-5d887ffb6b-ld6lz")))
+                               (status . ((phase . "Pending")
+                                          (conditions . [((lastProbeTime)
+                                                          (lastTransitionTime . "2025-03-14T03:53:16Z")
+                                                          (message . "0/118 nodes are available...")
+                                                          (reason . "Unschedulable")
+                                                          (status . "False")
+                                                          (type . "PodScheduled"))])
+                                          (qosClass . "Burstable")))))
+           (state `((current-time . ,current-time)))
+           (rendered (progn
+                       ;; Using with-temp-buffer to keep the buffer alive
+                       (erase-buffer)
+                       (insert " ") ;; Ensure buffer isn't empty
+                       (let ((inhibit-read-only t))
+                         (kubernetes-ast-eval `(pod-view-line ,state ,unschedulable-pod)))
+                       (buffer-string))))
+      (should rendered)
+      (should (or (string-match-p "Pending" rendered)
+                  (string-match-p "Unschedulable" rendered))))))
+
 ;;; kubernetes-pods-test.el ends here

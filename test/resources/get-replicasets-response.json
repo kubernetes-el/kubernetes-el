@@ -1,0 +1,150 @@
+{
+  "apiVersion": "v1",
+  "items": [
+    {
+      "apiVersion": "extensions/v1beta1",
+      "kind": "ReplicaSet",
+      "metadata": {
+        "annotations": {
+          "deployment.kubernetes.io/revision": "1"
+        },
+        "creationTimestamp": "2017-02-17T02:23:30Z",
+        "generation": 1,
+        "labels": {
+          "name": "example-pod-v3",
+          "pod-template-hash": "1603416598"
+        },
+        "name": "example-svc-v3-1603416598",
+        "namespace": "example-ns",
+        "ownerReferences": [
+          {
+            "apiVersion": "extensions/v1beta1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "Deployment",
+            "name": "deployment-1",
+            "uid": "125476f0-f4b8-11f6-98d0-eae012fc8e71"
+          }
+        ],
+        "resourceVersion": "62687065",
+        "selfLink": "/apis/extensions/v1beta1/namespaces/example-ns/replicasets/example-svc-v3-1603416598",
+        "uid": "1d81f2b3-fb32-11e6-98d0-eae012fc8e71"
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": {
+          "matchLabels": {
+            "name": "example-pod-v3",
+            "pod-template-hash": "1603416598"
+          }
+        },
+        "template": {
+          "metadata": {
+            "creationTimestamp": null,
+            "labels": {
+              "name": "example-pod-v3",
+              "pod-template-hash": "1603416598"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "image": "example.com/example-service:3.0.0",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "example-service-1",
+                "resources": {},
+                "terminationMessagePath": "/dev/termination-log"
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "Always",
+            "securityContext": {},
+            "terminationGracePeriodSeconds": 30
+          }
+        }
+      },
+      "status": {
+        "availableReplicas": 1,
+        "fullyLabeledReplicas": 1,
+        "observedGeneration": 1,
+        "readyReplicas": 1,
+        "replicas": 1
+      }
+    },
+    {
+      "apiVersion": "extensions/v1beta1",
+      "kind": "ReplicaSet",
+      "metadata": {
+        "annotations": {
+          "deployment.kubernetes.io/revision": "1"
+        },
+        "creationTimestamp": "2017-02-22T02:15:36Z",
+        "generation": 1,
+        "labels": {
+          "name": "deployment-2",
+          "pod-template-hash": "1603416598"
+        },
+        "name": "deployment-2-1603416598",
+        "namespace": "example-ns",
+        "ownerReferences": [
+          {
+            "apiVersion": "extensions/v1beta1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "Deployment",
+            "name": "deployment-2",
+            "uid": "cbfcbe2c-f8a4-21e6-8378-0e9fa26c327b"
+          }
+        ],
+        "resourceVersion": "62687066",
+        "selfLink": "/apis/extensions/v1beta1/namespaces/example-ns/replicasets/deployment-2-1603416598",
+        "uid": "1d81f2b3-fb32-11e6-98d0-eae012fc8e72"
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": {
+          "matchLabels": {
+            "name": "deployment-2",
+            "pod-template-hash": "1603416598"
+          }
+        },
+        "template": {
+          "metadata": {
+            "creationTimestamp": null,
+            "labels": {
+              "name": "deployment-2",
+              "pod-template-hash": "1603416598"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "image": "example.com/example-service:4.8.0",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "example-service-3",
+                "resources": {},
+                "terminationMessagePath": "/dev/termination-log"
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "Always",
+            "securityContext": {},
+            "terminationGracePeriodSeconds": 30
+          }
+        }
+      },
+      "status": {
+        "availableReplicas": 1,
+        "fullyLabeledReplicas": 1,
+        "observedGeneration": 1,
+        "readyReplicas": 1,
+        "replicas": 1
+      }
+    }
+  ],
+  "kind": "List",
+  "metadata": {
+    "resourceVersion": "",
+    "selfLink": ""
+  }
+}

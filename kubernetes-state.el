@@ -346,7 +346,31 @@
          (setf (alist-get 'cronjobs-pending-deletion next)
                (seq-intersection (alist-get 'cronjobs-pending-deletion next)
                                  cronjob-names))))
+      ;; Replicasets
 
+      (:mark-replicaset
+       (let ((cur (alist-get 'marked-replicasets state)))
+         (setf (alist-get 'marked-replicasets next)
+               (delete-dups (cons args cur)))))
+      (:unmark-replicaset
+       (setf (alist-get 'marked-replicasets next)
+             (remove args (alist-get 'marked-replicasets next))))
+      (:delete-replicaset
+       (let ((updated (cons args (alist-get 'replicasets-pending-deletion state))))
+         (setf (alist-get 'replicasets-pending-deletion next)
+               (delete-dups updated))))
+      (:update-replicasets
+       (setf (alist-get 'replicasets next) args)
+
+       ;; Prune deleted replicasets from state.
+       (-let* (((&alist 'items replicasets) args)
+               (replicaset-names (seq-map #'kubernetes-state-resource-name (append replicasets nil))))
+         (setf (alist-get 'marked-replicasets next)
+               (seq-intersection (alist-get 'marked-replicasets next)
+                                 replicaset-names))
+         (setf (alist-get 'replicasets-pending-deletion next)
+               (seq-intersection (alist-get 'replicasets-pending-deletion next)
+                                 replicaset-names))))
 
       (_
        (error "Unknown action: %s" action)))
@@ -506,6 +530,22 @@
     (kubernetes-state-update :delete-cronjob cronjob-name)
     (kubernetes-state-update :unmark-cronjob cronjob-name))
 
+(defun kubernetes-state-mark-replicaset (replicaset-name)
+  "Mark ReplicaSet with REPLICASET-NAME for deletion."
+  (cl-assert (stringp replicaset-name))
+  (kubernetes-state-update :mark-replicaset replicaset-name))
+
+(defun kubernetes-state-unmark-replicaset (replicaset-name)
+  "Unmark ReplicaSet with REPLICASET-NAME for deletion."
+  (cl-assert (stringp replicaset-name))
+  (kubernetes-state-update :unmark-replicaset replicaset-name))
+
+(defun kubernetes-state-delete-replicaset (replicaset-name)
+  "Delete ReplicaSet with REPLICASET-NAME."
+  (cl-assert (stringp replicaset-name))
+  (kubernetes-state-update :delete-replicaset replicaset-name)
+  (kubernetes-state-update :unmark-replicaset replicaset-name))
+
 (defun kubernetes-state-unmark-all ()
   (kubernetes-state-update :unmark-all))
 
@@ -631,6 +671,9 @@ arguments."
 (kubernetes-state--define-setter cronjobs (cronjobs)
   (cl-assert (listp cronjobs)))
 
+(kubernetes-state--define-setter replicasets (replicasets)
+  (cl-assert (listp replicasets)))
+
 (defun kubernetes-state-overview-sections (state)
   (or (alist-get 'overview-sections state)
       (let* ((configurations (append kubernetes-overview-custom-views-alist kubernetes-overview-views-alist))
@@ -652,7 +695,8 @@ arguments."
                                   nodes
                                   persistentvolumeclaims
                                   networkpolicies
-                                  cronjobs))
+                                  cronjobs
+                                  replicasets))
                      resources)))
 
 (defun kubernetes-state-kubectl-flags (state)
@@ -722,6 +766,7 @@ If lookup fails, return nil."
 (kubernetes-state-define-named-lookup persistentvolumeclaim persistentvolumeclaims)
 (kubernetes-state-define-named-lookup networkpolicy networkpolicies)
 (kubernetes-state-define-named-lookup cronjob cronjobs)
+(kubernetes-state-define-named-lookup replicaset replicasets)
 
 (defun kubernetes-state-resource-name (resource)
   "Get the name of RESOURCE from its metadata.

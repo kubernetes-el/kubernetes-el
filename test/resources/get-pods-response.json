@@ -222,7 +222,7 @@
             "controller": true,
             "kind": "ReplicaSet",
             "name": "example-svc-v4-1603416598",
-            "uid": "1d81f2b3-fb32-11e6-98d0-eae012fc8e71"
+            "uid": "1d81f2b3-fb32-11e6-98d0-eae012fc8e72"
           }
         ],
         "resourceVersion": "62687662",
@@ -436,7 +436,7 @@
             "controller": true,
             "kind": "ReplicaSet",
             "name": "example-svc-v5-1603416598",
-            "uid": "1d81f2b3-fb32-11e6-98d0-eae012fc8e71"
+            "uid": "1d81f2b3-fb32-11e6-98d0-eae012fc8e73"
           }
         ],
         "resourceVersion": "62687662",

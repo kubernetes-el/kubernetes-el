@@ -99,6 +99,7 @@ Returns the process object for this execution of kubectl."
            (funcall cleanup-cb))
          (kubernetes-process-kill-quietly proc))))))
 
+
 (defun kubernetes-kubectl-get (resource state cb &optional cleanup-cb)
   "Get all of a given RESOURCE and execute callback CB with the parsed JSON.
 
@@ -206,12 +207,16 @@ FOR-ITEMS on updated RESOURCEs."
                      (split-string ,(format "get %s -o json" (symbol-name resource))))
     (lambda (buf)
       (with-current-buffer buf
-        (,(intern (concat "kubernetes-state-update-" (symbol-name resource)))
-         (json-read-from-string (buffer-string)))
-        (-let* (((&alist 'items)
-                 (,(intern (concat "kubernetes-state-" (symbol-name resource)))
-                  (kubernetes-state))))
-          (seq-map ,for-items items))))
+        (let ((json (json-read-from-string (buffer-string))))
+          ;; Add special handling for pod resources
+          (when (string= ,(symbol-name resource) "pods")
+            (setq json (kubernetes-kubectl--safe-process-pod-data json)))
+          (,(intern (concat "kubernetes-state-update-" (symbol-name resource)))
+           json)
+          (-let* (((&alist 'items)
+                   (,(intern (concat "kubernetes-state-" (symbol-name resource)))
+                    (kubernetes-state))))
+            (seq-map ,for-items items)))))
     nil
     #'ignore))
 
