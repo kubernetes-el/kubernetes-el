@@ -10,6 +10,7 @@
 (require 'kubernetes-modes)
 (require 'kubernetes-pods)
 (require 'kubernetes-popups)
+(require 'kubernetes-exec)
 (require 'kubernetes-state)
 (require 'kubernetes-utils)
 (require 'mode-local)
@@ -336,87 +337,6 @@ POD-NAME is the name of the pod to describe."
 
     (select-window (display-buffer buf))
     buf))
-
-;;;###autoload
-(defun kubernetes-exec-into (pod-name args exec-command state)
-  "Open a terminal for execting into a pod.
-
-POD-NAME is the name of the pod to exec into.
-
-ARGS are additional args to pass to kubectl.
-
-EXEC-COMMAND is the command to run in the container.
-
-STATE is the current application state.
-
-Should be invoked via command `kubernetes-exec'."
-  (interactive (let* ((state (kubernetes-state))
-                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-pods--read-name state)))
-                      (command
-                       (let ((cmd (string-trim (read-string (format "Command (default: %s): " kubernetes-default-exec-command)
-                                                            nil 'kubernetes-exec-history))))
-                         (if (string-empty-p cmd) kubernetes-default-exec-command cmd))))
-                 (list pod-name (transient-args 'kubernetes-exec) command state)))
-
-  (let* ((command-args (append (list "exec") (kubernetes-kubectl--flags-from-state (kubernetes-state))
-                               args
-                               (when-let (ns (kubernetes-state--get state 'current-namespace))
-                                 (list (format "--namespace=%s" ns)))
-                               (list pod-name "--" exec-command)))
-
-         (interactive-tty (member "--tty" args))
-         (buf
-          (if interactive-tty
-              (kubernetes-utils-term-buffer-start kubernetes-exec-buffer-name
-                                                  kubernetes-kubectl-executable
-                                                  command-args)
-            (kubernetes-utils-process-buffer-start kubernetes-exec-buffer-name
-                                                   #'kubernetes-mode
-                                                   kubernetes-kubectl-executable
-                                                   command-args))))
-
-    (when (and interactive-tty kubernetes-clean-up-interactive-exec-buffers)
-      (set-process-sentinel (get-buffer-process buf) #'kubernetes-process-kill-quietly))
-
-    (select-window (display-buffer buf))))
-
-
-;;;###autoload
-(defun kubernetes-exec-using-vterm (pod-name args exec-command state)
-  "Open a vterm terminal for exec into a pod.
-
-POD-NAME is the name of the pod to exec into.
-
-ARGS are additional args to pass to kubectl.
-
-EXEC-COMMAND is the command to run in the container.
-
-STATE is the current application state.
-
-Should be invoked via command `kubernetes-exec'."
-  (interactive (let* ((state (kubernetes-state))
-                      (pod-name (or (kubernetes-utils-maybe-pod-name-at-point) (kubernetes-pods--read-name state)))
-                      (command
-                       (let ((cmd (string-trim (read-string (format "Command (default: %s): " kubernetes-default-exec-command)
-                                                            nil 'kubernetes-exec-history))))
-                         (if (string-empty-p cmd) kubernetes-default-exec-command cmd))))
-                 (list pod-name (transient-args 'kubernetes-exec) command state)))
-
-  (unless (require 'vterm nil 'noerror)
-    (error "This action requires the vterm package."))
-
-  (let* ((command-args (append (list "exec") (kubernetes-kubectl--flags-from-state (kubernetes-state))
-                               args
-                               (when-let (ns (kubernetes-state--get state 'current-namespace))
-                                 (list (format "--namespace=%s" ns)))
-                               (list pod-name "--" exec-command)))
-
-         (interactive-tty (member "--tty" args)))
-    (if interactive-tty
-        (kubernetes-utils-vterm-start kubernetes-exec-vterm-buffer-name
-                                      kubernetes-kubectl-executable
-                                      command-args)
-      (error "VTerm is supported only for interactive session"))))
 
 ;; View management
 
