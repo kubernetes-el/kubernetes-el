@@ -35,6 +35,7 @@
 (require 'kubernetes-commands)
 (require 'kubernetes-labels)
 (require 'kubernetes-logs)
+(require 'kubernetes-events)
 (require 'kubernetes-overview)
 (require 'kubernetes-el-tramp)
 
