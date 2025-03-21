@@ -61,7 +61,8 @@ If disabling the proxy, ARGS is ignored."
     ("L" "Labels" kubernetes-labels)
     ("l" "Logs" kubernetes-logs)
     ("P" "Proxy" kubernetes-proxy)
-    ("T" "Events" kubernetes-events)]])
+    ("T" "Events" kubernetes-events)
+    ("v" "Switch overview view" kubernetes-overview-set-sections)]])
 
 (transient-define-prefix kubernetes-exec ()
   "Execute into Kubernetes resources."
