@@ -394,9 +394,9 @@
         (when (get-buffer "*test-vterm-buffer*")
           (kill-buffer "*test-vterm-buffer*"))))))
 
-;; Test kubernetes-exec-list-buffers
+;; Test kubernetes-exec-switch-buffers
 (ert-deftest kubernetes-exec-test-list-buffers ()
-  "Test that kubernetes-exec-list-buffers properly lists the exec buffers."
+  "Test that kubernetes-exec-switch-buffers properly lists the exec buffers."
   (let* ((test-buffer1 (generate-new-buffer "*kubernetes exec term: default/pod/nginx*"))
          (test-buffer2 (generate-new-buffer "*kubernetes exec term: production/deployment/api:main*"))
          (test-buffer3 (generate-new-buffer "*kubernetes exec vterm: default/statefulset/db*"))
@@ -434,7 +434,7 @@
             (setq-local kubernetes-exec-command "mysql"))
 
           ;; Run the function
-          (kubernetes-exec-list-buffers)
+          (kubernetes-exec-switch-buffers)
 
           ;; Verify results
           (should (eq selected-buffer test-buffer1)))
