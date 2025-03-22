@@ -214,4 +214,190 @@ Pods (4)
       (should (or (string-match-p "Pending" rendered)
                   (string-match-p "Unschedulable" rendered))))))
 
+;; Test kubernetes-pods--read-name function
+(ert-deftest kubernetes-pods-test--read-name ()
+  "Test that kubernetes-pods--read-name properly fetches and displays pod names."
+  (let ((mock-state '())
+        (mock-pods-response '((items . [((metadata . ((name . "pod1"))))
+                                        ((metadata . ((name . "pod2"))))
+                                        ((metadata . ((name . "pod3"))))])))
+        (mock-completing-read-called nil)
+        (mock-completing-read-args nil)
+        (mock-message-args nil))
+
+    ;; Mock dependencies
+    (cl-letf (((symbol-function 'kubernetes-state--get)
+               (lambda (state key)
+                 (when (eq key 'pods)
+                   nil))) ; Return nil to force fetching pods
+              ((symbol-function 'kubernetes-kubectl-get)
+               (lambda (resource &optional args cb)
+                 ;; Verify that kubectl is called to get pods
+                 (should (equal resource "pods"))
+                 (when cb (funcall cb mock-pods-response))
+                 mock-pods-response))
+              ((symbol-function 'kubernetes-state-update-pods)
+               (lambda (response)
+                 ;; Verify pods are updated in state
+                 (should (equal response mock-pods-response))))
+              ((symbol-function 'message)
+               (lambda (format-string &rest args)
+                 (setq mock-message-args (cons format-string args))))
+              ((symbol-function 'completing-read)
+               (lambda (prompt collection &rest args)
+                 (setq mock-completing-read-called t)
+                 (setq mock-completing-read-args (list prompt collection args))
+                 "pod2")))
+
+      ;; Call the function
+      (let ((result (kubernetes-pods--read-name mock-state)))
+        ;; Verify the function's behavior
+        (should (equal result "pod2"))
+        (should mock-completing-read-called)
+        (should (equal (car mock-message-args) "Getting pods..."))
+
+        ;; Verify that completing-read was called with the right arguments
+        (should (equal (car mock-completing-read-args) "Pod: "))
+        (should (equal (sort (cadr mock-completing-read-args) #'string<)
+                       '("pod1" "pod2" "pod3")))))))
+
+;; Test kubernetes-pods--read-name with existing pods in state
+(ert-deftest kubernetes-pods-test--read-name-with-existing-pods ()
+  "Test kubernetes-pods--read-name when pods are already in state."
+  (let ((mock-state '())
+        (mock-pods-response '((items . [((metadata . ((name . "pod1"))))
+                                        ((metadata . ((name . "pod2"))))
+                                        ((metadata . ((name . "pod3"))))])))
+        (mock-completing-read-called nil)
+        (mock-kubectl-called nil))
+
+    ;; Mock dependencies
+    (cl-letf (((symbol-function 'kubernetes-state--get)
+               (lambda (state key)
+                 (when (eq key 'pods)
+                   mock-pods-response))) ; Return pods data to avoid fetch
+              ((symbol-function 'kubernetes-kubectl-await-on-async)
+               (lambda (state fun)
+                 (setq mock-kubectl-called t)
+                 nil)) ; This shouldn't be called
+              ((symbol-function 'completing-read)
+               (lambda (prompt collection &rest args)
+                 (setq mock-completing-read-called t)
+                 "pod3")))
+
+      ;; Call the function
+      (let ((result (kubernetes-pods--read-name mock-state)))
+        ;; Verify the function's behavior
+        (should (equal result "pod3"))
+        (should mock-completing-read-called)
+        (should-not mock-kubectl-called)))))
+
+;; Test kubernetes-pods-delete-marked function
+(ert-deftest kubernetes-pods-test-delete-marked ()
+  "Test that kubernetes-pods-delete-marked properly handles marked pods."
+  (let ((mock-state '())
+        (marked-pods '("pod1" "pod2" "pod3"))
+        (deleted-pods '())
+        (marked-after-deletion '())
+        (redraw-triggered nil))
+
+    ;; Mock dependencies
+    (cl-letf (((symbol-function 'kubernetes-state--get)
+               (lambda (state key)
+                 (when (eq key 'marked-pods)
+                   marked-pods)))
+              ((symbol-function 'kubernetes-state-delete-pod)
+               (lambda (name)
+                 (push name deleted-pods)))
+              ((symbol-function 'kubernetes-kubectl-delete)
+               (lambda (resource-type name state success-callback error-callback)
+                 ;; Verify parameters
+                 (should (equal resource-type "pod"))
+                 (should (member name marked-pods))
+
+                 ;; Simulate success for pod1 and pod2, failure for pod3
+                 (if (equal name "pod3")
+                     (funcall error-callback nil)
+                   (funcall success-callback nil))))
+              ((symbol-function 'kubernetes-state-mark-pod)
+               (lambda (name)
+                 (push name marked-after-deletion)))
+              ((symbol-function 'kubernetes-state-trigger-redraw)
+               (lambda ()
+                 (setq redraw-triggered t)))
+              ((symbol-function 'message)
+               (lambda (format-string &rest args)
+                 nil))) ; Ignore messages
+
+      ;; Call the function
+      (kubernetes-pods-delete-marked mock-state)
+
+      ;; Verify behavior
+      (should (equal (sort deleted-pods #'string<)
+                     (sort marked-pods #'string<)))
+      (should (equal marked-after-deletion '("pod3"))) ; Only pod3 should be marked after deletion
+      (should redraw-triggered))))
+
+;; Test kubernetes-display-pod function
+(ert-deftest kubernetes-pods-test-display-pod ()
+  "Test that kubernetes-display-pod correctly displays pod information."
+  (let ((mock-state '())
+        (mock-pod-name "test-pod")
+        (mock-pod '((metadata . ((name . "test-pod")))))
+        (display-buffer-called nil)
+        (yaml-buffer-created nil)
+        (select-window-called nil))
+
+    ;; Mock dependencies
+    (cl-letf (((symbol-function 'kubernetes-state-lookup-pod)
+               (lambda (name state)
+                 (should (equal name mock-pod-name))
+                 mock-pod))
+              ((symbol-function 'kubernetes-yaml-make-buffer)
+               (lambda (buffer-name pod)
+                 (setq yaml-buffer-created t)
+                 (should (equal pod mock-pod))
+                 (get-buffer-create "*temp-yaml-buffer*")))
+              ((symbol-function 'display-buffer)
+               (lambda (buffer)
+                 (setq display-buffer-called t)
+                 (selected-window)))
+              ((symbol-function 'select-window)
+               (lambda (window)
+                 (setq select-window-called t))))
+
+      ;; Call the function
+      (kubernetes-display-pod mock-pod-name mock-state)
+
+      ;; Verify behavior
+      (should yaml-buffer-created)
+      (should display-buffer-called)
+      (should select-window-called)
+
+      ;; Clean up temp buffer
+      (when (get-buffer "*temp-yaml-buffer*")
+        (kill-buffer "*temp-yaml-buffer*")))))
+
+;; Test kubernetes-display-pod when pod doesn't exist
+(ert-deftest kubernetes-pods-test-display-pod-not-found ()
+  "Test that kubernetes-display-pod handles unknown pods properly."
+  (let ((mock-state '())
+        (mock-pod-name "nonexistent-pod")
+        (error-thrown nil))
+
+    ;; Mock dependencies
+    (cl-letf (((symbol-function 'kubernetes-state-lookup-pod)
+               (lambda (name state)
+                 nil)) ; Return nil to simulate pod not found
+              ((symbol-function 'error)
+               (lambda (format-string &rest args)
+                 (setq error-thrown (apply #'format format-string args))
+                 (signal 'error nil))))
+
+      ;; Call the function and expect an error
+      (should-error (kubernetes-display-pod mock-pod-name mock-state))
+
+      ;; Verify the error message
+      (should (equal error-thrown (format "Unknown pod: %s" mock-pod-name))))))
+
 ;;; kubernetes-pods-test.el ends here
