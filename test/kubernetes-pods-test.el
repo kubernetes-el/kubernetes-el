@@ -338,66 +338,128 @@ Pods (4)
       (should (equal marked-after-deletion '("pod3"))) ; Only pod3 should be marked after deletion
       (should redraw-triggered))))
 
-;; Test kubernetes-display-pod function
-(ert-deftest kubernetes-pods-test-display-pod ()
-  "Test that kubernetes-display-pod correctly displays pod information."
+(ert-deftest kubernetes-pods-test-display-pod-success-path ()
+  "Test the success path of kubernetes-display-pod function."
   (let ((mock-state '())
         (mock-pod-name "test-pod")
         (mock-pod '((metadata . ((name . "test-pod")))))
-        (display-buffer-called nil)
         (yaml-buffer-created nil)
-        (select-window-called nil))
+        (buffer-displayed nil)
+        (window-selected nil))
 
-    ;; Mock dependencies
+    ;; Mock all dependencies
     (cl-letf (((symbol-function 'kubernetes-state-lookup-pod)
                (lambda (name state)
                  (should (equal name mock-pod-name))
+                 (should (eq state mock-state))
                  mock-pod))
               ((symbol-function 'kubernetes-yaml-make-buffer)
                (lambda (buffer-name pod)
                  (setq yaml-buffer-created t)
+                 (should (equal buffer-name kubernetes-pod-buffer-name))
                  (should (equal pod mock-pod))
-                 (get-buffer-create "*temp-yaml-buffer*")))
+                 (get-buffer-create "*k8s-test-buffer*")))
               ((symbol-function 'display-buffer)
                (lambda (buffer)
-                 (setq display-buffer-called t)
+                 (setq buffer-displayed t)
+                 (should (equal (buffer-name buffer) "*k8s-test-buffer*"))
                  (selected-window)))
               ((symbol-function 'select-window)
                (lambda (window)
-                 (setq select-window-called t))))
+                 (setq window-selected t))))
 
-      ;; Call the function
+      ;; Execute the function we're testing
       (kubernetes-display-pod mock-pod-name mock-state)
 
-      ;; Verify behavior
+      ;; Verify the function executed the full path correctly
       (should yaml-buffer-created)
-      (should display-buffer-called)
-      (should select-window-called)
+      (should buffer-displayed)
+      (should window-selected)
 
-      ;; Clean up temp buffer
-      (when (get-buffer "*temp-yaml-buffer*")
-        (kill-buffer "*temp-yaml-buffer*")))))
+      ;; Cleanup
+      (when (get-buffer "*k8s-test-buffer*")
+        (kill-buffer "*k8s-test-buffer*")))))
 
-;; Test kubernetes-display-pod when pod doesn't exist
-(ert-deftest kubernetes-pods-test-display-pod-not-found ()
-  "Test that kubernetes-display-pod handles unknown pods properly."
+(ert-deftest kubernetes-pods-test-display-pod-error-path ()
+  "Test the error path of kubernetes-display-pod when pod is not found."
   (let ((mock-state '())
         (mock-pod-name "nonexistent-pod")
-        (error-thrown nil))
+        (error-message-received nil))
 
-    ;; Mock dependencies
+    ;; Mock the pod lookup to return nil (pod not found)
     (cl-letf (((symbol-function 'kubernetes-state-lookup-pod)
                (lambda (name state)
-                 nil)) ; Return nil to simulate pod not found
+                 (should (equal name mock-pod-name))
+                 (should (eq state mock-state))
+                 nil)) ; Return nil to indicate pod not found
               ((symbol-function 'error)
                (lambda (format-string &rest args)
-                 (setq error-thrown (apply #'format format-string args))
+                 (setq error-message-received
+                       (apply #'format format-string args))
                  (signal 'error nil))))
 
-      ;; Call the function and expect an error
+      ;; Function should throw an error
       (should-error (kubernetes-display-pod mock-pod-name mock-state))
 
+      ;; Verify error message
+      (should (equal error-message-received
+                     (format "Unknown pod: %s" mock-pod-name))))))
+
+(ert-deftest kubernetes-pods-test-display-pod-interactive-spec ()
+  "Test the interactive specification of kubernetes-display-pod."
+  (let* ((mock-state '((pods . ((items . [((metadata . ((name . "test-pod"))))])))))
+         (read-pod-name "test-pod")
+         (state-called nil))
+
+    ;; Mock dependencies
+    (cl-letf (((symbol-function 'kubernetes-state)
+               (lambda ()
+                 (setq state-called t)
+                 mock-state))
+              ((symbol-function 'kubernetes-pods--read-name)
+               (lambda (state)
+                 (should (eq state mock-state))
+                 read-pod-name))
+              ;; Mock the actual function to avoid side effects
+              ((symbol-function 'kubernetes-state-lookup-pod)
+               (lambda (name state) '((metadata . ((name . "test-pod"))))))
+              ((symbol-function 'kubernetes-yaml-make-buffer)
+               (lambda (buffer-name pod) (generate-new-buffer "*mock-buffer*")))
+              ((symbol-function 'display-buffer) #'identity)
+              ((symbol-function 'select-window) #'identity))
+
+      ;; Get the interactive spec
+      (let* ((interactive-spec (interactive-form 'kubernetes-display-pod))
+             (interactive-fun (cadr interactive-spec)))
+
+        ;; Evaluate the interactive form to get the arguments
+        (let ((args (eval interactive-fun)))
+          ;; Verify the correct arguments were produced
+          (should (equal (car args) read-pod-name))
+          (should (eq (cadr args) mock-state))
+          (should state-called)))
+
+      ;; Clean up
+      (when (get-buffer "*mock-buffer*")
+        (kill-buffer "*mock-buffer*")))))
+
+(ert-deftest kubernetes-pods-test-display-unkown-pod ()
+  "Test the error path of kubernetes-display-pod with basic approach."
+  (let ((pod-name "nonexistent-pod")
+        (state '())
+        (error-message nil))
+
+    ;; Only mock the lookup function to return nil
+    (cl-letf (((symbol-function 'kubernetes-state-lookup-pod)
+               (lambda (name state) nil)))
+
+      ;; Capture the error message
+      (condition-case err
+          (kubernetes-display-pod pod-name state)
+        (error
+         (setq error-message (cadr err))))
+
       ;; Verify the error message
-      (should (equal error-thrown (format "Unknown pod: %s" mock-pod-name))))))
+      (should (equal error-message (format "Unknown pod: %s" pod-name))))))
 
 ;;; kubernetes-pods-test.el ends here
