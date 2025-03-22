@@ -176,7 +176,8 @@ STATE is the current application state."
     ("=d" "Since absolute datetime" "--since-time=" kubernetes-utils-read-iso-datetime)]]
   [["Actions"
     ("l" "Logs" kubernetes-logs-fetch-all)
-    ("f" "Logs (stream and follow)" kubernetes-logs-follow)]])
+    ("f" "Logs (stream and follow)" kubernetes-logs-follow)
+    ("b" "Switch logs buffer" kubernetes-logs-switch-buffers)]])
 
 ;;;###autoload
 (defvar kubernetes-logs-mode-map
@@ -215,43 +216,35 @@ Type \\[kubernetes-logs-refresh] to refresh the logs in the current buffer.
 
 \\{kubernetes-log-line-mode-map}")
 
-;; Function to list all log buffers
-;;;###autoload
-(defun kubernetes-logs-list-buffers ()
-  "List all Kubernetes log buffers."
-  (interactive)
-  (let ((log-buffers nil))
-    (dolist (buffer (buffer-list))
-      (with-current-buffer buffer
+(defun kubernetes-logs--get-log-buffers ()
+  "Get all Kubernetes log buffers in the current Emacs session.
+Returns a list of buffer objects."
+  (let ((log-buffers '()))
+    (dolist (buf (buffer-list))
+      (with-current-buffer buf
         (when (derived-mode-p 'kubernetes-logs-mode)
-          (push buffer log-buffers))))
-    (if log-buffers
-        (let* ((buffer-desc-alist
-                (mapcar (lambda (buf)
-                          (with-current-buffer buf
-                            (let* ((buf-name (buffer-name))
-                                   (desc (if (and (boundp 'kubernetes-logs-resource-type)
-                                                 (boundp 'kubernetes-logs-resource-name))
-                                            (format "%s%s/%s%s"
-                                                    (if (and (boundp 'kubernetes-logs-namespace)
-                                                             kubernetes-logs-namespace)
-                                                        (format "%s/" kubernetes-logs-namespace)
-                                                      "")
-                                                    kubernetes-logs-resource-type
-                                                    kubernetes-logs-resource-name
-                                                    (if (and (boundp 'kubernetes-logs-container-name)
-                                                             kubernetes-logs-container-name)
-                                                        (format " (container: %s)" kubernetes-logs-container-name)
-                                                      ""))
-                                          buf-name)))
-                              (cons desc buf))))
-                        log-buffers))
-               (selected-desc (completing-read "Select logs buffer: "
-                                              (mapcar #'car buffer-desc-alist)
-                                              nil t))
-               (selected-buffer (cdr (assoc selected-desc buffer-desc-alist))))
-          (switch-to-buffer selected-buffer))
-      (message "No Kubernetes logs buffers found"))))
+          (push buf log-buffers))))
+    log-buffers))
+
+;;;###autoload
+(defun kubernetes-logs-switch-buffers ()
+  "List all Kubernetes log buffers and allow selecting one."
+  (interactive)
+  (let ((log-buffers (kubernetes-logs--get-log-buffers)))
+    (if (null log-buffers)
+        (message "No Kubernetes logs buffers found")
+      ;; Use completing-read with buffer category annotation for embark
+      ;; Use the actual buffer names directly to avoid truncation issues
+      (let* ((buffer-names (mapcar #'buffer-name log-buffers))
+             (selected-name (completing-read
+                             "Select logs buffer: "
+                             (lambda (string pred action)
+                               (if (eq action 'metadata)
+                                   '(metadata (category . buffer))
+                                 (complete-with-action
+                                  action buffer-names string pred))))))
+        (when selected-name
+          (switch-to-buffer (get-buffer selected-name)))))))
 
 (provide 'kubernetes-logs)
 
