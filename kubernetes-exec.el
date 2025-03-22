@@ -213,7 +213,7 @@ STATE is the current application state."
                                    command-args))))
 
 ;;;###autoload
-(defun kubernetes-exec-list-buffers ()
+(defun kubernetes-exec-switch-buffers ()
   "List all Kubernetes exec buffers and allow selecting one."
   (interactive)
   ;; Use manual filtering instead of seq-filter
@@ -250,7 +250,7 @@ STATE is the current application state."
     ("e" "Exec" kubernetes-exec-into)
     ("v" "Exec into container using vterm" kubernetes-exec-using-vterm
      :inapt-if-not (lambda () (require 'vterm nil 'noerror)))
-    ("l" "List exec buffers" kubernetes-exec-list-buffers)]])
+    ("b" "List exec buffers" kubernetes-exec-switch-buffers)]])
 
 (provide 'kubernetes-exec)
 
