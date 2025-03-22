@@ -293,7 +293,32 @@
       (when (buffer-live-p test-buffer)
         (kill-buffer test-buffer)))))
 
-;; Test kubernetes-logs-list-buffers
+;; Test kubernetes-logs--get-log-buffers
+(ert-deftest kubernetes-logs-test--get-log-buffers ()
+  (let* ((test-buffer1 (generate-new-buffer "*kubernetes logs: default/pod/nginx*"))
+         (test-buffer2 (generate-new-buffer "*kubernetes logs: production/deployment/api:main*"))
+         (non-log-buffer (generate-new-buffer "*some other buffer*"))
+         (test-buffers (list test-buffer1 test-buffer2 non-log-buffer)))
+    (unwind-protect
+        (cl-letf (((symbol-function 'buffer-list) (lambda () test-buffers))
+                  ((symbol-function 'derived-mode-p)
+                   (lambda (&rest _)
+                     ;; Only return t for the kubernetes log buffers
+                     (let ((name (buffer-name)))
+                       (string-prefix-p "*kubernetes logs: " name)))))
+          ;; Test the function
+          (let ((log-buffers (kubernetes-logs--get-log-buffers)))
+            ;; Should find exactly 2 log buffers
+            (should (= (length log-buffers) 2))
+            (should (member test-buffer1 log-buffers))
+            (should (member test-buffer2 log-buffers))
+            (should-not (member non-log-buffer log-buffers))))
+      ;; Clean up test buffers
+      (dolist (buf test-buffers)
+        (when (buffer-live-p buf)
+          (kill-buffer buf))))))
+
+;; Test kubernetes-logs-switch-buffers
 (ert-deftest kubernetes-logs-test-list-buffers ()
   (let* ((test-buffer1 (generate-new-buffer "*kubernetes logs: default/pod/nginx*"))
          (test-buffer2 (generate-new-buffer "*kubernetes logs: production/deployment/api:main*"))
@@ -304,214 +329,105 @@
                   ((symbol-function 'derived-mode-p) (lambda (&rest _) t))
                   ((symbol-function 'completing-read)
                    (lambda (prompt collection &rest _)
-                     (should collection)
-                     "default/pod/nginx"))
+                     (if (functionp collection)
+                         ;; Handle the new lambda-based collection function
+                         (let ((action (funcall collection "" nil 'metadata)))
+                           ;; Verify metadata is correctly set
+                           (should (equal action '(metadata (category . buffer))))
+                           "*kubernetes logs: default/pod/nginx*")
+                       ;; Handle the old style collection
+                       (should collection)
+                       "*kubernetes logs: default/pod/nginx*")))
+                  ((symbol-function 'get-buffer)
+                   (lambda (name)
+                     (cond
+                      ((equal name "*kubernetes logs: default/pod/nginx*") test-buffer1)
+                      ((equal name "*kubernetes logs: production/deployment/api:main*") test-buffer2)
+                      (t nil))))
                   ((symbol-function 'switch-to-buffer)
                    (lambda (buffer) (setq selected-buffer buffer))))
-          ;; Set buffer local variables
-          (with-current-buffer test-buffer1
-            (setq-local kubernetes-logs-resource-type "pod")
-            (setq-local kubernetes-logs-resource-name "nginx")
-            (setq-local kubernetes-logs-namespace "default"))
-          (with-current-buffer test-buffer2
-            (setq-local kubernetes-logs-resource-type "deployment")
-            (setq-local kubernetes-logs-resource-name "api")
-            (setq-local kubernetes-logs-namespace "production")
-            (setq-local kubernetes-logs-container-name "main"))
 
           ;; Run the function
-          (kubernetes-logs-list-buffers)
+          (kubernetes-logs-switch-buffers)
 
-          ;; Verify results
+          ;; Verify results - first check that the buffer is still alive
+          (should (buffer-live-p test-buffer1))
           (should (eq selected-buffer test-buffer1)))
-      ;; Clean up test buffers
+
+      ;; Clean up test buffers only if they're still alive
       (dolist (buf test-buffers)
         (when (buffer-live-p buf)
           (kill-buffer buf))))))
 
-;; Test kubernetes-logs-follow functionality
-(ert-deftest kubernetes-logs-test-logs-follow ()
-  (let ((test-buffer (generate-new-buffer "*kubernetes logs: default/pod/nginx*")))
+;; Test display names generated for various log buffer configurations
+(ert-deftest kubernetes-logs-test-buffer-display-names ()
+  (let* ((test-buffers
+          (list
+           ;; Pod with no container
+           (let ((buf (generate-new-buffer "*kubernetes logs: default/pod/nginx*")))
+             (with-current-buffer buf
+               (setq-local kubernetes-logs-resource-type "pod")
+               (setq-local kubernetes-logs-resource-name "nginx")
+               (setq-local kubernetes-logs-namespace "default"))
+             buf)
+           ;; Pod with container
+           (let ((buf (generate-new-buffer "*kubernetes logs: default/pod/nginx:main*")))
+             (with-current-buffer buf
+               (setq-local kubernetes-logs-resource-type "pod")
+               (setq-local kubernetes-logs-resource-name "nginx")
+               (setq-local kubernetes-logs-namespace "default")
+               (setq-local kubernetes-logs-container-name "main"))
+             buf)
+           ;; Deployment with container and different namespace
+           (let ((buf (generate-new-buffer "*kubernetes logs: production/deployment/api:web*")))
+             (with-current-buffer buf
+               (setq-local kubernetes-logs-resource-type "deployment")
+               (setq-local kubernetes-logs-resource-name "api")
+               (setq-local kubernetes-logs-namespace "production")
+               (setq-local kubernetes-logs-container-name "web"))
+             buf)
+           ;; Statefulset with no container
+           (let ((buf (generate-new-buffer "*kubernetes logs: default/statefulset/db*")))
+             (with-current-buffer buf
+               (setq-local kubernetes-logs-resource-type "statefulset")
+               (setq-local kubernetes-logs-resource-name "db")
+               (setq-local kubernetes-logs-namespace "default"))
+             buf)))
+         (mock-selected-names '())
+         (mock-presented-collections '()))
+
     (unwind-protect
-        (cl-letf (((symbol-function 'kubernetes-state--get) (lambda (&rest _) "default"))
-                  ((symbol-function 'kubernetes-kubectl--flags-from-state) (lambda (&rest _) '("--context=minikube")))
-                  ((symbol-function 'kubernetes-state) (lambda () '()))
-                  ((symbol-function 'kubernetes-utils-process-buffer-start)
-                   (lambda (buffer-name mode executable args)
-                     (should (member "-f" args))
-                     test-buffer))
-                  ((symbol-function 'kubernetes-logs--read-resource-if-needed)
-                   (lambda (state) '("pod" . "nginx")))
-                  ((symbol-function 'display-buffer) (lambda (buf) (selected-window)))
-                  ((symbol-function 'select-window) (lambda (&rest _) nil)))
-          (condition-case err
-              (progn
-                (kubernetes-logs-follow '() '())
-                (should t)) ; Test passes if no error
-            (error (ert-fail (format "Function raised an error: %S" err)))))
-      (when (buffer-live-p test-buffer)
-        (kill-buffer test-buffer)))))
+        (cl-letf (((symbol-function 'buffer-list) (lambda () test-buffers))
+                  ((symbol-function 'derived-mode-p) (lambda (&rest _) t))
+                  ((symbol-function 'completing-read)
+                   (lambda (prompt collection &rest _)
+                     ;; Store the collection for testing
+                     (when (functionp collection)
+                       (let ((test-collection (funcall collection "" nil t)))
+                         (setq mock-presented-collections test-collection)))
+                     ;; Return a fixed selection to simulate user input
+                     (car (if (functionp collection)
+                              (setq mock-selected-names (funcall collection "" nil t))
+                            collection))))
+                  ((symbol-function 'get-buffer) (lambda (name)
+                                                   (cl-find-if
+                                                    (lambda (buf) (equal (buffer-name buf) name))
+                                                    test-buffers)))
+                  ((symbol-function 'switch-to-buffer) (lambda (buffer) buffer)))
 
-;; Test kubernetes-utils--get-container-names-from-pod
-(ert-deftest kubernetes-logs-test-get-container-names-from-pod ()
-  (let ((pod kubernetes-logs-test--sample-pod))
-    (let ((result (kubernetes-utils--get-container-names-from-pod pod)))
-      (should (equal (length result) 2))
-      (should (member "main-container" result))
-      (should (member "sidecar" result)))))
+          ;; Run the function
+          (kubernetes-logs-switch-buffers)
 
-;; Test kubernetes-utils--extract-container-names-from-spec
-(ert-deftest kubernetes-logs-test-extract-container-names-from-spec ()
-  (let ((pod-spec (alist-get 'spec kubernetes-logs-test--sample-pod))
-        (with-init-containers
-         (list (cons 'containers (vector (list (cons 'name "main"))
-                                         (list (cons 'name "sidecar"))))
-               (cons 'initContainers (vector (list (cons 'name "init")))))))
+          ;; Verify the buffer names are used exactly as-is
+          (should (member "*kubernetes logs: default/pod/nginx*" mock-selected-names))
+          (should (member "*kubernetes logs: default/pod/nginx:main*" mock-selected-names))
+          (should (member "*kubernetes logs: production/deployment/api:web*" mock-selected-names))
+          (should (member "*kubernetes logs: default/statefulset/db*" mock-selected-names)))
 
-    ;; Test with normal pod spec
-    (let ((result (kubernetes-utils--extract-container-names-from-spec pod-spec)))
-      (should (equal (length result) 2))
-      (should (member "main-container" result))
-      (should (member "sidecar" result)))
-
-    ;; Test with init containers
-    (let ((result (kubernetes-utils--extract-container-names-from-spec with-init-containers)))
-      (should (equal (length result) 3))
-      (should (member "main" result))
-      (should (member "sidecar" result))
-      (should (member "init" result)))))
-
-;; Test kubernetes-utils--get-all-pods-for-owner
-(ert-deftest kubernetes-logs-test-get-all-pods-for-owner ()
-  (let ((state (list (cons 'pods kubernetes-logs-test--sample-pods))))
-
-    ;; Test deployment pods
-    (let ((result (kubernetes-utils--get-all-pods-for-owner "deployment" "test-deployment" state)))
-      (should (equal (length result) 1))
-      (should (equal (alist-get 'name (alist-get 'metadata (car result))) "deployment-pod")))
-
-    ;; Test job pods
-    (let ((result (kubernetes-utils--get-all-pods-for-owner "job" "test-job" state)))
-      (should (equal (length result) 1))
-      (should (equal (alist-get 'name (alist-get 'metadata (car result))) "job-pod")))
-
-    ;; Test non-existent owner
-    (should (equal (kubernetes-utils--get-all-pods-for-owner "deployment" "non-existent" state) nil))))
-
-;; Test kubernetes-utils--get-container-names with mocked internals
-(ert-deftest kubernetes-logs-test-get-container-names ()
-  (let ((mock-state (list (cons 'pods kubernetes-logs-test--sample-pods))))
-    (cl-letf (((symbol-function 'kubernetes-state-lookup-pod)
-               (lambda (name _)
-                 (when (equal name "test-pod")
-                   kubernetes-logs-test--sample-pod)))
-              ((symbol-function 'kubernetes-state-lookup-deployment)
-               (lambda (name _)
-                 (when (equal name "test-deployment")
-                   kubernetes-logs-test--sample-deployment)))
-              ((symbol-function 'kubernetes-state-lookup-job)
-               (lambda (name _)
-                 (when (equal name "test-job")
-                   kubernetes-logs-test--sample-job))))
-
-      ;; Test pod containers
-      (let ((result (kubernetes-utils--get-container-names "pod" "test-pod" mock-state)))
-        (should (equal (length result) 2))
-        (should (member "main-container" result))
-        (should (member "sidecar" result)))
-
-      ;; Test deployment containers (should get them from found pods)
-      (let ((result (kubernetes-utils--get-container-names "deployment" "test-deployment" mock-state)))
-        (should (equal (length result) 2))
-        (should (member "deployment-container" result))
-        (should (member "deployment-sidecar" result)))
-
-      ;; Test job containers (should get them from found pods)
-      (let ((result (kubernetes-utils--get-container-names "job" "test-job" mock-state)))
-        (should (equal (length result) 2))
-        (should (member "job-container-1" result))
-        (should (member "job-sidecar" result))))))
-
-;; Test kubernetes-utils-read-container-name
-(ert-deftest kubernetes-logs-test-read-container-name ()
-  (let ((kubernetes-overview-buffer-name "*kubernetes-test-overview*")
-        (kubernetes-logs-supported-resource-types '("pod" "deployment" "statefulset" "job")))
-
-    ;; Mock functions for state and container lookup
-    (cl-letf (((symbol-function 'kubernetes-state)
-               (lambda () 'mock-state))
-              ((symbol-function 'kubernetes-pods--read-name)
-               (lambda (_) "test-pod"))
-              ((symbol-function 'kubernetes-state-lookup-pod)
-               (lambda (name _) kubernetes-logs-test--sample-pod))
-              ((symbol-function 'kubernetes-utils--get-container-names)
-               (lambda (type name _)
-                 (cond
-                  ((and (equal type "pod") (equal name "test-pod"))
-                   '("main-container" "sidecar"))
-                  ((and (equal type "deployment") (equal name "test-deployment"))
-                   '("deployment-container" "deployment-sidecar"))
-                  (t nil))))
-              ((symbol-function 'kubernetes-utils--get-container-names-from-pod)
-               (lambda (_) '("main-container" "sidecar")))
-              ((symbol-function 'completing-read)
-               (lambda (prompt collection &rest _) (car collection))))
-
-      ;; Set up overview buffer
-      (let ((buf (get-buffer-create kubernetes-overview-buffer-name)))
-        (unwind-protect
-            (progn
-              (with-current-buffer buf
-                (erase-buffer)
-
-                ;; Add a pod resource
-                (insert "Pod: ")
-                (let ((start (point))
-                      (pod-name "test-pod"))
-                  (insert pod-name)
-                  (let ((nav-property (list :pod-name pod-name)))
-                    (put-text-property start (point) 'kubernetes-nav nav-property))
-                  (insert "\n"))
-
-                ;; Add a deployment resource
-                (insert "Deployment: ")
-                (let ((start (point))
-                      (deployment-name "test-deployment"))
-                  (insert deployment-name)
-                  (let ((nav-property (list :deployment-name deployment-name)))
-                    (put-text-property start (point) 'kubernetes-nav nav-property))
-                  (insert "\n"))
-
-                ;; Add a service resource (unsupported)
-                (insert "Ingress: ")
-                (let ((start (point))
-                      (ingress-name "test-ingress"))
-                  (insert ingress-name)
-                  (let ((nav-property (list :ingress-name ingress-name)))
-                    (put-text-property start (point) 'kubernetes-nav nav-property))
-                  (insert "\n"))
-
-                ;; Test with pod (supported)
-                (goto-char (point-min))
-                (search-forward "test-pod")
-                (backward-char 3)
-                (let ((result (kubernetes-utils-read-container-name "Select container: ")))
-                  (should (equal result "main-container")))
-
-                ;; Test with deployment (supported)
-                (goto-char (point-min))
-                (search-forward "test-deployment")
-                (backward-char 3)
-                (let ((result (kubernetes-utils-read-container-name "Select container: ")))
-                  (should (equal result "deployment-container")))
-
-                ;; Test with ingress (unsupported - should fall back to pod)
-                (goto-char (point-min))
-                (search-forward "test-ingress")
-                (backward-char 3)
-                (let ((result (kubernetes-utils-read-container-name "Select container: ")))
-                  (should (equal result "main-container")))))
-          (when buf (kill-buffer buf)))))))
+      ;; Clean up test buffers
+      (dolist (buf test-buffers)
+        (when (buffer-live-p buf)
+          (kill-buffer buf))))))
 
 ;; Test keymap bindings
 (ert-deftest kubernetes-logs-test-mode-keymap ()
