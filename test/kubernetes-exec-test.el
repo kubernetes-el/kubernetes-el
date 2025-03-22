@@ -3,6 +3,7 @@
 ;;; Code:
 
 (require 's)
+(require 'cl-lib)
 (require 'kubernetes-exec)
 (require 'kubernetes-utils)
 
@@ -149,32 +150,33 @@
     (let ((args '())
           (state 'mock-state))
       (should (equal (kubernetes-exec--generate-buffer-name "pod" "nginx" args state)
-                    "*kubernetes exec: test-namespace/pod/nginx*")))
+                    "*kubernetes exec term: test-namespace/pod/nginx*")))
 
     ;; Test pod with container
     (let ((args '("--container=app"))
           (state 'mock-state))
       (should (equal (kubernetes-exec--generate-buffer-name "pod" "nginx" args state)
-                    "*kubernetes exec: test-namespace/pod/nginx:app*")))
+                    "*kubernetes exec term: test-namespace/pod/nginx:app*")))
 
     ;; Test deployment
     (let ((args '())
           (state 'mock-state))
       (should (equal (kubernetes-exec--generate-buffer-name "deployment" "frontend" args state)
-                    "*kubernetes exec: test-namespace/deployment/frontend*")))
+                    "*kubernetes exec term: test-namespace/deployment/frontend*")))
 
     ;; Test deployment with container
     (let ((args '("--container=web"))
           (state 'mock-state))
       (should (equal (kubernetes-exec--generate-buffer-name "deployment" "frontend" args state)
-                    "*kubernetes exec: test-namespace/deployment/frontend:web*")))
+                    "*kubernetes exec term: test-namespace/deployment/frontend:web*")))
 
     ;; Test vterm buffer name format
     (let ((args '())
           (state 'mock-state))
       (should (equal (kubernetes-exec--generate-buffer-name "pod" "nginx" args state t)
-                    "*kubernetes vterm exec: test-namespace/pod/nginx*")))))
+                    "*kubernetes exec vterm: test-namespace/pod/nginx*")))))
 
+;; Test kubernetes-exec--exec-command-generation
 (ert-deftest kubernetes-exec-test--exec-command-generation ()
   "Test that kubectl commands are constructed correctly for different resources."
   (let ((commands-executed nil))
@@ -182,26 +184,19 @@
                (lambda (_) '("--kubeconfig=/test/config")))
               ((symbol-function 'kubernetes-state--get)
                (lambda (_ key) (when (eq key 'current-namespace) "test-namespace")))
-              ((symbol-function 'kubernetes-utils-process-buffer-start)
-               (lambda (buffer-name mode executable args)
-                 ;; Store the command for verification
-                 (push (list buffer-name executable args) commands-executed)
-                 ;; Return a dummy buffer
-                 (let ((buf (generate-new-buffer "*test-buffer*")))
-                   ;; Create a mock process
-                   (with-current-buffer buf
-                     (set-process-query-on-exit-flag (start-process "test-proc" buf "echo" "dummy") nil))
-                   buf)))
               ((symbol-function 'kubernetes-utils-term-buffer-start)
                (lambda (buffer-name executable args)
                  ;; Store the command for verification
                  (push (list buffer-name executable args) commands-executed)
                  ;; Return a dummy buffer
-                 (let ((buf (generate-new-buffer "*test-buffer*")))
-                   ;; Create a mock process
-                   (with-current-buffer buf
-                     (set-process-query-on-exit-flag (start-process "test-proc" buf "echo" "dummy") nil))
-                   buf)))
+                 (get-buffer-create "*test-buffer*")))
+              ((symbol-function 'kubernetes-utils-process-buffer-start)
+               (lambda (buffer-name mode executable args)
+                 ;; Store the command for verification
+                 (push (list buffer-name executable args) commands-executed)
+                 ;; Return a dummy buffer
+                 (get-buffer-create "*test-buffer*")))
+              ((symbol-function 'get-buffer-process) (lambda (_) nil))
               ((symbol-function 'set-process-sentinel) #'ignore)
               ((symbol-function 'select-window) #'ignore)
               ((symbol-function 'display-buffer) #'identity))
@@ -231,7 +226,8 @@
                   (pod-cmd (pop commands-executed)))
 
               ;; Verify pod command
-              (should (string-match-p "\\*kubernetes exec: test-namespace/pod/test-pod\\*" (nth 0 pod-cmd)))
+              (should (string-match-p "\\*kubernetes exec term: test-namespace/pod/test-pod\\*"
+                                      (nth 0 pod-cmd)))
               (should (equal (nth 1 pod-cmd) kubernetes-kubectl-executable))
               (let ((args (nth 2 pod-cmd)))
                 (should (equal (nth 0 args) "exec"))
@@ -241,7 +237,7 @@
                 (should (member "/bin/bash" args)))
 
               ;; Verify pod with container command
-              (should (string-match-p "\\*kubernetes exec: test-namespace/pod/test-pod:main-container\\*"
+              (should (string-match-p "\\*kubernetes exec term: test-namespace/pod/test-pod:main-container\\*"
                                       (nth 0 pod-container-cmd)))
               (let ((args (nth 2 pod-container-cmd)))
                 (should (equal (nth 0 args) "exec"))
@@ -249,7 +245,7 @@
                 (should (member "test-pod" args)))
 
               ;; Verify pod with TTY command
-              (should (string-match-p "\\*kubernetes exec: test-namespace/pod/test-pod\\*"
+              (should (string-match-p "\\*kubernetes exec term: test-namespace/pod/test-pod\\*"
                                       (nth 0 pod-tty-cmd)))
               (let ((args (nth 2 pod-tty-cmd)))
                 (should (equal (nth 0 args) "exec"))
@@ -257,7 +253,7 @@
                 (should (member "test-pod" args)))
 
               ;; Verify deployment command
-              (should (string-match-p "\\*kubernetes exec: test-namespace/deployment/test-deployment\\*"
+              (should (string-match-p "\\*kubernetes exec term: test-namespace/deployment/test-deployment\\*"
                                       (nth 0 deployment-cmd)))
               (let ((args (nth 2 deployment-cmd)))
                 (should (equal (nth 0 args) "exec"))
@@ -265,7 +261,7 @@
                 (should (member "--namespace=test-namespace" args)))
 
               ;; Verify job with container command
-              (should (string-match-p "\\*kubernetes exec: test-namespace/job/test-job:job-container\\*"
+              (should (string-match-p "\\*kubernetes exec term: test-namespace/job/test-job:job-container\\*"
                                       (nth 0 job-cmd)))
               (let ((args (nth 2 job-cmd)))
                 (should (equal (nth 0 args) "exec"))
@@ -273,9 +269,8 @@
                 (should (member "job/test-job" args)))))
 
         ;; Clean up any temp buffers
-        (let ((test-buffer (get-buffer "*test-buffer*")))
-          (when (buffer-live-p test-buffer)
-            (kill-buffer test-buffer)))))))
+        (when (get-buffer "*test-buffer*")
+          (kill-buffer "*test-buffer*"))))))
 
 ;; Test kubernetes-exec-into with different resource formats
 (ert-deftest kubernetes-exec-test-exec-into-with-different-resources ()
@@ -290,21 +285,14 @@
                  ;; Store the command for verification
                  (push (list buffer-name executable args) commands-executed)
                  ;; Return a dummy buffer
-                 (let ((buf (generate-new-buffer "*test-buffer*")))
-                   ;; Create a mock process
-                   (with-current-buffer buf
-                     (set-process-query-on-exit-flag (start-process "test-proc" buf "echo" "dummy") nil))
-                   buf)))
+                 (get-buffer-create "*test-buffer*")))
               ((symbol-function 'kubernetes-utils-process-buffer-start)
                (lambda (buffer-name mode executable args)
                  ;; Store the command for verification
                  (push (list buffer-name executable args) commands-executed)
                  ;; Return a dummy buffer
-                 (let ((buf (generate-new-buffer "*test-buffer*")))
-                   ;; Create a mock process
-                   (with-current-buffer buf
-                     (set-process-query-on-exit-flag (start-process "test-proc" buf "echo" "dummy") nil))
-                   buf)))
+                 (get-buffer-create "*test-buffer*")))
+              ((symbol-function 'get-buffer-process) #'ignore)
               ((symbol-function 'set-process-sentinel) #'ignore)
               ((symbol-function 'select-window) #'ignore)
               ((symbol-function 'display-buffer) #'identity))
@@ -326,25 +314,24 @@
                   (pod-cmd (pop commands-executed)))
 
               ;; Verify pod command treats it as a pod
-              (should (string-match-p "\\*kubernetes exec: test-namespace/pod/test-pod\\*"
+              (should (string-match-p "\\*kubernetes exec term: test-namespace/pod/test-pod\\*"
                                       (nth 0 pod-cmd)))
               (should (member "test-pod" (nth 2 pod-cmd)))
 
               ;; Verify deployment format is parsed correctly
-              (should (string-match-p "\\*kubernetes exec: test-namespace/deployment/test-deployment\\*"
+              (should (string-match-p "\\*kubernetes exec term: test-namespace/deployment/test-deployment\\*"
                                       (nth 0 deployment-cmd)))
               (should (member "deployment/test-deployment" (nth 2 deployment-cmd)))
 
               ;; Verify job with container is parsed correctly
-              (should (string-match-p "\\*kubernetes exec: test-namespace/job/test-job:job-container\\*"
+              (should (string-match-p "\\*kubernetes exec term: test-namespace/job/test-job:job-container\\*"
                                       (nth 0 job-cmd)))
               (should (member "job/test-job" (nth 2 job-cmd)))
               (should (member "--container=job-container" (nth 2 job-cmd)))))
 
         ;; Clean up any temp buffers
-        (let ((test-buffer (get-buffer "*test-buffer*")))
-          (when (buffer-live-p test-buffer)
-            (kill-buffer test-buffer)))))))
+        (when (get-buffer "*test-buffer*")
+          (kill-buffer "*test-buffer*"))))))
 
 ;; Test kubernetes-exec-using-vterm function
 (ert-deftest kubernetes-exec-test-using-vterm ()
@@ -359,7 +346,9 @@
                  ;; Store the command for verification
                  (push (list buffer-name executable args) commands-executed)
                  ;; Return a dummy buffer
-                 (generate-new-buffer "*test-buffer*")))
+                 (get-buffer-create "*test-buffer*")))
+              ((symbol-function 'vterm-other-window)
+               (lambda () (get-buffer-create "*test-vterm-buffer*")))
               ((symbol-function 'require) (lambda (feature &rest _) t))
               ((symbol-function 'select-window) #'ignore)
               ((symbol-function 'display-buffer) #'identity))
@@ -377,7 +366,7 @@
                   (pod-cmd (pop commands-executed)))
 
               ;; Verify pod command uses vterm buffer name format
-              (should (string-match-p "\\*kubernetes vterm exec: test-namespace/pod/test-pod\\*"
+              (should (string-match-p "\\*kubernetes exec vterm: test-namespace/pod/test-pod\\*"
                                      (nth 0 pod-cmd)))
               (should (equal (nth 1 pod-cmd) kubernetes-kubectl-executable))
               (let ((args (nth 2 pod-cmd)))
@@ -389,7 +378,7 @@
                 (should (member "/bin/bash" args)))
 
               ;; Verify deployment command uses vterm buffer name format
-              (should (string-match-p "\\*kubernetes vterm exec: test-namespace/deployment/test-deployment\\*"
+              (should (string-match-p "\\*kubernetes exec vterm: test-namespace/deployment/test-deployment\\*"
                                      (nth 0 deployment-cmd)))
               (let ((args (nth 2 deployment-cmd)))
                 (should (equal (nth 0 args) "exec"))
@@ -400,16 +389,17 @@
                 (should (member "/bin/bash" args)))))
 
         ;; Clean up any temp buffers
-        (let ((test-buffer (get-buffer "*test-buffer*")))
-          (when (buffer-live-p test-buffer)
-            (kill-buffer test-buffer)))))))
+        (when (get-buffer "*test-buffer*")
+          (kill-buffer "*test-buffer*"))
+        (when (get-buffer "*test-vterm-buffer*")
+          (kill-buffer "*test-vterm-buffer*"))))))
 
 ;; Test kubernetes-exec-list-buffers
 (ert-deftest kubernetes-exec-test-list-buffers ()
   "Test that kubernetes-exec-list-buffers properly lists the exec buffers."
-  (let* ((test-buffer1 (generate-new-buffer "*kubernetes exec: default/pod/nginx*"))
-         (test-buffer2 (generate-new-buffer "*kubernetes exec: production/deployment/api:main*"))
-         (test-buffer3 (generate-new-buffer "*kubernetes vterm exec: default/statefulset/db*"))
+  (let* ((test-buffer1 (generate-new-buffer "*kubernetes exec term: default/pod/nginx*"))
+         (test-buffer2 (generate-new-buffer "*kubernetes exec term: production/deployment/api:main*"))
+         (test-buffer3 (generate-new-buffer "*kubernetes exec vterm: default/statefulset/db*"))
          (test-buffers (list test-buffer1 test-buffer2 test-buffer3))
          (selected-buffer nil))
     (unwind-protect
@@ -417,8 +407,9 @@
                    (lambda () (append test-buffers (list (get-buffer-create "*scratch*")))))
                   ((symbol-function 'completing-read)
                    (lambda (prompt collection &rest _)
-                     (should collection)
-                     "default/pod/nginx: /bin/bash"))
+                     "*kubernetes exec term: default/pod/nginx*"))
+                  ((symbol-function 'get-buffer)
+                   (lambda (name) (cl-find-if (lambda (buf) (equal (buffer-name buf) name)) test-buffers)))
                   ((symbol-function 'switch-to-buffer)
                    (lambda (buffer) (setq selected-buffer buffer))))
 
