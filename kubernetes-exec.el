@@ -20,15 +20,15 @@
   "List of Kubernetes resource types that support exec functionality.")
 
 ;; Define buffer name format similar to logs
-(defvar kubernetes-exec-buffer-name-format "*kubernetes exec: %s%s/%s%s*"
-  "Format for Kubernetes exec buffer names.
+(defvar kubernetes-exec-buffer-name-format "*kubernetes exec term: %s%s/%s%s*"
+  "Format for Kubernetes exec buffers using term-mode.
 First %s is replaced with the namespace prefix if specified (including trailing slash),
 second %s is the resource type,
 third %s is the resource name,
 fourth %s is replaced with container suffix if specified (including the leading colon).")
 
-(defvar kubernetes-exec-vterm-buffer-name-format "*kubernetes vterm exec: %s%s/%s%s*"
-  "Format for Kubernetes exec buffer names using vterm.
+(defvar kubernetes-exec-vterm-buffer-name-format "*kubernetes exec vterm: %s%s/%s%s*"
+  "Format for Kubernetes exec buffers using vterm.
 First %s is replaced with the namespace prefix if specified (including trailing slash),
 second %s is the resource type,
 third %s is the resource name,
@@ -216,44 +216,26 @@ STATE is the current application state."
 (defun kubernetes-exec-list-buffers ()
   "List all Kubernetes exec buffers and allow selecting one."
   (interactive)
+  ;; Use manual filtering instead of seq-filter
   (let ((exec-buffers nil))
-    (dolist (buffer (buffer-list))
-      (with-current-buffer buffer
-        (when (and (or (string-prefix-p "*kubernetes exec" (buffer-name))
-                      (string-prefix-p "*kubernetes vterm exec" (buffer-name)))
-                   (boundp 'kubernetes-exec-resource-type))
-          (push buffer exec-buffers))))
-
-    (if exec-buffers
-        (let* ((buffer-desc-alist
-                (mapcar (lambda (buf)
-                          (with-current-buffer buf
-                            (let* ((desc (if (and (boundp 'kubernetes-exec-resource-type)
-                                                 (boundp 'kubernetes-exec-resource-name))
-                                            (format "%s%s/%s%s: %s"
-                                                    (if (and (boundp 'kubernetes-exec-namespace)
-                                                             kubernetes-exec-namespace)
-                                                        (format "%s/" kubernetes-exec-namespace)
-                                                      "")
-                                                    kubernetes-exec-resource-type
-                                                    kubernetes-exec-resource-name
-                                                    (if (and (boundp 'kubernetes-exec-container-name)
-                                                             kubernetes-exec-container-name)
-                                                        (format " (container: %s)"
-                                                               kubernetes-exec-container-name)
-                                                      "")
-                                                    (if (boundp 'kubernetes-exec-command)
-                                                        kubernetes-exec-command
-                                                      ""))
-                                          (buffer-name))))
-                              (cons desc buf))))
-                        exec-buffers))
-               (selected-desc (completing-read "Select exec buffer: "
-                                              (mapcar #'car buffer-desc-alist)
-                                              nil t))
-               (selected-buffer (cdr (assoc selected-desc buffer-desc-alist))))
-          (switch-to-buffer selected-buffer))
-      (message "No Kubernetes exec buffers found"))))
+    (dolist (buf (buffer-list))
+      (let ((name (buffer-name buf)))
+        (when (or (string-prefix-p "*kubernetes exec term" name)
+                  (string-prefix-p "*kubernetes exec vterm" name))
+          (push buf exec-buffers))))
+    (if (null exec-buffers)
+        (message "No Kubernetes exec buffers found")
+      ;; Use completing-read with buffer category annotation for embark
+      (let* ((buffer-names (mapcar 'buffer-name exec-buffers))
+             (selected-name (completing-read
+                            "Select exec buffer: "
+                            (lambda (string pred action)
+                              (if (eq action 'metadata)
+                                  '(metadata (category . buffer))
+                                (complete-with-action
+                                 action buffer-names string pred))))))
+        (when selected-name
+          (switch-to-buffer (get-buffer selected-name)))))))
 
 ;; Use existing transient command definition
 (transient-define-prefix kubernetes-exec ()
