@@ -222,7 +222,7 @@
               (let ((args (nth 2 pod-cmd)))
                 (should (equal (nth 0 args) "logs"))
                 (should (member "--tail=10" args))
-                (should (member "test-pod" args))
+                (should (member "pod/test-pod" args))
                 (should (member "--namespace=test-namespace" args)))
 
               ;; Verify pod with container command
@@ -230,7 +230,7 @@
               (let ((args (nth 2 pod-container-cmd)))
                 (should (equal (nth 0 args) "logs"))
                 (should (member "--container=main-container" args))
-                (should (member "test-pod" args))
+                (should (member "pod/test-pod" args))
                 (should (member "--namespace=test-namespace" args)))
 
               ;; Verify deployment command

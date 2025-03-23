@@ -231,7 +231,7 @@
               (should (equal (nth 1 pod-cmd) kubernetes-kubectl-executable))
               (let ((args (nth 2 pod-cmd)))
                 (should (equal (nth 0 args) "exec"))
-                (should (member "test-pod" args))
+                (should (member "pod/test-pod" args))
                 (should (member "--namespace=test-namespace" args))
                 (should (member "--" args))
                 (should (member "/bin/bash" args)))
@@ -242,7 +242,7 @@
               (let ((args (nth 2 pod-container-cmd)))
                 (should (equal (nth 0 args) "exec"))
                 (should (member "--container=main-container" args))
-                (should (member "test-pod" args)))
+                (should (member "pod/test-pod" args)))
 
               ;; Verify pod with TTY command
               (should (string-match-p "\\*kubernetes exec term: test-namespace/pod/test-pod\\*"
@@ -250,7 +250,7 @@
               (let ((args (nth 2 pod-tty-cmd)))
                 (should (equal (nth 0 args) "exec"))
                 (should (member "--tty" args))
-                (should (member "test-pod" args)))
+                (should (member "pod/test-pod" args)))
 
               ;; Verify deployment command
               (should (string-match-p "\\*kubernetes exec term: test-namespace/deployment/test-deployment\\*"
@@ -316,7 +316,7 @@
               ;; Verify pod command treats it as a pod
               (should (string-match-p "\\*kubernetes exec term: test-namespace/pod/test-pod\\*"
                                       (nth 0 pod-cmd)))
-              (should (member "test-pod" (nth 2 pod-cmd)))
+              (should (member "pod/test-pod" (nth 2 pod-cmd)))
 
               ;; Verify deployment format is parsed correctly
               (should (string-match-p "\\*kubernetes exec term: test-namespace/deployment/test-deployment\\*"
