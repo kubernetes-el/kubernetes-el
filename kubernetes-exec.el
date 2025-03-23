@@ -248,7 +248,7 @@ STATE is the current application state."
     ("e" "Exec" kubernetes-exec-into)
     ("v" "Exec into container using vterm" kubernetes-exec-using-vterm
      :inapt-if-not (lambda () (require 'vterm nil 'noerror)))
-    ("b" "List exec buffers" kubernetes-exec-switch-buffers)]])
+    ("b" "Switch exec buffer" kubernetes-exec-switch-buffers)]])
 
 (provide 'kubernetes-exec)
 
