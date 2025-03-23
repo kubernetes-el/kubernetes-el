@@ -114,9 +114,7 @@ ARGS are additional args to pass to kubectl.
 EXEC-COMMAND is the command to run in the container.
 STATE is the current application state."
   ;; Build the command arguments for kubectl exec
-  (let* ((resource-path (if (string= resource-type "pod")
-                          resource-name
-                        (format "%s/%s" resource-type resource-name)))
+  (let* ((resource-path (format "%s/%s" resource-type resource-name))
          (command-args (append (list "exec")
                               (kubernetes-kubectl--flags-from-state state)
                               args

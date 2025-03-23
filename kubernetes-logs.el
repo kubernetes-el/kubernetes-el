@@ -118,10 +118,8 @@ STATE is the current application state."
            (transient-args 'kubernetes-logs)
            state)))
 
-  ;; Format the resource in the kubectl resource/name format
-  (let* ((resource-path (if (string= resource-type "pod")
-                            resource-name
-                          (format "%s/%s" resource-type resource-name)))
+  ;; Format the resource in the kubectl resource/name format consistently for all resource types
+  (let* ((resource-path (format "%s/%s" resource-type resource-name))
          ;; Build clean args with namespace at the end
          (namespace-arg (when-let (ns (kubernetes-state--get state 'current-namespace))
                           (list (format "--namespace=%s" ns))))
