@@ -54,9 +54,7 @@ Returns a cons cell of (type . name)."
   "Generate a buffer name for exec into RESOURCE-TYPE named RESOURCE-NAME with ARGS.
 STATE is the optional current application state for namespace info.
 If USE-VTERM is non-nil, use vterm buffer name format."
-  (let* ((container-arg (seq-find (lambda (arg) (string-prefix-p "--container=" arg)) args))
-         (container-name (when container-arg
-                           (substring container-arg (length "--container="))))
+  (let* ((container-name (kubernetes-utils--extract-container-name-from-args args))
          (container-suffix (if container-name (format ":%s" container-name) ""))
          (namespace (when state (kubernetes-state--get state 'current-namespace)))
          (namespace-prefix (if namespace (format "%s/" namespace) ""))
@@ -144,10 +142,7 @@ STATE is the current application state."
       (setq-local kubernetes-exec-command exec-command)
       (setq-local kubernetes-exec-kubectl-args command-args)
       (setq-local kubernetes-exec-namespace (kubernetes-state--get state 'current-namespace))
-      (setq-local kubernetes-exec-container-name
-                  (let ((container-arg (seq-find (lambda (arg) (string-prefix-p "--container=" arg)) args)))
-                    (when container-arg
-                      (substring container-arg (length "--container="))))))
+      (setq-local kubernetes-exec-container-name (kubernetes-utils--extract-container-name-from-args args)))
 
     ;; Setup process cleanup if needed
     (when (and interactive-tty kubernetes-clean-up-interactive-exec-buffers)

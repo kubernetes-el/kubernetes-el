@@ -297,6 +297,13 @@ Optional arguments INITIAL-INPUT and HISTORY are passed to `completing-read'."
         (error "No containers available")
       (completing-read (or prompt "Container name: ") container-names nil t initial-input history))))
 
+(defun kubernetes-utils--extract-container-name-from-args (args)
+  "Extract container name from ARGS if present. Return nil if not found or ARGS is nil."
+  (when args
+    (let ((container-arg (seq-find (lambda (arg) (string-prefix-p "--container=" arg)) args)))
+      (when container-arg
+        (substring container-arg (length "--container="))))))
+
 (provide 'kubernetes-utils)
 
 ;;; kubernetes-utils.el ends here

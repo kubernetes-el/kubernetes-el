@@ -27,9 +27,7 @@ fourth %s is replaced with container suffix if specified (including the leading 
 (defun kubernetes-logs--generate-buffer-name (resource-type resource-name args state)
   "Generate a buffer name for logs of RESOURCE-TYPE named RESOURCE-NAME with ARGS in STATE.
 Extracts container name from ARGS if present and includes namespace information."
-  (let* ((container-arg (seq-find (lambda (arg) (string-prefix-p "--container=" arg)) args))
-         (container-name (when container-arg
-                           (substring container-arg (length "--container="))))
+  (let* ((container-name (kubernetes-utils--extract-container-name-from-args args))
          (container-suffix (if container-name (format ":%s" container-name) ""))
          (namespace (kubernetes-state--get state 'current-namespace))
          (namespace-prefix (if namespace (format "%s/" namespace) "")))
@@ -134,10 +132,7 @@ STATE is the current application state."
       (setq-local kubernetes-logs-resource-type resource-type)
       (setq-local kubernetes-logs-resource-name resource-name)
       (setq-local kubernetes-logs-namespace (kubernetes-state--get state 'current-namespace))
-      (setq-local kubernetes-logs-container-name
-                  (let ((container-arg (seq-find (lambda (arg) (string-prefix-p "--container=" arg)) args)))
-                    (when container-arg
-                      (substring container-arg (length "--container=")))))
+      (setq-local kubernetes-logs-container-name (kubernetes-utils--extract-container-name-from-args args))
       ;; Store the complete kubectl command args for direct reuse during refresh
       (setq-local kubernetes-logs-kubectl-args kubectl-args)
       (select-window (display-buffer (current-buffer))))))

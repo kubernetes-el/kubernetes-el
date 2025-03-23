@@ -608,4 +608,13 @@ Point is moved to the position indicated by | in INITIAL-CONTENTS."
       (should (member "sidecar-container" result))
       (should (member "init-container" result)))))
 
+(ert-deftest kubernetes-utils--extract-container-name-from-args-test ()
+  "Test `kubernetes-utils--extract-container-name-from-args` function."
+  (should (equal (kubernetes-utils--extract-container-name-from-args '("--container=my-container"))
+                 "my-container"))
+  (should (equal (kubernetes-utils--extract-container-name-from-args '("--some-other-arg" "--another-arg"))
+                 nil))
+  (should (equal (kubernetes-utils--extract-container-name-from-args nil)
+                 nil)))
+
 ;;; kubernetes-utils-test.el ends here
