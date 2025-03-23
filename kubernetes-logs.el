@@ -142,16 +142,13 @@ STATE is the current application state."
 (defun kubernetes-logs-refresh ()
   "Refresh logs in the current buffer."
   (interactive)
-  (when (derived-mode-p 'kubernetes-logs-mode)
-    (if (boundp 'kubernetes-logs-kubectl-args)
-        ;; Simply reuse the exact kubectl args stored in the buffer
-        (with-current-buffer (kubernetes-utils-process-buffer-start (buffer-name)
-                                                                    #'kubernetes-logs-mode
-                                                                    kubernetes-kubectl-executable
-                                                                    kubernetes-logs-kubectl-args)
-          ;; No need to set local variables again as they're already set
-          (message "Logs refreshed"))
-      (message "Cannot refresh logs: command information not available"))))
+  (if (and (derived-mode-p 'kubernetes-logs-mode) (boundp 'kubernetes-logs-kubectl-args))
+      (with-current-buffer (kubernetes-utils-process-buffer-start (buffer-name)
+                                                                  #'kubernetes-logs-mode
+                                                                  kubernetes-kubectl-executable
+                                                                  kubernetes-logs-kubectl-args)
+        (message "Logs refreshed"))
+    (message "Cannot refresh logs: command information not available")))
 
 (transient-define-prefix kubernetes-logs ()
   "Fetch or tail logs from Kubernetes resources."
