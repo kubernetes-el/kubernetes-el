@@ -24,12 +24,15 @@
                    (when v
                      `(key-value 12 ,k ,v))))
          ((&alist 'metadata (&alist 'namespace ns 'labels (&alist 'name label-name))
+                  'spec (&alist 'initContainers spec-init-containers)
                   'status (&alist 'hostIP host-ip
                                   'containerStatuses containers
+                                  'initContainerStatuses init-container-statuses
                                   'podIP pod-ip
                                   'startTime start-time))
           pod)
-         (containers (or containers (make-vector 0 '()))))
+         (containers (or containers (make-vector 0 '())))
+         (init-containers (or init-container-statuses (make-vector 0 '()))))
     `(,(when label-name
          `(section (selector nil)
                    (nav-prop (:selector ,label-name)
@@ -41,12 +44,20 @@
       ,(funcall detail "Host IP" host-ip)
       ,(funcall detail "Pod IP" pod-ip)
       ,(funcall detail "Started" start-time)
+      ,(when (and spec-init-containers (> (length spec-init-containers) 0))
+         `(section (initcontainers nil)
+                   (header-with-count "Init Containers:" ,init-containers)
+                   ,(cons 'list (-map (-lambda ((it &as &alist 'image image 'name name))
+                                        `((key-value 10 "Name" ,name)
+                                          (key-value 10 "Image" ,image)))
+                                      (if (> (length init-containers) 0)
+                                          init-containers
+                                        spec-init-containers)))))
       (header-with-count "Containers:" ,containers)
       ,(cons 'list (-map (-lambda ((&alist 'image image 'name name))
                            `((key-value 10 "Name" ,name)
                              (key-value 10 "Image" ,image)))
                          containers)))))
-
 
 (kubernetes-ast-define-component pod-view-line (state pod)
   (-let* ((current-time (kubernetes-state--get state 'current-time))
