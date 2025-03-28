@@ -224,30 +224,14 @@ This function finds pods by matching the statefulset's UID with pod's ownerRefer
        pod-items))))
 
 
-(kubernetes-ast-define-component aggregated-pods (state deployment pods)
-  (-let [(&alist 'spec (&alist
-                        'replicas replicas
-                        'selector (&alist 'matchLabels
-                                          (&alist 'name selector-name
-                                                  'component component-name)
-                                          'matchExpressions match-expressions)))
-         deployment]
+(kubernetes-ast-define-component aggregated-pods (state resource pods)
+  (-let [(&alist 'spec (&alist 'replicas replicas)) resource]
     `(section (pods nil)
               (heading "Pods")
               (indent
-               ,(when selector-name
-                  `(section (selector nil)
-                            (nav-prop (:selector ,selector-name)
-                                      (key-value 12 "Selector" ,(propertize selector-name 'face 'kubernetes-selector)))))
-               ,(when component-name
-                  `(section (component nil)
-                            (nav-prop (:component ,component-name)
-                                      (key-value 12 "Component" ,(propertize component-name 'face 'kubernetes-component)))))
-               ,(when match-expressions
-                  `(section (expressions nil)
-                            (heading "Match Expressions")
-                            (indent ,(kubernetes-yaml-render match-expressions))))
+               ;; Just show replicas count
                (key-value 12 "Replicas" ,(format "%s" (or replicas 1)))
+               ;; Just list the pods directly
                (columnar-loading-container ,(kubernetes-state--get state 'pods) nil
                                            ,@(seq-map (lambda (pod) `(pod-line ,state ,pod)) pods)))
               (padding))))
