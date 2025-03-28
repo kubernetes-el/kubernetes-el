@@ -21,8 +21,17 @@
   (-let* ((marked-pods (kubernetes-state--get state 'marked-pods))
           (pending-deletion (kubernetes-state--get state 'pods-pending-deletion))
           ((&alist 'metadata (&alist 'name name) 'status (&alist 'containerStatuses containers 'phase phase)) pod)
-          ([(&alist 'state pod-state)] containers)
-          (pod-state (or (alist-get 'reason (alist-get 'waiting pod-state)) phase))
+
+          ;; Safely handle container state extraction
+          (pod-state
+           (if (and containers (not (seq-empty-p containers)))
+               ;; Get first container and extract state safely
+               (let* ((first-container (aref containers 0))  ;; Use aref for vector access
+                      (container-state (cdr (assoc 'state first-container))))
+                 (or (alist-get 'reason (alist-get 'waiting container-state)) phase))
+             ;; Default to phase if no containers
+             phase))
+
           (state-face
            (cond
             ((member (downcase pod-state) '("running" "containercreating" "terminated"))
@@ -36,7 +45,6 @@
           (line
            (concat (propertize (format "%-11s " (s-truncate 11 pod-state)) 'face state-face)
                    name)))
-
     `(section (,(intern (kubernetes-state-resource-name pod)) t)
               (nav-prop (:pod-name ,name)
                         (copy-prop ,name
@@ -47,7 +55,6 @@
                                             `(mark-for-delete ,line))
                                            (t
                                             line))))))))
-
 
 (provide 'kubernetes-pod-line)
 

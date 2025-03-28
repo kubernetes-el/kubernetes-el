@@ -64,7 +64,6 @@ Deployments (2)
     Created:    2017-02-17T02:23:30Z
 
     Pods
-      Selector:   example-pod-v3
       Replicas:   1
       Fetching...
 
@@ -76,7 +75,6 @@ Deployments (2)
     Created:    2017-02-22T02:15:36Z
 
     Pods
-      Selector:   deployment-2
       Replicas:   1
       Fetching...
 "))
@@ -109,7 +107,6 @@ Deployments (2)
     Created:    2017-02-17T02:23:30Z
 
     Pods
-      Selector:   example-pod-v3
       Replicas:   1
       Running     example-svc-v3-1603416598-2f9lb
 
@@ -129,7 +126,6 @@ Deployments (2)
     Created:    2017-02-22T02:15:36Z
 
     Pods
-      Selector:   deployment-2
       Replicas:   1
       Running     example-svc-v4-1603416598-2f9lb"))
 
