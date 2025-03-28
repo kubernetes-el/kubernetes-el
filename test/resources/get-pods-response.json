@@ -230,6 +230,44 @@
         "uid": "1d85a702-fb32-11e6-8378-0e9fa26c327b"
       },
       "spec": {
+        "initContainers": [
+          {
+            "name": "init-config",
+            "image": "example.com/config-initializer:1.2.0",
+            "command": ["sh", "-c", "cp /tmp/default-config/* /config/"],
+            "resources": {
+              "limits": {
+                "cpu": "100m",
+                "memory": "200Mi"
+              },
+              "requests": {
+                "cpu": "10m",
+                "memory": "100Mi"
+              }
+            },
+            "volumeMounts": [
+              {
+                "name": "app-config",
+                "mountPath": "/config"
+              }
+            ]
+          },
+          {
+            "name": "init-dependencies",
+            "image": "example.com/service-checker:2.1.0",
+            "command": ["sh", "-c", "until nslookup database.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for database; sleep 2; done;"],
+            "resources": {
+              "limits": {
+                "cpu": "100m",
+                "memory": "200Mi"
+              },
+              "requests": {
+                "cpu": "10m",
+                "memory": "100Mi"
+              }
+            }
+          }
+        ],
         "containers": [
           {
             "env": [
@@ -409,12 +447,50 @@
             }
           }
         ],
+        "initContainerStatuses": [
+          {
+            "containerID": "docker://8f92de489aac07e9dc261869f5c9a1dbce0190d0d5a8110f38e9524639db41a4",
+            "image": "example.com/config-initializer:1.2.0",
+            "imageID": "docker-pullable://example.com/config-initializer@sha256:a45ffdb8ff12f221d9c23c57dc2588214c1d43030438a97a622c663659da9b2b",
+            "lastState": {},
+            "name": "init-config",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "terminated": {
+                "containerID": "docker://8f92de489aac07e9dc261869f5c9a1dbce0190d0d5a8110f38e9524639db41a4",
+                "exitCode": 0,
+                "finishedAt": "2017-02-25T08:12:34Z",
+                "reason": "Completed",
+                "startedAt": "2017-02-25T08:12:24Z"
+              }
+            }
+          },
+          {
+            "containerID": "docker://7b09b021b8ed67e92b6b77c26d6f8234c86b5467a9f71fd8318ff92d472d87cc",
+            "image": "example.com/service-checker:2.1.0",
+            "imageID": "docker-pullable://example.com/service-checker@sha256:f675679fd15d42f56b09cebf4cdcdf5f57a1f2cd38c282c929545a175c6e9b7a",
+            "lastState": {},
+            "name": "init-dependencies",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "terminated": {
+                "containerID": "docker://7b09b021b8ed67e92b6b77c26d6f8234c86b5467a9f71fd8318ff92d472d87cc",
+                "exitCode": 0,
+                "finishedAt": "2017-02-25T08:12:54Z",
+                "reason": "Completed",
+                "startedAt": "2017-02-25T08:12:35Z"
+              }
+            }
+          }
+        ],
         "hostIP": "10.0.0.0",
         "phase": "Running",
         "podIP": "172.0.0.1",
         "startTime": "2017-02-25T08:12:14Z"
       }
-    },
+    },    
     {
       "apiVersion": "v1",
       "kind": "Pod",

@@ -79,6 +79,11 @@ Pods (4)
     Host IP:    10.0.0.0
     Pod IP:     172.0.0.1
     Started:    2017-02-25T08:12:14Z
+    Init Containers: (2)
+    - Name:     init-config
+      Image:    example.com/config-initializer:1.2.0
+    - Name:     init-dependencies
+      Image:    example.com/service-checker:2.1.0
     Containers: (2)
     - Name:     example-service-4
       Image:    example.com/example-service:4.8.0
