@@ -304,6 +304,29 @@ Optional arguments INITIAL-INPUT and HISTORY are passed to `completing-read'."
       (when container-arg
         (substring container-arg (length "--container="))))))
 
+(defun kubernetes-utils-get-resource-name (state resource-type)
+  "Get a resource name of RESOURCE-TYPE using STATE.
+Returns the name of the selected resource as a string."
+  ;; Normalize resource-type to plural form for API call
+  (let* ((resource-plural
+          (if (string-suffix-p "s" resource-type)
+              resource-type
+            (concat resource-type "s")))
+         ;; Attempt to fetch resources of requested type
+         (resources (kubernetes-kubectl-await-on-async
+                     state
+                     (-partial #'kubernetes-kubectl-get resource-plural)))
+         (items (and resources (alist-get 'items resources)))
+         (names (and items
+                    (mapcar (lambda (item)
+                              (alist-get 'name (alist-get 'metadata item)))
+                            items))))
+    (if names
+        ;; If we have resource names, let the user select one
+        (completing-read (format "%s name: " resource-type) names nil t)
+      ;; If no resources are found, fall back to direct input
+      (read-string (format "%s name: " resource-type)))))
+
 (provide 'kubernetes-utils)
 
 ;;; kubernetes-utils.el ends here
