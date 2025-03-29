@@ -617,4 +617,76 @@ Point is moved to the position indicated by | in INITIAL-CONTENTS."
   (should (equal (kubernetes-utils--extract-container-name-from-args nil)
                  nil)))
 
+(ert-deftest kubernetes-utils-test-get-resource-name ()
+  "Test kubernetes-utils-get-resource-name function."
+  (let ((state '((current-namespace . "default"))))
+
+    ;; Test with singular resource type (should get pluralized)
+    (cl-letf (((symbol-function 'kubernetes-kubectl-await-on-async)
+               (lambda (s fn)
+                 ;; Don't try to inspect fn directly, just return our mock data
+                 '((items . (((metadata . ((name . "pod1"))))
+                            ((metadata . ((name . "pod2")))))))))
+              ((symbol-function 'completing-read)
+               (lambda (prompt choices &rest _)
+                 (should (string= prompt "pod name: "))
+                 (should (equal choices '("pod1" "pod2")))
+                 "pod1")))
+
+      (let ((result (kubernetes-utils-get-resource-name state "pod")))
+        (should (equal result "pod1"))))
+
+    ;; Test with plural resource type (should stay as-is)
+    (cl-letf (((symbol-function 'kubernetes-kubectl-await-on-async)
+               (lambda (s fn)
+                 '((items . (((metadata . ((name . "deployment1"))))
+                            ((metadata . ((name . "deployment2")))))))))
+              ((symbol-function 'completing-read)
+               (lambda (prompt choices &rest _)
+                 (should (string= prompt "deployments name: "))
+                 (should (equal choices '("deployment1" "deployment2")))
+                 "deployment2")))
+
+      (let ((result (kubernetes-utils-get-resource-name state "deployments")))
+        (should (equal result "deployment2"))))
+
+    ;; Test with empty results
+    (cl-letf (((symbol-function 'kubernetes-kubectl-await-on-async)
+               (lambda (s fn)
+                 ;; Return empty items
+                 '((items . ()))))
+              ((symbol-function 'read-string)
+               (lambda (prompt &rest _)
+                 (should (string= prompt "service name: "))
+                 "my-service")))
+
+      (let ((result (kubernetes-utils-get-resource-name state "service")))
+        (should (equal result "my-service"))))
+
+    ;; Test with nil resources
+    (cl-letf (((symbol-function 'kubernetes-kubectl-await-on-async)
+               (lambda (s fn)
+                 ;; Return nil (could happen due to error)
+                 nil))
+              ((symbol-function 'read-string)
+               (lambda (prompt &rest _)
+                 (should (string= prompt "job name: "))
+                 "my-job")))
+
+      (let ((result (kubernetes-utils-get-resource-name state "job")))
+        (should (equal result "my-job"))))
+
+    ;; Test with nil items
+    (cl-letf (((symbol-function 'kubernetes-kubectl-await-on-async)
+               (lambda (s fn)
+                 ;; Return response with nil items
+                 '((something-else . "value"))))
+              ((symbol-function 'read-string)
+               (lambda (prompt &rest _)
+                 (should (string= prompt "statefulset name: "))
+                 "my-statefulset")))
+
+      (let ((result (kubernetes-utils-get-resource-name state "statefulset")))
+        (should (equal result "my-statefulset"))))))
+
 ;;; kubernetes-utils-test.el ends here

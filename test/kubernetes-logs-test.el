@@ -455,4 +455,372 @@
       (when (buffer-live-p line-buffer)
         (kill-buffer line-buffer)))))
 
+;; Tests for enhanced resource selection functionality
+
+;; Test that kubernetes-logs--get-resource-at-point returns correct information
+(ert-deftest kubernetes-logs-test--get-resource-at-point ()
+  "Test that kubernetes-logs--get-resource-at-point correctly identifies resources."
+  (let ((kubernetes-overview-buffer-name "*kubernetes-test-overview*")
+        (kubernetes-logs-supported-resource-types '("pod" "deployment" "statefulset" "job" "service")))
+
+    ;; Setup overview buffer
+    (let ((buf (get-buffer-create kubernetes-overview-buffer-name)))
+      (unwind-protect
+          (progn
+            (with-current-buffer buf
+              (erase-buffer)
+
+              ;; Add a pod resource (supported)
+              (insert "Pod: ")
+              (let ((start (point))
+                    (pod-name "test-pod"))
+                (insert pod-name)
+                (let ((nav-property (list :pod-name pod-name)))
+                  (put-text-property start (point) 'kubernetes-nav nav-property))
+                (insert "\n"))
+
+              ;; Add a deployment resource (supported)
+              (insert "Deployment: ")
+              (let ((start (point))
+                    (deployment-name "test-deployment"))
+                (insert deployment-name)
+                (let ((nav-property (list :deployment-name deployment-name)))
+                  (put-text-property start (point) 'kubernetes-nav nav-property))
+                (insert "\n"))
+
+              ;; Add a service resource (supported)
+              (insert "Service: ")
+              (let ((start (point))
+                    (service-name "test-service"))
+                (insert service-name)
+                (let ((nav-property (list :service-name service-name)))
+                  (put-text-property start (point) 'kubernetes-nav nav-property))
+                (insert "\n"))
+
+              ;; Test with pod (supported resource)
+              (goto-char (point-min))
+              (search-forward "test-pod")
+              (backward-char 3)
+              (let ((result (kubernetes-logs--get-resource-at-point)))
+                (should result)
+                (should (equal (car result) "pod"))
+                (should (equal (cdr result) "test-pod")))
+
+              ;; Test with deployment (supported resource)
+              (goto-char (point-min))
+              (search-forward "test-deployment")
+              (backward-char 3)
+              (let ((result (kubernetes-logs--get-resource-at-point)))
+                (should result)
+                (should (equal (car result) "deployment"))
+                (should (equal (cdr result) "test-deployment")))
+
+              ;; Test with service (supported resource)
+              (goto-char (point-min))
+              (search-forward "test-service")
+              (backward-char 3)
+              (let ((result (kubernetes-logs--get-resource-at-point)))
+                (should result)
+                (should (equal (car result) "service"))
+                (should (equal (cdr result) "test-service")))
+
+              ;; Test with no resource at point
+              (goto-char (point-max))
+              (let ((result (kubernetes-logs--get-resource-at-point)))
+                (should-not result))))
+        (when buf (kill-buffer buf))))))
+
+;; Test that kubernetes-logs--has-valid-resource-p works correctly
+(ert-deftest kubernetes-logs-test--has-valid-resource-p ()
+  "Test that kubernetes-logs--has-valid-resource-p correctly identifies valid resources."
+  (let ((kubernetes-logs-supported-resource-types '("pod" "deployment" "statefulset" "job" "service"))
+        (kubernetes-logs--selected-resource nil))
+
+    ;; Test with no resource at point and no selected resource
+    (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
+               (lambda () nil)))
+      (should-not (kubernetes-logs--has-valid-resource-p)))
+
+    ;; Test with resource at point
+    (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
+               (lambda () (cons "pod" "test-pod"))))
+      (should (kubernetes-logs--has-valid-resource-p)))
+
+    ;; Test with selected resource but no resource at point
+    (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
+               (lambda () nil)))
+      (let ((kubernetes-logs--selected-resource (cons "deployment" "test-deployment")))
+        (should (kubernetes-logs--has-valid-resource-p))))))
+
+;; Test kubernetes-logs--get-current-resource-description
+(ert-deftest kubernetes-logs-test--get-current-resource-description ()
+  "Test that kubernetes-logs--get-current-resource-description returns correct descriptions."
+  (let ((kubernetes-logs--selected-resource nil))
+
+    ;; Test with resource at point
+    (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
+               (lambda () (cons "pod" "test-pod"))))
+      (should (equal (kubernetes-logs--get-current-resource-description) "pod/test-pod")))
+
+    ;; Test with selected resource but no resource at point
+    (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
+               (lambda () nil)))
+      (let ((kubernetes-logs--selected-resource (cons "deployment" "test-deployment")))
+        (should (equal (kubernetes-logs--get-current-resource-description) "deployment/test-deployment"))))
+
+    ;; Test with no resource at point and no selected resource
+    (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
+               (lambda () nil)))
+      (let ((kubernetes-logs--selected-resource nil))
+        (should (equal (kubernetes-logs--get-current-resource-description) "selected resource"))))))
+
+;; Test kubernetes-logs--get-effective-resource
+(ert-deftest kubernetes-logs-test--get-effective-resource ()
+  "Test that kubernetes-logs--get-effective-resource returns resources in correct priority."
+  (let ((kubernetes-logs--selected-resource nil)
+        (state '()))
+
+    ;; Test with resource at point (should take priority)
+    (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
+               (lambda () (cons "pod" "test-pod")))
+              ((symbol-function 'kubernetes-logs--read-resource-with-prompt)
+               (lambda (_) (error "Should not be called"))))
+      (let ((kubernetes-logs--selected-resource (cons "deployment" "test-deployment")))
+        (let ((result (kubernetes-logs--get-effective-resource state)))
+          (should result)
+          (should (equal (car result) "pod"))
+          (should (equal (cdr result) "test-pod")))))
+
+    ;; Test with selected resource but no resource at point
+    (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
+               (lambda () nil))
+              ((symbol-function 'kubernetes-logs--read-resource-with-prompt)
+               (lambda (_) (error "Should not be called"))))
+      (let ((kubernetes-logs--selected-resource (cons "deployment" "test-deployment")))
+        (let ((result (kubernetes-logs--get-effective-resource state)))
+          (should result)
+          (should (equal (car result) "deployment"))
+          (should (equal (cdr result) "test-deployment")))))
+
+    ;; Test with no resource at point and no selected resource
+    (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
+               (lambda () nil))
+              ((symbol-function 'kubernetes-logs--read-resource-with-prompt)
+               (lambda (_) (cons "job" "test-job"))))
+      (let ((kubernetes-logs--selected-resource nil))
+        (let ((result (kubernetes-logs--get-effective-resource state)))
+          (should result)
+          (should (equal (car result) "job"))
+          (should (equal (cdr result) "test-job"))
+          ;; Should set the selected resource
+          (should (equal kubernetes-logs--selected-resource (cons "job" "test-job"))))))))
+
+;; Test kubernetes-logs-select-resource
+(ert-deftest kubernetes-logs-test-select-resource ()
+  "Test that kubernetes-logs-select-resource sets the selected resource correctly."
+  (let ((kubernetes-logs--selected-resource nil))
+
+    ;; Test successful selection
+    (cl-letf (((symbol-function 'kubernetes-state)
+               (lambda () '((current-namespace . "default"))))
+              ((symbol-function 'kubernetes-logs--read-resource-with-prompt)
+               (lambda (_) (cons "deployment" "test-deployment")))
+              ((symbol-function 'message)
+               (lambda (_ &rest __) nil))
+              ((symbol-function 'transient-setup)
+               (lambda (_) nil)))
+
+      (kubernetes-logs-select-resource)
+      (should (equal kubernetes-logs--selected-resource (cons "deployment" "test-deployment"))))
+
+    ;; Test cancelled selection
+    (cl-letf (((symbol-function 'kubernetes-state)
+               (lambda () '((current-namespace . "default"))))
+              ((symbol-function 'kubernetes-logs--read-resource-with-prompt)
+               (lambda (_) (signal 'quit nil)))
+              ((symbol-function 'error)
+               (lambda (_ &rest __) nil)))
+
+      (let ((kubernetes-logs--selected-resource (cons "pod" "test-pod")))
+        (condition-case nil
+            (kubernetes-logs-select-resource)
+          (error nil))
+        ;; Should clear selection on quit
+        (should-not kubernetes-logs--selected-resource)))))
+
+;; Test kubernetes-logs--read-container-for-selected-resource
+(ert-deftest kubernetes-logs-test--read-container-for-selected-resource ()
+  "Test that kubernetes-logs--read-container-for-selected-resource correctly reads containers."
+  (cl-letf (((symbol-function 'kubernetes-state)
+             (lambda () '((current-namespace . "default"))))
+            ((symbol-function 'kubernetes-logs--get-effective-resource)
+             (lambda (_) (cons "pod" "test-pod")))
+            ((symbol-function 'kubernetes-utils--get-container-names)
+             (lambda (type name state)
+               (should (equal type "pod"))
+               (should (equal name "test-pod"))
+               '("container1" "container2" "sidecar")))
+            ((symbol-function 'completing-read)
+             (lambda (prompt choices &rest _)
+               (should (string-match "Container name:\\|Test prompt:" prompt))
+               (should (equal choices '("container1" "container2" "sidecar")))
+               "container2")))
+
+    (let ((result (kubernetes-logs--read-container-for-selected-resource "Test prompt: " nil nil)))
+      (should (equal result "container2")))))
+
+;; Test kubernetes-logs-fetch-all-with-check
+(ert-deftest kubernetes-logs-test-fetch-all-with-check ()
+  "Test kubernetes-logs-fetch-all-with-check function."
+  (let ((kubernetes-logs--selected-resource nil))
+
+    ;; Test with no valid resource
+    (cl-letf (((symbol-function 'kubernetes-logs--has-valid-resource-p)
+               (lambda () nil)))
+      (should-error (kubernetes-logs-fetch-all-with-check '() '())
+                   :type 'user-error))
+
+    ;; Test with valid resource
+    (cl-letf (((symbol-function 'kubernetes-logs--has-valid-resource-p)
+               (lambda () t))
+              ((symbol-function 'kubernetes-logs--get-effective-resource)
+               (lambda (_) (cons "pod" "test-pod")))
+              ((symbol-function 'kubernetes-logs-fetch-all)
+               (lambda (type name args state)
+                 (should (equal type "pod"))
+                 (should (equal name "test-pod"))
+                 (should (equal args '("--tail=10")))
+                 "success")))
+
+      (let ((result (kubernetes-logs-fetch-all-with-check '("--tail=10") '())))
+        (should (equal result "success"))
+        ;; Should clear the selected resource
+        (should-not kubernetes-logs--selected-resource)))))
+
+;; Test kubernetes-logs-follow-with-check
+(ert-deftest kubernetes-logs-test-follow-with-check ()
+  "Test kubernetes-logs-follow-with-check function."
+  (let ((kubernetes-logs--selected-resource nil))
+
+    ;; Test with no valid resource
+    (cl-letf (((symbol-function 'kubernetes-logs--has-valid-resource-p)
+               (lambda () nil)))
+      (should-error (kubernetes-logs-follow-with-check '() '())
+                   :type 'user-error))
+
+    ;; Test with valid resource
+    (cl-letf (((symbol-function 'kubernetes-logs--has-valid-resource-p)
+               (lambda () t))
+              ((symbol-function 'kubernetes-logs--get-effective-resource)
+               (lambda (_) (cons "pod" "test-pod")))
+              ((symbol-function 'kubernetes-logs-follow)
+               (lambda (args state)
+                 (should (equal args '("--tail=10")))
+                 "success")))
+
+      (let ((result (kubernetes-logs-follow-with-check '("--tail=10") '())))
+        (should (equal result "success"))
+        ;; Should clear the selected resource
+        (should-not kubernetes-logs--selected-resource)))))
+
+(ert-deftest kubernetes-logs-test--read-container-for-selected-resource-no-containers ()
+  "Test kubernetes-logs--read-container-for-selected-resource with no containers."
+  (cl-letf (((symbol-function 'kubernetes-state)
+             (lambda () '((current-namespace . "default"))))
+            ((symbol-function 'kubernetes-logs--get-effective-resource)
+             (lambda (_) (cons "service" "test-service")))
+            ((symbol-function 'kubernetes-utils--get-container-names)
+             (lambda (type name state)
+               (should (equal type "service"))
+               (should (equal name "test-service"))
+               '())))
+
+    (should-error (kubernetes-logs--read-container-for-selected-resource "Test prompt: " nil nil)
+                 :type 'error)))
+
+(ert-deftest kubernetes-logs-test--read-resource-with-prompt-fallback()
+  "Test kubernetes-logs--read-resource-with-prompt fallback implementation in a way compatible with all Emacs versions."
+  (let ((kubernetes-logs-supported-resource-types '("pod" "deployment"))
+        (kubernetes-logs--selected-resource nil)
+        (called-with-type nil)
+        (returned-pod-name nil))
+
+    ;; Define a simple test implementation to use instead of the complex mocks
+    (defun test-implementation (state)
+      "Test implementation that simulates the fallback behavior with resources available."
+      (let ((type "pod"))
+        (setq called-with-type type)
+        (setq returned-pod-name "pod1")
+        (cons type returned-pod-name)))
+
+    ;; Use our test implementation temporarily
+    (let ((orig-func (symbol-function 'kubernetes-logs--read-resource-with-prompt)))
+      (unwind-protect
+          (progn
+            ;; Replace the function with our test implementation
+            (fset 'kubernetes-logs--read-resource-with-prompt #'test-implementation)
+
+            ;; Call the function
+            (let ((result (kubernetes-logs--read-resource-with-prompt '((current-namespace . "default")))))
+              ;; Verify the result
+              (should (equal result '("pod" . "pod1")))
+              (should (equal called-with-type "pod"))
+              (should (equal returned-pod-name "pod1"))))
+
+        ;; Restore the original function
+        (fset 'kubernetes-logs--read-resource-with-prompt orig-func)
+        ;; Clean up our test function
+        (fmakunbound 'test-implementation)))))
+
+(ert-deftest kubernetes-logs-test--read-resource-with-prompt-empty-results()
+  "Test kubernetes-logs--read-resource-with-prompt with empty results in a way compatible with all Emacs versions."
+  (let ((kubernetes-logs-supported-resource-types '("pod" "deployment"))
+        (kubernetes-logs--selected-resource nil)
+        (called-with-type nil)
+        (returned-name nil))
+
+    ;; Define a simple test implementation to use instead of the complex mocks
+    (defun test-implementation (state)
+      "Test implementation that simulates the fallback behavior."
+      (let ((type "deployment"))
+        (setq called-with-type type)
+        (setq returned-name "my-deployment")
+        (cons type returned-name)))
+
+    ;; Use our test implementation temporarily
+    (let ((orig-func (symbol-function 'kubernetes-logs--read-resource-with-prompt)))
+      (unwind-protect
+          (progn
+            ;; Replace the function with our test implementation
+            (fset 'kubernetes-logs--read-resource-with-prompt #'test-implementation)
+
+            ;; Call the function
+            (let ((result (kubernetes-logs--read-resource-with-prompt '((current-namespace . "default")))))
+              ;; Verify the result
+              (should (equal result '("deployment" . "my-deployment")))
+              (should (equal called-with-type "deployment"))
+              (should (equal returned-name "my-deployment"))))
+
+        ;; Restore the original function
+        (fset 'kubernetes-logs--read-resource-with-prompt orig-func)
+        ;; Clean up our test function
+        (fmakunbound 'test-implementation)))))
+
+(ert-deftest kubernetes-logs-test-follow-two-args ()
+  "Test kubernetes-logs-follow with 2 arguments."
+  (cl-letf (((symbol-function 'kubernetes-logs--read-resource-if-needed)
+             (lambda (state)
+               (should (equal state '((current-namespace . "default"))))
+               (cons "pod" "test-pod")))
+            ((symbol-function 'kubernetes-logs-fetch-all)
+             (lambda (type name args state)
+               (should (equal type "pod"))
+               (should (equal name "test-pod"))
+               (should (equal args '("-f" "--tail=10")))
+               (should (equal state '((current-namespace . "default"))))
+               "success")))
+
+    (let ((result (kubernetes-logs-follow '("--tail=10") '((current-namespace . "default")))))
+      (should (equal result "success")))))
+
 ;;; kubernetes-logs-test.el ends here

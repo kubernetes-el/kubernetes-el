@@ -64,37 +64,19 @@ RESOURCE-TYPE must be one of the types in `kubernetes-describable-resources'."
 
   ;; Normalize resource-type to singular form for function lookup
   (let* ((normalized-type (if (string-suffix-p "s" resource-type)
-                              (substring resource-type 0 -1)
-                            resource-type))
+                             (substring resource-type 0 -1)
+                           resource-type))
          ;; Try to determine the read function name
          (read-fn-name (format "kubernetes-%ss--read-name" normalized-type))
          (read-fn (condition-case nil
-                      (intern-soft read-fn-name)
-                    (error nil))))
+                     (intern-soft read-fn-name)
+                   (error nil))))
 
     ;; If we have a specific read function, use it
     (if (and read-fn (fboundp read-fn))
         (funcall read-fn state)
-      ;; Otherwise, try to fetch resources dynamically
-      (let* ((resource-plural
-              (if (string-suffix-p "s" resource-type)
-                  resource-type
-                (concat resource-type "s")))
-             (resources (condition-case nil
-                            (kubernetes-kubectl-await-on-async state
-                                                              (-partial #'kubernetes-kubectl-get resource-plural))
-                          (error nil)))
-             (items (when resources (alist-get 'items resources)))
-             (names (when items
-                      (mapcar (lambda (item)
-                                (alist-get 'name (alist-get 'metadata item)))
-                              items))))
-        (if names
-            (completing-read (format "%s name: " resource-type) names nil t)
-          ;; Fall back to plain input if we couldn't fetch the resources
-          (read-string (format "%s name: " resource-type)))))))
-
-;; Generic resource description function
+      ;; Otherwise, use the common resource selection mechanism
+      (kubernetes-utils-get-resource-name state resource-type))))
 
 ;;;###autoload
 (defun kubernetes-describe-generic-resource (resource-type)
