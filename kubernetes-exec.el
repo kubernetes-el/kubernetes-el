@@ -41,14 +41,68 @@ Otherwise, the buffers are kept alive to allow reviewing the command output."
   :group 'kubernetes
   :type 'boolean)
 
+;; Store the manually selected resource for exec
+(defvar kubernetes-exec--selected-resource nil
+  "Currently selected resource for exec, as a cons cell of (type . name).")
+
+(defun kubernetes-exec--get-resource-at-point ()
+  "Get the resource at point if it's a supported resource type.
+Returns a cons cell of (type . name) or nil if no valid resource at point."
+  (when-let ((resource-info (kubernetes-utils-get-resource-info-at-point)))
+    (when (member (car resource-info) kubernetes-exec-supported-resource-types)
+      resource-info)))
+
+(defun kubernetes-exec--has-valid-resource-p ()
+  "Return non-nil if there is a valid resource for exec.
+Either a resource at point or a manually selected resource."
+  (or (kubernetes-exec--get-resource-at-point)
+      kubernetes-exec--selected-resource))
+
+(defun kubernetes-exec--get-current-resource-description ()
+  "Get a descriptive string for the current resource.
+Uses resource at point if available, otherwise shows manually selected resource."
+  (if-let ((resource-at-point (kubernetes-exec--get-resource-at-point)))
+      (format "%s/%s" (car resource-at-point) (cdr resource-at-point))
+    (if kubernetes-exec--selected-resource
+        (format "%s/%s"
+                (car kubernetes-exec--selected-resource)
+                (cdr kubernetes-exec--selected-resource))
+      "selected resource")))
+
 (defun kubernetes-exec--read-resource-if-needed (state)
   "Read a resource from the minibuffer if none is at point using STATE.
 Returns a cons cell of (type . name)."
-  (or (when-let ((resource-info (kubernetes-utils-get-resource-info-at-point)))
-        (when (member (car resource-info) kubernetes-exec-supported-resource-types)
-          resource-info))
-      ;; No execable resource at point, default to pod selection
+  (or (kubernetes-exec--get-resource-at-point)
+      kubernetes-exec--selected-resource
       (cons "pod" (kubernetes-pods--read-name state))))
+
+(defun kubernetes-exec--get-effective-resource (state)
+  "Get the resource to use for exec operations.
+Uses resource at point if available, otherwise uses manually selected resource.
+If neither is available, prompts the user.
+STATE is the current application state."
+  (or (kubernetes-exec--get-resource-at-point)
+      kubernetes-exec--selected-resource
+      (let ((selected (kubernetes-utils-select-resource state kubernetes-exec-supported-resource-types)))
+        ;; Store the selection for current use
+        (setq kubernetes-exec--selected-resource selected)
+        selected)))
+
+(defun kubernetes-exec-select-resource ()
+  "Select a resource for exec and store it for use in the transient."
+  (interactive)
+  (let* ((state (kubernetes-state))
+         (resource-info nil))
+    ;; Use condition-case to catch keyboard quit
+    (condition-case nil
+        (setq resource-info (kubernetes-utils-select-resource state kubernetes-exec-supported-resource-types))
+      (quit (setq kubernetes-exec--selected-resource nil)
+            (error "Selection canceled")))
+
+    (when resource-info
+      (setq kubernetes-exec--selected-resource resource-info)
+      (message "Selected %s/%s for exec" (car resource-info) (cdr resource-info))
+      (transient-setup 'kubernetes-exec))))
 
 (defun kubernetes-exec--generate-buffer-name (resource-type resource-name args &optional state use-vterm)
   "Generate a buffer name for exec into RESOURCE-TYPE named RESOURCE-NAME with ARGS.
@@ -124,6 +178,9 @@ STATE is the current application state."
                        resource-type resource-name args state))
          (buf nil))
 
+    ;; Clear the selected resource after use
+    (setq kubernetes-exec--selected-resource nil)
+
     ;; Choose the appropriate execution method
     (setq buf
           (if interactive-tty
@@ -149,6 +206,21 @@ STATE is the current application state."
       (set-process-sentinel (get-buffer-process buf) #'kubernetes-process-kill-quietly))
 
     (select-window (display-buffer buf))))
+
+;; Use the selected resource for container selection
+(defun kubernetes-exec--read-container-for-selected-resource (prompt initial-input history)
+  "Read a container name for the selected resource.
+PROMPT is displayed when requesting container name input.
+INITIAL-INPUT is the initial value for the prompt.
+HISTORY is the history list to use."
+  (let* ((state (kubernetes-state))
+         (resource-info (kubernetes-exec--get-effective-resource state))
+         (resource-type (car resource-info))
+         (resource-name (cdr resource-info))
+         (container-names (kubernetes-utils--get-container-names resource-type resource-name state)))
+    (if (null container-names)
+        (error "No containers found for %s/%s" resource-type resource-name)
+      (completing-read (or prompt "Container name: ") container-names nil t initial-input history))))
 
 ;;;###autoload
 (defun kubernetes-exec-using-vterm (pod-name args exec-command state)
@@ -187,6 +259,9 @@ STATE is the current application state."
       (setq resource-type (match-string 1 pod-name))
       (setq resource-name (match-string 2 pod-name)))
 
+    ;; Clear the selected resource after use
+    (setq kubernetes-exec--selected-resource nil)
+
     ;; Build command args
     (let* ((resource-path (if (string= resource-type "pod")
                             resource-name
@@ -204,6 +279,59 @@ STATE is the current application state."
       (kubernetes-utils-vterm-start buffer-name
                                    kubernetes-kubectl-executable
                                    command-args))))
+
+;; Wrapper functions for the transient interface to check resource validity
+(defun kubernetes-exec-into-with-check (args state)
+  "Call `kubernetes-exec-into' if a resource is available.
+ARGS and STATE are passed to the function."
+  (interactive
+   (list (transient-args 'kubernetes-exec)
+         (kubernetes-state)))
+  (unless (kubernetes-exec--has-valid-resource-p)
+    (user-error "No resource selected. Press 'r' to select a resource"))
+
+  (let* ((state (kubernetes-state))
+         (resource-info (kubernetes-exec--get-effective-resource state))
+         (resource-type (car resource-info))
+         (resource-name (cdr resource-info))
+         (resource-path (if (string= resource-type "pod")
+                          resource-name
+                        (format "%s/%s" resource-type resource-name)))
+         (command
+          (let ((cmd (string-trim (read-string
+                                  (format "Command (default: %s): "
+                                         kubernetes-default-exec-command)
+                                  nil 'kubernetes-exec-history))))
+            (if (string-empty-p cmd)
+                kubernetes-default-exec-command
+              cmd))))
+    (kubernetes-exec-into resource-path args command state)))
+
+(defun kubernetes-exec-vterm-with-check (args state)
+  "Call `kubernetes-exec-using-vterm' if a resource is available.
+ARGS and STATE are passed to the function."
+  (interactive
+   (list (transient-args 'kubernetes-exec)
+         (kubernetes-state)))
+  (unless (kubernetes-exec--has-valid-resource-p)
+    (user-error "No resource selected. Press 'r' to select a resource"))
+
+  (let* ((state (kubernetes-state))
+         (resource-info (kubernetes-exec--get-effective-resource state))
+         (resource-type (car resource-info))
+         (resource-name (cdr resource-info))
+         (resource-path (if (string= resource-type "pod")
+                          resource-name
+                        (format "%s/%s" resource-type resource-name)))
+         (command
+          (let ((cmd (string-trim (read-string
+                                  (format "Command (default: %s): "
+                                         kubernetes-default-exec-command)
+                                  nil 'kubernetes-exec-history))))
+            (if (string-empty-p cmd)
+                kubernetes-default-exec-command
+              cmd))))
+    (kubernetes-exec-using-vterm resource-path args command state)))
 
 ;;;###autoload
 (defun kubernetes-exec-switch-buffers ()
@@ -238,11 +366,21 @@ STATE is the current application state."
    ("-i" "Pass stdin to container" "--stdin")
    ("-t" "Stdin is a TTY" "--tty")]
   ["Options"
-   ("=c" "Container to exec within" "--container=" :reader kubernetes-utils-read-container-name)]
+   ("=c" "Select container" "--container=" kubernetes-exec--read-container-for-selected-resource)]
   [["Actions"
-    ("e" "Exec" kubernetes-exec-into)
-    ("v" "Exec into container using vterm" kubernetes-exec-using-vterm
+    ("e" (lambda ()
+           (if (kubernetes-exec--has-valid-resource-p)
+               (format "Exec into %s" (kubernetes-exec--get-current-resource-description))
+             (propertize "Exec (no resource selected)" 'face 'transient-inapt-suffix)))
+     kubernetes-exec-into-with-check)
+    ("v" (lambda ()
+           (if (and (kubernetes-exec--has-valid-resource-p)
+                   (require 'vterm nil 'noerror))
+               (format "Exec into %s using vterm" (kubernetes-exec--get-current-resource-description))
+             (propertize "Exec using vterm (no resource selected)" 'face 'transient-inapt-suffix)))
+     kubernetes-exec-vterm-with-check
      :inapt-if-not (lambda () (require 'vterm nil 'noerror)))
+    ("r" "Select resource" kubernetes-exec-select-resource)
     ("b" "Switch exec buffer" kubernetes-exec-switch-buffers)]])
 
 (provide 'kubernetes-exec)

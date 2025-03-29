@@ -333,6 +333,77 @@
         (when (get-buffer "*test-buffer*")
           (kill-buffer "*test-buffer*"))))))
 
+;; Test kubernetes-exec--get-resource-at-point
+(ert-deftest kubernetes-exec-test--get-resource-at-point ()
+  "Test that kubernetes-exec--get-resource-at-point correctly identifies resources."
+  (let ((kubernetes-overview-buffer-name "*kubernetes-test-overview*")
+        (kubernetes-exec-supported-resource-types '("pod" "deployment" "statefulset" "job" "cronjob")))
+
+    ;; Setup overview buffer
+    (let ((buf (get-buffer-create kubernetes-overview-buffer-name)))
+      (unwind-protect
+          (progn
+            (with-current-buffer buf
+              (erase-buffer)
+
+              ;; Add a pod resource (supported)
+              (insert "Pod: ")
+              (let ((start (point))
+                    (pod-name "test-pod"))
+                (insert pod-name)
+                (let ((nav-property (list :pod-name pod-name)))
+                  (put-text-property start (point) 'kubernetes-nav nav-property))
+                (insert "\n"))
+
+              ;; Add a deployment resource (supported)
+              (insert "Deployment: ")
+              (let ((start (point))
+                    (deployment-name "test-deployment"))
+                (insert deployment-name)
+                (let ((nav-property (list :deployment-name deployment-name)))
+                  (put-text-property start (point) 'kubernetes-nav nav-property))
+                (insert "\n"))
+
+              ;; Add a service resource (unsupported)
+              (insert "Service: ")
+              (let ((start (point))
+                    (service-name "test-service"))
+                (insert service-name)
+                (let ((nav-property (list :service-name service-name)))
+                  (put-text-property start (point) 'kubernetes-nav nav-property))
+                (insert "\n"))
+
+              ;; Test with pod (supported resource)
+              (goto-char (point-min))
+              (search-forward "test-pod")
+              (backward-char 3)
+              (let ((result (kubernetes-exec--get-resource-at-point)))
+                (should result)
+                (should (equal (car result) "pod"))
+                (should (equal (cdr result) "test-pod")))
+
+              ;; Test with deployment (supported resource)
+              (goto-char (point-min))
+              (search-forward "test-deployment")
+              (backward-char 3)
+              (let ((result (kubernetes-exec--get-resource-at-point)))
+                (should result)
+                (should (equal (car result) "deployment"))
+                (should (equal (cdr result) "test-deployment")))
+
+              ;; Test with service (unsupported resource)
+              (goto-char (point-min))
+              (search-forward "test-service")
+              (backward-char 3)
+              (let ((result (kubernetes-exec--get-resource-at-point)))
+                (should-not result))
+
+              ;; Test with no resource at point
+              (goto-char (point-max))
+              (let ((result (kubernetes-exec--get-resource-at-point)))
+                (should-not result))))
+        (when buf (kill-buffer buf))))))
+
 ;; Test kubernetes-exec-using-vterm function
 (ert-deftest kubernetes-exec-test-using-vterm ()
   "Test that kubernetes-exec-using-vterm properly builds the command."
@@ -394,56 +465,293 @@
         (when (get-buffer "*test-vterm-buffer*")
           (kill-buffer "*test-vterm-buffer*"))))))
 
-;; Test kubernetes-exec-switch-buffers
-(ert-deftest kubernetes-exec-test-list-buffers ()
-  "Test that kubernetes-exec-switch-buffers properly lists the exec buffers."
-  (let* ((test-buffer1 (generate-new-buffer "*kubernetes exec term: default/pod/nginx*"))
-         (test-buffer2 (generate-new-buffer "*kubernetes exec term: production/deployment/api:main*"))
-         (test-buffer3 (generate-new-buffer "*kubernetes exec vterm: default/statefulset/db*"))
-         (test-buffers (list test-buffer1 test-buffer2 test-buffer3))
-         (selected-buffer nil))
+;; Test for kubernetes-exec--read-container-for-selected-resource
+(ert-deftest kubernetes-exec-test--read-container-for-selected-resource ()
+  "Test kubernetes-exec--read-container-for-selected-resource directly."
+  (let ((kubernetes-exec-supported-resource-types '("pod" "deployment" "statefulset" "job" "cronjob")))
+    (cl-letf (((symbol-function 'kubernetes-exec--get-effective-resource)
+               (lambda (_) '("pod" . "test-pod")))
+              ((symbol-function 'kubernetes-utils--get-container-names)
+               (lambda (type name state)
+                 '("main-container" "sidecar")))
+              ((symbol-function 'completing-read)
+               (lambda (prompt choices &rest _)
+                 (car choices))))
+
+      (let ((result (kubernetes-exec--read-container-for-selected-resource "Container: " nil nil)))
+        (should (equal result "main-container"))))))
+
+;; Test command wrapper with check
+(ert-deftest kubernetes-exec-test-into-with-check ()
+  "Test kubernetes-exec-into-with-check function."
+  (let ((kubernetes-exec--selected-resource nil))
+
+    ;; Test with no valid resource
+    (cl-letf (((symbol-function 'kubernetes-exec--has-valid-resource-p)
+               (lambda () nil)))
+      (should-error (kubernetes-exec-into-with-check '() '())
+                   :type 'user-error))
+
+    ;; Test with valid resource - pod type
+    (cl-letf (((symbol-function 'kubernetes-exec--has-valid-resource-p)
+               (lambda () t))
+              ((symbol-function 'kubernetes-state)
+               (lambda () '((current-namespace . "default"))))
+              ((symbol-function 'kubernetes-exec--get-effective-resource)
+               (lambda (_) (cons "pod" "test-pod")))
+              ((symbol-function 'read-string)
+               (lambda (prompt &rest _) "/bin/bash"))
+              ((symbol-function 'kubernetes-exec-into)
+               (lambda (resource args command state)
+                 ;; For pods, only the name is passed, NOT in "pod/name" format
+                 (should (equal resource "test-pod"))
+                 (should (equal args '("--tty")))
+                 (should (equal command "/bin/bash"))
+                 "success")))
+
+      (let ((result (kubernetes-exec-into-with-check '("--tty") '())))
+        (should (equal result "success"))))
+
+    ;; Test with valid resource - non-pod type (like deployment)
+    (cl-letf (((symbol-function 'kubernetes-exec--has-valid-resource-p)
+               (lambda () t))
+              ((symbol-function 'kubernetes-state)
+               (lambda () '((current-namespace . "default"))))
+              ((symbol-function 'kubernetes-exec--get-effective-resource)
+               (lambda (_) (cons "deployment" "test-deployment")))
+              ((symbol-function 'read-string)
+               (lambda (prompt &rest _) "/bin/bash"))
+              ((symbol-function 'kubernetes-exec-into)
+               (lambda (resource args command state)
+                 ;; For non-pods, the format is "type/name"
+                 (should (equal resource "deployment/test-deployment"))
+                 (should (equal args '("--tty")))
+                 (should (equal command "/bin/bash"))
+                 "success")))
+
+      (let ((result (kubernetes-exec-into-with-check '("--tty") '())))
+        (should (equal result "success"))))))
+
+;; Test for kubernetes-exec-vterm-with-check
+(ert-deftest kubernetes-exec-test-vterm-with-check ()
+  "Test kubernetes-exec-vterm-with-check."
+  (let ((kubernetes-exec--selected-resource nil))
+
+    ;; Test with no valid resource (should error)
+    (cl-letf (((symbol-function 'kubernetes-exec--has-valid-resource-p)
+               (lambda () nil)))
+
+      (should-error (kubernetes-exec-vterm-with-check '() '()) :type 'user-error))
+
+    ;; Test with pod resource - note the resource path for pods is just the name, not "pod/name"
+    (cl-letf (((symbol-function 'kubernetes-exec--has-valid-resource-p)
+               (lambda () t))
+              ((symbol-function 'kubernetes-state)
+               (lambda () '((current-namespace . "default"))))
+              ((symbol-function 'kubernetes-exec--get-effective-resource)
+               (lambda (_) '("pod" . "test-pod")))
+              ((symbol-function 'read-string)
+               (lambda (prompt &rest _) "/bin/bash"))
+              ((symbol-function 'string-empty-p)
+               (lambda (s) (equal s "")))
+              ((symbol-function 'string-trim)
+               (lambda (s) s))
+              ((symbol-function 'require)
+               (lambda (feature &optional noerror) t))
+              ((symbol-function 'kubernetes-exec-using-vterm)
+               (lambda (resource-path args command state)
+                 ;; For pods, just the name is passed, NOT in "pod/name" format
+                 (should (equal resource-path "test-pod"))
+                 (should (equal command "/bin/bash"))
+                 "vterm-executed")))
+
+      (let ((result (kubernetes-exec-vterm-with-check '("--tty") '())))
+        (should (equal result "vterm-executed"))))
+
+    ;; Test with non-pod resource (e.g., deployment)
+    (cl-letf (((symbol-function 'kubernetes-exec--has-valid-resource-p)
+               (lambda () t))
+              ((symbol-function 'kubernetes-state)
+               (lambda () '((current-namespace . "default"))))
+              ((symbol-function 'kubernetes-exec--get-effective-resource)
+               (lambda (_) '("deployment" . "test-deployment")))
+              ((symbol-function 'read-string)
+               (lambda (prompt &rest _) "/bin/bash"))
+              ((symbol-function 'string-empty-p)
+               (lambda (s) (equal s "")))
+              ((symbol-function 'string-trim)
+               (lambda (s) s))
+              ((symbol-function 'require)
+               (lambda (feature &optional noerror) t))
+              ((symbol-function 'kubernetes-exec-using-vterm)
+               (lambda (resource-path args command state)
+                 ;; For non-pods, the format is "type/name"
+                 (should (equal resource-path "deployment/test-deployment"))
+                 (should (equal command "/bin/bash"))
+                 "vterm-executed")))
+
+      (let ((result (kubernetes-exec-vterm-with-check '("--tty") '())))
+        (should (equal result "vterm-executed"))))))
+
+;; Test for kubernetes-exec--read-container-for-selected-resource with empty containers
+(ert-deftest kubernetes-exec-test--read-container-for-selected-resource-empty ()
+  "Test kubernetes-exec--read-container-for-selected-resource with empty containers."
+  (let ((kubernetes-exec-supported-resource-types '("pod" "deployment" "statefulset" "job" "cronjob")))
+    (cl-letf (((symbol-function 'kubernetes-exec--get-effective-resource)
+               (lambda (_) '("pod" . "empty-pod")))
+              ((symbol-function 'kubernetes-utils--get-container-names)
+               (lambda (type name state)
+                 '())))
+
+      (should-error (kubernetes-exec--read-container-for-selected-resource "Container: " nil nil)))))
+
+;; Test for kubernetes-exec-into-with-check with empty command
+(ert-deftest kubernetes-exec-test-into-with-check-empty-command ()
+  "Test kubernetes-exec-into-with-check with empty command."
+  (let ((kubernetes-exec--selected-resource nil)
+        (kubernetes-default-exec-command "/bin/bash"))
+
+    ;; Test with valid resource and empty command (should use default)
+    (cl-letf (((symbol-function 'kubernetes-exec--has-valid-resource-p)
+               (lambda () t))
+              ((symbol-function 'kubernetes-state)
+               (lambda () '((current-namespace . "default"))))
+              ((symbol-function 'kubernetes-exec--get-effective-resource)
+               (lambda (_) '("pod" . "test-pod")))
+              ((symbol-function 'read-string)
+               (lambda (prompt &rest _) ""))
+              ((symbol-function 'string-empty-p)
+               (lambda (s) (equal s "")))
+              ((symbol-function 'string-trim)
+               (lambda (s) s))
+              ((symbol-function 'kubernetes-exec-into)
+               (lambda (resource-path args command state)
+                 (should (equal resource-path "test-pod"))
+                 (should (equal command "/bin/bash"))  ;; Should use default command
+                 "default-command-used")))
+
+      (let ((result (kubernetes-exec-into-with-check '("--tty") '())))
+        (should (equal result "default-command-used"))))))
+
+;; Test for kubernetes-exec-vterm-with-check with empty command
+(ert-deftest kubernetes-exec-test-vterm-with-check-empty-command ()
+  "Test kubernetes-exec-vterm-with-check with empty command."
+  (let ((kubernetes-exec--selected-resource nil)
+        (kubernetes-default-exec-command "/bin/bash"))
+
+    ;; Test with valid resource and empty command (should use default)
+    (cl-letf (((symbol-function 'kubernetes-exec--has-valid-resource-p)
+               (lambda () t))
+              ((symbol-function 'kubernetes-state)
+               (lambda () '((current-namespace . "default"))))
+              ((symbol-function 'kubernetes-exec--get-effective-resource)
+               (lambda (_) '("pod" . "test-pod")))
+              ((symbol-function 'read-string)
+               (lambda (prompt &rest _) ""))
+              ((symbol-function 'string-empty-p)
+               (lambda (s) (equal s "")))
+              ((symbol-function 'string-trim)
+               (lambda (s) s))
+              ((symbol-function 'require)
+               (lambda (feature &optional noerror) t))
+              ((symbol-function 'kubernetes-exec-using-vterm)
+               (lambda (resource-path args command state)
+                 (should (equal resource-path "test-pod"))
+                 (should (equal command "/bin/bash"))  ;; Should use default command
+                 "default-command-used")))
+
+      (let ((result (kubernetes-exec-vterm-with-check '("--tty") '())))
+        (should (equal result "default-command-used"))))))
+
+;; Test for kubernetes-exec--get-current-resource-description
+(ert-deftest kubernetes-exec-test--get-current-resource-description ()
+  "Test kubernetes-exec--get-current-resource-description."
+  (let ((kubernetes-exec--selected-resource nil))
+
+    ;; Test when resource is at point
+    (cl-letf (((symbol-function 'kubernetes-exec--get-resource-at-point)
+               (lambda () '("pod" . "test-pod"))))
+
+      (let ((desc (kubernetes-exec--get-current-resource-description)))
+        (should (equal desc "pod/test-pod"))))
+
+    ;; Test when no resource at point but selected resource exists
+    (setq kubernetes-exec--selected-resource '("deployment" . "test-deployment"))
+    (cl-letf (((symbol-function 'kubernetes-exec--get-resource-at-point)
+               (lambda () nil)))
+
+      (let ((desc (kubernetes-exec--get-current-resource-description)))
+        (should (equal desc "deployment/test-deployment"))))
+
+    ;; Test when no resource at point and no selected resource
+    (setq kubernetes-exec--selected-resource nil)
+    (cl-letf (((symbol-function 'kubernetes-exec--get-resource-at-point)
+               (lambda () nil)))
+
+      (let ((desc (kubernetes-exec--get-current-resource-description)))
+        (should (equal desc "selected resource"))))))
+
+;; Test for kubernetes-exec-select-resource
+(ert-deftest kubernetes-exec-test-select-resource ()
+  "Test kubernetes-exec-select-resource."
+  (let ((kubernetes-exec--selected-resource nil)
+        (kubernetes-exec-supported-resource-types '("pod" "deployment" "statefulset" "job" "cronjob")))
+
+    ;; Mock functions to avoid interactive prompts and actual operations
+    (cl-letf (((symbol-function 'kubernetes-state)
+               (lambda () '((current-namespace . "default"))))
+              ((symbol-function 'kubernetes-utils-select-resource)
+               (lambda (state types)
+                 (should (equal types kubernetes-exec-supported-resource-types))
+                 (cons "pod" "test-pod")))
+              ((symbol-function 'message)
+               (lambda (format-string &rest args) nil))
+              ((symbol-function 'transient-setup)
+               (lambda (command) nil)))
+
+      ;; Call the function and check the resource is stored
+      (kubernetes-exec-select-resource)
+      (should (equal kubernetes-exec--selected-resource '("pod" . "test-pod"))))))
+
+;; Test for kubernetes-exec--get-effective-resource
+(ert-deftest kubernetes-exec-test--get-effective-resource ()
+  "Test kubernetes-exec--get-effective-resource."
+  (let ((kubernetes-exec--selected-resource nil)
+        (kubernetes-exec-supported-resource-types '("pod" "deployment" "statefulset" "job" "cronjob"))
+        (overview-buffer (get-buffer-create "*kubernetes-overview*")))
+
     (unwind-protect
-        (cl-letf (((symbol-function 'buffer-list)
-                   (lambda () (append test-buffers (list (get-buffer-create "*scratch*")))))
-                  ((symbol-function 'completing-read)
-                   (lambda (prompt collection &rest _)
-                     "*kubernetes exec term: default/pod/nginx*"))
-                  ((symbol-function 'get-buffer)
-                   (lambda (name) (cl-find-if (lambda (buf) (equal (buffer-name buf) name)) test-buffers)))
-                  ((symbol-function 'switch-to-buffer)
-                   (lambda (buffer) (setq selected-buffer buffer))))
+        (progn
+          ;; Set up mock functions to avoid interactive parts
+          (cl-letf (((symbol-function 'kubernetes-utils-select-resource)
+                     (lambda (state types)
+                       (cons "deployment" "test-deployment"))))
 
-          ;; Set buffer local variables
-          (with-current-buffer test-buffer1
-            (setq-local kubernetes-exec-resource-type "pod")
-            (setq-local kubernetes-exec-resource-name "nginx")
-            (setq-local kubernetes-exec-namespace "default")
-            (setq-local kubernetes-exec-command "/bin/bash"))
+            ;; Test case where no resource is at point and no selected resource
+            (cl-letf (((symbol-function 'kubernetes-exec--get-resource-at-point)
+                       (lambda () nil)))
 
-          (with-current-buffer test-buffer2
-            (setq-local kubernetes-exec-resource-type "deployment")
-            (setq-local kubernetes-exec-resource-name "api")
-            (setq-local kubernetes-exec-namespace "production")
-            (setq-local kubernetes-exec-container-name "main")
-            (setq-local kubernetes-exec-command "/bin/sh"))
+              (let ((result (kubernetes-exec--get-effective-resource nil)))
+                (should (equal result '("deployment" . "test-deployment")))
+                (should (equal kubernetes-exec--selected-resource '("deployment" . "test-deployment")))))
 
-          (with-current-buffer test-buffer3
-            (setq-local kubernetes-exec-resource-type "statefulset")
-            (setq-local kubernetes-exec-resource-name "db")
-            (setq-local kubernetes-exec-namespace "default")
-            (setq-local kubernetes-exec-command "mysql"))
+            ;; Test case where no resource is at point but selected resource exists
+            (setq kubernetes-exec--selected-resource '("statefulset" . "test-statefulset"))
+            (cl-letf (((symbol-function 'kubernetes-exec--get-resource-at-point)
+                       (lambda () nil)))
 
-          ;; Run the function
-          (kubernetes-exec-switch-buffers)
+              (let ((result (kubernetes-exec--get-effective-resource nil)))
+                (should (equal result '("statefulset" . "test-statefulset")))))
 
-          ;; Verify results
-          (should (eq selected-buffer test-buffer1)))
+            ;; Test case where resource is at point
+            (cl-letf (((symbol-function 'kubernetes-exec--get-resource-at-point)
+                       (lambda () '("pod" . "test-pod"))))
 
-      ;; Clean up test buffers
-      (dolist (buf test-buffers)
-        (when (buffer-live-p buf)
-          (kill-buffer buf))))))
+              (let ((result (kubernetes-exec--get-effective-resource nil)))
+                (should (equal result '("pod" . "test-pod")))))))
 
-(provide 'kubernetes-exec-test)
+      ;; Clean up
+      (when (buffer-live-p overview-buffer)
+        (kill-buffer overview-buffer)))))
 
 ;;; kubernetes-exec-test.el ends here
