@@ -6,7 +6,7 @@
 [![MELPA](https://melpa.org/packages/kubernetes-badge.svg)](https://melpa.org/#/kubernetes)
 [![License GPL 3](https://img.shields.io/github/license/kubernetes-el/kubernetes-el.svg)][COPYING]
 
-Manage your Kubernetes clusters with Emacs.
+Manage your Kubernetes clusters with emacs.
 
 ![Screenshot of Kubernetes Emacs client](./docs/assets/screenshot.png)
 
