@@ -689,4 +689,26 @@ Point is moved to the position indicated by | in INITIAL-CONTENTS."
       (let ((result (kubernetes-utils-get-resource-name state "statefulset")))
         (should (equal result "my-statefulset"))))))
 
+(ert-deftest kubernetes-utils-test-select-resource ()
+  "Test `kubernetes-utils-select-resource' function."
+  (let ((state '((current-namespace . "default"))))
+    ;; Mock the interactive functions
+    (cl-letf (((symbol-function 'completing-read)
+               (lambda (prompt choices &rest _)
+                 (should (string= prompt "Resource type: "))
+                 (should (member "pod" choices))
+                 (should (member "deployment" choices))
+                 "deployment"))
+              ((symbol-function 'kubernetes-utils-get-resource-name)
+               (lambda (test-state resource-type)
+                 (should (equal test-state state))
+                 (should (equal resource-type "deployment"))
+                 "web-deployment")))
+
+      ;; Call the function and check results
+      (let ((result (kubernetes-utils-select-resource
+                     state
+                     '("pod" "deployment" "statefulset" "job"))))
+        (should (equal result '("deployment" . "web-deployment")))))))
+
 ;;; kubernetes-utils-test.el ends here
