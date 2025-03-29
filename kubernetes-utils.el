@@ -327,6 +327,13 @@ Returns the name of the selected resource as a string."
       ;; If no resources are found, fall back to direct input
       (read-string (format "%s name: " resource-type)))))
 
+(defun kubernetes-utils-select-resource (state resource-types)
+  "Select a resource from RESOURCE-TYPES using STATE.
+Returns a cons cell of (type . name)."
+  (let* ((resource-type (completing-read "Resource type: " resource-types nil t))
+         (resource-name (kubernetes-utils-get-resource-name state resource-type)))
+    (cons resource-type resource-name)))
+
 (provide 'kubernetes-utils)
 
 ;;; kubernetes-utils.el ends here
