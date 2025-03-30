@@ -360,6 +360,7 @@ ARGS and STATE are passed to the function."
 ;;;###autoload
 (defun kubernetes-exec-reset-and-launch ()
   "Reset the manually selected resource and launch the logs transient menu."
+  (interactive)
   (setq kubernetes-exec--selected-resource nil)
   (kubernetes-exec))
 

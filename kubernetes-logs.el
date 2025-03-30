@@ -311,6 +311,7 @@ ARGS and STATE are passed to `kubernetes-logs-follow'."
 ;;;###autoload
 (defun kubernetes-logs-reset-and-launch ()
   "Reset the manually selected resource and launch the logs transient menu."
+  (interactive)
   (setq kubernetes-logs--selected-resource nil)
   (kubernetes-logs))
 
