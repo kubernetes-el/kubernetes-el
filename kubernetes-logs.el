@@ -24,25 +24,6 @@ second %s is the resource type,
 third %s is the resource name,
 fourth %s is replaced with container suffix if specified (including the leading colon).")
 
-(defun kubernetes-logs--generate-buffer-name (resource-type resource-name args state)
-  "Generate a buffer name for logs of RESOURCE-TYPE named RESOURCE-NAME with ARGS in STATE.
-Extracts container name from ARGS if present and includes namespace information."
-  (let* ((container-name (kubernetes-utils--extract-container-name-from-args args))
-         (container-suffix (if container-name (format ":%s" container-name) ""))
-         (namespace (kubernetes-state--get state 'current-namespace))
-         (namespace-prefix (if namespace (format "%s/" namespace) "")))
-    (format kubernetes-logs-buffer-name-format namespace-prefix resource-type resource-name container-suffix)))
-
-(defun kubernetes-logs--read-resource-if-needed (state)
-  "Read a resource from the minibuffer if none is at point using STATE.
-Returns a cons cell of (type . name)."
-  (or kubernetes-logs--selected-resource
-      (when-let ((resource-info (kubernetes-utils-get-resource-info-at-point)))
-        (when (member (car resource-info) kubernetes-logs-supported-resource-types)
-          resource-info))
-      ;; No loggable resource at point, default to pod selection
-      (cons "pod" (kubernetes-pods--read-name state))))
-
 (defun kubernetes-logs--log-line-buffer-for-string (s)
   "Create a buffer to display log line S."
   (let ((propertized (with-temp-buffer
@@ -87,17 +68,6 @@ Returns a cons cell of (type . name)."
   (when (get-buffer kubernetes-log-line-buffer-name)
     (kubernetes-logs-inspect-line (point))))
 
-;; Store the manually selected resource for logs
-(defvar kubernetes-logs--selected-resource nil
-  "Currently selected resource for logs, as a cons cell of (type . name).")
-
-(defun kubernetes-logs--get-resource-at-point ()
-  "Get the resource at point if it's a supported resource type.
-Returns a cons cell of (type . name) or nil if no valid resource at point."
-  (when-let ((resource-info (kubernetes-utils-get-resource-info-at-point)))
-    (when (member (car resource-info) kubernetes-logs-supported-resource-types)
-      resource-info)))
-
 (defun kubernetes-logs--read-resource-with-prompt (state)
   "Prompt user to select a resource for logs using STATE.
 Returns a cons cell of (type . name)."
@@ -107,37 +77,8 @@ Returns a cons cell of (type . name)."
         (cons resource-type resource-name))
     ;; Clear selection on abort
     (quit
-     (setq kubernetes-logs--selected-resource nil)
+     (setq kubernetes-utils--selected-resource nil)
      (signal 'quit nil))))
-
-(defun kubernetes-logs--get-effective-resource (state)
-  "Get the resource to use for logs operations.
-Uses manually selected resource if available, otherwise uses resource at point.
-If neither is available, prompts the user.
-STATE is the current application state."
-  (or kubernetes-logs--selected-resource
-      (kubernetes-logs--get-resource-at-point)
-      (let ((selected (kubernetes-logs--read-resource-with-prompt state)))
-        ;; Store the selection for current use
-        (setq kubernetes-logs--selected-resource selected)
-        selected)))
-
-(defun kubernetes-logs--has-valid-resource-p ()
-  "Return non-nil if there is a valid resource for logs.
-Either a resource at point or a manually selected resource."
-  (or (kubernetes-logs--get-resource-at-point)
-      kubernetes-logs--selected-resource))
-
-(defun kubernetes-logs--get-current-resource-description ()
-  "Get a descriptive string for the current resource.
-Uses manually selected resource if available, otherwise shows resource at point."
-  (if kubernetes-logs--selected-resource
-      (format "%s/%s"
-              (car kubernetes-logs--selected-resource)
-              (cdr kubernetes-logs--selected-resource))
-    (if-let ((resource-at-point (kubernetes-logs--get-resource-at-point)))
-        (format "%s/%s" (car resource-at-point) (cdr resource-at-point))
-      "selected resource")))
 
 (defun kubernetes-logs-select-resource ()
   "Select a resource for logs and store it for use in the transient."
@@ -147,28 +88,13 @@ Uses manually selected resource if available, otherwise shows resource at point.
     ;; Use condition-case to catch keyboard quit
     (condition-case nil
         (setq resource-info (kubernetes-logs--read-resource-with-prompt state))
-      (quit (setq kubernetes-logs--selected-resource nil)
+      (quit (setq kubernetes-utils--selected-resource nil)
             (error "Selection canceled")))
 
     (when resource-info
-      (setq kubernetes-logs--selected-resource resource-info)
+      (setq kubernetes-utils--selected-resource resource-info)
       (message "Selected %s/%s for logs" (car resource-info) (cdr resource-info))
       (transient-setup 'kubernetes-logs))))
-
-;; Use the selected resource for container selection
-(defun kubernetes-logs--read-container-for-selected-resource (prompt initial-input history)
-  "Read a container name for the selected resource.
-PROMPT is displayed when requesting container name input.
-INITIAL-INPUT is the initial value for the prompt.
-HISTORY is the history list to use."
-  (let* ((state (kubernetes-state))
-         (resource-info (kubernetes-logs--get-effective-resource state))
-         (resource-type (car resource-info))
-         (resource-name (cdr resource-info))
-         (container-names (kubernetes-utils--get-container-names resource-type resource-name state)))
-    (if (null container-names)
-        (error "No containers found for %s/%s" resource-type resource-name)
-      (completing-read (or prompt "Container name: ") container-names nil t initial-input history))))
 
 ;;;###autoload
 (cl-defun kubernetes-logs-fetch-all (resource-type resource-name args state)
@@ -180,7 +106,7 @@ ARGS are additional args to pass to kubectl.
 STATE is the current application state."
   (interactive
    (let* ((state (kubernetes-state))
-          (resource-info (kubernetes-logs--read-resource-if-needed state)))
+          (resource-info (kubernetes-utils-read-resource-if-needed state kubernetes-logs-supported-resource-types "pod")))
      (list (car resource-info)
            (cdr resource-info)
            (transient-args 'kubernetes-logs)
@@ -195,7 +121,8 @@ STATE is the current application state."
                               (list resource-path)
                               (kubernetes-kubectl--flags-from-state state)
                               namespace-arg))
-         (buffer-name (kubernetes-logs--generate-buffer-name resource-type resource-name args state)))
+         (buffer-name (kubernetes-utils-generate-operation-buffer-name
+                       "logs" resource-type resource-name args state)))
     (with-current-buffer (kubernetes-utils-process-buffer-start buffer-name #'kubernetes-logs-mode kubernetes-kubectl-executable kubectl-args)
       ;; Set buffer-local variables to store information about this log buffer
       (setq-local kubernetes-logs-resource-type resource-type)
@@ -216,7 +143,7 @@ ARGS are additional args to pass to kubectl.
 STATE is the current application state."
   (interactive
    (let* ((state (kubernetes-state))
-          (resource-info (kubernetes-logs--read-resource-if-needed state)))
+          (resource-info (kubernetes-utils-read-resource-if-needed state kubernetes-logs-supported-resource-types "pod")))
      (list (car resource-info)
            (cdr resource-info)
            (transient-args 'kubernetes-logs)
@@ -229,7 +156,7 @@ STATE is the current application state."
   "Open a streaming logs buffer for a resource at point or selected by user.
 ARGS are additional args to pass to kubectl.
 STATE is the current application state."
-  (let* ((resource-info (kubernetes-logs--read-resource-if-needed state))
+  (let* ((resource-info (kubernetes-utils-read-resource-if-needed state kubernetes-logs-supported-resource-types "pod"))
          (resource-type (car resource-info))
          (resource-name (cdr resource-info)))
     (kubernetes-logs-fetch-all resource-type resource-name (cons "-f" args) state)))
@@ -241,14 +168,14 @@ ARGS and STATE are passed to `kubernetes-logs-fetch-all'."
   (interactive
    (list (transient-args 'kubernetes-logs)
          (kubernetes-state)))
-  (unless (kubernetes-logs--has-valid-resource-p)
+  (unless (kubernetes-utils-has-valid-resource-p kubernetes-logs-supported-resource-types)
     (user-error "No resource selected. Press 'r' to select a resource"))
 
-  (let* ((resource-info (kubernetes-logs--get-effective-resource state))
+  (let* ((resource-info (kubernetes-utils-get-effective-resource state kubernetes-logs-supported-resource-types))
          (resource-type (car resource-info))
          (resource-name (cdr resource-info)))
     ;; Clear the manual selection after logs are fetched
-    (setq kubernetes-logs--selected-resource nil)
+    (setq kubernetes-utils--selected-resource nil)
     (kubernetes-logs-fetch-all resource-type resource-name args state)))
 
 ;; Function to handle with-check follow behavior
@@ -258,12 +185,12 @@ ARGS and STATE are passed to `kubernetes-logs-follow'."
   (interactive
    (list (transient-args 'kubernetes-logs)
          (kubernetes-state)))
-  (unless (kubernetes-logs--has-valid-resource-p)
+  (unless (kubernetes-utils-has-valid-resource-p kubernetes-logs-supported-resource-types)
     (user-error "No resource selected. Press 'r' to select a resource"))
 
-  (let* ((resource-info (kubernetes-logs--get-effective-resource state)))
+  (let* ((resource-info (kubernetes-utils-get-effective-resource state kubernetes-logs-supported-resource-types)))
     ;; Clear the manual selection after logs are fetched
-    (setq kubernetes-logs--selected-resource nil)
+    (setq kubernetes-utils--selected-resource nil)
     (kubernetes-logs-follow args state)))
 
 ;; Function to refresh logs in the current buffer
@@ -289,20 +216,20 @@ ARGS and STATE are passed to `kubernetes-logs-follow'."
     ("-A" "Get logs from all pods" "--all-pods=true")
     ("-P" "Prefix each log line with pod name and container name" "--prefix=true")]
    ["Options"
-    ("=c" "Select container" "--container=" kubernetes-logs--read-container-for-selected-resource)
+    ("=c" "Select container" "--container=" kubernetes-utils-read-container-for-current-resource)
     ("=t" "Number of lines to display" "--tail=" transient-read-number-N+)]
    ["Time"
     ("=s" "Since relative time" "--since=" kubernetes-utils-read-time-value)
     ("=d" "Since absolute datetime" "--since-time=" kubernetes-utils-read-iso-datetime)]]
   [["Actions"
     ("l" (lambda ()
-           (if (kubernetes-logs--has-valid-resource-p)
-               (format "Logs for %s" (kubernetes-logs--get-current-resource-description))
+           (if (kubernetes-utils-has-valid-resource-p kubernetes-logs-supported-resource-types)
+               (format "Logs for %s" (kubernetes-utils-get-current-resource-description kubernetes-logs-supported-resource-types))
              (propertize "Logs (no resource selected)" 'face 'transient-inapt-suffix)))
          kubernetes-logs-fetch-all-with-check)
     ("f" (lambda ()
-           (if (kubernetes-logs--has-valid-resource-p)
-               (format "Follow logs for %s" (kubernetes-logs--get-current-resource-description))
+           (if (kubernetes-utils-has-valid-resource-p kubernetes-logs-supported-resource-types)
+               (format "Follow logs for %s" (kubernetes-utils-get-current-resource-description kubernetes-logs-supported-resource-types))
              (propertize "Follow logs (no resource selected)" 'face 'transient-inapt-suffix)))
          kubernetes-logs-follow-with-check)
     ("r" "Select resource" kubernetes-logs-select-resource)
@@ -312,7 +239,7 @@ ARGS and STATE are passed to `kubernetes-logs-follow'."
 (defun kubernetes-logs-reset-and-launch ()
   "Reset the manually selected resource and launch the logs transient menu."
   (interactive)
-  (setq kubernetes-logs--selected-resource nil)
+  (setq kubernetes-utils--selected-resource nil)
   (kubernetes-logs))
 
 ;;;###autoload

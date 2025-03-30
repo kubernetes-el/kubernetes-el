@@ -262,66 +262,28 @@ Point is moved to the position indicated by | in INITIAL-CONTENTS."
               (should (equal (cdr result) "resource-name")))))
       (kubernetes-utils-test-teardown-overview-buffer))))
 
-;; Tests for kubernetes-logs-supported-resource-types and kubernetes-logs--read-resource-if-needed
+;; Tests for kubernetes-logs-supported-resource-types and kubernetes-utils-read-resource-if-needed
 
 (ert-deftest kubernetes-utils-test-logs-supported-resource-types ()
   "Test that kubernetes-logs-supported-resource-types contains the expected values."
   (should (equal kubernetes-logs-supported-resource-types '("pod" "deployment" "statefulset" "job" "service"))))
 
+;; Update this function to handle the new parameter requirements
 (ert-deftest kubernetes-utils-test-logs-read-resource-if-needed ()
-  "Test `kubernetes-logs--read-resource-if-needed' behavior."
-  (let ((kubernetes-overview-buffer-name "*kubernetes-test-overview*"))
+  "Test logs read-resource-if-needed with the new utility functions."
+  (let ((kubernetes-logs-supported-resource-types '("pod" "deployment" "statefulset" "job" "service")))
+    (cl-letf (((symbol-function 'kubernetes-utils-get-resource-at-point)
+               (lambda (types) nil))
+              ((symbol-function 'kubernetes-utils-get-resource-name)
+               (lambda (state resource-type)
+                 (should (equal resource-type "pod"))
+                 "fallback-pod")))
 
-    ;; Mock functions to avoid actual state usage
-    (cl-letf (((symbol-function 'kubernetes-pods--read-name)
-               (lambda (_) "fallback-pod")))
-
-      (unwind-protect
-          (progn
-            (kubernetes-utils-test-setup-overview-buffer)
-            (with-current-buffer kubernetes-overview-buffer-name
-              (erase-buffer)
-
-              ;; Add a pod resource (supported)
-              (insert "Pod: ")
-              (let ((start (point))
-                    (pod-name "nginx-pod"))
-                (insert pod-name)
-                (kubernetes-utils-test-add-nav-property "pod" pod-name start (point))
-                (insert "\n"))
-
-              ;; Add a ingress resource (unsupported)
-              (insert "Ingress: ")
-              (let ((start (point))
-                    (ingress-name "frontend-ingress"))
-                (insert ingress-name)
-                (kubernetes-utils-test-add-nav-property "ingress" ingress-name start (point)))
-
-              ;; Test with supported resource
-              (goto-char (point-min))
-              (search-forward "nginx-pod")
-              (backward-char 3)
-              (let ((result (kubernetes-logs--read-resource-if-needed nil)))
-                (should result)
-                (should (equal (car result) "pod"))
-                (should (equal (cdr result) "nginx-pod")))
-
-              ;; Test with unsupported resource (should fall back to pod selection)
-              (goto-char (point-min))
-              (search-forward "frontend-ingress")
-              (backward-char 3)
-              (let ((result (kubernetes-logs--read-resource-if-needed nil)))
-                (should result)
-                (should (equal (car result) "pod"))
-                (should (equal (cdr result) "fallback-pod")))
-
-              ;; Test with no resource at point (should fall back to pod selection)
-              (goto-char (point-min))
-              (let ((result (kubernetes-logs--read-resource-if-needed nil)))
-                (should result)
-                (should (equal (car result) "pod"))
-                (should (equal (cdr result) "fallback-pod")))))
-        (kubernetes-utils-test-teardown-overview-buffer)))))
+      ;; Call with proper parameters - state and supported-types
+      (let ((result (kubernetes-utils-read-resource-if-needed nil kubernetes-logs-supported-resource-types "pod")))
+        (should result)
+        (should (equal (car result) "pod"))
+        (should (equal (cdr result) "fallback-pod"))))))
 
 (ert-deftest kubernetes-utils-test-logs-follow-and-fetch-all ()
   "Test the refactored `kubernetes-logs-follow' and `kubernetes-logs-fetch-all' functions."

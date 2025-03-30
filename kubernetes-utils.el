@@ -327,9 +327,118 @@ Otherwise, use a resource-specific read function."
 (defun kubernetes-utils-select-resource (state resource-types)
   "Select a resource from RESOURCE-TYPES using STATE.
 Returns a cons cell of (type . name)."
+  (interactive)
   (let* ((resource-type (completing-read "Resource type: " resource-types nil t))
          (resource-name (kubernetes-utils-get-resource-name state resource-type)))
     (cons resource-type resource-name)))
+
+(defvar kubernetes-utils--selected-resource nil
+  "Currently selected resource for operations, as a cons cell of (type . name).
+This variable is used across different operations like logs, exec, and describe.")
+
+(defun kubernetes-utils-clear-selected-resource ()
+  "Clear the currently selected resource."
+  (setq kubernetes-utils--selected-resource nil))
+
+(defun kubernetes-utils-get-resource-at-point (supported-types)
+  "Get the resource at point if it's one of the SUPPORTED-TYPES.
+Returns a cons cell of (type . name) or nil if no valid resource at point."
+  (when-let ((resource-info (kubernetes-utils-get-resource-info-at-point)))
+    (when (member (car resource-info) supported-types)
+      resource-info)))
+
+(defun kubernetes-utils-has-valid-resource-p (supported-types)
+  "Return non-nil if there is a valid resource for operations.
+Either a resource at point in SUPPORTED-TYPES or a manually selected resource."
+  (or (kubernetes-utils-get-resource-at-point supported-types)
+      kubernetes-utils--selected-resource))
+
+(defun kubernetes-utils-get-resource-description (resource-info)
+  "Get a descriptive string for RESOURCE-INFO (a cons of type and name).
+Returns a string like 'pod/nginx' or 'deployment/web'."
+  (when resource-info
+    (format "%s/%s" (car resource-info) (cdr resource-info))))
+
+(defun kubernetes-utils-get-current-resource-description (supported-types)
+  "Get a descriptive string for the current resource.
+Uses manually selected resource if available, otherwise shows resource at point.
+SUPPORTED-TYPES is a list of resource types that are valid for the operation."
+  (if kubernetes-utils--selected-resource
+      (kubernetes-utils-get-resource-description kubernetes-utils--selected-resource)
+    (if-let ((resource-at-point (kubernetes-utils-get-resource-at-point supported-types)))
+        (kubernetes-utils-get-resource-description resource-at-point)
+      "selected resource")))
+
+(defun kubernetes-utils-read-resource-if-needed (state supported-types &optional fallback-type)
+  "Read a resource from the minibuffer if none is at point using STATE.
+SUPPORTED-TYPES is a list of resource types valid for the operation.
+If FALLBACK-TYPE is provided, it will be used for fallback selection.
+Returns a cons cell of (type . name)."
+  (or kubernetes-utils--selected-resource
+      (kubernetes-utils-get-resource-at-point supported-types)
+      (let ((fallback (or fallback-type (car supported-types))))
+        (cons fallback (kubernetes-utils-get-resource-name state fallback)))))
+
+(defun kubernetes-utils-get-effective-resource (state supported-types)
+  "Get the resource to use for operations.
+Uses manually selected resource if available, otherwise uses resource at point.
+If neither is available, prompts the user.
+STATE is the current application state.
+SUPPORTED-TYPES is a list of resource types valid for the operation.
+Returns a cons cell of (type . name)."
+  (or kubernetes-utils--selected-resource
+      (kubernetes-utils-get-resource-at-point supported-types)
+      (let ((selected (kubernetes-utils-select-resource state supported-types)))
+        ;; Store the selection for current use
+        (setq kubernetes-utils--selected-resource selected)
+        selected)))
+
+
+(defun kubernetes-utils-generate-operation-buffer-name (operation resource-type resource-name args
+                                                      &optional state alt-format)
+  "Generate a buffer name for OPERATION on RESOURCE-TYPE named RESOURCE-NAME.
+OPERATION is a string like 'logs', 'exec term', or 'describe'.
+ARGS are additional args that might contain container info.
+STATE is used to get namespace information when available.
+If ALT-FORMAT is non-nil, an alternative format will be used (e.g., for vterm buffers).
+Returns a formatted buffer name string."
+  (let* ((container-name (kubernetes-utils--extract-container-name-from-args args))
+         (container-suffix (if container-name (format ":%s" container-name) ""))
+         (namespace (when state (kubernetes-state--get state 'current-namespace)))
+         (namespace-prefix (if namespace (format "%s/" namespace) "")))
+    (format "*kubernetes %s: %s%s/%s%s*"
+            operation
+            namespace-prefix
+            resource-type
+            resource-name
+            container-suffix)))
+
+(defun kubernetes-utils-read-container-for-resource (prompt state resource-type resource-name
+                                                    &optional initial-input history)
+  "Read a container name for a specific resource.
+PROMPT is displayed when requesting container name input.
+STATE is the current Kubernetes state.
+RESOURCE-TYPE and RESOURCE-NAME identify the resource with containers.
+INITIAL-INPUT is the initial value for the prompt.
+HISTORY is the history list to use."
+  (let ((container-names (kubernetes-utils--get-container-names
+                          resource-type resource-name state)))
+    (if (null container-names)
+        (error "No containers found for %s/%s" resource-type resource-name)
+      (completing-read (or prompt "Container name: ")
+                       container-names nil t initial-input history))))
+
+(defun kubernetes-utils-read-container-for-current-resource (prompt initial-input history)
+  "Read a container name for the current resource (selected or at point).
+PROMPT is displayed when requesting container name input.
+INITIAL-INPUT is the initial value for the prompt.
+HISTORY is the history list to use."
+  (let* ((state (kubernetes-state))
+         (resource-info (kubernetes-utils-get-effective-resource
+                         state (append kubernetes-logs-supported-resource-types
+                                     kubernetes-exec-supported-resource-types))))
+    (kubernetes-utils-read-container-for-resource
+     prompt state (car resource-info) (cdr resource-info) initial-input history)))
 
 (provide 'kubernetes-utils)
 
