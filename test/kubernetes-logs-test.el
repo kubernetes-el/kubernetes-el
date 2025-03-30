@@ -576,44 +576,35 @@
 
 ;; Test kubernetes-logs--get-effective-resource
 (ert-deftest kubernetes-logs-test--get-effective-resource ()
-  "Test that kubernetes-logs--get-effective-resource returns resources in correct priority."
-  (let ((kubernetes-logs--selected-resource nil)
-        (state '()))
+  "Test ~kubernetes-logs--get-effective-resource~."
+  (let ((kubernetes-logs-supported-resource-types '("pod" "deployment" "statefulset" "job" "service")))
 
-    ;; Test with resource at point (should take priority)
-    (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
-               (lambda () (cons "pod" "test-pod")))
-              ((symbol-function 'kubernetes-logs--read-resource-with-prompt)
-               (lambda (_) (error "Should not be called"))))
-      (let ((kubernetes-logs--selected-resource (cons "deployment" "test-deployment")))
-        (let ((result (kubernetes-logs--get-effective-resource state)))
-          (should result)
-          (should (equal (car result) "pod"))
-          (should (equal (cdr result) "test-pod")))))
+    ;; 1. Test case where no resource is at point and no selected resource
+    (let ((kubernetes-logs--selected-resource nil))
+      (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
+                 (lambda () nil))
+                ((symbol-function 'kubernetes-logs--read-resource-with-prompt)
+                 (lambda (_state)
+                   '("pod" . "test-pod"))))
+        (let ((result (kubernetes-logs--get-effective-resource nil)))
+          (should (equal result '("pod" . "test-pod")))
+          (should (equal kubernetes-logs--selected-resource '("pod" . "test-pod"))))))
 
-    ;; Test with selected resource but no resource at point
-    (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
-               (lambda () nil))
-              ((symbol-function 'kubernetes-logs--read-resource-with-prompt)
-               (lambda (_) (error "Should not be called"))))
-      (let ((kubernetes-logs--selected-resource (cons "deployment" "test-deployment")))
-        (let ((result (kubernetes-logs--get-effective-resource state)))
-          (should result)
-          (should (equal (car result) "deployment"))
-          (should (equal (cdr result) "test-deployment")))))
+    ;; 2. Test case where no resource is at point but selected resource exists
+    (let ((kubernetes-logs--selected-resource '("deployment" . "test-deployment")))
+      (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
+                 (lambda () nil)))
+        (let ((result (kubernetes-logs--get-effective-resource nil)))
+          (should (equal result '("deployment" . "test-deployment")))
+          (should (equal kubernetes-logs--selected-resource '("deployment" . "test-deployment"))))))
 
-    ;; Test with no resource at point and no selected resource
-    (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
-               (lambda () nil))
-              ((symbol-function 'kubernetes-logs--read-resource-with-prompt)
-               (lambda (_) (cons "job" "test-job"))))
-      (let ((kubernetes-logs--selected-resource nil))
-        (let ((result (kubernetes-logs--get-effective-resource state)))
-          (should result)
-          (should (equal (car result) "job"))
-          (should (equal (cdr result) "test-job"))
-          ;; Should set the selected resource
-          (should (equal kubernetes-logs--selected-resource (cons "job" "test-job"))))))))
+    ;; 3. Test case where resource is at point
+    (let ((kubernetes-logs--selected-resource nil))
+      (cl-letf (((symbol-function 'kubernetes-logs--get-resource-at-point)
+                 (lambda () '("pod" . "test-pod"))))
+        (let ((result (kubernetes-logs--get-effective-resource nil)))
+          (should (equal result '("pod" . "test-pod")))
+          (should (equal kubernetes-logs--selected-resource nil)))))))
 
 ;; Test kubernetes-logs-select-resource
 (ert-deftest kubernetes-logs-test-select-resource ()

@@ -60,13 +60,13 @@ Either a resource at point or a manually selected resource."
 
 (defun kubernetes-exec--get-current-resource-description ()
   "Get a descriptive string for the current resource.
-Uses resource at point if available, otherwise shows manually selected resource."
-  (if-let ((resource-at-point (kubernetes-exec--get-resource-at-point)))
-      (format "%s/%s" (car resource-at-point) (cdr resource-at-point))
-    (if kubernetes-exec--selected-resource
-        (format "%s/%s"
-                (car kubernetes-exec--selected-resource)
-                (cdr kubernetes-exec--selected-resource))
+Uses manually selected resource if available, otherwise shows resource at point."
+  (if kubernetes-exec--selected-resource
+      (format "%s/%s"
+              (car kubernetes-exec--selected-resource)
+              (cdr kubernetes-exec--selected-resource))
+    (if-let ((resource-at-point (kubernetes-exec--get-resource-at-point)))
+        (format "%s/%s" (car resource-at-point) (cdr resource-at-point))
       "selected resource")))
 
 (defun kubernetes-exec--read-resource-if-needed (state)
@@ -78,11 +78,11 @@ Returns a cons cell of (type . name)."
 
 (defun kubernetes-exec--get-effective-resource (state)
   "Get the resource to use for exec operations.
-Uses resource at point if available, otherwise uses manually selected resource.
+Uses manually selected resource if available, otherwise uses resource at point.
 If neither is available, prompts the user.
 STATE is the current application state."
-  (or (kubernetes-exec--get-resource-at-point)
-      kubernetes-exec--selected-resource
+  (or kubernetes-exec--selected-resource
+      (kubernetes-exec--get-resource-at-point)
       (let ((selected (kubernetes-utils-select-resource state kubernetes-exec-supported-resource-types)))
         ;; Store the selection for current use
         (setq kubernetes-exec--selected-resource selected)
@@ -207,7 +207,6 @@ STATE is the current application state."
 
     (select-window (display-buffer buf))))
 
-;; Use the selected resource for container selection
 (defun kubernetes-exec--read-container-for-selected-resource (prompt initial-input history)
   "Read a container name for the selected resource.
 PROMPT is displayed when requesting container name input.
@@ -357,6 +356,12 @@ ARGS and STATE are passed to the function."
                                  action buffer-names string pred))))))
         (when selected-name
           (switch-to-buffer (get-buffer selected-name)))))))
+
+;;;###autoload
+(defun kubernetes-exec-reset-and-launch ()
+  "Reset the manually selected resource and launch the logs transient menu."
+  (setq kubernetes-exec--selected-resource nil)
+  (kubernetes-exec))
 
 ;; Use existing transient command definition
 (transient-define-prefix kubernetes-exec ()

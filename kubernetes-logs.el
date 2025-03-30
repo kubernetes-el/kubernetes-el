@@ -36,7 +36,8 @@ Extracts container name from ARGS if present and includes namespace information.
 (defun kubernetes-logs--read-resource-if-needed (state)
   "Read a resource from the minibuffer if none is at point using STATE.
 Returns a cons cell of (type . name)."
-  (or (when-let ((resource-info (kubernetes-utils-get-resource-info-at-point)))
+  (or kubernetes-logs--selected-resource
+      (when-let ((resource-info (kubernetes-utils-get-resource-info-at-point)))
         (when (member (car resource-info) kubernetes-logs-supported-resource-types)
           resource-info))
       ;; No loggable resource at point, default to pod selection
@@ -111,11 +112,11 @@ Returns a cons cell of (type . name)."
 
 (defun kubernetes-logs--get-effective-resource (state)
   "Get the resource to use for logs operations.
-Uses resource at point if available, otherwise uses manually selected resource.
+Uses manually selected resource if available, otherwise uses resource at point.
 If neither is available, prompts the user.
 STATE is the current application state."
-  (or (kubernetes-logs--get-resource-at-point)
-      kubernetes-logs--selected-resource
+  (or kubernetes-logs--selected-resource
+      (kubernetes-logs--get-resource-at-point)
       (let ((selected (kubernetes-logs--read-resource-with-prompt state)))
         ;; Store the selection for current use
         (setq kubernetes-logs--selected-resource selected)
@@ -129,13 +130,13 @@ Either a resource at point or a manually selected resource."
 
 (defun kubernetes-logs--get-current-resource-description ()
   "Get a descriptive string for the current resource.
-Uses resource at point if available, otherwise shows manually selected resource."
-  (if-let ((resource-at-point (kubernetes-logs--get-resource-at-point)))
-      (format "%s/%s" (car resource-at-point) (cdr resource-at-point))
-    (if kubernetes-logs--selected-resource
-        (format "%s/%s"
-                (car kubernetes-logs--selected-resource)
-                (cdr kubernetes-logs--selected-resource))
+Uses manually selected resource if available, otherwise shows resource at point."
+  (if kubernetes-logs--selected-resource
+      (format "%s/%s"
+              (car kubernetes-logs--selected-resource)
+              (cdr kubernetes-logs--selected-resource))
+    (if-let ((resource-at-point (kubernetes-logs--get-resource-at-point)))
+        (format "%s/%s" (car resource-at-point) (cdr resource-at-point))
       "selected resource")))
 
 (defun kubernetes-logs-select-resource ()
@@ -306,6 +307,12 @@ ARGS and STATE are passed to `kubernetes-logs-follow'."
          kubernetes-logs-follow-with-check)
     ("r" "Select resource" kubernetes-logs-select-resource)
     ("b" "Switch logs buffer" kubernetes-logs-switch-buffers)]])
+
+;;;###autoload
+(defun kubernetes-logs-reset-and-launch ()
+  "Reset the manually selected resource and launch the logs transient menu."
+  (setq kubernetes-logs--selected-resource nil)
+  (kubernetes-logs))
 
 ;;;###autoload
 (defvar kubernetes-logs-mode-map

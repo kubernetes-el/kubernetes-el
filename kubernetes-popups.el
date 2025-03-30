@@ -56,10 +56,10 @@ If disabling the proxy, ARGS is ignored."
    ["Commands"
     ("d" "Describe" kubernetes-describe)
     ("E" "Edit" kubernetes-edit)
-    ("e" "Exec" kubernetes-exec)
+    ("e" "Exec" kubernetes-exec-reset-and-launch)
     ("f" "File" kubernetes-file)
     ("L" "Labels" kubernetes-labels)
-    ("l" "Logs" kubernetes-logs)
+    ("l" "Logs" kubernetes-logs-reset-and-launch)
     ("P" "Proxy" kubernetes-proxy)
     ("T" "Events" kubernetes-events)
     ("v" "Switch overview view" kubernetes-overview-set-sections)]])

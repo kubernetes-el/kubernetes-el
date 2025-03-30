@@ -306,26 +306,23 @@ Optional arguments INITIAL-INPUT and HISTORY are passed to `completing-read'."
 
 (defun kubernetes-utils-get-resource-name (state resource-type)
   "Get a resource name of RESOURCE-TYPE using STATE.
-Returns the name of the selected resource as a string."
-  ;; Normalize resource-type to plural form for API call
-  (let* ((resource-plural
-          (if (string-suffix-p "s" resource-type)
-              resource-type
-            (concat resource-type "s")))
-         ;; Attempt to fetch resources of requested type
-         (resources (kubernetes-kubectl-await-on-async
-                     state
-                     (-partial #'kubernetes-kubectl-get resource-plural)))
-         (items (and resources (alist-get 'items resources)))
-         (names (and items
-                    (mapcar (lambda (item)
-                              (alist-get 'name (alist-get 'metadata item)))
-                            items))))
-    (if names
-        ;; If we have resource names, let the user select one
-        (completing-read (format "%s name: " resource-type) names nil t)
-      ;; If no resources are found, fall back to direct input
-      (read-string (format "%s name: " resource-type)))))
+If a resource name is available via a specific function, use it.
+Otherwise, use a resource-specific read function."
+  (let* ((get-resource-name-fn
+          (intern-soft (format "kubernetes-utils-maybe-%s-name-at-point"
+                               (if (string= resource-type "persistentvolumeclaim")
+                                   "pvc"
+                                 resource-type))))
+         (read-name-fn
+          (intern-soft (format "kubernetes-%ss--read-name"
+                               (if (string= resource-type "persistentvolumeclaim")
+                                   "persistentvolumeclaim"
+                                 resource-type))))
+         (resource-name (or (when (fboundp get-resource-name-fn)
+                              (funcall get-resource-name-fn))
+                            (when (and read-name-fn (fboundp read-name-fn))
+                              (funcall read-name-fn state)))))
+    resource-name))
 
 (defun kubernetes-utils-select-resource (state resource-types)
   "Select a resource from RESOURCE-TYPES using STATE.

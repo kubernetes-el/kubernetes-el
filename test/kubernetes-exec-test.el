@@ -715,43 +715,34 @@
 
 ;; Test for kubernetes-exec--get-effective-resource
 (ert-deftest kubernetes-exec-test--get-effective-resource ()
-  "Test kubernetes-exec--get-effective-resource."
-  (let ((kubernetes-exec--selected-resource nil)
-        (kubernetes-exec-supported-resource-types '("pod" "deployment" "statefulset" "job" "cronjob"))
-        (overview-buffer (get-buffer-create "*kubernetes-overview*")))
+  "Test ~kubernetes-exec--get-effective-resource~."
+  (let ((kubernetes-exec-supported-resource-types '("pod" "deployment" "statefulset" "job" "cronjob")))
 
-    (unwind-protect
-        (progn
-          ;; Set up mock functions to avoid interactive parts
-          (cl-letf (((symbol-function 'kubernetes-utils-select-resource)
-                     (lambda (state types)
-                       (cons "deployment" "test-deployment"))))
+    ;; 1. Test case where no resource is at point and no selected resource
+    (let ((kubernetes-exec--selected-resource nil))
+      (cl-letf (((symbol-function 'kubernetes-exec--get-resource-at-point)
+                 (lambda () nil))
+                ((symbol-function 'kubernetes-utils-select-resource)
+                 (lambda (_state _types)
+                   '("pod" . "test-pod"))))
+        (let ((result (kubernetes-exec--get-effective-resource nil)))
+          (should (equal result '("pod" . "test-pod")))
+          (should (equal kubernetes-exec--selected-resource '("pod" . "test-pod"))))))
 
-            ;; Test case where no resource is at point and no selected resource
-            (cl-letf (((symbol-function 'kubernetes-exec--get-resource-at-point)
-                       (lambda () nil)))
+    ;; 2. Test case where no resource is at point but selected resource exists
+    (let ((kubernetes-exec--selected-resource '("statefulset" . "test-statefulset")))
+      (cl-letf (((symbol-function 'kubernetes-exec--get-resource-at-point)
+                 (lambda () nil)))
+        (let ((result (kubernetes-exec--get-effective-resource nil)))
+          (should (equal result '("statefulset" . "test-statefulset")))
+          (should (equal kubernetes-exec--selected-resource '("statefulset" . "test-statefulset"))))))
 
-              (let ((result (kubernetes-exec--get-effective-resource nil)))
-                (should (equal result '("deployment" . "test-deployment")))
-                (should (equal kubernetes-exec--selected-resource '("deployment" . "test-deployment")))))
-
-            ;; Test case where no resource is at point but selected resource exists
-            (setq kubernetes-exec--selected-resource '("statefulset" . "test-statefulset"))
-            (cl-letf (((symbol-function 'kubernetes-exec--get-resource-at-point)
-                       (lambda () nil)))
-
-              (let ((result (kubernetes-exec--get-effective-resource nil)))
-                (should (equal result '("statefulset" . "test-statefulset")))))
-
-            ;; Test case where resource is at point
-            (cl-letf (((symbol-function 'kubernetes-exec--get-resource-at-point)
-                       (lambda () '("pod" . "test-pod"))))
-
-              (let ((result (kubernetes-exec--get-effective-resource nil)))
-                (should (equal result '("pod" . "test-pod")))))))
-
-      ;; Clean up
-      (when (buffer-live-p overview-buffer)
-        (kill-buffer overview-buffer)))))
+    ;; 3. Test case where resource is at point
+    (let ((kubernetes-exec--selected-resource nil))
+      (cl-letf (((symbol-function 'kubernetes-exec--get-resource-at-point)
+                 (lambda () '("pod" . "test-pod"))))
+        (let ((result (kubernetes-exec--get-effective-resource nil)))
+          (should (equal result '("pod" . "test-pod")))
+          (should (equal kubernetes-exec--selected-resource nil)))))))
 
 ;;; kubernetes-exec-test.el ends here
