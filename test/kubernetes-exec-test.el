@@ -753,5 +753,217 @@
         (should command-executed)
         (should (equal result "executed"))))))
 
+;; MODIFY THIS EXISTING TEST
+(ert-deftest kubernetes-exec-test--exec-command-generation-covers-into ()
+  "Test kubectl command construction AND that kubernetes-exec-into calls it correctly."
+  (let ((term-buffer-started nil)
+        (process-buffer-started nil)
+        (term-buffer-args nil)
+        (process-buffer-args nil))
+    (cl-letf (;; --- Mocks for kubernetes-exec--exec-internal ---
+               ((symbol-function 'kubernetes-kubectl--flags-from-state)
+                (lambda (_) '("--kubeconfig=/test/config")))
+               ((symbol-function 'kubernetes-state--get)
+                (lambda (_ key) (when (eq key 'current-namespace) "test-namespace")))
+               ((symbol-function 'kubernetes-utils-term-buffer-start) ; Mock lower!
+                (lambda (buffer-name executable args)
+                  (setq term-buffer-started t)
+                  (setq term-buffer-args (list buffer-name executable args))
+                  (get-buffer-create "*test-term-buffer*")))
+               ((symbol-function 'kubernetes-utils-process-buffer-start) ; Mock lower!
+                (lambda (buffer-name mode executable args)
+                  (setq process-buffer-started t)
+                  (setq process-buffer-args (list buffer-name mode executable args))
+                  (get-buffer-create "*test-process-buffer*")))
+               ((symbol-function 'kubernetes-utils-generate-operation-buffer-name)
+                (lambda (operation resource-type resource-name args state &optional use-vterm) ; Handle optional arg
+                  (format "*kubernetes %s: %s/%s/%s%s*"
+                          operation
+                          (or (kubernetes-state--get state 'current-namespace) "default")
+                          resource-type
+                          resource-name
+                          (let ((container-arg (seq-find (lambda (arg) (string-prefix-p "--container=" arg)) args)))
+                            (if container-arg
+                                (format ":%s" (substring container-arg (length "--container=")))
+                              "")))))
+               ((symbol-function 'get-buffer-process) (lambda (_) nil))
+               ((symbol-function 'set-process-sentinel) #'ignore)
+               ((symbol-function 'select-window) #'ignore)
+               ((symbol-function 'display-buffer) #'identity)
+               ;; --- Mocks potentially needed by kubernetes-exec-into (interactive call) ---
+               ((symbol-function 'kubernetes-utils-read-resource-if-needed)
+                 (lambda (state types default) (cons "pod" "fallback-pod"))) ; For interactive testing if needed
+               ((symbol-function 'read-string) (lambda (&rest _) "/bin/bash"))
+               ((symbol-function 'string-trim) #'identity)
+               ((symbol-function 'string-empty-p) #'ignore)
+               ((symbol-function 'transient-args) (lambda (_) '("--tty")))) ; Assume --tty for term test
+
+      (unwind-protect
+          (progn
+            ;; --- Test kubernetes-exec-into directly ---
+            ;; Case 1: Plain pod name (should use term due to --tty from transient-args mock)
+            (kubernetes-exec-into "test-pod" '("--tty") "/bin/bash" 'mock-state)
+            (should term-buffer-started)
+            (should-not process-buffer-started)
+            (should (string-match-p "\\*kubernetes exec term: test-namespace/pod/test-pod\\*" (car term-buffer-args)))
+            (let ((cmd-args (nth 2 term-buffer-args)))
+              (should (member "exec" cmd-args))
+              (should (member "pod/test-pod" cmd-args))
+              (should (member "--tty" cmd-args))
+              (should (member "/bin/bash" cmd-args)))
+            (setq term-buffer-started nil term-buffer-args nil) ; Reset
+
+            ;; Case 2: Resource/name format (should use term)
+            (kubernetes-exec-into "deployment/test-deploy" '("--tty" "--container=web") "/bin/sh" 'mock-state)
+            (should term-buffer-started)
+            (should-not process-buffer-started)
+            (should (string-match-p "\\*kubernetes exec term: test-namespace/deployment/test-deploy:web\\*" (car term-buffer-args)))
+             (let ((cmd-args (nth 2 term-buffer-args)))
+              (should (member "exec" cmd-args))
+              (should (member "deployment/test-deploy" cmd-args))
+              (should (member "--container=web" cmd-args))
+              (should (member "--tty" cmd-args))
+              (should (member "/bin/sh" cmd-args)))
+            (setq term-buffer-started nil term-buffer-args nil) ; Reset
+
+            ;; Case 3: No TTY (should use process buffer)
+            (kubernetes-exec-into "job/test-job" '("--container=side") "ls" 'mock-state)
+            (should-not term-buffer-started)
+            (should process-buffer-started)
+            (should (string-match-p "\\*kubernetes exec term: test-namespace/job/test-job:side\\*" (car process-buffer-args))) ;; Note: generate uses 'exec term' still
+            (let ((cmd-args (nth 3 process-buffer-args)))
+              (should (member "exec" cmd-args))
+              (should (member "job/test-job" cmd-args))
+              (should (member "--container=side" cmd-args))
+              (should (not (member "--tty" cmd-args)))
+              (should (member "ls" cmd-args)))
+             (setq process-buffer-started nil process-buffer-args nil) ; Reset
+             )
+        ;; Clean up any temp buffers
+        (when (get-buffer "*test-term-buffer*") (kill-buffer "*test-term-buffer*"))
+        (when (get-buffer "*test-process-buffer*") (kill-buffer "*test-process-buffer*"))))))
+
+;; (ert-deftest kubernetes-exec-test-using-vterm-coverage ()
+;;   "Test coverage for kubernetes-exec-using-vterm internal logic."
+;;   (let ((vterm-start-called nil)
+;;         (vterm-start-args nil))
+;;     (cl-letf (;; Mocks needed by kubernetes-exec-using-vterm
+;;                ((symbol-function 'kubernetes-kubectl--flags-from-state)
+;;                 (lambda (_) '("--kubeconfig=/test/config")))
+;;                ((symbol-function 'kubernetes-state--get)
+;;                 (lambda (_ key) (when (eq key 'current-namespace) "prod-ns")))
+;;                ((symbol-function 'require) ; Mock require
+;;                 (lambda (feature &optional noerror)
+;;                   (should (eq feature 'vterm)) ; Verify it tries to require vterm
+;;                   t)) ; Simulate vterm is available
+;;                ((symbol-function 'kubernetes-utils-vterm-start) ; Mock the final action
+;;                 (lambda (buffer-name executable command-args)
+;;                   (setq vterm-start-called t)
+;;                   (setq vterm-start-args (list buffer-name executable command-args))
+;;                   (get-buffer-create "*test-vterm-buffer*")))
+;;                ((symbol-function 'kubernetes-utils-generate-operation-buffer-name)
+;;                 (lambda (operation resource-type resource-name args state t) ; Verify vterm flag is true
+;;                   (should (equal operation "exec vterm"))
+;;                   (should t) ; Check the vterm flag
+;;                   (format "*kubernetes %s: %s/%s/%s%s*" operation resource-type resource-name
+;;                           (or (kubernetes-state--get state 'current-namespace) "default")
+;;                           (let ((container-arg (seq-find (lambda (arg) (string-prefix-p "--container=" arg)) args)))
+;;                             (if container-arg (format ":%s" (substring container-arg (length "--container="))) ""))))))
+
+;;       (unwind-protect
+;;           (progn
+;;             ;; Case 1: Plain pod name
+;;             (kubernetes-exec-using-vterm "my-pod" '("-i" "-t") "/bin/zsh" 'mock-state)
+;;             (should vterm-start-called)
+;;             (should (string-match-p "\\*kubernetes exec vterm: prod-ns/pod/my-pod\\*" (car vterm-start-args)))
+;;             (let ((cmd-args (nth 2 vterm-start-args)))
+;;                (should (member "exec" cmd-args))
+;;                (should (member "pod/my-pod" cmd-args))
+;;                (should (member "/bin/zsh" cmd-args))
+;;                (should (member "--namespace=prod-ns" cmd-args)))
+;;             (setq vterm-start-called nil vterm-start-args nil) ; Reset
+
+;;             ;; Case 2: Resource/name format
+;;             (kubernetes-exec-using-vterm "statefulset/db" '("--container=main") "psql" 'mock-state)
+;;             (should vterm-start-called)
+;;             (should (string-match-p "\\*kubernetes exec vterm: prod-ns/statefulset/db:main\\*" (car vterm-start-args)))
+;;              (let ((cmd-args (nth 2 vterm-start-args)))
+;;                (should (member "exec" cmd-args))
+;;                (should (member "statefulset/db" cmd-args))
+;;                (should (member "--container=main" cmd-args))
+;;                (should (member "psql" cmd-args)))
+;;             (setq vterm-start-called nil vterm-start-args nil) ; Reset
+
+;;             ;; Case 3: Vterm not available (mock require to return nil)
+;;             (cl-letf (((symbol-function 'require)
+;;                        (lambda (feature &optional noerror)
+;;                          (when (eq feature 'vterm) (should-not noerror)) ; Check noerror flag if used
+;;                          nil)))
+;;               (should-error (kubernetes-exec-using-vterm "my-pod" '() "ls" 'mock-state)))
+
+;;             )
+;;         (when (get-buffer "*test-vterm-buffer*") (kill-buffer "*test-vterm-buffer*")))))
+
+;;   (ert-deftest kubernetes-exec-test-into-with-check-coverage ()
+;;   "Test coverage for kubernetes-exec-into-with-check logic."
+;;   (let ((exec-into-called nil)
+;;         (exec-into-args nil)
+;;         (default-command kubernetes-default-exec-command)) ; Store default for verification
+;;     (cl-letf (;; --- Mocks for the 'check' part ---
+;;                ((symbol-function 'kubernetes-utils-has-valid-resource-p)
+;;                 (lambda (types) t)) ; Assume valid resource for success path
+;;                ((symbol-function 'kubernetes-state)
+;;                 (lambda () 'mock-state))
+;;                ((symbol-function 'transient-args)
+;;                 (lambda (_) '("--tty"))) ; Provide some transient args
+;;                ((symbol-function 'kubernetes-utils-get-effective-resource)
+;;                 (lambda (state types) (cons "deployment" "web-server"))) ; Test non-pod resource type
+;;                ((symbol-function 'read-string)
+;;                 (lambda (prompt &rest _) "custom-command")) ; Simulate user entering a command
+;;                ((symbol-function 'string-empty-p) (lambda (s) (equal s "")))
+;;                ((symbol-function 'string-trim) #'identity)
+;;                ;; --- Mock the function called *by* the function under test ---
+;;                ;; LET THE REAL kubernetes-exec-into run, but mock its dependencies
+;;                ((symbol-function 'kubernetes-exec--exec-internal) ; Mock the internal function called by exec-into
+;;                 (lambda (resource-type resource-name args command state)
+;;                   (setq exec-into-called t) ; Use this flag to know exec-into was effectively called
+;;                   (setq exec-into-args (list resource-type resource-name args command state))
+;;                   ;; Minimal mocking below just to prevent errors
+;;                   (get-buffer-create "*dummy-exec-buffer*"))))
+
+;;       (unwind-protect
+;;           (progn
+;;             ;; Case 1: Successful execution with custom command
+;;             (kubernetes-exec-into-with-check '("--tty") 'mock-state)
+;;             (should exec-into-called)
+;;             ;; Verify args passed to exec--exec-internal (called via exec-into)
+;;             (should (equal (car exec-into-args) "deployment")) ; from get-effective-resource mock
+;;             (should (equal (nth 1 exec-into-args) "web-server"))
+;;             (should (equal (nth 2 exec-into-args) '("--tty"))) ; from transient-args mock
+;;             (should (equal (nth 3 exec-into-args) "custom-command")) ; from read-string mock
+;;             (setq exec-into-called nil exec-into-args nil) ; Reset
+
+;;             ;; Case 2: Successful execution using default command
+;;             (cl-letf (((symbol-function 'read-string) (lambda (prompt &rest _) ""))) ; Simulate empty input
+;;               (kubernetes-exec-into-with-check '("--no-flag") 'mock-state)
+;;               (should exec-into-called)
+;;               (should (equal (nth 3 exec-into-args) default-command))) ; Check default command used
+;;             (setq exec-into-called nil exec-into-args nil) ; Reset
+
+;;             ;; Case 3: Resource type is pod
+;;              (cl-letf (((symbol-function 'kubernetes-utils-get-effective-resource)
+;;                         (lambda (state types) (cons "pod" "db-pod")))) ; Test pod resource type
+;;                (kubernetes-exec-into-with-check '("--tty") 'mock-state)
+;;                (should exec-into-called)
+;;                (should (equal (car exec-into-args) "pod"))
+;;                (should (equal (nth 1 exec-into-args) "db-pod")))
+;;             (setq exec-into-called nil exec-into-args nil) ; Reset
+
+
+;;             ;; Case 4: No valid resource selected
+;;             (cl-letf (((symbol-function 'kubernetes-utils-has-valid-resource-p)
+;;                        (lambda (types) nil))) ; Simulate no resource
+;;               (should-error (kubernetes-exec-into-with-check '() 'mock-state) :type 'user-error)))
+;;         (when (get-buffer "*dummy-exec-buffer*") (kill-buffer "*dummy-exec-buffer*")))))))
 
 ;;; kubernetes-exec-test.el ends here
