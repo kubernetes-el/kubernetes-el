@@ -168,7 +168,7 @@ STATE is the current application state."
                            cmd))))
                  (list resource-path (transient-args 'kubernetes-exec) command state)))
 
-  (unless (require 'vterm nil 'noerror)
+  (unless (require 'vterm nil t)
     (error "This action requires the vterm package"))
 
   ;; Handle different resource formats
