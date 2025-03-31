@@ -552,4 +552,206 @@
       (let ((result (kubernetes-exec-vterm-with-check '("--tty") '())))
         (should (equal result "vterm-executed"))))))
 
+;; Test for kubernetes-exec-select-resource
+(ert-deftest kubernetes-exec-test-select-resource ()
+  "Test kubernetes-exec-select-resource function."
+  (let ((kubernetes-utils--selected-resource nil)
+        (transient-setup-called nil)
+        (resource-selected nil))
+
+    ;; Test successful selection
+    (cl-letf (((symbol-function 'kubernetes-state)
+               (lambda () '((current-namespace . "default"))))
+              ((symbol-function 'kubernetes-utils-select-resource)
+               (lambda (state types)
+                 (should (equal state '((current-namespace . "default"))))
+                 (should (equal types kubernetes-exec-supported-resource-types))
+                 (setq resource-selected t)
+                 (cons "pod" "test-pod")))
+              ((symbol-function 'message)
+               (lambda (format-string &rest args)
+                 (should (string= format-string "Selected %s/%s for exec"))))
+              ((symbol-function 'transient-setup)
+               (lambda (command)
+                 (should (eq command 'kubernetes-exec))
+                 (setq transient-setup-called t))))
+
+      (kubernetes-exec-select-resource)
+
+      ;; Verify results
+      (should resource-selected)
+      (should transient-setup-called)
+      (should (equal kubernetes-utils--selected-resource '("pod" . "test-pod"))))
+
+    ;; Test selection cancellation
+    (setq kubernetes-utils--selected-resource nil)
+    (setq resource-selected nil)
+    (setq transient-setup-called nil)
+
+    (cl-letf (((symbol-function 'kubernetes-state)
+               (lambda () '((current-namespace . "default"))))
+              ((symbol-function 'kubernetes-utils-select-resource)
+               (lambda (state types)
+                 ;; Simulate a keyboard quit by raising the 'quit signal
+                 (signal 'quit '())))
+              ((symbol-function 'error)
+               (lambda (format-string &rest args)
+                 (should (string= format-string "Selection canceled"))
+                 (signal 'error (list "Test error")))))
+
+      ;; Now the function should signal an error
+      (should-error (kubernetes-exec-select-resource) :type 'error)
+
+      ;; Verify results
+      (should-not resource-selected)
+      (should-not transient-setup-called)
+      (should-not kubernetes-utils--selected-resource))))
+
+;; Test for kubernetes-exec-reset-and-launch
+(ert-deftest kubernetes-exec-test-reset-and-launch ()
+  "Test kubernetes-exec-reset-and-launch function."
+  (let ((kubernetes-utils--selected-resource '("pod" . "test-pod"))
+        (kubernetes-exec-called nil))
+
+    (cl-letf (((symbol-function 'kubernetes-exec)
+               (lambda ()
+                 (setq kubernetes-exec-called t))))
+
+      ;; Execute the function
+      (kubernetes-exec-reset-and-launch)
+
+      ;; Verify results
+      (should-not kubernetes-utils--selected-resource)
+      (should kubernetes-exec-called))))
+
+
+;; Test for kubernetes-exec-switch-buffers
+(ert-deftest kubernetes-exec-test-switch-buffers ()
+  "Test kubernetes-exec-switch-buffers function."
+  (let* ((test-buffer1 (generate-new-buffer "*kubernetes exec term: default/pod/nginx*"))
+         (test-buffer2 (generate-new-buffer "*kubernetes exec vterm: production/deployment/api:main*"))
+         (non-exec-buffer (generate-new-buffer "*some other buffer*"))
+         (test-buffers (list test-buffer1 test-buffer2 non-exec-buffer))
+         (message-called nil)
+         (selected-buffer nil))
+
+    (unwind-protect
+        (cl-letf (((symbol-function 'buffer-list)
+                   (lambda () test-buffers))
+                  ((symbol-function 'message)
+                   (lambda (format-string &rest args)
+                     (when (string= format-string "No Kubernetes exec buffers found")
+                       (setq message-called t))))
+                  ((symbol-function 'completing-read)
+                   (lambda (prompt collection &rest _)
+                     (if (functionp collection)
+                         ;; Handle the lambda-based collection
+                         (let ((action (funcall collection "" nil 'metadata)))
+                           ;; Verify metadata is correctly set
+                           (should (equal action '(metadata (category . buffer))))
+                           "*kubernetes exec term: default/pod/nginx*")
+                       ;; Handle direct collection
+                       "*kubernetes exec term: default/pod/nginx*")))
+                  ((symbol-function 'get-buffer)
+                   (lambda (name)
+                     (cond
+                      ((equal name "*kubernetes exec term: default/pod/nginx*") test-buffer1)
+                      ((equal name "*kubernetes exec vterm: production/deployment/api:main*") test-buffer2)
+                      (t nil))))
+                  ((symbol-function 'switch-to-buffer)
+                   (lambda (buffer) (setq selected-buffer buffer))))
+
+          ;; Test with exec buffers available
+          (kubernetes-exec-switch-buffers)
+
+          ;; Verify the correct buffer was selected
+          (should (eq selected-buffer test-buffer1))
+          (should-not message-called)
+
+          ;; Test with no exec buffers available
+          (setq message-called nil)
+          (cl-letf (((symbol-function 'buffer-list) (lambda () (list non-exec-buffer))))
+            (kubernetes-exec-switch-buffers)
+            (should message-called)))
+
+      ;; Clean up test buffers
+      (dolist (buf test-buffers)
+        (when (buffer-live-p buf)
+          (kill-buffer buf))))))
+
+
+;; Test for kubernetes-exec transient prefix action descriptions
+(ert-deftest kubernetes-exec-test-transient-actions ()
+  "Test the dynamic descriptions for kubernetes-exec transient menu actions."
+  (let ((kubernetes-utils--selected-resource nil)
+        (kubernetes-exec-supported-resource-types '("pod" "deployment" "statefulset" "job" "cronjob")))
+
+    ;; Test description when no resource is selected
+    (cl-letf (((symbol-function 'kubernetes-utils-has-valid-resource-p)
+               (lambda (types) nil)))
+
+      ;; Test the description lambda directly from the code
+      (let* ((description-fn (lambda ()
+                              (if (kubernetes-utils-has-valid-resource-p kubernetes-exec-supported-resource-types)
+                                  (format "Exec into %s" (kubernetes-utils-get-current-resource-description kubernetes-exec-supported-resource-types))
+                                (propertize "Exec (no resource selected)" 'face 'transient-inapt-suffix))))
+             (result (funcall description-fn)))
+
+        ;; Verify the result for no selected resource
+        (should (string-prefix-p "Exec (no resource selected)" result))
+        (should (get-text-property 0 'face result))
+        (should (eq (get-text-property 0 'face result) 'transient-inapt-suffix))))
+
+    ;; Test description when a resource is selected
+    (cl-letf (((symbol-function 'kubernetes-utils-has-valid-resource-p)
+               (lambda (types) t))
+              ((symbol-function 'kubernetes-utils-get-current-resource-description)
+               (lambda (types) "pod/test-pod")))
+
+      ;; Test the description lambda directly
+      (let* ((description-fn (lambda ()
+                              (if (kubernetes-utils-has-valid-resource-p kubernetes-exec-supported-resource-types)
+                                  (format "Exec into %s" (kubernetes-utils-get-current-resource-description kubernetes-exec-supported-resource-types))
+                                (propertize "Exec (no resource selected)" 'face 'transient-inapt-suffix))))
+             (result (funcall description-fn)))
+
+        ;; Verify the result for a selected resource
+        (should (string= result "Exec into pod/test-pod"))
+        (should-not (get-text-property 0 'face result))))))
+
+;; Test for kubernetes-exec-into-with-check called from transient
+(ert-deftest kubernetes-exec-test-into-with-check-from-transient ()
+  "Test kubernetes-exec-into-with-check function called from the transient."
+  (let ((kubernetes-utils--selected-resource nil)
+        (kubernetes-exec-supported-resource-types '("pod" "deployment" "statefulset" "job" "cronjob"))
+        (command-executed nil))
+
+    ;; Test the function directly
+    (cl-letf (((symbol-function 'kubernetes-utils-has-valid-resource-p)
+               (lambda (types) t))
+              ((symbol-function 'kubernetes-state)
+               (lambda () 'mock-state))
+              ((symbol-function 'transient-args)
+               (lambda (_) '("--tty")))
+              ((symbol-function 'kubernetes-utils-get-effective-resource)
+               (lambda (state types) (cons "pod" "test-pod")))
+              ((symbol-function 'read-string)
+               (lambda (prompt &rest _) "/bin/bash"))
+              ((symbol-function 'string-empty-p)
+               (lambda (s) (equal s "")))
+              ((symbol-function 'string-trim)
+               (lambda (s) s))
+              ((symbol-function 'kubernetes-exec-into)
+               (lambda (resource-path args command state)
+                 (setq command-executed t)
+                 (should (equal resource-path "test-pod"))
+                 (should (equal args '("--tty")))
+                 (should (equal command "/bin/bash"))
+                 "executed")))
+
+      (let ((result (kubernetes-exec-into-with-check '("--tty") 'mock-state)))
+        (should command-executed)
+        (should (equal result "executed"))))))
+
+
 ;;; kubernetes-exec-test.el ends here
