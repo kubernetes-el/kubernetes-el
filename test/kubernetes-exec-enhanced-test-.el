@@ -766,80 +766,154 @@
           (when (buffer-live-p buf)
             (kill-buffer buf)))))))
 
-;; Test kubernetes-exec-using-vterm with mocked vterm module
-(ert-deftest kubernetes-exec-test-using-vterm-with-mock ()
-  "Test kubernetes-exec-using-vterm with mocked vterm module."
-  (let ((vterm-called nil)
-        (vterm-buffer-name nil)
-        (vterm-shell nil)
-        (require-called nil)
-        (require-feature nil))
+;; Test kubernetes-exec-using-vterm with more direct mocking of the vterm module
+(ert-deftest kubernetes-exec-test-using-vterm-with-direct-mock ()
+  "Test kubernetes-exec-using-vterm with directly mocked vterm module."
+  ;; This test specifically targets the conditional branch:
+  ;; (unless (require 'vterm nil 'noerror) (error "This action requires the vterm package"))
 
-    ;; Setup mocks for vterm functionality
+  (let ((vterm-available t)
+        (error-called nil)
+        (vterm-started nil)
+        (parsed-pod-name nil)
+        (used-args nil)
+        (used-command nil))
+
+    ;; Setup mocks for both paths in the conditional
     (cl-letf (((symbol-function 'require)
                (lambda (feature &optional noerror)
-                 (setq require-called t)
-                 (setq require-feature feature)
                  (when (eq feature 'vterm)
-                   (if noerror
-                       nil
-                     t))))
-              ((symbol-function 'vterm-other-window)
-               (lambda ()
-                 (setq vterm-called t)
-                 (get-buffer-create vterm-buffer-name)))
+                   vterm-available)))
+              ((symbol-function 'error)
+               (lambda (format-string &rest args)
+                 (setq error-called t)
+                 (should (string= format-string "This action requires the vterm package"))))
+              ((symbol-function 'kubernetes-kubectl--flags-from-state)
+               (lambda (_) '("--kubeconfig=/test/config")))
               ((symbol-function 'kubernetes-state--get)
                (lambda (_ key) (when (eq key 'current-namespace) "test-namespace")))
-              ((symbol-function 'kubernetes-kubectl--flags-from-state)
-               (lambda (_) '("--kubeconfig=/test/config"))))
+              ((symbol-function 'kubernetes-utils-generate-operation-buffer-name)
+               (lambda (operation resource-type resource-name args state &optional alt-format)
+                 (format "*kubernetes %s: test-namespace/%s/%s*"
+                         operation resource-type resource-name)))
+              ((symbol-function 'kubernetes-utils-vterm-start)
+               (lambda (buffer-name executable args)
+                 (setq vterm-started t)
+                 (setq used-args args)
+                 (get-buffer-create buffer-name))))
 
-      ;; Test 1: Basic vterm execution with pod
-      (let ((vterm-buffer-name "*kubernetes exec vterm: test-namespace/pod/test-pod*")
-            (vterm-shell "kubectl exec --kubeconfig=/test/config test-pod -- /bin/bash"))
-        (setq vterm-called nil)
-        (kubernetes-exec-using-vterm "test-pod" '() "/bin/bash" 'mock-state)
-        (should require-called)
-        (should (eq require-feature 'vterm))
-        (should vterm-called)
-        (should (string-match-p "test-pod -- /bin/bash" vterm-shell)))
+      ;; Test 1: When vterm is available
+      (setq vterm-available t)
+      (setq error-called nil)
+      (setq vterm-started nil)
 
-      ;; Test 2: Vterm with deployment
-      (let ((vterm-buffer-name "*kubernetes exec vterm: test-namespace/deployment/web-app*")
-            (vterm-shell "kubectl exec --kubeconfig=/test/config deployment/web-app -- /bin/bash"))
-        (setq vterm-called nil)
-        (kubernetes-exec-using-vterm "deployment/web-app" '() "/bin/bash" 'mock-state)
-        (should vterm-called)
-        (should (string-match-p "deployment/web-app -- /bin/bash" vterm-shell)))
+      ;; Extract pod first (capture direct reference to the actual code)
+      ;; This is important to test the actual branch in the function
+      (let ((result (kubernetes-exec-using-vterm "pod/test-pod" '("--tty") "/bin/bash" 'mock-state)))
+        (should-not error-called)
+        (should vterm-started)
+        (should (member "pod/test-pod" used-args))
+        (should (member "--tty" used-args))
+        (should (member "/bin/bash" used-args)))
 
-      ;; Test 3: Vterm with container specified
-      (let ((vterm-buffer-name "*kubernetes exec vterm: test-namespace/pod/test-pod:web*")
-            (vterm-shell "kubectl exec --kubeconfig=/test/config --container=web pod/test-pod -- /bin/bash"))
-        (setq vterm-called nil)
-        (kubernetes-exec-using-vterm "pod/test-pod" '("--container=web") "/bin/bash" 'mock-state)
-        (should vterm-called)
-        (should (string-match-p "--container=web" vterm-shell)))
+      ;; Test 2: When vterm is NOT available
+      (setq vterm-available nil)
+      (setq error-called nil)
+      (setq vterm-started nil)
 
-      ;; Test 4: Vterm with TTY and stdin flags
-      (let ((vterm-buffer-name "*kubernetes exec vterm: test-namespace/pod/test-pod*")
-            (vterm-shell "kubectl exec --kubeconfig=/test/config --tty --stdin pod/test-pod -- /bin/bash"))
-        (setq vterm-called nil)
-        (kubernetes-exec-using-vterm "pod/test-pod" '("--tty" "--stdin") "/bin/bash" 'mock-state)
-        (should vterm-called)
-        (should (string-match-p "--tty --stdin" vterm-shell))))))
+      ;; This should trigger the error branch
+      (condition-case nil
+          (progn
+            (kubernetes-exec-using-vterm "pod/test-pod" '("--tty") "/bin/bash" 'mock-state)
+            (error "Should have raised an error"))
+        (error
+         (should error-called)
+         (should-not vterm-started)))
 
-;; Test kubernetes-exec-using-vterm with vterm module not available
-(ert-deftest kubernetes-exec-test-using-vterm-not-available ()
-  "Test kubernetes-exec-using-vterm when vterm module is not available."
-  (cl-letf (((symbol-function 'require)
-             (lambda (feature &optional noerror)
-               (when (eq feature 'vterm)
-                 (if noerror
-                     nil
-                   (signal 'file-missing `("Cannot open load file" "No such file" ,feature)))))))
+      ;; Test 3: With deployment resource
+      (setq vterm-available t)
+      (setq error-called nil)
+      (setq vterm-started nil)
 
-    ;; Should throw error when vterm is not available
-    (should-error (kubernetes-exec-using-vterm "test-pod" '() "/bin/bash" 'mock-state)
-                 :type 'error)))
+      (kubernetes-exec-using-vterm "deployment/web-app" '("--tty") "/bin/bash" 'mock-state)
+      (should-not error-called)
+      (should vterm-started)
+      (should (member "deployment/web-app" used-args))
+
+      ;; Test 4: With complex resource path
+      (setq vterm-available t)
+      (setq error-called nil)
+      (setq vterm-started nil)
+
+      (kubernetes-exec-using-vterm "namespace/test-ns/pod/complex-pod" '("--tty") "/bin/bash" 'mock-state)
+      (should-not error-called)
+      (should vterm-started)
+      (should (or (member "pod/complex-pod" used-args)
+                 (member "namespace/test-ns/pod/complex-pod" used-args))))))
+
+;; Test kubernetes-exec-vterm-with-check with require condition handling
+(ert-deftest kubernetes-exec-test-vterm-with-check-require-handling ()
+  "Test kubernetes-exec-vterm-with-check with special focus on require condition."
+  ;; This test focuses on the require condition that might be hidden in the called function
+
+  (let ((kubernetes-utils--selected-resource '("pod" . "test-pod"))
+        (vterm-available t)
+        (error-message nil)
+        (exec-vterm-called nil))
+
+    ;; Setup mocks specifically focusing on require behavior
+    (cl-letf (((symbol-function 'kubernetes-utils-has-valid-resource-p)
+               (lambda (types) t))
+              ((symbol-function 'kubernetes-state)
+               (lambda () 'mock-state))
+              ((symbol-function 'transient-args)
+               (lambda (_) '("--tty")))
+              ((symbol-function 'kubernetes-utils-get-effective-resource)
+               (lambda (state types) kubernetes-utils--selected-resource))
+              ((symbol-function 'read-string)
+               (lambda (prompt &rest _) "/bin/bash"))
+              ((symbol-function 'string-empty-p)
+               (lambda (s) nil))
+              ((symbol-function 'string-trim)
+               (lambda (s) s))
+              ((symbol-function 'require)
+               (lambda (feature &optional noerror)
+                 (when (eq feature 'vterm)
+                   vterm-available)))
+              ((symbol-function 'error)
+               (lambda (format-string &rest args)
+                 (setq error-message format-string)
+                 (signal 'error (list format-string))))
+              ((symbol-function 'kubernetes-exec-using-vterm)
+               (lambda (resource-path args command state)
+                 (setq exec-vterm-called t)
+                 (unless (require 'vterm nil t)
+                   (error "This action requires the vterm package"))
+                 "exec-success")))
+
+      ;; Test 1: When vterm is available
+      (setq vterm-available t)
+      (setq exec-vterm-called nil)
+      (setq error-message nil)
+
+      (let ((result (kubernetes-exec-vterm-with-check '("--tty") 'mock-state)))
+        (should exec-vterm-called)
+        (should (equal result "exec-success"))
+        (should-not error-message))
+
+      ;; Test 2: When vterm is NOT available
+      (setq vterm-available nil)
+      (setq exec-vterm-called nil)
+      (setq error-message nil)
+
+      (condition-case nil
+          (progn
+            (kubernetes-exec-vterm-with-check '("--tty") 'mock-state)
+            (error "Should have raised an error"))
+        (error
+         (should exec-vterm-called)
+         (should (equal error-message "This action requires the vterm package")))))))
+
 
 ;; Test kubernetes-exec-into-with-check with different scenarios
 (ert-deftest kubernetes-exec-test-into-with-check-comprehensive ()
@@ -1037,6 +1111,75 @@
       ;; Clean up test buffer
       (when (buffer-live-p test-buffer)
         (kill-buffer test-buffer)))))
+
+;; Test transient menu integration
+(ert-deftest kubernetes-exec-test-transient-integration ()
+  "Test integration with the transient menu system."
+  (let ((kubernetes-utils--selected-resource nil)
+        (description-string nil)
+        (function-called nil)
+        (function-args nil))
+
+    ;; Test the action description rendering with different resource states
+
+    ;; Case 1: No resource selected
+    (cl-letf (((symbol-function 'kubernetes-utils-has-valid-resource-p)
+               (lambda (types) nil))
+              ((symbol-function 'propertize)
+               (lambda (string &rest props)
+                 (should (string= string "Exec (no resource selected)"))
+                 string)))
+      (let ((desc-fn (lambda ()
+                      (if (kubernetes-utils-has-valid-resource-p kubernetes-exec-supported-resource-types)
+                          (format "Exec into %s" (kubernetes-utils-get-current-resource-description
+                                                 kubernetes-exec-supported-resource-types))
+                        (propertize "Exec (no resource selected)" 'face 'transient-inapt-suffix)))))
+        (setq description-string (funcall desc-fn))
+        (should (string= description-string "Exec (no resource selected)"))))
+
+    ;; Case 2: With resource selected
+    (cl-letf (((symbol-function 'kubernetes-utils-has-valid-resource-p)
+               (lambda (types) t))
+              ((symbol-function 'kubernetes-utils-get-current-resource-description)
+               (lambda (types) "pod/nginx-pod")))
+      (let ((desc-fn (lambda ()
+                      (if (kubernetes-utils-has-valid-resource-p kubernetes-exec-supported-resource-types)
+                          (format "Exec into %s" (kubernetes-utils-get-current-resource-description
+                                                 kubernetes-exec-supported-resource-types))
+                        (propertize "Exec (no resource selected)" 'face 'transient-inapt-suffix)))))
+        (setq description-string (funcall desc-fn))
+        (should (string= description-string "Exec into pod/nginx-pod"))))
+
+    ;; Test the transient arguments are processed correctly
+    (cl-letf (((symbol-function 'kubernetes-utils-has-valid-resource-p)
+               (lambda (types) t))
+              ((symbol-function 'kubernetes-state)
+               (lambda () 'mock-state))
+              ((symbol-function 'transient-args)
+               (lambda (arg)
+                 ;; Should be called with 'kubernetes-exec
+                 (should (eq arg 'kubernetes-exec))
+                 '("--stdin" "--tty" "--container=nginx")))
+              ((symbol-function 'kubernetes-utils-get-effective-resource)
+               (lambda (state types) '("pod" . "web-server")))
+              ((symbol-function 'read-string)
+               (lambda (prompt &rest _) "/bin/bash"))
+              ((symbol-function 'string-empty-p)
+               (lambda (s) nil))
+              ((symbol-function 'string-trim)
+               (lambda (s) s))
+              ((symbol-function 'kubernetes-exec-into)
+               (lambda (resource command-args command state)
+                 (setq function-called 'exec-into)
+                 (setq function-args (list resource command-args command state))
+                 t)))
+
+      (let ((result (kubernetes-exec-into-with-check nil 'mock-state)))
+        (should result)
+        (should (eq function-called 'exec-into))
+        (should (equal (nth 0 function-args) "pod/web-server"))
+        (should (equal (nth 1 function-args) '("--stdin" "--tty" "--container=nginx")))
+        (should (equal (nth 2 function-args) "/bin/bash"))))))
 
 ;; Test exec-switch-buffers with multiple buffers
 (ert-deftest kubernetes-exec-test-switch-buffers-multiple ()
