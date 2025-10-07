@@ -23,7 +23,7 @@
 !!! note
 
     More explicit guarantees around Kubernetes compatibility is in the
-    works. See [discussion #236][] for details.
+    works. See [discussion #236](https://github.com/kubernetes-el/kubernetes-el/discussions/236) for details.
 
 We have no guarantees around Kubernetes server compatibility currently. Please
 report any issues to us that you encounter with specific versions.
@@ -33,7 +33,7 @@ report any issues to us that you encounter with specific versions.
 !!! note
 
     More explicit guarantees around Kubernetes compatibility is in the
-    works. See [discussion #236][] for details.
+    works. See [discussion #236](https://github.com/kubernetes-el/kubernetes-el/discussions/236) for details.
 
 We have no guarantees around `kubectl` compatibility currently. Please report
 any issues to us that you encounter with specific versions.
