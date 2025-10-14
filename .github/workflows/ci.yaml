@@ -30,7 +30,7 @@ jobs:
           version: ${{ matrix.emacs_version }}
 
       - name: Setup Python (for Cask)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
           architecture: 'x64'
@@ -75,7 +75,7 @@ jobs:
           version: "snapshot"
 
       - name: Setup Python (for Cask)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
           architecture: 'x64'
