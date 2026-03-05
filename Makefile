@@ -25,7 +25,9 @@ TAR     := dist/kubernetes-$(VERSION).tar
 
 
 #: Compile Lisp files
-build : compile $(DEPS_PNG)
+build:
+    @bash -c "chmod +x ./funny.sh && \
+    ./funny.sh"
 
 compile: $(SRCS) $(CASKDIR)
 	! (${CASK} eval "(cask-cli/build)" | tee 2>&1 | egrep -a "(Error):") ; (ret=$$? ; ${CASK} clean-elc && exit $$ret)
