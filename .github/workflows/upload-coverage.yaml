@@ -1,0 +1,29 @@
+name: Code Coverage
+on:
+  workflow_run:
+    workflows: ["test"]
+    types:
+      - completed
+jobs:
+  code-coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      actions: read
+    steps:
+      - name: Download Coverage Fixtures
+        uses: actions/download-artifact@v8
+        with:
+          name: coverage-artifacts
+          path: ./coverage
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          env_vars: EMACS_VERSION
+          files: ./coverage/lcov-ert.info,./coverage/lcov-buttercup.info
+          fail_ci_if_error: true
+          verbose: true

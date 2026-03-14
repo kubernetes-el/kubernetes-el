@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - master
-  pull_request_target:
+  pull_request:
     branches:
       - master
     types:
@@ -41,8 +41,6 @@ jobs:
           version: "snapshot"
 
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Install
         id: install
@@ -56,15 +54,13 @@ jobs:
         run: |
           make test
 
-      - name: Upload coverage
-        if: steps.install.outcome == 'success' && steps.install.conclusion == 'success'
-        uses: codecov/codecov-action@v5
+      - name: Upload Coverage Fixtures
+        if: matrix.emacs_version == 30.2
+        uses: actions/upload-artifact@v7
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          env_vars: EMACS_VERSION
-          files: ./coverage/lcov-ert.info,./coverage/lcov-buttercup.info
-          fail_ci_if_error: true
-          verbose: true
+          name: coverage-artifacts
+          path: ./coverage
+
 
   test-against-emacs-snapshot-release:
     runs-on: ubuntu-latest
@@ -86,8 +82,6 @@ jobs:
           version: "snapshot"
 
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Install
         id: install
@@ -104,7 +98,7 @@ jobs:
           make test
 
       - name: Add comment if optional job failed; delete otherwise
-        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+        if: github.event_name == 'pull_request'
         uses: thollander/actions-comment-pull-request@v3
         with:
           message: |
