@@ -3,13 +3,7 @@ on:
   push:
     branches:
       - master
-  pull_request_target:
-    branches:
-      - master
-    types:
-      - opened
-      - synchronize
-      - reopened
+  pull_request:
 
 jobs:
   test-against-emacs-stable-releases:
@@ -42,7 +36,7 @@ jobs:
 
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Install
         id: install
@@ -104,7 +98,7 @@ jobs:
           make test
 
       - name: Add comment if optional job failed; delete otherwise
-        if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+        if: github.event_name == 'pull_request'
         uses: thollander/actions-comment-pull-request@v3
         with:
           message: |
