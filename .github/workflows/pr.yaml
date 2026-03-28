@@ -66,6 +66,8 @@ jobs:
 
   test-against-emacs-snapshot-release:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
       - name: Setup Emacs
         uses: purcell/setup-emacs@master
@@ -104,8 +106,6 @@ jobs:
       - name: Add comment if optional job failed; delete otherwise
         if: github.event_name == 'pull_request'
         uses: thollander/actions-comment-pull-request@v3
-        permissions:
-          pull-requests: write
         with:
           message: |
             ### ⚠️ Optional test-against-emacs-snapshot job failed ⚠️
