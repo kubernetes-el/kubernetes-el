@@ -1,9 +1,11 @@
-name: test
+name: pr-test
 on:
   push:
     branches:
       - master
   pull_request:
+
+permissions: {}
 
 jobs:
   test-against-emacs-stable-releases:
@@ -81,7 +83,7 @@ jobs:
 
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Install
         id: install
@@ -100,6 +102,8 @@ jobs:
       - name: Add comment if optional job failed; delete otherwise
         if: github.event_name == 'pull_request'
         uses: thollander/actions-comment-pull-request@v3
+        permissions:
+          pull-requests: write
         with:
           message: |
             ### ⚠️ Optional test-against-emacs-snapshot job failed ⚠️
