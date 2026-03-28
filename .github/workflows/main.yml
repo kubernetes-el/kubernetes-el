@@ -64,8 +64,6 @@ jobs:
 
   test-against-emacs-snapshot-release:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
     steps:
       - name: Setup Emacs
         uses: purcell/setup-emacs@master
@@ -101,10 +99,7 @@ jobs:
         run: |
           make test
 
-      - name: Add comment if optional job failed; delete otherwise
-        if: github.event_name == 'pull_request'
-        uses: thollander/actions-comment-pull-request@v3
-        with:
-          message: |
-            ### ⚠️ Optional test-against-emacs-snapshot job failed ⚠️
-          mode: ${{ steps.test.outcome == 'failure' && 'upsert' || 'delete' }}
+      - name: Warn if snapshot test failed
+        if: steps.test.outcome == 'failure'
+        run: |
+          echo "### ⚠️ Optional test-against-emacs-snapshot job failed ⚠️" >> $GITHUB_STEP_SUMMARY
