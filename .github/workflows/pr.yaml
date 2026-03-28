@@ -1,5 +1,10 @@
-name: pr-test
-on: [push, pull_request]
+name: Kubernetes-el CI
+
+on:
+  push:
+    branches: [ $default-branch ]
+  pull_request:
+    branches: [ $default-branch ]
 
 permissions:
   contents: read
