@@ -1,4 +1,4 @@
-name: Kubernetes-el CI
+name: CI
 
 on:
   push:
