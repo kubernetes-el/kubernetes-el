@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   test-against-emacs-stable-releases:
@@ -64,8 +65,6 @@ jobs:
 
   test-against-emacs-snapshot-release:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
     steps:
       - name: Setup Emacs
         uses: purcell/setup-emacs@master
