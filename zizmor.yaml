@@ -1,0 +1,5 @@
+rules:
+  unpinned-uses:
+    ignore:
+      - pr.yaml
+      - docs.yaml
