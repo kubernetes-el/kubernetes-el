@@ -4,14 +4,12 @@ on:
     branches:
       - master
 
-permissions: {}
-
 jobs:
   build:
     name: Deploy docs
     runs-on: ubuntu-latest
     permissions:
-      content: write
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
