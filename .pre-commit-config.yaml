@@ -18,3 +18,7 @@ repos:
     types: ["yaml"]
     files: ^\.github/workflows/
     entry: actionlint
+- repo: https://github.com/zizmorcore/zizmor-pre-commit
+  rev: v1.23.1
+  hooks:
+    - id: zizmor

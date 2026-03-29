@@ -19,6 +19,7 @@ jobs:
 
   test-against-emacs-stable-releases:
     runs-on: ubuntu-latest
+    environment: ci
     strategy:
       matrix:
         emacs_version:
