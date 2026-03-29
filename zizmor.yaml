@@ -1,5 +1,5 @@
 rules:
   unpinned-uses:
     ignore:
-      - pr.yaml
+      - main.yml
       - docs.yaml
