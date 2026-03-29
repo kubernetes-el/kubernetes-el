@@ -8,6 +8,15 @@ permissions:
   contents: read
 
 jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@v6
+    - uses: pre-commit/action@v3.0.1
+
   test-against-emacs-stable-releases:
     runs-on: ubuntu-latest
     strategy:
@@ -102,4 +111,4 @@ jobs:
       - name: Warn if snapshot test failed
         if: steps.test.outcome == 'failure'
         run: |
-          echo "### ⚠️ Optional test-against-emacs-snapshot job failed ⚠️" >> $GITHUB_STEP_SUMMARY
+          echo "### ⚠️ Optional test-against-emacs-snapshot job failed ⚠️" >> "$GITHUB_STEP_SUMMARY"
