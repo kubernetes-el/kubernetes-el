@@ -11,15 +11,73 @@ versioning][semver].
 
 ## Upcoming
 
+## 0.19.0
+
+### Added
+
+- Add Kubernetes events overview.
+  ([#346](https://github.com/kubernetes-el/kubernetes-el/pull/346))
+- Add dedicated package for exec functionality.
+  ([#349](https://github.com/kubernetes-el/kubernetes-el/pull/349))
+- Add buffer switching functionality for Kubernetes logs.
+  ([#351](https://github.com/kubernetes-el/kubernetes-el/pull/351))
+- Add support for init containers display in pods overview.
+  ([#363](https://github.com/kubernetes-el/kubernetes-el/pull/363))
+- Add support for NetworkPolicies.
+  ([#314](https://github.com/kubernetes-el/kubernetes-el/pull/314))
+- Add basic CronJobs rendering support.
+  ([#335](https://github.com/kubernetes-el/kubernetes-el/pull/335))
+- Add generic resource description functionality.
+  ([#342](https://github.com/kubernetes-el/kubernetes-el/pull/342))
+- Add support for additional resource types in logs command (services, etc.).
+  ([#340](https://github.com/kubernetes-el/kubernetes-el/pull/340),
+  [#344](https://github.com/kubernetes-el/kubernetes-el/pull/344))
+- Add option to get logs from all pods with prefixed output.
+  ([#343](https://github.com/kubernetes-el/kubernetes-el/pull/343))
+- Add enhanced resource selection for exec and logs, prioritizing manually selected resources.
+  ([#364](https://github.com/kubernetes-el/kubernetes-el/pull/364),
+  [#366](https://github.com/kubernetes-el/kubernetes-el/pull/366),
+  [#367](https://github.com/kubernetes-el/kubernetes-el/pull/367))
+- Enable discovery of API groups from cluster.
+  ([#302](https://github.com/kubernetes-el/kubernetes-el/pull/302))
+- Add `dash` package dependency.
+  ([#320](https://github.com/kubernetes-el/kubernetes-el/pull/320))
+
 ### Changed
 
-- Removed strict dependency pin on Emacs 25.1
+- Rename `kubernetes-exec-list-buffers` to `kubernetes-exec-switch-buffers`.
+  ([#352](https://github.com/kubernetes-el/kubernetes-el/pull/352))
+- Standardize buffer naming and improve buffer selection.
+  ([#350](https://github.com/kubernetes-el/kubernetes-el/pull/350))
+- Simplify pod display in overview and improve pod state handling.
+  ([#361](https://github.com/kubernetes-el/kubernetes-el/pull/361))
+- Use `ownerReferences` attribute to build resource relationships.
+  ([#338](https://github.com/kubernetes-el/kubernetes-el/pull/338))
+- Enhance logs management with buffer naming and refresh.
+  ([#341](https://github.com/kubernetes-el/kubernetes-el/pull/341))
+- Simplify resource editing with generic utility function.
+  ([#339](https://github.com/kubernetes-el/kubernetes-el/pull/339))
+- Remove strict dependency pin on Emacs 25.1.
+  ([#296](https://github.com/kubernetes-el/kubernetes-el/pull/296))
+- Remove `define-getter` and `define-accessors` macros.
+  ([#305](https://github.com/kubernetes-el/kubernetes-el/pull/305))
+- Remove compatibility alias `kubernetes-utils-read-pod-name`.
+  ([#301](https://github.com/kubernetes-el/kubernetes-el/pull/301))
 
 ### Fixed
 
-- Fixed bug where log message on changing namespace did not properly reflect the selected namespace. (#297)
-- Fixed an issue where faulty macro definition prevented the overview
-  buffer from successfully refreshing on Emacs 29.x. (#303)
+- Fix consistent resource path format across kubectl interactions.
+  ([#355](https://github.com/kubernetes-el/kubernetes-el/pull/355))
+- Fix interactive functionality in exec and logs.
+  ([#368](https://github.com/kubernetes-el/kubernetes-el/pull/368))
+- Fix pod status handling and pod-deployment relation tracking.
+  ([#345](https://github.com/kubernetes-el/kubernetes-el/pull/345))
+- Fix `"v"` key map in the Kubernetes dispatch menu.
+  ([#348](https://github.com/kubernetes-el/kubernetes-el/pull/348))
+- Fix log message on switching namespace to properly reflect the selected namespace.
+  ([#297](https://github.com/kubernetes-el/kubernetes-el/pull/297))
+- Fix faulty macro definition that prevented the overview buffer from successfully refreshing on Emacs 29.x.
+  ([#303](https://github.com/kubernetes-el/kubernetes-el/pull/303))
 
 ## 0.18.0
 
