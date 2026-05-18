@@ -9,7 +9,7 @@
                     "kubernetes.io/ingress.class": "nginx",
                     "kubernetes.io/tls-acme": "true"
                 },
-                "creationTimestamp": "2019-11-13T14:51:00Z",
+                "creationTimestamp": "2019-07-10T10:43:00Z",
                 "generation": 3,
                 "labels": {
                     "app": "nginx-ingress",

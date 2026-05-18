@@ -63,9 +63,9 @@ Ingress (0)
 
 Ingress (4)
   Name                                          Hosts                                  Address        Age
-  clojurescript-ingress                         domain.example.io           3.10.144.54, 3....        -2y
+  clojurescript-ingress                         domain.example.io           3.10.144.54, 3....        -1y
     Namespace:  default
-    Created:    2019-11-13T14:51:00Z
+    Created:    2019-07-10T10:43:00Z
 
   example-ingress                               myminikube.info                 192.168.99.100        29d
     Namespace:  default
@@ -84,7 +84,7 @@ Ingress (4)
 
 (ert-deftest kubernetes-ingress-test--sample-response ()
   (let ((state `((ingress . ,sample-get-ingress-response)
-                 (current-time . ,(date-to-time "2018-07-10 10:43Z")))))
+                 (current-time . ,(date-to-time "2018-07-10T10:43:00Z")))))
     (with-temp-buffer
       (save-excursion (magit-insert-section (root)
                         (draw-ingress-section state)))

@@ -27,6 +27,7 @@ jobs:
           - 29.4
           - 30.2
           - release-snapshot
+          - snapshot
     env:
       EMACS_VERSION: ${{ matrix.emacs_version }}
     steps:
@@ -71,45 +72,3 @@ jobs:
           files: ./coverage/lcov-ert.info,./coverage/lcov-buttercup.info
           fail_ci_if_error: true
           verbose: true
-
-  test-against-emacs-snapshot-release:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup Emacs
-        uses: purcell/setup-emacs@master
-        with:
-          version: "snapshot"
-
-      - name: Setup Python (for Cask)
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.10'
-          architecture: 'x64'
-
-      - name: Setup Cask
-        uses: conao3/setup-cask@master
-        with:
-          version: "snapshot"
-
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Install
-        id: install
-        run: |
-          emacs --version
-          cask build --verbose
-          make build
-
-      - name: Test
-        continue-on-error: true
-        id: test
-        if: steps.install.outcome == 'success' && steps.install.conclusion == 'success'
-        run: |
-          make test
-
-      - name: Warn if snapshot test failed
-        if: steps.test.outcome == 'failure'
-        run: |
-          echo "### ⚠️ Optional test-against-emacs-snapshot job failed ⚠️" >> "$GITHUB_STEP_SUMMARY"
