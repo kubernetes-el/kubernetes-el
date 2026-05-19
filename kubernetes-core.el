@@ -50,6 +50,28 @@ window state."
                            ,state))
                        (remove 'context sections)))))
 
+(defun kubernetes--hide-sections-marked-hidden ()
+  "Apply invisibility overlays to sections whose `hidden' slot is non-nil.
+The HIDE argument of `magit-insert-section' only sets the section's
+`hidden' slot; the overlay that visually collapses the body is
+created by `magit-section-hide', which the AST evaluator never calls.
+Walk the tree once after rendering and create the same overlay
+`magit-section-hide' would, so the section's heading is the only
+visible row until the user toggles expansion."
+  (when magit-root-section
+    (magit-map-sections
+     (lambda (section)
+       (when (and (not (eq section magit-root-section))
+                  (oref section hidden)
+                  (oref section content))
+         (let ((beg (oref section content))
+               (end (oref section end)))
+           (remove-overlays beg end 'invisible t)
+           (let ((overlay (make-overlay beg end)))
+             (overlay-put overlay 'evaporate t)
+             (overlay-put overlay 'invisible t)
+             (overlay-put overlay 'cursor-intangible t))))))))
+
 (defun kubernetes--redraw-overview-buffer ()
   "Redraws the main buffer using the current state."
   (when-let (buf (get-buffer kubernetes-overview-buffer-name))
@@ -63,7 +85,8 @@ window state."
           (kubernetes--save-window-state
            (let ((inhibit-read-only t))
              (erase-buffer)
-             (kubernetes-ast-eval (kubernetes--overview-render (kubernetes-state)))))
+             (kubernetes-ast-eval (kubernetes--overview-render (kubernetes-state)))
+             (kubernetes--hide-sections-marked-hidden)))
 
           ;; Force the section at point to highlight.
           (magit-section-update-highlight))))))
