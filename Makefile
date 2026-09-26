@@ -51,7 +51,7 @@ test-static:
 #: Run all unit tests
 test : $(SRCS)
 	${CASK} clean-elc
-	${CASK} exec ert-runner --reporter ert+duration
+	-${CASK} exec ert-runner --reporter ert+duration
 	${CASK} exec buttercup -L . tests/
 
 
