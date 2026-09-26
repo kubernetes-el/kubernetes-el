@@ -712,9 +712,12 @@ arguments."
 (defun kubernetes-state-update-last-error (message command time)
   (cl-assert (stringp message))
   (cl-assert (stringp command))
-  (cl-assert time)
-  (cl-assert (listp time))
-  (cl-assert (-all? #'integerp time))
+  ;; `time' is an Emacs time value, which may be a plain integer (a tick
+  ;; count at 1 Hz), a (TICKS . HZ) pair, or the legacy (HIGH LOW USEC PSEC)
+  ;; list, depending on the Emacs version and `current-time-list'. Don't
+  ;; assume a particular shape here; just check it is one of the valid
+  ;; representations.
+  (cl-assert (or (integerp time) (consp time)))
   (let ((arg `((message . ,message)
                (command . ,command)
                (time . ,time))))
