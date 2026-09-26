@@ -20,7 +20,9 @@ jobs:
   test-against-emacs-stable-releases:
     runs-on: ubuntu-latest
     environment: ci
+    continue-on-error: ${{ matrix.emacs_version == 'snapshot' }}
     strategy:
+      fail-fast: false
       matrix:
         emacs_version:
           - 28.2
