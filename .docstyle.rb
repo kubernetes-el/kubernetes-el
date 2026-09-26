@@ -17,6 +17,5 @@ rule "ul-indent", indent: 4
 
 rule "ul-style", style: :dash
 rule "no-duplicate-header", allow_different_nesting: true
-rule "line-length", :line_length => 120
 
 exclude_rule 'MD026'            # Trailing punctuation in header
