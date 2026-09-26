@@ -28,6 +28,7 @@ jobs:
           - 28.2
           - 29.4
           - 30.2
+          - 31.1
           - release-snapshot
           - snapshot
     env:
